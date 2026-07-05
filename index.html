@@ -1,0 +1,85 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stars Reborn v0.1</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.js"></script>
+</head>
+<body>
+    <div id="app">
+        <div id="hudTopRight" class="hud-top-right-stack">
+            <div id="scoreCounter" class="hud-corner" aria-label="Очки">
+                <span class="score-counter-icon" aria-hidden="true">✦</span>
+                <span id="scoreCounterValue">0</span>
+            </div>
+            <button type="button" id="atlasBtn" class="hud-icon-btn" title="Атлас" aria-label="Атлас">📖</button>
+            <button type="button" id="achievementsBtn" class="hud-icon-btn" title="Достижения" aria-label="Достижения">🏆</button>
+        </div>
+
+        <div id="gameActions" class="hud-corner hud-bottom-right">
+            <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn" title="Отменить последнее созвездие" disabled aria-label="Отменить последнее созвездие">↩</button>
+        </div>
+
+        <div id="devControls" class="dev-controls">
+            <button id="resetButton">Сбросить небо</button>
+            <button id="devNewDayButton">Новый день</button>
+            <button id="devResetAchievementsButton">Сбросить достижения</button>
+            <button id="fullResetButton" class="btn-danger">Полный сброс</button>
+        </div>
+
+        <div id="constellation-hints" class="hints-panel-hidden" hidden>
+            <div class="level-patterns-title">Паттерны</div>
+            <div id="hintStarFilterBar" class="hint-filter-bar"></div>
+            <div id="hintList" class="hint-list"></div>
+        </div>
+
+        <div id="canvas-container"></div>
+
+        <div id="atlasOverlay">
+            <div id="atlasWindow">
+                <div class="atlas-header">
+                    <div class="atlas-title">Атлас созвездий</div>
+                    <button type="button" id="closeAtlasBtn" class="btn-cancel-small" title="Закрыть">&times;</button>
+                </div>
+                <div class="atlas-meta-block">
+                    <span class="resource-label">Очки</span>
+                    <span id="atlasMetaScoreDisplay" class="resource-value">0</span>
+                </div>
+                <div id="atlasPageNav" class="atlas-page-nav"></div>
+                <div id="atlasList" class="atlas-list atlas-page-grid"></div>
+            </div>
+        </div>
+        <div id="achievementsOverlay">
+            <div id="achievementsWindow">
+                <div class="atlas-header">
+                    <div class="atlas-title">Достижения</div>
+                    <button type="button" id="closeAchievementsBtn" class="btn-cancel-small" title="Закрыть">&times;</button>
+                </div>
+                <div class="atlas-meta-block">
+                    <span class="resource-label">Очки</span>
+                    <span id="achievementsMetaScoreDisplay" class="resource-value">0</span>
+                </div>
+                <div id="achievementsList" class="achievements-list"></div>
+            </div>
+        </div>
+        <div id="levelCompleteToast" class="level-complete-toast" hidden></div>
+        <div id="achvToastStack" class="achv-toast-stack"></div>
+    </div>
+
+    <script src="js/audio.js"></script>
+    <script src="js/constants.js"></script>
+    <script src="js/field.js"></script>
+    <script src="js/camera.js"></script>
+    <script src="js/drawing.js"></script>
+    <script src="js/recognition.js"></script>
+    <script src="js/customTypes.js"></script>
+    <script src="js/scoring.js"></script>
+    <script src="js/progression.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/achievements.js"></script>
+    <script src="js/save.js"></script>
+    <script src="js/sketch.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 280" width="160" height="280">
+  <!-- V1: <8=8<0;87<  B>;L:> :>=BC@ @><10 8 =8BL -->
+  <g fill="none" stroke="#1a1a1a" stroke-width="2.5" stroke-linejoin="miter" stroke-linecap="butt">
+    <path d="M 80 28 L 132 108 L 80 168 L 28 108 Z"/>
+    <path d="M 80 168 L 80 252"/>
+  </g>
+</svg>

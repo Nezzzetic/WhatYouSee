@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 280" width="160" height="280">
+  <!-- V3: 2KA>:0O 45B0;870F8O  10=BK =0 C3;0E, :@5AB>28=0, ;5=BK E2>AB0, 45:>@0B82=0O 4C30 =8B8 -->
+  <g fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 80 22 L 134 100 L 80 166 L 26 100 Z"/>
+    <path d="M 80 22 L 80 166"/>
+    <path d="M 26 100 L 134 100"/>
+    <!-- 4803>=0;L=K5 CA8;8B5;8 -->
+    <path d="M 53 61 L 107 139" opacity="0.85"/>
+    <path d="M 107 61 L 53 139" opacity="0.85"/>
+    <!-- 10=BK =0 1>:>2KE 25@H8=0E -->
+    <path d="M 26 100 L 18 92 M 26 100 L 18 108 M 134 100 L 142 92 M 134 100 L 142 108"/>
+    <ellipse cx="26" cy="100" rx="5" ry="3.5" transform="rotate(-25 26 100)"/>
+    <ellipse cx="134" cy="100" rx="5" ry="3.5" transform="rotate(25 134 100)"/>
+    <!-- =8BL A ;Q3:>9 2>;=>9 -->
+    <path d="M 80 22 Q 62 8 52 18 Q 44 28 48 38"/>
+    <!-- E2>AB: B@8 ;5=BK -->
+    <path d="M 80 166 C 92 198 68 220 88 248"/>
+    <path d="M 80 166 C 72 205 96 228 72 256"/>
+    <path d="M 80 166 C 84 210 76 235 80 268"/>
+    <!-- ?>?5@5G=K5 �C7;K� =0 ;5=B0E -->
+    <path d="M 76 200 L 84 204 M 74 228 L 82 232 M 78 252 L 86 256"/>
+  </g>
+</svg>

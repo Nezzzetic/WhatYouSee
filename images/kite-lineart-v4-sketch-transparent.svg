@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 280" width="160" height="280">
+  <!-- V4: AB8;L =01@>A:0  =5@>2=K5 ;8=88, 4C1;8@CNI89 :>=BC@, :@C3;K5 >:>=G0=8O -->
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- ;Q3:89 �42>9=>9� :>=BC@ -->
+    <path d="M 81 27 C 78 52 48 88 29 103 C 48 118 77 145 81 165 C 85 145 113 118 132 103 C 113 88 84 52 81 27 Z"
+          stroke="#1a1a1a" stroke-width="1.35" opacity="0.35"/>
+    <path d="M 79 25 C 76 50 46 86 27 101 C 46 116 75 143 79 163 C 83 143 111 116 130 101 C 111 86 82 50 79 25 Z"
+          stroke="#1a1a1a" stroke-width="2.4"/>
+    <!-- �:0@0=40H=0O� 25@B8:0;L A 4@>6LN -->
+    <path d="M 79 28 Q 81 72 78 118 Q 80 142 79 164" stroke="#1a1a1a" stroke-width="1.8"/>
+    <!-- ?>?5@5G8=0 GCBL :@820O -->
+    <path d="M 32 100 Q 79 108 129 99" stroke="#1a1a1a" stroke-width="1.8"/>
+    <!-- E2>AB  A2>1>4=K5 :@82K5 -->
+    <path d="M 79 164 C 95 188 65 212 90 238 S 72 262 84 272" stroke="#1a1a1a" stroke-width="2.2"/>
+    <path d="M 82 168 C 70 195 88 218 74 246" stroke="#1a1a1a" stroke-width="1.5" opacity="0.7"/>
+  </g>
+</svg>
