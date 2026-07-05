@@ -51,8 +51,38 @@ function awardMetaScore(amount) {
     const n = Math.max(0, Math.floor(amount));
     if (n <= 0) return 0;
     metaScore += n;
+    maybeAutoUnlockAtlasPages();
     saveProgression();
     return n;
+}
+
+/** S-01: страницы атласа открываются автоматически, как только хватает ✦. */
+function maybeAutoUnlockAtlasPages() {
+    let unlockedAny = false;
+    let next = getNextLockedAtlasPageIndex();
+    while (next >= 0 && metaScore >= getAtlasPageUnlockCost(next)) {
+        metaScore -= getAtlasPageUnlockCost(next);
+        unlockedPageIndices.add(next);
+        unlockedAny = true;
+        if (typeof showInfoToast === 'function') {
+            showInfoToast('📖', 'Открыта страница атласа', `Страница ${next + 1} — новые фигуры в наборе`);
+        }
+        next = getNextLockedAtlasPageIndex();
+    }
+    if (unlockedAny) {
+        if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
+        if (typeof updateProgressionUI === 'function') updateProgressionUI();
+        if (typeof refreshConstellationHintsIfLevelComplete === 'function') refreshConstellationHintsIfLevelComplete();
+        if (typeof document !== 'undefined') {
+            const atlasOverlay = document.getElementById('atlasOverlay');
+            if (atlasOverlay && atlasOverlay.classList.contains('visible')
+                && typeof renderAtlasOverlay === 'function') {
+                renderAtlasOverlay();
+            }
+        }
+        saveProgression();
+    }
+    return unlockedAny;
 }
 
 // =============================================================================
@@ -358,6 +388,9 @@ function loadProgression() {
 
         playerLevel = computeLevel(totalXP);
         ensurePlayerId();
+
+        // S-01: если накопленных ✦ уже хватает — страница открывается сразу
+        maybeAutoUnlockAtlasPages();
         return true;
     } catch (e) {
         console.warn('Progression load failed:', e);

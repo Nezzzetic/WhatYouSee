@@ -295,8 +295,14 @@ function isBlockingOverlayOpen() {
     });
 }
 
-function mousePressed() {
+/** D-01: событие пришло с канваса, а не с DOM-кнопки/панели поверх него. */
+function isPointerEventOnCanvas(event) {
+    return !(event && event.target && event.target.tagName && event.target.tagName !== 'CANVAS');
+}
+
+function mousePressed(event) {
     initAudio();
+    if (!isPointerEventOnCanvas(event)) return; // клики по HUD/панелям не рисуют и не панорамируют
     if (isBlockingOverlayOpen()) return;
     if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
 
@@ -363,7 +369,8 @@ function mouseDragged() {
                     startId: currentStartStar.id,
                     endId: starId
                 });
-                playEdgeSnap();
+                // A-02: высота звука растёт с числом звёзд в цепочке
+                playEdgeSnap(isNewStar ? uniqueCount + 1 : uniqueCount);
                 attachFlashStarId = starId;
                 attachFlashStartTime = millis();
             }
@@ -412,6 +419,102 @@ function resetDragState() {
     currentLine = null;
     clearDraftAtlasHintCache();
     attachFlashStarId = null;
+}
+
+// =============================================================================
+// TOUCH INPUT + PINCH ZOOM (U-05)
+// =============================================================================
+
+let isPinching = false;
+let wasPinching = false; // pinch кончился, но пальцы ещё не все отпущены
+let pinchStartDist = 0;
+let pinchStartZoom = 1;
+let pinchWorldX = 0; // мировая точка под midpoint на старте pinch — пришпилена к midpoint
+let pinchWorldY = 0;
+
+function enterPinchMode() {
+    if (touches.length < 2) return;
+    // Второй палец отменяет черновик/пан — подтверждено заказчиком
+    currentLines = [];
+    resetDragState();
+    isPanning = false;
+    isPinching = true;
+    const t0 = touches[0];
+    const t1 = touches[1];
+    pinchStartDist = Math.max(1e-3, Math.hypot(t1.x - t0.x, t1.y - t0.y));
+    pinchStartZoom = zoomLevel;
+    const midX = (t0.x + t1.x) / 2;
+    const midY = (t0.y + t1.y) / 2;
+    pinchWorldX = midX / zoomLevel + camX;
+    pinchWorldY = midY / zoomLevel + camY;
+}
+
+function updatePinchMode() {
+    if (touches.length < 2) return;
+    const t0 = touches[0];
+    const t1 = touches[1];
+    const dist = Math.hypot(t1.x - t0.x, t1.y - t0.y);
+    const midX = (t0.x + t1.x) / 2;
+    const midY = (t0.y + t1.y) / 2;
+    zoomLevel = constrain(pinchStartZoom * (dist / pinchStartDist), getMinZoomLevel(), MAX_ZOOM);
+    // Стартовая мировая точка следует за midpoint → зум + двухпальцевый пан одновременно
+    camX = pinchWorldX - midX / zoomLevel;
+    camY = pinchWorldY - midY / zoomLevel;
+    clampCamera();
+}
+
+function touchStarted(event) {
+    initAudio();
+    if (!isPointerEventOnCanvas(event)) return true; // HUD/оверлеи — браузеру
+    if (isBlockingOverlayOpen()) return true;
+    if (touches.length >= 2) {
+        enterPinchMode();
+        return false;
+    }
+    if (wasPinching) return false; // после pinch ждём полного отпускания
+    mousePressed(event);
+    return false;
+}
+
+function touchMoved(event) {
+    if (!isPointerEventOnCanvas(event)) return true;
+    if (isBlockingOverlayOpen()) return true;
+    if (touches.length >= 2) {
+        if (!isPinching) {
+            enterPinchMode();
+        } else {
+            updatePinchMode();
+        }
+        return false;
+    }
+    if (isPinching) {
+        // Остался один палец — pinch закончен, рисование не начинаем
+        isPinching = false;
+        wasPinching = true;
+        return false;
+    }
+    if (wasPinching) return false;
+    mouseDragged();
+    return false;
+}
+
+function touchEnded(event) {
+    if (touches.length === 0) {
+        if (isPinching || wasPinching) {
+            isPinching = false;
+            wasPinching = false;
+            return false;
+        }
+        if (!isPointerEventOnCanvas(event)) return true;
+        if (isBlockingOverlayOpen()) return true;
+        mouseReleased();
+        return false;
+    }
+    if (isPinching && touches.length < 2) {
+        isPinching = false;
+        wasPinching = true;
+    }
+    return false;
 }
 
 // =============================================================================
@@ -536,6 +639,12 @@ function commitConstellationFromPayload(payload) {
     }
     bonusAwardedClasses.add(scoreClass);
 
+    // S-01: первое создание фигуры фиксируется на коммите (сюрприз-имя,
+    // первая копия сразу становится atlas-collected)
+    if (finalShape !== 'Фигура' && isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)) {
+        markShapeCreated(finalShape);
+    }
+
     const labelAnchor = computeConstellationLabelAnchor(lines, starIds, finalShape);
     const isAtlasCollect = canCollectAtlasShapeOnField(finalShape);
     const { isSpecial: isFirstStarCountOnField } = registerStarCountOnCommit(starCount);
@@ -575,11 +684,6 @@ function commitConstellationFromPayload(payload) {
     }
     recomputeSuppressedStars();
     recomputeAtlasCollectedStarColors();
-
-    if (isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)
-        && !isAtlasShapeAlreadyOnField(finalShape, constellation)) {
-        trackShapeOpenedThisLevel(finalShape);
-    }
 
     updateScoreUI(0, finalShape, starCount);
     updateProgressionUI();
@@ -641,13 +745,9 @@ function undoLastConstellation() {
     recomputeSuppressedStars();
     recomputeAtlasCollectedStarColors();
 
-    const undoneShape = last.name || last.recognizedClass || last.shape;
-    const undoneNorm = typeof undoneShape === 'string' ? undoneShape.trim() : '';
-    const wasPendingOpen = undoneNorm && shapesOpenedThisLevel.includes(undoneNorm);
-    untrackShapeOpenedThisLevel(undoneShape);
-    if (wasPendingOpen && undoneNorm && !shapesOpenedThisLevel.includes(undoneNorm)) {
-        revertShapeCreated(undoneShape);
-    }
+    // S-01: откат первого коммита фигуры невозможен (undoFloor поднят при
+    // мгновенном клейме шага 1) — createdShapes здесь не трогаем; ночной
+    // счётчик цепочки откатывается в recordAchievementUndo.
 
     const canContinue = !isLevelComplete();
 
@@ -692,7 +792,7 @@ function revealConstellationArt() {
     }
     recomputeAtlasCollectedStarColors();
 
-    const { shapePts, levelPts, total } = awardEndOfLevelPoints();
+    const { levelPts, total } = awardEndOfLevelPoints();
 
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
 
@@ -700,7 +800,7 @@ function revealConstellationArt() {
     updateScoreUI(total, '', 0);
     updateProgressionUI();
     updateAtlasButtonState();
-    showLevelCompleteToast(levelPts, shapePts);
+    showLevelCompleteToast(levelPts);
     autoSave();
 }
 

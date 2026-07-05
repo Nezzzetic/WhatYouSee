@@ -113,10 +113,25 @@ body {
     background: rgba(28, 30, 42, 0.92);
 }
 
+/* D-01: невидимая зона тройного тапа — левый нижний угол, всегда доступна */
+.dev-toggle-btn {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 44px;
+    height: 44px;
+    z-index: 38;
+    border: none;
+    background: transparent;
+    opacity: 0;
+    -webkit-tap-highlight-color: transparent;
+    cursor: default;
+}
+
 .dev-controls {
     position: fixed;
     left: 12px;
-    bottom: 12px;
+    bottom: 56px; /* D-01: выше зоны тройного тапа, чтобы не перекрывать её */
     z-index: 39;
     display: flex;
     flex-direction: column;
@@ -131,6 +146,25 @@ body {
 .dev-controls button {
     min-width: 126px;
     text-align: left;
+}
+
+/* D-01: кнопки зума в dev-панели */
+.dev-zoom-row {
+    display: flex;
+    gap: 8px;
+}
+
+.dev-zoom-row button {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    font-size: 18px;
+    line-height: 1;
+}
+
+/* U-05: браузерные жесты (pinch-zoom страницы, скролл) на канвасе отключены */
+#canvas-container canvas {
+    touch-action: none;
 }
 
 .field-goals-progress-fill {
@@ -977,4 +1011,59 @@ button:disabled {
     .achv-toast {
         justify-content: flex-start;
     }
+}
+
+/* =============================================================================
+   S-01: пер-фигурные цепочки достижений на карточках атласа
+   ============================================================================= */
+
+.atlas-card-title-unknown {
+    color: #6a7089;
+    letter-spacing: 2px;
+}
+
+.atlas-chain {
+    margin-top: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.atlas-chain .achv-stars {
+    font-size: 13px;
+}
+
+.atlas-chain-progress {
+    font-size: 10px;
+    color: #8b93a8;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.atlas-chain-done {
+    color: #ffd45a;
+}
+
+.atlas-chain-claim {
+    border: 1px solid #b08a2e;
+    border-radius: 999px;
+    padding: 3px 10px;
+    background: rgba(44, 33, 12, 0.85);
+    color: #ffe9b0;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+}
+
+.atlas-chain-claim:hover {
+    background: rgba(64, 48, 18, 0.95);
+    color: #fff0c8;
+}
+
+.atlas-page-locked-progress {
+    color: #8b93a8;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
 }

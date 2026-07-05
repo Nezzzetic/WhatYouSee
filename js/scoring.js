@@ -14,7 +14,6 @@ let fieldGoalRewardsClaimed = [false, false, false];
 let bestScore = 0;
 let recordScoreBadgeActive = false;
 let levelCompletePointsAwarded = false;
-let shapesOpenedThisLevel = [];
 let claimedStarCounts = new Set();
 
 function resetStarCountBonusState() {
@@ -57,74 +56,13 @@ function registerStarCountOnCommit(starCount) {
     return { isSpecial };
 }
 
-function resetShapesOpenedThisLevel() {
-    shapesOpenedThisLevel = [];
-}
-
-function sanitizeShapesOpenedThisLevel() {
-    if (!Array.isArray(shapesOpenedThisLevel) || shapesOpenedThisLevel.length === 0) return;
-    shapesOpenedThisLevel = shapesOpenedThisLevel.filter(name => {
-        const normalized = typeof name === 'string' ? name.trim() : '';
-        if (!normalized) return false;
-        return typeof isShapeVisibleInAtlas === 'function' && isShapeVisibleInAtlas(normalized);
-    });
-}
-
-function trackShapeOpenedThisLevel(shapeName) {
-    const normalized = typeof shapeName === 'string' ? shapeName.trim() : '';
-    if (!normalized) return;
-    if (typeof isShapeVisibleInAtlas !== 'function' || !isShapeVisibleInAtlas(normalized)) return;
-    if (isShapeCreated(normalized)) return;
-    if (shapesOpenedThisLevel.includes(normalized)) return;
-    shapesOpenedThisLevel.push(normalized);
-}
-
-function untrackShapeOpenedThisLevel(shapeName) {
-    const normalized = typeof shapeName === 'string' ? shapeName.trim() : '';
-    if (!normalized) return;
-    const stillOnField = constellations.some(c => {
-        const sc = c.recognizedClass || c.shape;
-        return sc === normalized;
-    });
-    if (stillOnField) return;
-    shapesOpenedThisLevel = shapesOpenedThisLevel.filter(n => n !== normalized);
-}
-
-function awardShapeOpenPointsForLevel() {
-    sanitizeShapesOpenedThisLevel();
-    const perShape = typeof SHAPE_OPEN_POINTS === 'number' ? SHAPE_OPEN_POINTS : 25;
-    let total = 0;
-
-    for (const name of shapesOpenedThisLevel) {
-        if (typeof isShapeVisibleInAtlas === 'function' && !isShapeVisibleInAtlas(name)) continue;
-        total += perShape;
-        markShapeCreated(name);
-    }
-    shapesOpenedThisLevel = [];
-
-    if (total > 0) {
-        awardMetaScore(total);
-        const cx = FIELD_WIDTH / 2;
-        const cy = FIELD_HEIGHT / 2 - 40;
-        floatingScores.push({
-            x: cx,
-            y: cy,
-            text: `+${total}`,
-            startTime: millis(),
-            color: [180, 220, 255]
-        });
-    }
-
-    return total;
-}
-
+// S-01: очки за атласные фигуры ночи убраны — первое создание фигуры
+// вознаграждается шагом 1 её цепочки достижений прямо на коммите.
 function awardEndOfLevelPoints() {
-    const shapePts = awardShapeOpenPointsForLevel();
     const levelPts = awardLevelCompletePointsIfNeeded();
     return {
-        shapePts,
         levelPts,
-        total: shapePts + levelPts
+        total: levelPts
     };
 }
 

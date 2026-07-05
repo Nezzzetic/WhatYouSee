@@ -22,8 +22,7 @@ function saveGame() {
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
             dailyTargetShapes: getDailyTargetShapes(),
-            levelCompletePointsAwarded,
-            shapesOpenedThisLevel: [...shapesOpenedThisLevel]
+            levelCompletePointsAwarded
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -84,12 +83,6 @@ function loadGame() {
         bestScore = Math.max(state.bestScore || 0, getFieldScore());
         resetRecordScoreBadge();
         levelCompletePointsAwarded = !!state.levelCompletePointsAwarded;
-        shapesOpenedThisLevel = Array.isArray(state.shapesOpenedThisLevel)
-            ? state.shapesOpenedThisLevel.slice()
-            : [];
-        if (typeof sanitizeShapesOpenedThisLevel === 'function') {
-            sanitizeShapesOpenedThisLevel();
-        }
 
         rebuildStarCountStateFromConstellations();
 

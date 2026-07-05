@@ -47,6 +47,27 @@ function buildExactSizeChain(size) {
     };
 }
 
+/** S-01: пер-фигурная цепочка (по одной на каждую фигуру атласа). */
+function buildShapeChain(shapeName) {
+    return {
+        id: 'shape_' + shapeName,
+        title: shapeName,
+        icon: '✨',
+        isShapeChain: true,
+        shapeName,
+        stepReward: SHAPE_CHAIN_STEP_REWARD,
+        steps: SHAPE_CHAIN_TIERS.map((n, i) => ({
+            id: `shape_${shapeName}_${n}`,
+            desc: i === 0
+                ? `Создай «${shapeName}» впервые`
+                : `«${shapeName}» — ${n} созданий`,
+            check: { type: 'shapeTotal', shape: shapeName, n }
+        }))
+    };
+}
+
+const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
+
 const ACHIEVEMENT_CHAINS = [
     ...ACHIEVEMENT_COLOR_KEYS.map(buildColorChain),
     ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
@@ -64,6 +85,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'rainbow',
         title: 'Радуга',
         icon: '🌈',
+        requiresPageComplete: 0, // S-01: особенное достижение страницы 0
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `rainbow_${n}`,
             desc: `${n} ночей с полной радугой (все 5 цветов за ночь)`,
@@ -94,6 +116,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'mosaic',
         title: 'Мозаика',
         icon: '🧩',
+        requiresPageComplete: 1, // S-01: особенное достижение страницы 1
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `mosaic_${n}`,
             desc: `${n} ночей с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)`,
@@ -111,11 +134,43 @@ const ACHIEVEMENT_CHAINS = [
         title: 'Созвездие-всё',
         icon: '🌌',
         steps: [{ id: 'unite_all_1', desc: 'Объедини все звёзды поля в одно созвездие', check: { type: 'uniteAll' } }]
-    }
+    },
+    ...ACHIEVEMENT_ALL_ATLAS_SHAPES.map(buildShapeChain)
 ];
 
 function getAchievementChainById(chainId) {
     return ACHIEVEMENT_CHAINS.find(c => c.id === chainId) || null;
+}
+
+function getShapeChainForShape(shapeName) {
+    const normalized = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
+    if (!normalized) return null;
+    return getAchievementChainById('shape_' + normalized);
+}
+
+function getAchievementChainStepReward(chain) {
+    return chain && typeof chain.stepReward === 'number' ? chain.stepReward : ACHIEVEMENT_STEP_REWARD;
+}
+
+/** S-01: полный комплект страницы — все фигуры страницы созданы. */
+function isAtlasPageSetComplete(pageIndex) {
+    if (pageIndex < 0 || pageIndex >= ATLAS_PAGES.length) return false;
+    return ATLAS_PAGES[pageIndex].every(name => isShapeCreated(name));
+}
+
+/**
+ * Видимость цепочки:
+ * - пер-фигурная — после первого создания фигуры (живёт на карточке атласа);
+ * - Радуга/Мозаика — за полный комплект страницы 0/1;
+ * - остальные — всегда.
+ */
+function isAchievementChainVisible(chain) {
+    if (!chain) return false;
+    if (chain.isShapeChain) return isShapeCreated(chain.shapeName);
+    if (typeof chain.requiresPageComplete === 'number') {
+        return isAtlasPageSetComplete(chain.requiresPageComplete);
+    }
+    return true;
 }
 
 // =============================================================================
@@ -127,6 +182,13 @@ let achievementProgress = {};
 let achievementCounters = null;
 let rainbowCountedThisNight = false;
 let mosaicCountedThisNight = false;
+// S-01: фигуры, засчитанные в пер-фигурные цепочки этой ночью (анти-гринд ≤1/ночь)
+let shapesCountedThisNight = new Set();
+// S-01: особые достижения (Радуга/Мозаика), о доступности которых уже оповестили
+let announcedSpecialChains = new Set();
+
+// Версия схемы достижений (S-01: сброс Радуги/Мозаики при миграции старых сейвов)
+const ACHIEVEMENTS_SAVE_VERSION = 2;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -138,7 +200,8 @@ function makeDefaultAchievementCounters() {
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         starCountTotals: { 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, '8plus': 0 },
         rainbowNights: 0,
-        mosaicNights: 0
+        mosaicNights: 0,
+        shapeTotals: {} // S-01: имя фигуры → всего засчитанных созданий (≤1/ночь)
     };
 }
 
@@ -150,6 +213,8 @@ function initAchievementState() {
     achievementCounters = makeDefaultAchievementCounters();
     rainbowCountedThisNight = false;
     mosaicCountedThisNight = false;
+    shapesCountedThisNight = new Set();
+    announcedSpecialChains = new Set();
 }
 
 function resetAchievementsForFullReset() {
@@ -159,6 +224,7 @@ function resetAchievementsForFullReset() {
 function resetPerNightAchievementFlags() {
     rainbowCountedThisNight = false;
     mosaicCountedThisNight = false;
+    shapesCountedThisNight = new Set();
 }
 
 // =============================================================================
@@ -172,10 +238,13 @@ function getAchievementSaveData() {
         progress[chain.id] = { stepIndex: p ? p.stepIndex : 0 };
     }
     return {
+        achievementsVersion: ACHIEVEMENTS_SAVE_VERSION,
         achievementProgress: progress,
         achievementCounters,
         rainbowCountedThisNight,
-        mosaicCountedThisNight
+        mosaicCountedThisNight,
+        shapesCountedThisNight: [...shapesCountedThisNight],
+        announcedSpecialChains: [...announcedSpecialChains]
     };
 }
 
@@ -193,7 +262,8 @@ function applyAchievementSaveData(state) {
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),
             rainbowNights: Number(s.rainbowNights) || 0,
-            mosaicNights: Number(s.mosaicNights) || 0
+            mosaicNights: Number(s.mosaicNights) || 0,
+            shapeTotals: Object.assign({}, s.shapeTotals || {})
         };
     }
 
@@ -208,6 +278,46 @@ function applyAchievementSaveData(state) {
 
     rainbowCountedThisNight = !!state.rainbowCountedThisNight;
     mosaicCountedThisNight = !!state.mosaicCountedThisNight;
+    shapesCountedThisNight = new Set(Array.isArray(state.shapesCountedThisNight) ? state.shapesCountedThisNight : []);
+    announcedSpecialChains = new Set(Array.isArray(state.announcedSpecialChains) ? state.announcedSpecialChains : []);
+
+    migrateAchievementsToSpiral(state);
+
+    // Уже видимые особые достижения не анонсируем повторно при загрузке
+    for (const chain of ACHIEVEMENT_CHAINS) {
+        if (typeof chain.requiresPageComplete !== 'number') continue;
+        if (isAchievementChainVisible(chain)) announcedSpecialChains.add(chain.id);
+    }
+}
+
+/**
+ * S-01: миграция сейвов до «спирали».
+ * - Радуга/Мозаика переезжают в особенные достижения страниц — прогресс сбрасывается (решение заказчика).
+ * - Фигурам из createdShapes (созданным при старой системе) даётся stepIndex=1 и счётчик 1
+ *   без награды: 25 ✦ за них уже были выплачены через SHAPE_OPEN_POINTS.
+ */
+function migrateAchievementsToSpiral(state) {
+    const version = Number(state.achievementsVersion) || 1;
+    if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
+
+    if (achievementProgress.rainbow) achievementProgress.rainbow.stepIndex = 0;
+    if (achievementProgress.mosaic) achievementProgress.mosaic.stepIndex = 0;
+    if (achievementCounters) {
+        achievementCounters.rainbowNights = 0;
+        achievementCounters.mosaicNights = 0;
+    }
+    rainbowCountedThisNight = false;
+    mosaicCountedThisNight = false;
+
+    for (const chain of ACHIEVEMENT_CHAINS) {
+        if (!chain.isShapeChain) continue;
+        if (typeof isShapeCreated !== 'function' || !isShapeCreated(chain.shapeName)) continue;
+        const p = achievementProgress[chain.id];
+        if (p && p.stepIndex === 0) p.stepIndex = 1;
+        if (achievementCounters && !(achievementCounters.shapeTotals[chain.shapeName] > 0)) {
+            achievementCounters.shapeTotals[chain.shapeName] = 1;
+        }
+    }
 }
 
 // =============================================================================
@@ -307,6 +417,8 @@ function evaluateAchievementCheck(check, snap) {
             return c.levelsCompleted >= check.n;
         case 'totalConstellations':
             return c.totalConstellations >= check.n;
+        case 'shapeTotal':
+            return (c.shapeTotals[check.shape] || 0) >= check.n;
         case 'singleConstellation':
             return snap.revealed && snap.count === 1;
         case 'uniteAll':
@@ -330,6 +442,7 @@ function getAchievementStepProgress(check) {
         case 'mosaicNights': return { current: c.mosaicNights, target: check.n };
         case 'levelsCompleted': return { current: c.levelsCompleted, target: check.n };
         case 'totalConstellations': return { current: c.totalConstellations, target: check.n };
+        case 'shapeTotal': return { current: c.shapeTotals[check.shape] || 0, target: check.n };
         default: return null;
     }
 }
@@ -351,6 +464,11 @@ function recomputeAchievementsClaimable(notify) {
             p.claimable = false; // цепочка завершена
             continue;
         }
+        // S-01: скрытые цепочки не набирают claimable и не тостятся
+        if (!isAchievementChainVisible(chain)) {
+            p.claimable = false;
+            continue;
+        }
         const step = chain.steps[p.stepIndex];
         const wasClaimable = p.claimable;
         p.claimable = evaluateAchievementCheck(step.check, snap);
@@ -360,8 +478,19 @@ function recomputeAchievementsClaimable(notify) {
     }
 }
 
+/** Claimable в сетке 🏆 (пер-фигурные живут на карточках атласа — не учитываются). */
 function hasClaimableAchievements() {
     return ACHIEVEMENT_CHAINS.some(chain => {
+        if (chain.isShapeChain) return false;
+        const p = achievementProgress[chain.id];
+        return p && p.claimable;
+    });
+}
+
+/** S-01: есть ли забираемый шаг у пер-фигурных цепочек (подсветка кнопки атласа). */
+function hasClaimableShapeChains() {
+    return ACHIEVEMENT_CHAINS.some(chain => {
+        if (!chain.isShapeChain) return false;
         const p = achievementProgress[chain.id];
         return p && p.claimable;
     });
@@ -373,13 +502,67 @@ function hasClaimableAchievements() {
 
 function recordAchievementCommit(constellation) {
     applyConstellationToCounters(constellation, +1);
+    recordShapeCommitForChains(constellation);
     afterAchievementStateChanged();
 }
 
 function recordAchievementUndo(constellation) {
     applyConstellationToCounters(constellation, -1);
+    recordShapeUndoForChains(constellation);
     afterAchievementStateChanged();
 }
+
+// =============================================================================
+// S-01: ПЕР-ФИГУРНЫЕ ЦЕПОЧКИ — СЧЁТ НА КОММИТЕ (≤1/ночь) И ОТКАТ
+// =============================================================================
+
+function getCommittedAtlasShapeName(constellation) {
+    if (!constellation || !achievementCounters) return null;
+    const name = normalizeShapeName(constellation.shape);
+    if (!name || name === 'Фигура') return null;
+    if (typeof isShapeVisibleInAtlas === 'function' && !isShapeVisibleInAtlas(name)) return null;
+    return name;
+}
+
+function recordShapeCommitForChains(constellation) {
+    const name = getCommittedAtlasShapeName(constellation);
+    if (!name) return;
+    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 за ночь
+
+    shapesCountedThisNight.add(name);
+    achievementCounters.shapeTotals[name] = (achievementCounters.shapeTotals[name] || 0) + 1;
+
+    // Сюрприз-момент: первое создание фигуры — имя раскрыто на коммите.
+    // Награда шага 1 собирается вручную с карточки атласа (флоу как у остальных).
+    const chain = getShapeChainForShape(name);
+    const p = chain ? achievementProgress[chain.id] : null;
+    if (chain && p && p.stepIndex === 0 && achievementCounters.shapeTotals[name] === 1) {
+        showShapeRevealToast(name);
+    }
+
+    announceNewlyAvailableSpecialChains();
+}
+
+/** S-01: оповещение о ставших доступными особых достижениях (полный комплект страницы). */
+function announceNewlyAvailableSpecialChains() {
+    for (const chain of ACHIEVEMENT_CHAINS) {
+        if (typeof chain.requiresPageComplete !== 'number') continue;
+        if (announcedSpecialChains.has(chain.id)) continue;
+        if (!isAchievementChainVisible(chain)) continue;
+        announcedSpecialChains.add(chain.id);
+        showInfoToast(chain.icon, 'Новое достижение доступно',
+            `${chain.title} — коллекция страницы ${chain.requiresPageComplete + 1} собрана`);
+    }
+}
+
+function recordShapeUndoForChains(constellation) {
+    const name = getCommittedAtlasShapeName(constellation);
+    if (!name) return;
+    if (!shapesCountedThisNight.has(name)) return;
+    shapesCountedThisNight.delete(name);
+    achievementCounters.shapeTotals[name] = Math.max(0, (achievementCounters.shapeTotals[name] || 0) - 1);
+}
+
 
 function recordAchievementReveal() {
     if (!achievementCounters) return;
@@ -402,9 +585,16 @@ function afterAchievementStateChanged() {
     recomputeAchievementsClaimable(true);
     saveProgression();
     updateAchievementsButtonState();
+    if (typeof updateAtlasButtonState === 'function') updateAtlasButtonState();
     const overlay = document.getElementById('achievementsOverlay');
     if (overlay && overlay.classList.contains('visible')) {
         renderAchievementsOverlay();
+    }
+    // S-01: прогресс пер-фигурных цепочек живёт на карточках атласа
+    const atlasOverlay = document.getElementById('atlasOverlay');
+    if (atlasOverlay && atlasOverlay.classList.contains('visible')
+        && typeof renderAtlasOverlay === 'function') {
+        renderAtlasOverlay();
     }
 }
 
@@ -418,7 +608,7 @@ function claimAchievementStep(chainId) {
     if (!chain || !p || !p.claimable) return false;
     if (p.stepIndex >= chain.steps.length) return false;
 
-    awardMetaScore(ACHIEVEMENT_STEP_REWARD);
+    awardMetaScore(getAchievementChainStepReward(chain));
     p.stepIndex += 1;
     p.claimable = false;
 
@@ -433,6 +623,12 @@ function claimAchievementStep(chainId) {
     updateAchievementsButtonState();
     if (typeof updateUndoConstellationButtonState === 'function') updateUndoConstellationButtonState();
     renderAchievementsOverlay();
+    // S-01: клейм пер-фигурной цепочки происходит из атласа — обновить его
+    const atlasOverlay = document.getElementById('atlasOverlay');
+    if (atlasOverlay && atlasOverlay.classList.contains('visible')
+        && typeof renderAtlasOverlay === 'function') {
+        renderAtlasOverlay();
+    }
     return true;
 }
 
@@ -440,7 +636,8 @@ function claimAchievementStep(chainId) {
 // ТОСТ «ДОСТИЖЕНИЕ ПОЛУЧЕНО» (правый верхний угол, стек)
 // =============================================================================
 
-function showAchievementToast(chain) {
+/** Общий инфо-тост в стеке достижений (правый верхний угол). */
+function showInfoToast(iconText, title, sub) {
     const stack = document.getElementById('achvToastStack');
     if (!stack) return;
 
@@ -449,16 +646,16 @@ function showAchievementToast(chain) {
 
     const icon = document.createElement('span');
     icon.className = 'achv-toast-icon';
-    icon.textContent = chain.icon || '🏆';
+    icon.textContent = iconText || '🏆';
 
     const body = document.createElement('span');
     body.className = 'achv-toast-body';
     const t1 = document.createElement('span');
     t1.className = 'achv-toast-title';
-    t1.textContent = 'Достижение выполнено';
+    t1.textContent = title;
     const t2 = document.createElement('span');
     t2.className = 'achv-toast-sub';
-    t2.textContent = chain.title;
+    t2.textContent = sub;
     body.appendChild(t1);
     body.appendChild(t2);
 
@@ -471,6 +668,15 @@ function showAchievementToast(chain) {
     const remove = () => { if (el.parentNode) el.parentNode.removeChild(el); };
     el.addEventListener('animationend', remove);
     setTimeout(remove, 4200);
+}
+
+function showAchievementToast(chain) {
+    showInfoToast(chain.icon || '🏆', 'Достижение выполнено', chain.title);
+}
+
+/** S-01: сюрприз-момент — первое создание фигуры атласа (раскрытие имени). */
+function showShapeRevealToast(shapeName) {
+    showInfoToast('📖', 'Новая фигура атласа!', `«${shapeName}»`);
 }
 
 // =============================================================================
@@ -507,7 +713,7 @@ function createAchievementSlot(chain) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'achv-claim-overlay';
-        btn.textContent = `+${ACHIEVEMENT_STEP_REWARD}✦`;
+        btn.textContent = `+${getAchievementChainStepReward(chain)}✦`;
         btn.title = 'Забрать награду';
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -567,6 +773,10 @@ function renderAchievementsList() {
     if (!list) return;
     list.innerHTML = '';
     for (const chain of ACHIEVEMENT_CHAINS) {
+        // S-01: пер-фигурные цепочки живут на карточках атласа;
+        // Радуга/Мозаика появляются только при полном комплекте страницы
+        if (chain.isShapeChain) continue;
+        if (!isAchievementChainVisible(chain)) continue;
         list.appendChild(createAchievementSlot(chain));
     }
 }

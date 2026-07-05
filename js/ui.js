@@ -33,16 +33,14 @@ function updateProgressionUI() {
     updateAtlasButtonState();
 }
 
-function showLevelCompleteToast(levelPts, shapePts) {
+function showLevelCompleteToast(levelPts) {
     const toast = document.getElementById("levelCompleteToast");
     if (!toast) return;
 
     const level = levelPts || 0;
-    const shapes = shapePts || 0;
     const lines = ['<strong>Уровень завершён</strong>'];
 
     if (level > 0) lines.push(`+${level} за уровень`);
-    if (shapes > 0) lines.push(`+${shapes} за фигуры`);
 
     toast.innerHTML =
         `<button class="toast-close-btn" aria-label="Закрыть">×</button>` +
@@ -489,6 +487,67 @@ function renderAtlasPageNav() {
     }
 }
 
+/** S-01: блок прогресса пер-фигурной цепочки на карточке атласа. */
+function createAtlasShapeChainBlock(shapeName) {
+    if (typeof getShapeChainForShape !== 'function') return null;
+    const chain = getShapeChainForShape(shapeName);
+    if (!chain) return null;
+    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
+    const total = chain.steps.length;
+    const done = p.stepIndex >= total;
+
+    const block = document.createElement('div');
+    block.className = 'atlas-chain';
+
+    // Ряд звёзд — по одной на шаг (как в сетке 🏆)
+    const stars = document.createElement('div');
+    stars.className = 'achv-stars';
+    for (let i = 0; i < total; i++) {
+        const s = document.createElement('span');
+        const filled = i < p.stepIndex;
+        s.className = 'achv-star' + (filled ? ' achv-star-filled' : '');
+        s.textContent = filled ? '★' : '☆';
+        stars.appendChild(s);
+    }
+    block.appendChild(stars);
+
+    if (done) {
+        const doneEl = document.createElement('div');
+        doneEl.className = 'atlas-chain-progress atlas-chain-done';
+        doneEl.textContent = 'Все ступени пройдены';
+        block.appendChild(doneEl);
+        return block;
+    }
+
+    const step = chain.steps[p.stepIndex];
+    const prog = typeof getAchievementStepProgress === 'function'
+        ? getAchievementStepProgress(step.check)
+        : null;
+
+    if (p.claimable && typeof claimAchievementStep === 'function') {
+        const claimBtn = document.createElement('button');
+        claimBtn.type = 'button';
+        claimBtn.className = 'atlas-chain-claim';
+        claimBtn.textContent = `Забрать +${getAchievementChainStepReward(chain)} ✦`;
+        claimBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            claimAchievementStep(chain.id);
+            renderAtlasOverlay();
+        });
+        block.appendChild(claimBtn);
+    } else {
+        const progEl = document.createElement('div');
+        progEl.className = 'atlas-chain-progress';
+        progEl.title = step.desc;
+        progEl.textContent = prog
+            ? `${Math.min(prog.current, prog.target)}/${prog.target}`
+            : step.desc;
+        block.appendChild(progEl);
+    }
+
+    return block;
+}
+
 function createAtlasEntryCard(entry) {
     const card = document.createElement('div');
     card.className = `atlas-card atlas-card-${entry.atlasState}`;
@@ -511,32 +570,16 @@ function createAtlasEntryCard(entry) {
         title.style.color = `rgb(${entry.color[0]},${entry.color[1]},${entry.color[2]})`;
         content.appendChild(title);
 
-        const meta = document.createElement('div');
-        meta.className = 'atlas-card-meta';
-        const createdBadge = document.createElement('span');
-        createdBadge.className = 'atlas-pill atlas-pill-created';
-        createdBadge.textContent = 'создано';
-        meta.appendChild(createdBadge);
-        content.appendChild(meta);
+        // S-01: прогресс пер-фигурной цепочки достижений
+        const chainBlock = createAtlasShapeChainBlock(entry.name);
+        if (chainBlock) content.appendChild(chainBlock);
+    } else {
+        // S-01: имя фигуры — сюрприз до первого создания
+        const title = document.createElement('div');
+        title.className = 'atlas-card-title atlas-card-title-unknown';
+        title.textContent = '???';
+        content.appendChild(title);
     }
-
-    const actions = document.createElement('div');
-    actions.className = 'atlas-card-actions';
-    card.appendChild(actions);
-
-    const favoriteBtn = document.createElement('button');
-    favoriteBtn.type = 'button';
-    favoriteBtn.className = 'atlas-favorite-btn';
-    if (entry.isFavorite) favoriteBtn.classList.add('active');
-    favoriteBtn.textContent = '★';
-    favoriteBtn.title = entry.isFavorite ? 'Убрать из избранного' : 'Добавить в избранное';
-    favoriteBtn.addEventListener('click', () => {
-        toggleFavoriteShape(entry.name);
-        renderAtlasPageNav();
-        renderAtlasList();
-        refreshConstellationHintsIfLevelComplete();
-    });
-    actions.appendChild(favoriteBtn);
 
     if (entry.pattern) {
         drawHintPattern(canvas, entry.pattern, entry.color);
@@ -551,31 +594,20 @@ function renderAtlasList() {
     list.innerHTML = '';
 
     if (!isAtlasPageUnlocked(atlasPageIndex)) {
+        // S-01: страницы открываются автоматически при накоплении ✦
         const locked = document.createElement('div');
         locked.className = 'atlas-page-locked';
         const cost = getAtlasPageUnlockCost(atlasPageIndex);
 
         const lockedText = document.createElement('p');
-        lockedText.textContent = `Страница закрыта. Открыть за ${cost} очков?`;
+        lockedText.textContent = `Страница откроется сама, когда накопится ${cost} ✦.`;
         locked.appendChild(lockedText);
 
-        const unlockBtn = document.createElement('button');
-        unlockBtn.type = 'button';
-        unlockBtn.className = 'atlas-unlock-page-btn';
-        unlockBtn.textContent = canUnlockAtlasPage(atlasPageIndex)
-            ? `Открыть (${cost})`
-            : `Нужно ${cost} очков`;
-        unlockBtn.disabled = !canUnlockAtlasPage(atlasPageIndex);
-        unlockBtn.addEventListener('click', () => {
-            if (!unlockAtlasPage(atlasPageIndex)) return;
-            raiseUndoFloor();
-            updateProgressionUI();
-            renderAtlasPageNav();
-            renderAtlasList();
-            refreshConstellationHintsIfLevelComplete();
-            updateAtlasButtonState();
-        });
-        locked.appendChild(unlockBtn);
+        const progressText = document.createElement('p');
+        progressText.className = 'atlas-page-locked-progress';
+        progressText.textContent = `Сейчас: ${Math.min(getMetaScore(), cost)}/${cost} ✦`;
+        locked.appendChild(progressText);
+
         list.appendChild(locked);
         return;
     }
@@ -668,12 +700,13 @@ function onAtlasOverlayClick(event) {
 function updateAtlasButtonState() {
     const atlasBtn = document.getElementById('atlasBtn');
     if (!atlasBtn) return;
-    const nextPage = getNextLockedAtlasPageIndex();
-    const canUnlock = nextPage >= 0 && canUnlockAtlasPage(nextPage);
+    // S-01: страницы открываются автоматически; подсветка — только
+    // при забираемом шаге пер-фигурной цепочки
+    const chainClaimable = typeof hasClaimableShapeChains === 'function' && hasClaimableShapeChains();
 
-    atlasBtn.classList.toggle('atlas-btn-claimable', canUnlock);
+    atlasBtn.classList.toggle('atlas-btn-claimable', chainClaimable);
     atlasBtn.textContent = '📖';
-    const label = canUnlock ? 'Атлас — можно открыть страницу' : 'Атлас';
+    const label = chainClaimable ? 'Атлас — есть награда' : 'Атлас';
     atlasBtn.title = label;
     atlasBtn.setAttribute('aria-label', label);
 }

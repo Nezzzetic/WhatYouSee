@@ -38,6 +38,25 @@ function clampZoomToField() {
     zoomLevel = constrain(zoomLevel, getMinZoomLevel(), MAX_ZOOM);
 }
 
+/**
+ * D-01/U-05: зум с якорем — мировая точка под экранной (sx, sy) остаётся на месте.
+ * Общая логика для колеса мыши, кнопок «+»/«−» и pinch.
+ */
+function zoomAtScreenPoint(sx, sy, newZoom) {
+    const worldX = sx / zoomLevel + camX;
+    const worldY = sy / zoomLevel + camY;
+    zoomLevel = constrain(newZoom, getMinZoomLevel(), MAX_ZOOM);
+    camX = worldX - sx / zoomLevel;
+    camY = worldY - sy / zoomLevel;
+    clampCamera();
+}
+
+/** D-01: шаг зума кнопками — мультипликативный, якорь — центр экрана. dir: +1 / −1. */
+function zoomByStep(dir) {
+    const factor = Math.pow(ZOOM_BUTTON_FACTOR, dir);
+    zoomAtScreenPoint(width / 2, height / 2, zoomLevel * factor);
+}
+
 /** P-01: поле ограничено по обеим осям (X и Y), wrap убран — камера упирается в край. */
 function clampCamera() {
     const viewW = width / zoomLevel;

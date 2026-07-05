@@ -11,24 +11,43 @@ function initAudio() {
     } catch (e) {}
 }
 
-// Короткий щелчок: soединение звезды в черновик
-function playEdgeSnap() {
+// A-02: восходящая лестница цепочки — заметно 1→10 звёзд, слабо 10→20, плато дальше
+const CHAIN_PENTA = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21]; // пентатоника, ~2 октавы на 10 нот
+const CHAIN_BASE_FREQ = 330; // E4
+
+function chainSemitones(n) {
+    const i = Math.max(0, n - 2); // первая нота при n=2 (второй звезде цепочки)
+    if (i < 10) return CHAIN_PENTA[i];
+    if (i < 20) return 21 + (i - 9) * 0.5;
+    return 26;
+}
+
+function chainStepFreq(n) {
+    return CHAIN_BASE_FREQ * Math.pow(2, chainSemitones(n) / 12);
+}
+
+// Короткий щелчок: соединение звезды в черновик.
+// chainStarCount — число звёзд в цепочке (visitedStars) с учётом присоединяемой.
+function playEdgeSnap(chainStarCount) {
     if (!_audioCtx) return;
     const now = Date.now();
     if (now - _lastEdgeSnapTime < 50) return; // debounce
     _lastEdgeSnapTime = now;
     try {
+        const n = typeof chainStarCount === 'number' && isFinite(chainStarCount) ? chainStarCount : 2;
+        const freq = chainStepFreq(n);
+        const t = _audioCtx.currentTime;
         const osc = _audioCtx.createOscillator();
         const gain = _audioCtx.createGain();
         osc.connect(gain);
         gain.connect(_audioCtx.destination);
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, _audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(400, _audioCtx.currentTime + 0.06);
-        gain.gain.setValueAtTime(0.18, _audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, _audioCtx.currentTime + 0.06);
-        osc.start(_audioCtx.currentTime);
-        osc.stop(_audioCtx.currentTime + 0.06);
+        osc.frequency.setValueAtTime(freq, t);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.85, t + 0.06); // лёгкий спад — характер «щелчка»
+        gain.gain.setValueAtTime(0.18, t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.06);
+        osc.start(t);
+        osc.stop(t + 0.06);
     } catch (e) {}
 }
 

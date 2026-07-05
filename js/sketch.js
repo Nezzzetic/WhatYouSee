@@ -127,13 +127,17 @@ function setup() {
     const fullResetBtn = document.getElementById("fullResetButton");
     const devNewDayBtn = document.getElementById("devNewDayButton");
     const devResetAchvBtn = document.getElementById("devResetAchievementsButton");
+    // D-01: панель скрыта по умолчанию; ?dev=1 — форс-показ при загрузке
     if (!isDevModeEnabled()) {
         if (devControls) devControls.style.display = "none";
     }
+    setupDevToggleButton();
     resetBtn?.addEventListener("click", onResetSky);
     fullResetBtn?.addEventListener("click", onFullReset);
     devNewDayBtn?.addEventListener("click", onDevNewDay);
     devResetAchvBtn?.addEventListener("click", onDevResetAchievements);
+    document.getElementById("zoomInButton")?.addEventListener("click", () => zoomByStep(1));
+    document.getElementById("zoomOutButton")?.addEventListener("click", () => zoomByStep(-1));
 
     document.getElementById("undoLastConstellationBtn")?.addEventListener("click", undoLastConstellation);
 
@@ -162,24 +166,43 @@ function windowResized() {
 }
 
 // =============================================================================
+// DEV PANEL TOGGLE (D-01)
+// =============================================================================
+
+let _devTapCount = 0;
+let _devTapLastMs = 0;
+
+function toggleDevControls() {
+    const el = document.getElementById("devControls");
+    if (!el) return;
+    el.style.display = el.style.display === "none" ? "" : "none";
+}
+
+/** Невидимая кнопка в левом нижнем углу: тройной быстрый тап — показать/скрыть панель. */
+function setupDevToggleButton() {
+    const btn = document.getElementById("devToggleBtn");
+    if (!btn) return;
+    btn.addEventListener("click", () => {
+        const now = Date.now();
+        if (now - _devTapLastMs > DEV_TOGGLE_TAP_WINDOW_MS) _devTapCount = 0;
+        _devTapCount++;
+        _devTapLastMs = now;
+        if (_devTapCount >= DEV_TOGGLE_TAP_COUNT) {
+            _devTapCount = 0;
+            toggleDevControls();
+        }
+    });
+}
+
+// =============================================================================
 // MOUSE WHEEL ZOOM
 // =============================================================================
 
 function mouseWheel(event) {
     if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
 
-    const worldXBefore = mouseX / zoomLevel + camX;
-    const worldYBefore = mouseY / zoomLevel + camY;
-
-    if (event.delta > 0) {
-        zoomLevel = Math.max(getMinZoomLevel(), zoomLevel - ZOOM_STEP);
-    } else {
-        zoomLevel = Math.min(MAX_ZOOM, zoomLevel + ZOOM_STEP);
-    }
-
-    camX = worldXBefore - mouseX / zoomLevel;
-    camY = worldYBefore - mouseY / zoomLevel;
-    clampCamera();
+    const delta = event.delta > 0 ? -ZOOM_STEP : ZOOM_STEP;
+    zoomAtScreenPoint(mouseX, mouseY, zoomLevel + delta);
 
     return false;
 }
@@ -202,7 +225,6 @@ function resetFieldSessionState() {
     floatingScores = [];
     bestScore = 0;
     levelCompletePointsAwarded = false;
-    resetShapesOpenedThisLevel();
     resetStarCountBonusState();
     resetRecordScoreBadge();
     atlasCollectedStarColors = new Map();

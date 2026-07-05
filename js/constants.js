@@ -36,6 +36,9 @@ const INJECT_ANCHOR_STARS = false;
 const MAX_ZOOM = 1.5;
 const DEFAULT_ZOOM = 0.8;
 const ZOOM_STEP = 0.05;
+const ZOOM_BUTTON_FACTOR = 1.15; // D-01: мультипликативный шаг кнопок «+»/«−»
+const DEV_TOGGLE_TAP_COUNT = 3; // D-01: тройной быстрый тап открывает dev-панель
+const DEV_TOGGLE_TAP_WINDOW_MS = 400; // макс. пауза между тапами
 
 // =============================================================================
 // STAR VISUAL PARAMETERS
@@ -332,9 +335,13 @@ const CUSTOM_MATCH_MARGIN_THRESHOLD = 0.06;
 // FIELD GOALS — 3 этапа, при достижении каждого даётся XP
 // =============================================================================
 
-// Meta score: level complete + first-time shape open on atlas.
+// Meta score: level complete bonus. (SHAPE_OPEN_POINTS удалён — S-01:
+// первое создание фигуры вознаграждается шагом 1 её цепочки достижений.)
 const LEVEL_COMPLETE_POINTS = 25;
-const SHAPE_OPEN_POINTS = 25;
+
+// S-01: пер-фигурные цепочки достижений (спираль)
+const SHAPE_CHAIN_TIERS = [1, 5, 15, 30, 60];
+const SHAPE_CHAIN_STEP_REWARD = 10; // ✦ за каждый шаг пер-фигурной цепочки
 
 // Atlas pages (2 × 3 demo shapes). Both pages purchasable with meta score.
 const ATLAS_PAGES = [
