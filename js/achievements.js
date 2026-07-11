@@ -68,6 +68,43 @@ function buildShapeChain(shapeName) {
 
 const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
 
+// S-01 / atlas-pages-graph: особые достижения страниц 2–6 (у страниц 0/1 —
+// Радуга/Мозаика ниже). Каждое — ночная коллекция (≤1/ночь, тиры 1→3→7→15→30),
+// со своей осью, видимость по полному комплекту созданных фигур страницы.
+const ATLAS_PAGE_SPECIALS = [
+    { page: 2, id: 'vitrazh', title: 'Витраж', icon: '🪟', mechanic: 'pageColors',
+      desc: 'фигуры стр. 3 на поле во всех 5 цветах' },
+    { page: 3, id: 'kaleidoscope', title: 'Калейдоскоп', icon: '🔮', mechanic: 'pageAllOnField',
+      desc: 'все 5 фигур стр. 4 на поле' },
+    { page: 4, id: 'gobelen', title: 'Гобелен', icon: '🧶', mechanic: 'pageCountOnField', k: 3,
+      desc: '3+ фигуры стр. 5 на поле' },
+    { page: 5, id: 'orchestra', title: 'Оркестр', icon: '🎻', mechanic: 'pageAllCreatedNight',
+      desc: 'создай все 5 фигур стр. 6 за ночь' },
+    { page: 6, id: 'symphony', title: 'Симфония', icon: '🎼', mechanic: 'shapeCreatedNight', shape: 'Перфекционист',
+      desc: 'создай Перфекциониста за ночь' }
+];
+
+const ATLAS_PAGE_SPECIAL_TIERS = [1, 3, 7, 15, 30];
+
+function buildPageSpecialChain(spec) {
+    return {
+        id: spec.id,
+        title: spec.title,
+        icon: spec.icon,
+        requiresPageComplete: spec.page,
+        pageSpecial: spec,
+        steps: ATLAS_PAGE_SPECIAL_TIERS.map(n => ({
+            id: `${spec.id}_${n}`,
+            desc: `${n} ноч(ей): ${spec.desc}`,
+            check: { type: 'pageSpecialNights', id: spec.id, n }
+        }))
+    };
+}
+
+function getPageSpecialForPage(pageIndex) {
+    return ATLAS_PAGE_SPECIALS.find(s => s.page === pageIndex) || null;
+}
+
 const ACHIEVEMENT_CHAINS = [
     ...ACHIEVEMENT_COLOR_KEYS.map(buildColorChain),
     ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
@@ -123,6 +160,8 @@ const ACHIEVEMENT_CHAINS = [
             check: { type: 'mosaicNights', n }
         }))
     },
+    // atlas-pages-graph: особые достижения страниц 2–6
+    ...ATLAS_PAGE_SPECIALS.map(buildPageSpecialChain),
     {
         id: 'minimalism',
         title: 'Минимализм',
@@ -182,6 +221,8 @@ let achievementProgress = {};
 let achievementCounters = null;
 let rainbowCountedThisNight = false;
 let mosaicCountedThisNight = false;
+// atlas-pages-graph: id особых достижений страниц 2–6, засчитанных этой ночью (≤1/ночь)
+let pageSpecialsCountedThisNight = new Set();
 // S-01: фигуры, засчитанные в пер-фигурные цепочки этой ночью (анти-гринд ≤1/ночь)
 let shapesCountedThisNight = new Set();
 // S-01: особые достижения (Радуга/Мозаика), о доступности которых уже оповестили
@@ -201,6 +242,8 @@ function makeDefaultAchievementCounters() {
         starCountTotals: { 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, '8plus': 0 },
         rainbowNights: 0,
         mosaicNights: 0,
+        // atlas-pages-graph: id особого достижения страницы → всего засчитанных ночей
+        pageSpecialNights: { vitrazh: 0, kaleidoscope: 0, gobelen: 0, orchestra: 0, symphony: 0 },
         shapeTotals: {} // S-01: имя фигуры → всего засчитанных созданий (≤1/ночь)
     };
 }
@@ -213,6 +256,7 @@ function initAchievementState() {
     achievementCounters = makeDefaultAchievementCounters();
     rainbowCountedThisNight = false;
     mosaicCountedThisNight = false;
+    pageSpecialsCountedThisNight = new Set();
     shapesCountedThisNight = new Set();
     announcedSpecialChains = new Set();
 }
@@ -221,9 +265,37 @@ function resetAchievementsForFullReset() {
     initAchievementState();
 }
 
+/**
+ * Каталог-29: сброс достижений, завязанных на состав фигур/страниц
+ * (пер-фигурные цепочки, Радуга/Мозаика). Не-фигурные цепочки (цвета,
+ * размеры, ночи, всего созвездий, минимализм) и их счётчики сохраняются.
+ * Вызывается из migrateSaveToCatalog29 (progression.js).
+ */
+function resetShapeAchievementsForCatalogMigration() {
+    if (achievementCounters) {
+        achievementCounters.shapeTotals = {};
+        achievementCounters.rainbowNights = 0;
+        achievementCounters.mosaicNights = 0;
+        achievementCounters.pageSpecialNights = makeDefaultAchievementCounters().pageSpecialNights;
+    }
+    for (const chain of ACHIEVEMENT_CHAINS) {
+        if (!achievementProgress[chain.id]) continue;
+        if (chain.isShapeChain || typeof chain.requiresPageComplete === 'number') {
+            achievementProgress[chain.id].stepIndex = 0;
+            achievementProgress[chain.id].claimable = false;
+        }
+    }
+    rainbowCountedThisNight = false;
+    mosaicCountedThisNight = false;
+    pageSpecialsCountedThisNight = new Set();
+    shapesCountedThisNight = new Set();
+    announcedSpecialChains = new Set();
+}
+
 function resetPerNightAchievementFlags() {
     rainbowCountedThisNight = false;
     mosaicCountedThisNight = false;
+    pageSpecialsCountedThisNight = new Set();
     shapesCountedThisNight = new Set();
 }
 
@@ -243,6 +315,7 @@ function getAchievementSaveData() {
         achievementCounters,
         rainbowCountedThisNight,
         mosaicCountedThisNight,
+        pageSpecialsCountedThisNight: [...pageSpecialsCountedThisNight],
         shapesCountedThisNight: [...shapesCountedThisNight],
         announcedSpecialChains: [...announcedSpecialChains]
     };
@@ -263,6 +336,7 @@ function applyAchievementSaveData(state) {
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),
             rainbowNights: Number(s.rainbowNights) || 0,
             mosaicNights: Number(s.mosaicNights) || 0,
+            pageSpecialNights: Object.assign({}, def.pageSpecialNights, s.pageSpecialNights || {}),
             shapeTotals: Object.assign({}, s.shapeTotals || {})
         };
     }
@@ -278,6 +352,7 @@ function applyAchievementSaveData(state) {
 
     rainbowCountedThisNight = !!state.rainbowCountedThisNight;
     mosaicCountedThisNight = !!state.mosaicCountedThisNight;
+    pageSpecialsCountedThisNight = new Set(Array.isArray(state.pageSpecialsCountedThisNight) ? state.pageSpecialsCountedThisNight : []);
     shapesCountedThisNight = new Set(Array.isArray(state.shapesCountedThisNight) ? state.shapesCountedThisNight : []);
     announcedSpecialChains = new Set(Array.isArray(state.announcedSpecialChains) ? state.announcedSpecialChains : []);
 
@@ -378,11 +453,25 @@ function getFieldAchievementSnapshot() {
     const starCounts = list.map(c => (typeof c.starCount === 'number' ? c.starCount : 0));
     const colorsPresent = new Set();
     const sizeBucketsPresent = new Set();
+    // atlas-pages-graph: присутствие и цвета атласных фигур по страницам
+    const pageShapesOnField = {}; // pageIdx → Set имён фигур
+    const pageColorBuckets = {};  // pageIdx → Set цветовых тиров
     for (const c of list) {
         const ids = collectStarIdsFromLines(c.lines);
-        colorsPresent.add(constellationColorBucket([...ids]));
+        const bucket = constellationColorBucket([...ids]);
+        colorsPresent.add(bucket);
         const mb = mosaicSizeBucket(c.starCount);
         if (mb) sizeBucketsPresent.add(mb);
+
+        const name = typeof normalizeShapeName === 'function'
+            ? normalizeShapeName(c.shape || c.name) : (c.shape || c.name);
+        if (!name || name === 'Фигура') continue;
+        const pageIdx = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(name) : -1;
+        if (pageIdx < 0) continue;
+        if (!pageShapesOnField[pageIdx]) pageShapesOnField[pageIdx] = new Set();
+        pageShapesOnField[pageIdx].add(name);
+        if (!pageColorBuckets[pageIdx]) pageColorBuckets[pageIdx] = new Set();
+        pageColorBuckets[pageIdx].add(bucket);
     }
     const totalFieldStars = Array.isArray(fieldStars) ? fieldStars.length : 0;
     return {
@@ -390,6 +479,8 @@ function getFieldAchievementSnapshot() {
         starCounts,
         colorsPresent,
         sizeBucketsPresent,
+        pageShapesOnField,
+        pageColorBuckets,
         totalFieldStars,
         revealed: !!constellationArtRevealed
     };
@@ -397,6 +488,30 @@ function getFieldAchievementSnapshot() {
 
 function isMosaicComplete(snap) {
     return MOSAIC_REQUIRED_BUCKETS.every(b => snap.sizeBucketsPresent.has(b));
+}
+
+/** atlas-pages-graph: выполнено ли ночное условие особого достижения страницы. */
+function isPageSpecialNightSatisfied(spec, snap) {
+    if (!spec) return false;
+    const page = spec.page;
+    const onField = (snap.pageShapesOnField && snap.pageShapesOnField[page]) || new Set();
+    const pageFigs = Array.isArray(ATLAS_PAGES[page]) ? ATLAS_PAGES[page] : [];
+    switch (spec.mechanic) {
+        case 'pageColors': {
+            const buckets = (snap.pageColorBuckets && snap.pageColorBuckets[page]) || new Set();
+            return buckets.size >= ACHIEVEMENT_COLOR_KEYS.length; // все 5 цветов
+        }
+        case 'pageAllOnField':
+            return pageFigs.length > 0 && pageFigs.every(n => onField.has(n));
+        case 'pageCountOnField':
+            return onField.size >= (spec.k || pageFigs.length);
+        case 'pageAllCreatedNight':
+            return pageFigs.length > 0 && pageFigs.every(n => shapesCountedThisNight.has(n));
+        case 'shapeCreatedNight':
+            return shapesCountedThisNight.has(spec.shape);
+        default:
+            return false;
+    }
 }
 
 function evaluateAchievementCheck(check, snap) {
@@ -413,6 +528,8 @@ function evaluateAchievementCheck(check, snap) {
             return c.rainbowNights >= check.n;
         case 'mosaicNights':
             return c.mosaicNights >= check.n;
+        case 'pageSpecialNights':
+            return (c.pageSpecialNights[check.id] || 0) >= check.n;
         case 'levelsCompleted':
             return c.levelsCompleted >= check.n;
         case 'totalConstellations':
@@ -440,6 +557,7 @@ function getAchievementStepProgress(check) {
         }
         case 'rainbowNights': return { current: c.rainbowNights, target: check.n };
         case 'mosaicNights': return { current: c.mosaicNights, target: check.n };
+        case 'pageSpecialNights': return { current: c.pageSpecialNights[check.id] || 0, target: check.n };
         case 'levelsCompleted': return { current: c.levelsCompleted, target: check.n };
         case 'totalConstellations': return { current: c.totalConstellations, target: check.n };
         case 'shapeTotal': return { current: c.shapeTotals[check.shape] || 0, target: check.n };
@@ -577,6 +695,14 @@ function recordAchievementReveal() {
     if (!mosaicCountedThisNight && isMosaicComplete(snap)) {
         achievementCounters.mosaicNights += 1;
         mosaicCountedThisNight = true;
+    }
+    // atlas-pages-graph: особые достижения страниц 2–6 (каждое ≤1 раз за небо)
+    for (const spec of ATLAS_PAGE_SPECIALS) {
+        if (pageSpecialsCountedThisNight.has(spec.id)) continue;
+        if (!isPageSpecialNightSatisfied(spec, snap)) continue;
+        achievementCounters.pageSpecialNights[spec.id] =
+            (achievementCounters.pageSpecialNights[spec.id] || 0) + 1;
+        pageSpecialsCountedThisNight.add(spec.id);
     }
     afterAchievementStateChanged();
 }
