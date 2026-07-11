@@ -17,6 +17,11 @@ let devDayOffset = 0;
 let globalDiscoveredShapes = new Set();
 let atlasClaimedShapes = new Set();
 
+// Версия каталога фигур в сейве. 1 = каталог-29 (топологический режим).
+// Сейвы без поля catalogVersion — с геометрического демо: прогрессия по
+// фигурам сбрасывается при загрузке (demo-to-graph-catalog).
+const CATALOG_SAVE_VERSION = 1;
+
 // =============================================================================
 // HELPERS
 // =============================================================================
@@ -312,6 +317,24 @@ function toggleFavoriteShape(shapeName) {
     return true;
 }
 
+/**
+ * Миграция сейва на каталог-29 (demo-to-graph-catalog, решение заказчика: сброс).
+ * Сбрасываем прогрессию по ФИГУРАМ (созданные фигуры, пер-фигурные цепочки,
+ * особые достижения страниц, atlasCollected — самозаживает через createdShapes).
+ * Сохраняем: ✦, открытые страницы, уровень, не-фигурные достижения,
+ * закоммиченное поле игрока и его подписи (историю не трогаем).
+ */
+function migrateSaveToCatalog29() {
+    createdShapes = new Set();
+    globalDiscoveredShapes = new Set();
+    atlasClaimedShapes = new Set();
+    favoriteShapes = new Set();
+    if (typeof resetShapeAchievementsForCatalogMigration === 'function') {
+        resetShapeAchievementsForCatalogMigration();
+    }
+    saveProgression();
+}
+
 function resetProgressionForFullReset() {
     totalXP = 0;
     playerLevel = 1;
@@ -341,7 +364,8 @@ function saveProgression() {
             createdShapes: [...createdShapes],
             favoriteShapes: [...favoriteShapes],
             playerId: ensurePlayerId(),
-            devDayOffset
+            devDayOffset,
+            catalogVersion: CATALOG_SAVE_VERSION
         };
         if (typeof getAchievementSaveData === 'function') {
             Object.assign(state, getAchievementSaveData());
@@ -385,6 +409,11 @@ function loadProgression() {
         atlasClaimedShapes = new Set(state.atlasClaimedShapes || [...createdShapes]);
 
         if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(state);
+
+        // Каталог-29: старый (геометрический) сейв → сброс прогрессии по фигурам.
+        if ((Number(state.catalogVersion) || 0) < CATALOG_SAVE_VERSION) {
+            migrateSaveToCatalog29();
+        }
 
         playerLevel = computeLevel(totalXP);
         ensurePlayerId();

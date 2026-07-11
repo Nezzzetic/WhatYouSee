@@ -1180,7 +1180,62 @@ function rankRecognitionCandidates(lines, starIds, legacyLabel) {
     };
 }
 
+// =============================================================================
+// TOPOLOGY MODE (каталог-29): изоморфизм + валидатор ограничений §4
+// =============================================================================
+
+function makeFallbackRecognition(legacyLabel) {
+    return {
+        label: 'Фигура',
+        confidence: 0,
+        secondBest: null,
+        delta: 0,
+        state: 'fallback',
+        candidates: [],
+        legacyLabel: legacyLabel || 'Фигура',
+        details: null
+    };
+}
+
+/**
+ * Топологическое распознавание (RECOGNITION_MODE='topology').
+ * Бинарно: граф изоморфен фигуре каталога-29 И проходит ограничения §4 → имя,
+ * иначе fallback. Формат результата совпадает с гибридным распознавателем.
+ * Принимает от 2 звёзд (Зубочистка). 6–7 звёзд → fallback (каталог до 5).
+ */
+function recognizeShapeTopologyDetailed(lines, starIds) {
+    const ids = starIds ? [...starIds] : [];
+    if (ids.length < 2 || ids.length > 5) return makeFallbackRecognition('Фигура');
+    if (typeof topologyRecognizeName !== 'function') return makeFallbackRecognition('Фигура');
+
+    const name = topologyRecognizeName(ids, lines, (id) => getStarById(id));
+    if (!name) return makeFallbackRecognition('Фигура');
+
+    // Гейт активности: наружу отдаём только встроенные включённые фигуры.
+    // Все 29 фигур каталога-29 включены (страницы атласа 0–6). Видимость
+    // страниц атласа и запрет дублей доигрываются в commit-пути
+    // (clampShapeToAtlasVisibility и т.п.) — фигура с закрытой страницы → «Фигура».
+    const enabled = typeof isBuiltinShapeName === 'function' && isBuiltinShapeName(name) &&
+        typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled(name);
+    if (!enabled) return makeFallbackRecognition(name);
+
+    return {
+        label: name,
+        confidence: 1,
+        secondBest: null,
+        delta: 1,
+        state: 'accept',
+        candidates: [{ label: name, score: 1 }],
+        legacyLabel: name,
+        details: null
+    };
+}
+
 function recognizeShapeDetailed(lines, starIds) {
+    if (typeof RECOGNITION_MODE !== 'undefined' && RECOGNITION_MODE === 'topology') {
+        return recognizeShapeTopologyDetailed(lines, starIds);
+    }
+
     const starCount = starIds ? starIds.size : 0;
     if (starCount < 3 || starCount > 7) {
         return {
