@@ -422,6 +422,57 @@ function resetDragState() {
 }
 
 // =============================================================================
+// U-07 · EDGE-PANNING (пан камеры при рисовании у края экрана)
+// =============================================================================
+
+/**
+ * Смещение камеры по одной оси (экранные px/кадр) с линейной рампой:
+ * 0 у внутренней границы краевой полосы → EDGE_PAN_MAX_SPEED у самого края экрана.
+ * pos — экранная координата пальца; size — width или height.
+ */
+function edgePanAxisDelta(pos, size) {
+    const band = size * EDGE_PAN_ZONE_FRAC;
+    if (band <= 0) return 0;
+    if (pos < band) {
+        const t = constrain((band - pos) / band, 0, 1); // глубже к краю → ближе к 1
+        return -EDGE_PAN_MAX_SPEED * t;
+    }
+    if (pos > size - band) {
+        const t = constrain((pos - (size - band)) / band, 0, 1);
+        return EDGE_PAN_MAX_SPEED * t;
+    }
+    return 0;
+}
+
+/**
+ * Тик каждый кадр из draw(): пока идёт активный drag РИСОВАНИЯ и палец у края —
+ * плавно панорамируем камеру. Работает и когда палец неподвижен у края (touchMoved
+ * не стреляет). После сдвига камеры дозахватываем звезду, оказавшуюся под пальцем.
+ */
+function updateEdgePanDuringDraw() {
+    if (!isDragging || !currentStartStar) return; // только рисование цепочки
+    if (isPanning || isPinching || wasPinching) return; // не конкурировать с пан/pinch
+    if (typeof mouseX !== 'number' || typeof mouseY !== 'number') return;
+    if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
+
+    const dxScreen = edgePanAxisDelta(mouseX, width);
+    const dyScreen = edgePanAxisDelta(mouseY, height);
+    if (dxScreen === 0 && dyScreen === 0) return;
+
+    const beforeX = camX;
+    const beforeY = camY;
+    camX += dxScreen / zoomLevel;
+    camY += dyScreen / zoomLevel;
+    clampCamera(); // у края поля пан просто останавливается
+
+    if (camX !== beforeX || camY !== beforeY) {
+        // Камера сдвинулась — под пальцем могла оказаться новая звезда; переиспользуем
+        // логику захвата цепочки из mouseDragged (currentStartStar/visitedStars/currentLines).
+        mouseDragged();
+    }
+}
+
+// =============================================================================
 // TOUCH INPUT + PINCH ZOOM (U-05)
 // =============================================================================
 
