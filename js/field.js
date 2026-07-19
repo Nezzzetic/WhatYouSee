@@ -379,6 +379,9 @@ function generateBackgroundStars() {
 // =============================================================================
 
 function centerCamera() {
+    // U-08: старт/ресет уровня и новое небо открываются в полном отзуме —
+    // всё поле в кадре, игрок сам приближается при желании.
+    zoomLevel = getMinZoomLevel();
     clampZoomToField();
     camX = FIELD_WIDTH / 2 - (width / zoomLevel) / 2;
     camY = FIELD_HEIGHT / 2 - (height / zoomLevel) / 2;
@@ -400,7 +403,7 @@ function getStarById(id) {
  * @param {{ anchorStar?: object }} [options] — при жесте: только звёзды в радиусе ребра от якоря
  */
 function getStarAt(fieldX, fieldY, options) {
-    const CLICK_RADIUS = STAR_SIZE * 2;
+    const CLICK_RADIUS = STAR_SIZE * STAR_HIT_RADIUS_MULT;
     const anchorStar = options && options.anchorStar ? options.anchorStar : null;
     const maxEdge = anchorStar ? getMaxEdgeLength() : Infinity;
 

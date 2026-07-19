@@ -149,6 +149,7 @@ function setup() {
 // =============================================================================
 
 function draw() {
+    updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
     drawSkyGradient();
     if (nebulaBuffer) image(nebulaBuffer, 0, 0);
     drawFieldMode();
