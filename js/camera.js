@@ -101,15 +101,50 @@ function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor) 
 }
 
 /**
+ * V-10: зазор между концом линии и звездой в world-юнитах. Повторяет формулу
+ * baseStarDrawSize из drawVisibleStars, поэтому масштабируется зумом так же,
+ * как сами звёзды (в т.ч. на отзуме, где действует пол STAR_SIZE/zoom·0.5).
+ */
+function getLineStarGapWorld() {
+    const base = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
+    return base * LINE_STAR_GAP_FACTOR;
+}
+
+/**
+ * V-10: укорачивает отрезок (ax,ay)-(bx,by) на gapA у первого конца и gapB у второго.
+ * @returns {{ax,ay,bx,by}|null} null, если после обрезки почти ничего не остаётся
+ *          (короткий/вырожденный отрезок — не рисуем, чтобы линия не выворачивалась).
+ */
+function trimSegmentEndsWorld(ax, ay, bx, by, gapA, gapB) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len = Math.hypot(dx, dy);
+    const minVisible = 1 / zoomLevel; // ~1px на экране
+    if (len <= gapA + gapB + minVisible) return null;
+    const ux = dx / len;
+    const uy = dy / len;
+    return {
+        ax: ax + ux * gapA,
+        ay: ay + uy * gapA,
+        bx: bx - ux * gapB,
+        by: by - uy * gapB
+    };
+}
+
+/**
  * Сегмент в мировых координатах между двумя звёздами.
  * До P-01 учитывала горизонтальный wrap (шов слева/справа); теперь wrap убран,
  * ox всегда 0 — рисует напрямую между фактическими позициями звёзд.
+ * V-10: линия не доходит до звёзд — оба конца укорочены на зазор.
  */
 function drawSegmentHorizWrapWorld(startStar, endStar, ox) {
     const w1x = startStar.x + ox;
     const w1y = startStar.y;
     const w2 = nearestHorizontalCopy(endStar.x, endStar.y, w1x, w1y);
-    line(w1x, w1y, w2.x, w2.y);
+    const gap = getLineStarGapWorld();
+    const t = trimSegmentEndsWorld(w1x, w1y, w2.x, w2.y, gap, gap);
+    if (!t) return;
+    line(t.ax, t.ay, t.bx, t.by);
 }
 
 function shouldShowConstellationLineArt() {
@@ -121,27 +156,15 @@ function drawConstellationSkeletonLinesWorld(tiles) {
         const ox = t.ox;
         for (let constellation of constellations) {
             if (!isConstellationVisible(constellation)) continue;
-            const collectedOnField = !!constellation.atlasCollected;
-            const recognizedAtlas = typeof isShapeRecognizedOnUnlockedAtlas === 'function'
-                && isShapeRecognizedOnUnlockedAtlas(constellation);
-            const prominent = constellationArtRevealed || collectedOnField || recognizedAtlas;
+            // V-09: атласные созвездия рисуются как обычные — prominent-стиль
+            // (жирная линия) остаётся только для финального раскрытия. Glow-ореол
+            // atlas-collected и prominent для recognizedAtlas убраны.
+            const prominent = constellationArtRevealed;
             const shapeInfo = prominent
                 ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES['Фигура'])
                 : SHAPES['Фигура'];
             // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
             const lineColor = constellation.lineColor || LINE_COLOR;
-
-            if (collectedOnField && !constellationArtRevealed) {
-                stroke(lineColor[0], lineColor[1], lineColor[2], COLLECTED_ATLAS_GLOW_ALPHA);
-                strokeWeight((REVEALED_CONSTELLATION_STROKE_WEIGHT + COLLECTED_ATLAS_GLOW_STROKE_EXTRA) / zoomLevel);
-                for (let seg of constellation.lines) {
-                    const startStar = getStarById(seg.startId);
-                    const endStar = getStarById(seg.endId);
-                    if (startStar && endStar) {
-                        drawSegmentHorizWrapWorld(startStar, endStar, ox);
-                    }
-                }
-            }
 
             applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor);
             for (let seg of constellation.lines) {
@@ -320,8 +343,11 @@ function getAtlasCollectPulseStrength(constellation) {
     return 1 - elapsed / ATLAS_COLLECT_PULSE_MS;
 }
 
-function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, shapeInfo) {
-    const c = shapeInfo.color;
+function drawCollectedAtlasConstellationLabel(constellation, labelAnchor) {
+    // V-09: простой стиль — обычный текст цветом от звёзд (lineColor), без
+    // золотого ★-бейджа и декоративного цвета фигуры. Одноразовый collect-пульс
+    // сохранён, перекрашен в lineColor.
+    const c = constellation.lineColor || LINE_COLOR;
     const labelSize = COLLECTED_ATLAS_LABEL_SIZE / zoomLevel;
     const name = constellation.name;
     const pulse = getAtlasCollectPulseStrength(constellation);
@@ -335,14 +361,9 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, shapeI
     }
 
     noStroke();
-    fill(255, 220, 120);
-    textSize(labelSize * 1.05);
-    const badge = typeof COLLECTED_ATLAS_BADGE === 'string' ? COLLECTED_ATLAS_BADGE : '★';
-    text(badge, labelAnchor.x, labelAnchor.y - labelSize * 0.55);
-
     fill(c[0], c[1], c[2]);
     textSize(labelSize);
-    text(name, labelAnchor.x, labelAnchor.y + labelSize * 0.42);
+    text(name, labelAnchor.x, labelAnchor.y);
 }
 
 function drawConstellationLabelsOnTile() {
@@ -355,8 +376,6 @@ function drawConstellationLabelsOnTile() {
 
         const labelAnchor = constellation.labelAnchor || constellation.center;
         if (!labelAnchor || !constellation.name) continue;
-
-        const shapeInfo = SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES['Фигура'];
 
         if (constellationArtRevealed) {
             // atlasCollected подписи уже были видны — не анимируем повторно
@@ -375,13 +394,15 @@ function drawConstellationLabelsOnTile() {
         }
 
         if (constellation.atlasCollected) {
-            drawCollectedAtlasConstellationLabel(constellation, labelAnchor, shapeInfo);
+            drawCollectedAtlasConstellationLabel(constellation, labelAnchor);
             continue;
         }
 
         if (typeof isShapeRecognizedOnUnlockedAtlas === 'function'
             && isShapeRecognizedOnUnlockedAtlas(constellation)) {
-            fill(shapeInfo.color[0], shapeInfo.color[1], shapeInfo.color[2]);
+            // V-09: имя распознанной атласной — простой стиль, цвет от звёзд.
+            const c = constellation.lineColor || LINE_COLOR;
+            fill(c[0], c[1], c[2]);
             textSize(COLLECTED_ATLAS_LABEL_SIZE / zoomLevel);
             text(constellation.name, labelAnchor.x, labelAnchor.y);
         }
@@ -428,7 +449,9 @@ function drawFieldMode() {
         const fieldMouseX = mouseX / zoomLevel + camX;
         const fieldMouseY = mouseY / zoomLevel + camY;
         const seg = getClampedDragEndpointWorld(currentStartStar, fieldMouseX, fieldMouseY);
-        line(seg.ax, seg.ay, seg.bx, seg.by);
+        // V-10: зазор только у якорного конца (звезда); конец у курсора не трогаем
+        const t = trimSegmentEndsWorld(seg.ax, seg.ay, seg.bx, seg.by, getLineStarGapWorld(), 0);
+        if (t) line(t.ax, t.ay, t.bx, t.by);
     }
 
     drawAttachFlash();
@@ -953,11 +976,66 @@ function drawVisibleBackgroundStars(worldTileOx, worldTileOy) {
             wy < camY - 10 || wy > camY + viewH + 10) continue;
         const twinkle = 0.7 + 0.3 * sin(frameCount * 0.02 + (s.phase || 0));
         fill(255, 255, 255, s.alpha * bgFadeAlpha * twinkle);
-        circle(s.x, s.y, s.size);
+        // Плотная заливная точка: не даём диаметру уйти в суб-пиксель (иначе AA
+        // делает из круга «кольцо»).
+        const bgDiam = Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel);
+        circle(s.x, s.y, bgDiam);
     }
 }
 
+// -----------------------------------------------------------------------------
+// STAR SHAPE — «Искра ✦» (визуальный концепт 4)
+// -----------------------------------------------------------------------------
+
+/**
+ * Рисует один слой 4-лучевой искры с вогнутыми лучами.
+ * @param {number} diam  Базовый диаметр слоя (world-units, эквивалент прежнего circle-диаметра).
+ * @param {number} rayMult  Множитель длины лучей (1 — база, >1 у atlas-collected).
+ * @param {number} pulse  Twinkle: доля прибавки/убавки длины лучей (может быть <0).
+ * Вызывающий сам делает fill(...) перед вызовом.
+ */
+function drawSparkleShape(x, y, diam, rayMult, pulse) {
+    // Фолбэк на минимальном зуме: искра нечитаема — рисуем точку.
+    if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
+        circle(x, y, diam);
+        return;
+    }
+    const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1) * (1 + (pulse || 0));
+    const w = R * SPARK_WAIST;      // радиус «талии» — контрольные точки у центра
+    const wd = w * 0.70710678;      // проекция талии на оси (cos/sin 45°)
+    beginShape();
+    vertex(x, y - R);                       // верхний кончик
+    quadraticVertex(x + wd, y - wd, x + R, y); // → правый
+    quadraticVertex(x + wd, y + wd, x, y + R); // → нижний
+    quadraticVertex(x - wd, y + wd, x - R, y); // → левый
+    quadraticVertex(x - wd, y - wd, x, y - R); // → верхний (замыкание)
+    endShape(CLOSE);
+}
+
+// V-07: состояние фидбэк-анимации соединения. Обновляется раз за кадр
+// (гейт по frameCount), т.к. drawVisibleStars вызывается по разу на тайл.
+let feedbackAnchorId = null;
+let feedbackAnchorMoves = 0;
+let connectFeedbackFrame = -1;
+// Пер-звёздное состояние { dim, frame, reach, pulseMs } по star.id — вне сейва
+// (как atlasCollectedStarColors). Сбрасывается вместе с полем (sketch.js).
+let connectFeedbackState = new Map();
+
 function drawVisibleStars(worldTileOx, worldTileOy) {
+    // V-07: детект нового ребра — раз за кадр. Смена якоря (currentStartStar)
+    // во время drag перезапускает импульс досягаемых звёзд.
+    if (connectFeedbackFrame !== frameCount) {
+        connectFeedbackFrame = frameCount;
+        const aid = (isDragging && currentStartStar) ? currentStartStar.id : null;
+        if (aid !== feedbackAnchorId) {
+            if (feedbackAnchorId === null) {
+                feedbackAnchorMoves = 0;       // старт жеста — счётчик рёбер с нуля
+            } else if (aid !== null) {
+                feedbackAnchorMoves++;         // якорь переехал на новую звезду = новое ребро
+            }
+            feedbackAnchorId = aid;
+        }
+    }
     const tileOx = typeof worldTileOx === 'number' ? worldTileOx : 0;
     const tileOy = typeof worldTileOy === 'number' ? worldTileOy : 0;
     const viewW = width / zoomLevel;
@@ -996,29 +1074,101 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
             starDrawSize *= LOCKED_STAR_SIZE_MULTIPLIER;
         }
 
-        // U-03: dim out-of-range stars during drag (variant B)
-        let rangeDimFactor = 1.0;
-        if (isDragging && currentStartStar
+        // V-07: фидбэк соединения (заменяет статичный дим U-03). Определяем,
+        // участвует ли звезда в жесте и досягаема ли она от текущего якоря.
+        // Фидбэк — только для соединяемых звёзд (ср. field.js getStarAt:
+        // locked/suppressed/extinguished не являются валидными целями).
+        const inDrag = isDragging && currentStartStar
                 && star.id !== currentStartStar.id
                 && !star.locked
-                && !visitedStars.includes(star.id)) {
+                && !isSuppressed
+                && !isExtinguished
+                && !visitedStars.includes(star.id);
+        let reachable = false;
+        if (inDrag) {
             const dist = horizontalWrapDist(star.x, star.y, currentStartStar.x, currentStartStar.y);
-            if (dist > getMaxEdgeLength()) {
-                rangeDimFactor = 0.3;
+            reachable = dist <= getMaxEdgeLength();
+        }
+        // Анимированный дим недосягаемых: пер-звёздный dim (connectFeedbackState)
+        // едет к цели (1 / FEEDBACK_DIM_MIN) через deltaTime. Шаг — раз за кадр
+        // (гейт по frameCount), т.к. звезда может рисоваться в нескольких тайлах.
+        const dimTarget = (inDrag && !reachable) ? FEEDBACK_DIM_MIN : 1;
+        let fb = connectFeedbackState.get(star.id);
+        if (!fb) { fb = { dim: 1, frame: -1 }; connectFeedbackState.set(star.id, fb); }
+        if (fb.frame !== frameCount) {
+            fb.frame = frameCount;
+            const dt = (typeof deltaTime === 'number' && deltaTime > 0) ? deltaTime : 16;
+            const k = 1 - Math.exp(-dt / FEEDBACK_DIM_TAU_MS);
+            fb.dim += (dimTarget - fb.dim) * k;
+            if (Math.abs(fb.dim - dimTarget) < 0.005) fb.dim = dimTarget;
+        }
+        const rangeDimFactor = fb.dim;
+        // Импульс — только у звёзд, ТОЛЬКО ЧТО вошедших в радиус (rising edge).
+        // Остававшиеся в радиусе не пульсируют. Пока тянем от ПЕРВОЙ звезды
+        // (feedbackAnchorMoves === 0) вспышек нет; появляются со второй звезды.
+        if (inDrag) {
+            if (reachable && fb.reach === false && feedbackAnchorMoves >= 1) {
+                fb.pulseMs = millis();
+            }
+            fb.reach = reachable;
+        }
+        let feedbackPulse = 0;
+        if (inDrag && fb.pulseMs) {
+            const e = millis() - fb.pulseMs;
+            if (e >= 0 && e < FEEDBACK_PULSE_MS) {
+                feedbackPulse = Math.sin((e / FEEDBACK_PULSE_MS) * Math.PI);
+            } else {
+                fb.pulseMs = 0;
             }
         }
+        if (feedbackPulse > 0) {
+            starDrawSize *= 1 + FEEDBACK_PULSE_SCALE * feedbackPulse;
+        }
+        const feedbackBrighten = 1 + FEEDBACK_PULSE_BRIGHTEN * feedbackPulse;
         const effectiveAlpha = fadeAlpha * rangeDimFactor;
 
         const coreColor = getStarCoreColor(star, isSuppressed, isExtinguished);
-        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
-        circle(star.x, star.y, starDrawSize);
-
         const glowColor = getStarGlowColor(star, isSuppressed, isExtinguished);
-        fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
-        circle(star.x, star.y, starDrawSize * (isExtinguished ? 1.25 : 1.5));
-        const haloWhiteAlpha = isExtinguished ? 14 : (star.locked ? LOCKED_STAR_HALO_WHITE_ALPHA : 25);
-        fill(255, 255, 255, haloWhiteAlpha * effectiveAlpha);
-        circle(star.x, star.y, starDrawSize * (isExtinguished ? 1.7 : 2));
+
+        // Погасшие — приглушённый заполненный круг (без искры и без обводки):
+        // «выгоревшая» звезда, отличается округлой формой. Гибрид по ролям.
+        if (isExtinguished) {
+            fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
+            circle(star.x, star.y, starDrawSize * 1.5);
+            fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
+            circle(star.x, star.y, starDrawSize);
+            continue;
+        }
+
+        // Twinkle: редкая кратковременная вспышка. Сдвиг фазы от координат
+        // (стабилен между кадрами) десинхронизирует звёзды — сверкают единицы.
+        const isAtlas = !!(star.locked && atlasCollectedStarColors && atlasCollectedStarColors.get(star.id));
+        let pulse = 0;
+        let twBrighten = 1;
+        if (!isSuppressed) { // на подавлённых — статично
+            const phaseMs = (((star.x * 131 + star.y * 57) % SPARK_TWINKLE_PERIOD_MS)
+                + SPARK_TWINKLE_PERIOD_MS) % SPARK_TWINKLE_PERIOD_MS;
+            const u = (millis() + phaseMs) % SPARK_TWINKLE_PERIOD_MS;
+            if (u < SPARK_TWINKLE_BURST_MS) {
+                const env = Math.sin((u / SPARK_TWINKLE_BURST_MS) * Math.PI); // 0→1→0
+                pulse = env * SPARK_TWINKLE_AMP;
+                twBrighten = 1 + env * SPARK_TWINKLE_BRIGHTEN;
+            }
+        }
+        const rayMult = isAtlas ? SPARK_ATLAS_RAY_MULT : 1;
+
+        // Три вложенных слоя искры: белое гало → цветное свечение → ядро.
+        // Яркость гало/свечения растёт во вспышке (у ядра alpha=255 — упирается в потолок).
+        const haloWhiteAlpha = star.locked ? LOCKED_STAR_HALO_WHITE_ALPHA : 25;
+        // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
+        fill(255, 255, 255, Math.min(255, haloWhiteAlpha * effectiveAlpha * twBrighten * feedbackBrighten));
+        drawSparkleShape(star.x, star.y, starDrawSize * 2, rayMult, pulse);
+
+        fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * effectiveAlpha * twBrighten * feedbackBrighten));
+        drawSparkleShape(star.x, star.y, starDrawSize * 1.5, rayMult, pulse);
+
+        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
+        drawSparkleShape(star.x, star.y, starDrawSize, rayMult, pulse);
     }
 }
 
@@ -1029,9 +1179,10 @@ function getStarTierRgb(star) {
 function getStarCoreColor(star, isSuppressed, isExtinguished) {
     const tierRgb = getStarTierRgb(star);
     if (star.locked) {
-        const atlasRgb = atlasCollectedStarColors && atlasCollectedStarColors.get(star.id);
-        const base = atlasRgb || tierRgb;
-        return [base[0], base[1], base[2], 255];
+        // V-09: атласные звёзды светятся своим tier-цветом, как обычные locked
+        // (декоративный оверрайд фигуры убран). Признак «атласности» — только
+        // усиленное свечение в getStarGlowColor и удлинённые лучи.
+        return [tierRgb[0], tierRgb[1], tierRgb[2], 255];
     }
     if (isExtinguished) {
         const rgb = blendRgb(tierRgb, EXTINGUISHED_STAR_COLOR, 0.72);
@@ -1047,10 +1198,10 @@ function getStarCoreColor(star, isSuppressed, isExtinguished) {
 function getStarGlowColor(star, isSuppressed, isExtinguished) {
     const tierRgb = getStarTierRgb(star);
     if (star.locked) {
-        const atlasRgb = atlasCollectedStarColors && atlasCollectedStarColors.get(star.id);
-        const base = atlasRgb || tierRgb;
-        const glowAlpha = atlasRgb ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + 50) : LOCKED_STAR_GLOW_ALPHA;
-        return [base[0], base[1], base[2], glowAlpha];
+        // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (+50).
+        const isAtlas = atlasCollectedStarColors && atlasCollectedStarColors.has(star.id);
+        const glowAlpha = isAtlas ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + 50) : LOCKED_STAR_GLOW_ALPHA;
+        return [tierRgb[0], tierRgb[1], tierRgb[2], glowAlpha];
     }
     if (isExtinguished) {
         const rgb = blendRgb(tierRgb, EXTINGUISHED_STAR_COLOR, 0.75);

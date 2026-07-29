@@ -229,6 +229,7 @@ function resetFieldSessionState() {
     resetStarCountBonusState();
     resetRecordScoreBadge();
     atlasCollectedStarColors = new Map();
+    if (typeof connectFeedbackState !== 'undefined' && connectFeedbackState instanceof Map) connectFeedbackState.clear();
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
 }
 
