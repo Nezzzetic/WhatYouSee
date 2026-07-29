@@ -487,7 +487,7 @@ function renderAtlasPageNav() {
     }
 }
 
-/** S-01: блок прогресса пер-фигурной цепочки на карточке атласа. */
+/** S-02: блок цветового прогресса пер-фигурной цепочки на карточке атласа. */
 function createAtlasShapeChainBlock(shapeName) {
     if (typeof getShapeChainForShape !== 'function') return null;
     const chain = getShapeChainForShape(shapeName);
@@ -499,30 +499,35 @@ function createAtlasShapeChainBlock(shapeName) {
     const block = document.createElement('div');
     block.className = 'atlas-chain';
 
-    // Ряд звёзд — по одной на шаг (как в сетке 🏆)
-    const stars = document.createElement('div');
-    stars.className = 'achv-stars';
-    for (let i = 0; i < total; i++) {
-        const s = document.createElement('span');
-        const filled = i < p.stepIndex;
-        s.className = 'achv-star' + (filled ? ' achv-star-filled' : '');
-        s.textContent = filled ? '★' : '☆';
-        stars.appendChild(s);
+    // S-02: 5 цветных счётчиков «создано/квота» — какие цвета собраны, что осталось.
+    const normName = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
+    const counts = (achievementCounters && achievementCounters.shapeColors
+        && achievementCounters.shapeColors[normName]) || {};
+    const colors = document.createElement('div');
+    colors.className = 'atlas-chain-colors';
+    for (const color of ACHIEVEMENT_COLOR_KEYS) {
+        const quota = SHAPE_COLOR_QUOTAS[color] || 1;
+        const have = Math.min(counts[color] || 0, quota);
+        const complete = have >= quota;
+        const pip = document.createElement('span');
+        pip.className = 'atlas-color-pip' + (complete ? ' atlas-color-pip-done' : '');
+        pip.title = `${ACHIEVEMENT_COLOR_RU[color]}: ${have}/${quota}`;
+        pip.textContent = complete
+            ? `${ACHIEVEMENT_COLOR_ICON[color]}✓`
+            : `${ACHIEVEMENT_COLOR_ICON[color]} ${have}/${quota}`;
+        colors.appendChild(pip);
     }
-    block.appendChild(stars);
+    block.appendChild(colors);
 
     if (done) {
         const doneEl = document.createElement('div');
         doneEl.className = 'atlas-chain-progress atlas-chain-done';
-        doneEl.textContent = 'Все ступени пройдены';
+        doneEl.textContent = 'Все цвета собраны';
         block.appendChild(doneEl);
         return block;
     }
 
     const step = chain.steps[p.stepIndex];
-    const prog = typeof getAchievementStepProgress === 'function'
-        ? getAchievementStepProgress(step.check)
-        : null;
 
     if (p.claimable && typeof claimAchievementStep === 'function') {
         const claimBtn = document.createElement('button');
@@ -539,9 +544,7 @@ function createAtlasShapeChainBlock(shapeName) {
         const progEl = document.createElement('div');
         progEl.className = 'atlas-chain-progress';
         progEl.title = step.desc;
-        progEl.textContent = prog
-            ? `${Math.min(prog.current, prog.target)}/${prog.target}`
-            : step.desc;
+        progEl.textContent = `Собрано цветов: ${p.stepIndex}/${total}`;
         block.appendChild(progEl);
     }
 

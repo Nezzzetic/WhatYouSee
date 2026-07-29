@@ -47,7 +47,11 @@ function buildExactSizeChain(size) {
     };
 }
 
-/** S-01: пер-фигурная цепочка (по одной на каждую фигуру атласа). */
+/**
+ * S-02: пер-фигурная цветовая цепочка. Шаг i = «собрано i цветов» (i=1..5);
+ * цвет «собран», когда фигура создана в нём не меньше своей квоты
+ * (SHAPE_COLOR_QUOTAS). Цвета банкуются параллельно — редкий цвет не пропадает.
+ */
 function buildShapeChain(shapeName) {
     return {
         id: 'shape_' + shapeName,
@@ -56,12 +60,12 @@ function buildShapeChain(shapeName) {
         isShapeChain: true,
         shapeName,
         stepReward: SHAPE_CHAIN_STEP_REWARD,
-        steps: SHAPE_CHAIN_TIERS.map((n, i) => ({
-            id: `shape_${shapeName}_${n}`,
-            desc: i === 0
-                ? `Создай «${shapeName}» впервые`
-                : `«${shapeName}» — ${n} созданий`,
-            check: { type: 'shapeTotal', shape: shapeName, n }
+        steps: [1, 2, 3, 4, 5].map((k) => ({
+            id: `shape_${shapeName}_c${k}`,
+            desc: k === 1
+                ? `Создай «${shapeName}» в одном цвете`
+                : `«${shapeName}» — собрано ${k} цветов`,
+            check: { type: 'shapeColorsComplete', shape: shapeName, n: k }
         }))
     };
 }
@@ -228,8 +232,9 @@ let shapesCountedThisNight = new Set();
 // S-01: особые достижения (Радуга/Мозаика), о доступности которых уже оповестили
 let announcedSpecialChains = new Set();
 
-// Версия схемы достижений (S-01: сброс Радуги/Мозаики при миграции старых сейвов)
-const ACHIEVEMENTS_SAVE_VERSION = 2;
+// Версия схемы достижений (S-01: сброс Радуги/Мозаики; S-02 v3: пер-фигурные
+// цепочки переведены на цвета — полный сброс при миграции старых сейвов).
+const ACHIEVEMENTS_SAVE_VERSION = 3;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -244,8 +249,36 @@ function makeDefaultAchievementCounters() {
         mosaicNights: 0,
         // atlas-pages-graph: id особого достижения страницы → всего засчитанных ночей
         pageSpecialNights: { vitrazh: 0, kaleidoscope: 0, gobelen: 0, orchestra: 0, symphony: 0 },
-        shapeTotals: {} // S-01: имя фигуры → всего засчитанных созданий (≤1/ночь)
+        // S-02: имя фигуры → { color: число засчитанных созданий } (≤1/ночь на фигуру)
+        shapeColors: {}
     };
+}
+
+/** S-02: нормализует сохранённую карту цветов фигуры до полного набора ключей. */
+function sanitizeShapeColorMap(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const name of Object.keys(raw)) {
+        const src = raw[name] || {};
+        const rec = {};
+        for (const color of ACHIEVEMENT_COLOR_KEYS) {
+            rec[color] = Math.max(0, Number(src[color]) || 0);
+        }
+        out[name] = rec;
+    }
+    return out;
+}
+
+/** S-02: сколько цветов фигуры «собрано» (создано ≥ квоты). */
+function shapeCompletedColorCount(shapeName) {
+    if (!achievementCounters || !achievementCounters.shapeColors) return 0;
+    const counts = achievementCounters.shapeColors[shapeName];
+    if (!counts) return 0;
+    let done = 0;
+    for (const color of ACHIEVEMENT_COLOR_KEYS) {
+        if ((counts[color] || 0) >= (SHAPE_COLOR_QUOTAS[color] || 1)) done++;
+    }
+    return done;
 }
 
 function initAchievementState() {
@@ -273,7 +306,7 @@ function resetAchievementsForFullReset() {
  */
 function resetShapeAchievementsForCatalogMigration() {
     if (achievementCounters) {
-        achievementCounters.shapeTotals = {};
+        achievementCounters.shapeColors = {};
         achievementCounters.rainbowNights = 0;
         achievementCounters.mosaicNights = 0;
         achievementCounters.pageSpecialNights = makeDefaultAchievementCounters().pageSpecialNights;
@@ -337,7 +370,7 @@ function applyAchievementSaveData(state) {
             rainbowNights: Number(s.rainbowNights) || 0,
             mosaicNights: Number(s.mosaicNights) || 0,
             pageSpecialNights: Object.assign({}, def.pageSpecialNights, s.pageSpecialNights || {}),
-            shapeTotals: Object.assign({}, s.shapeTotals || {})
+            shapeColors: sanitizeShapeColorMap(s.shapeColors)
         };
     }
 
@@ -366,32 +399,36 @@ function applyAchievementSaveData(state) {
 }
 
 /**
- * S-01: миграция сейвов до «спирали».
- * - Радуга/Мозаика переезжают в особенные достижения страниц — прогресс сбрасывается (решение заказчика).
- * - Фигурам из createdShapes (созданным при старой системе) даётся stepIndex=1 и счётчик 1
- *   без награды: 25 ✦ за них уже были выплачены через SHAPE_OPEN_POINTS.
+ * Миграция сейвов достижений.
+ * - v<2 (S-01): Радуга/Мозаика переехали в особые достижения страниц — сброс.
+ * - v<3 (S-02): пер-фигурные цепочки переведены со счётчика повторов на цвета.
+ *   Историю цветов из старого счётчика восстановить нельзя → полный сброс
+ *   пер-фигурных цепочек (решение заказчика). Фигура заново «раскроется» и
+ *   начнёт копить цвета при следующем создании.
  */
 function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (achievementProgress.rainbow) achievementProgress.rainbow.stepIndex = 0;
-    if (achievementProgress.mosaic) achievementProgress.mosaic.stepIndex = 0;
-    if (achievementCounters) {
-        achievementCounters.rainbowNights = 0;
-        achievementCounters.mosaicNights = 0;
-    }
-    rainbowCountedThisNight = false;
-    mosaicCountedThisNight = false;
-
-    for (const chain of ACHIEVEMENT_CHAINS) {
-        if (!chain.isShapeChain) continue;
-        if (typeof isShapeCreated !== 'function' || !isShapeCreated(chain.shapeName)) continue;
-        const p = achievementProgress[chain.id];
-        if (p && p.stepIndex === 0) p.stepIndex = 1;
-        if (achievementCounters && !(achievementCounters.shapeTotals[chain.shapeName] > 0)) {
-            achievementCounters.shapeTotals[chain.shapeName] = 1;
+    if (version < 2) {
+        if (achievementProgress.rainbow) achievementProgress.rainbow.stepIndex = 0;
+        if (achievementProgress.mosaic) achievementProgress.mosaic.stepIndex = 0;
+        if (achievementCounters) {
+            achievementCounters.rainbowNights = 0;
+            achievementCounters.mosaicNights = 0;
         }
+        rainbowCountedThisNight = false;
+        mosaicCountedThisNight = false;
+    }
+
+    if (version < 3) {
+        for (const chain of ACHIEVEMENT_CHAINS) {
+            if (!chain.isShapeChain) continue;
+            const p = achievementProgress[chain.id];
+            if (p) { p.stepIndex = 0; p.claimable = false; }
+        }
+        if (achievementCounters) achievementCounters.shapeColors = {};
+        shapesCountedThisNight = new Set();
     }
 }
 
@@ -534,8 +571,8 @@ function evaluateAchievementCheck(check, snap) {
             return c.levelsCompleted >= check.n;
         case 'totalConstellations':
             return c.totalConstellations >= check.n;
-        case 'shapeTotal':
-            return (c.shapeTotals[check.shape] || 0) >= check.n;
+        case 'shapeColorsComplete':
+            return shapeCompletedColorCount(check.shape) >= check.n;
         case 'singleConstellation':
             return snap.revealed && snap.count === 1;
         case 'uniteAll':
@@ -560,7 +597,7 @@ function getAchievementStepProgress(check) {
         case 'pageSpecialNights': return { current: c.pageSpecialNights[check.id] || 0, target: check.n };
         case 'levelsCompleted': return { current: c.levelsCompleted, target: check.n };
         case 'totalConstellations': return { current: c.totalConstellations, target: check.n };
-        case 'shapeTotal': return { current: c.shapeTotals[check.shape] || 0, target: check.n };
+        case 'shapeColorsComplete': return { current: shapeCompletedColorCount(check.shape), target: check.n };
         default: return null;
     }
 }
@@ -642,19 +679,36 @@ function getCommittedAtlasShapeName(constellation) {
     return name;
 }
 
+/** S-02: суммарно засчитанных созданий фигуры (по всем цветам). */
+function shapeTotalCreations(counts) {
+    if (!counts) return 0;
+    let total = 0;
+    for (const color of ACHIEVEMENT_COLOR_KEYS) total += counts[color] || 0;
+    return total;
+}
+
 function recordShapeCommitForChains(constellation) {
     const name = getCommittedAtlasShapeName(constellation);
     if (!name) return;
-    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 за ночь
+    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 засчёт на фигуру за ночь
+
+    // S-02: цвет засчитывается в квоту этого цвета; красный и синий банан за одну
+    // ночь получить нельзя — только +1 цвет на фигуру за небо.
+    const ids = collectStarIdsFromLines(constellation.lines);
+    const bucket = constellationColorBucket([...ids]);
+    if (!bucket) return;
 
     shapesCountedThisNight.add(name);
-    achievementCounters.shapeTotals[name] = (achievementCounters.shapeTotals[name] || 0) + 1;
+    if (!achievementCounters.shapeColors[name]) {
+        achievementCounters.shapeColors[name] = { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 };
+    }
+    const counts = achievementCounters.shapeColors[name];
+    counts[bucket] = (counts[bucket] || 0) + 1;
 
-    // Сюрприз-момент: первое создание фигуры — имя раскрыто на коммите.
-    // Награда шага 1 собирается вручную с карточки атласа (флоу как у остальных).
+    // Сюрприз-момент: самое первое создание фигуры (в любом цвете) — имя раскрыто.
     const chain = getShapeChainForShape(name);
     const p = chain ? achievementProgress[chain.id] : null;
-    if (chain && p && p.stepIndex === 0 && achievementCounters.shapeTotals[name] === 1) {
+    if (chain && p && p.stepIndex === 0 && shapeTotalCreations(counts) === 1) {
         showShapeRevealToast(name);
     }
 
@@ -678,7 +732,11 @@ function recordShapeUndoForChains(constellation) {
     if (!name) return;
     if (!shapesCountedThisNight.has(name)) return;
     shapesCountedThisNight.delete(name);
-    achievementCounters.shapeTotals[name] = Math.max(0, (achievementCounters.shapeTotals[name] || 0) - 1);
+    // Откат того же созвездия → тот же бакет, что был засчитан на коммите.
+    const ids = collectStarIdsFromLines(constellation.lines);
+    const bucket = constellationColorBucket([...ids]);
+    const counts = achievementCounters.shapeColors[name];
+    if (counts && bucket) counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
 }
 
 
