@@ -214,6 +214,19 @@ function injectAnchorStarsForTargets(targets) {
 }
 
 function generateDailyField() {
+    // C-02: штатный воскресный показ (если нет ручного override — он выше по коду).
+    const scheduledId = getScheduledPictureFieldId();
+    if (scheduledId) {
+        generatePictureField(scheduledId);
+        dailyTargetShapes = [];
+        assignStarAppearDelays();
+        generateBackgroundStars();
+        if (typeof console !== 'undefined' && console.info) {
+            console.info('[picture] Воскресная картинка:', scheduledId);
+        }
+        return;
+    }
+
     seedSkyRandomForToday();
     generateStars();
     pickDailyTargets();
@@ -264,6 +277,123 @@ function isDevModeEnabled() {
         }
     } catch (e) { /* ignore */ }
     return false;
+}
+
+// =============================================================================
+// PICTURE FIELD (C-02): поле из готовой раскладки позиций+цветов звёзд.
+// Приоритет источника: dev-панель (devPictureFieldId) → URL ?picture=<id|index>.
+// =============================================================================
+
+/** Выбранная в dev-панели картинка (перебивает URL); null = не выбрана. */
+let devPictureFieldId = null;
+
+function setDevPictureFieldId(id) {
+    devPictureFieldId = id || null;
+}
+
+function getDevPictureFieldId() {
+    return devPictureFieldId;
+}
+
+/** Разбор ?picture=<id|index>: имя картинки, числовой индекс или пусто. */
+function getPictureFieldIdFromUrl() {
+    try {
+        if (typeof window !== 'undefined' && window.location && window.location.search) {
+            const raw = new URLSearchParams(window.location.search).get('picture');
+            if (raw === null || raw === '') return null;
+            if (typeof getPictureFieldById === 'function' && getPictureFieldById(raw)) return raw;
+            if (Array.isArray(typeof PICTURE_FIELD_IDS !== 'undefined' ? PICTURE_FIELD_IDS : null)) {
+                const idx = parseInt(raw, 10);
+                if (Number.isInteger(idx) && idx >= 0 && idx < PICTURE_FIELD_IDS.length) {
+                    return PICTURE_FIELD_IDS[idx];
+                }
+                if (PICTURE_FIELD_IDS.length > 0) return PICTURE_FIELD_IDS[0]; // ?picture=1/on/true
+            }
+        }
+    } catch (e) { /* ignore */ }
+    return null;
+}
+
+/** id активной картинки (dev имеет приоритет) или null. */
+function getActivePictureFieldId() {
+    if (devPictureFieldId && typeof getPictureFieldById === 'function' && getPictureFieldById(devPictureFieldId)) {
+        return devPictureFieldId;
+    }
+    return getPictureFieldIdFromUrl();
+}
+
+function shouldLoadPictureField() {
+    return getActivePictureFieldId() !== null;
+}
+
+function createPictureFieldStar(id, x, y, colorValue, extinguished) {
+    return {
+        id,
+        x,
+        y,
+        locked: false,
+        suppressed: false,
+        extinguished: !!extinguished,
+        sizeFactor: random(STAR_SIZE_VARIATION_MIN, STAR_SIZE_VARIATION_MAX),
+        colorValue: normalizeStarColorValue(colorValue)
+    };
+}
+
+/** Построить fieldStars из пресета картинки (позиции/цвета/extinguished фиксированы). */
+function generatePictureField(pictureId) {
+    const id = pictureId || getActivePictureFieldId();
+    const pic = typeof getPictureFieldById === 'function' ? getPictureFieldById(id) : null;
+    if (!pic || !Array.isArray(pic.stars) || pic.stars.length === 0) {
+        // Нет валидной картинки — откат к обычной генерации.
+        generateStars();
+        return;
+    }
+
+    fieldStars = [];
+    const usableW = FIELD_WIDTH - 2 * STAR_EDGE_MARGIN;
+    const usableH = FIELD_HEIGHT - 2 * STAR_EDGE_MARGIN;
+
+    for (let i = 0; i < pic.stars.length; i++) {
+        const p = pic.stars[i];
+        const nx = Math.max(0, Math.min(1, p.x));
+        const ny = Math.max(0, Math.min(1, p.y));
+        const wx = STAR_EDGE_MARGIN + nx * usableW;
+        const wy = STAR_EDGE_MARGIN + ny * usableH;
+        fieldStars.push(createPictureFieldStar(i, wx, wy, p.c, p.ext));
+    }
+
+    recomputeSuppressedStars();
+
+    if (typeof console !== 'undefined' && console.info) {
+        console.info('[picture] Поле-картинка:', id, '(', pic.name, ') звёзд:', fieldStars.length);
+    }
+}
+
+// --- Штатный воскресный показ --------------------------------------------
+// Каждое воскресенье процедурное поле заменяется случайной силуэтной картинкой.
+// Выбор детерминирован по (playerId + воскресная дата), поэтому ресет/перезаход
+// в тот же день дают ту же картинку. Ручной override (dev/URL) перебивает это
+// выше по коду (см. shouldLoadPictureField в точках генерации).
+
+const PICTURE_SUNDAY_ENABLED = true;
+
+/** День недели эффективного неба: 0 = воскресенье. */
+function getSkyWeekdayFromEffectiveDate() {
+    const dateInt = getEffectiveSkyDateInt();
+    const y = Math.floor(dateInt / 10000);
+    const m = Math.floor((dateInt % 10000) / 100);
+    const d = dateInt % 100;
+    return new Date(y, m - 1, d).getDay();
+}
+
+/** id картинки для штатного показа (только по воскресеньям) или null. */
+function getScheduledPictureFieldId() {
+    if (!PICTURE_SUNDAY_ENABLED) return null;
+    if (typeof PICTURE_FIELD_IDS === 'undefined' || !Array.isArray(PICTURE_FIELD_IDS) || PICTURE_FIELD_IDS.length === 0) return null;
+    if (getSkyWeekdayFromEffectiveDate() !== 0) return null;
+    const seed = hashStringToSeed(`${ensurePlayerId()}:${getEffectiveSkyDateInt()}:picture`);
+    const idx = seed % PICTURE_FIELD_IDS.length;
+    return PICTURE_FIELD_IDS[idx];
 }
 
 function createMustachePracticeAnchorStar(id, x, y) {

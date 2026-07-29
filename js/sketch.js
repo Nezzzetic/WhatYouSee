@@ -98,6 +98,9 @@ function setup() {
         if (shouldLoadMustachePracticeLevel() && typeof console !== 'undefined' && console.warn) {
             console.warn('[mustache=1] Загружено сохранение: эталон «Усы» не применён. Открой с ?dev=1 для кнопки «Сбросить небо», или удали ключ localStorage starsReborn_v02.');
         }
+        if (shouldLoadPictureField() && typeof console !== 'undefined' && console.warn) {
+            console.warn('[picture] Загружено сохранение: поле-картинка не применена. Нажми «Сбросить небо» в dev-панели, чтобы перегенерировать.');
+        }
     }
 
     centerCamera();
@@ -136,6 +139,9 @@ function setup() {
     fullResetBtn?.addEventListener("click", onFullReset);
     devNewDayBtn?.addEventListener("click", onDevNewDay);
     devResetAchvBtn?.addEventListener("click", onDevResetAchievements);
+    initDevPictureFieldFromUrl();
+    populateDevPictureFieldSelect();
+    document.getElementById("devPictureFieldShowBtn")?.addEventListener("click", onDevPictureFieldShow);
     document.getElementById("zoomInButton")?.addEventListener("click", () => zoomByStep(1));
     document.getElementById("zoomOutButton")?.addEventListener("click", () => zoomByStep(-1));
 
@@ -234,7 +240,12 @@ function resetFieldSessionState() {
 }
 
 function regenerateFieldStarsAfterReset() {
-    if (shouldLoadMustachePracticeLevel()) {
+    if (shouldLoadPictureField()) {
+        generatePictureField();
+        dailyTargetShapes = [];
+        assignStarAppearDelays();
+        generateBackgroundStars();
+    } else if (shouldLoadMustachePracticeLevel()) {
         generateStarsMustachePractice();
         dailyTargetShapes = [];
     } else {
@@ -273,18 +284,16 @@ function onResetSky() {
     hideAtlasOverlay();
     resetFieldSessionState();
 
-    if (shouldLoadMustachePracticeLevel()) {
+    if (shouldLoadPictureField()) {
+        generatePictureField();
+        dailyTargetShapes = [];
+        assignStarAppearDelays();
+        generateBackgroundStars();
+    } else if (shouldLoadMustachePracticeLevel()) {
         generateStarsMustachePractice();
         generateBackgroundStars();
     } else {
-        seedSkyRandomForToday();
-        generateStars();
-        pickDailyTargets();
-        if (INJECT_ANCHOR_STARS) {
-            injectAnchorStarsForTargets(dailyTargetShapes); // dead code — INJECT_ANCHOR_STARS=false
-        }
-        assignStarAppearDelays();
-        generateBackgroundStars();
+        generateDailyField(); // включает штатный воскресный показ картинки
     }
 
     skyStartTime = millis();
@@ -311,6 +320,48 @@ function onDevNewDay() {
     if (typeof console !== 'undefined' && console.info) {
         console.info('[dev] Новый день. effectiveDate:', getEffectiveSkyDateInt(), 'targets:', getDailyTargetShapes());
     }
+}
+
+// C-02: админ-дропдаун выбора поля-картинки + кнопка «Показать».
+// Пустое значение = «обычное поле» (снимает ручной override; в воскресенье
+// вернётся штатная авто-картинка).
+
+/** Если картинка активна через URL — отразить её в dev-состоянии при загрузке. */
+function initDevPictureFieldFromUrl() {
+    if (typeof getActivePictureFieldId !== 'function' || typeof setDevPictureFieldId !== 'function') return;
+    const active = getActivePictureFieldId();
+    if (active) setDevPictureFieldId(active);
+}
+
+function populateDevPictureFieldSelect() {
+    const sel = document.getElementById("devPictureFieldSelect");
+    if (!sel) return;
+    if (typeof PICTURE_FIELD_IDS === 'undefined' || !Array.isArray(PICTURE_FIELD_IDS)) return;
+
+    sel.innerHTML = "";
+    const optNone = document.createElement("option");
+    optNone.value = "";
+    optNone.textContent = "— обычное поле —";
+    sel.appendChild(optNone);
+
+    for (const id of PICTURE_FIELD_IDS) {
+        const pic = typeof getPictureFieldById === 'function' ? getPictureFieldById(id) : null;
+        const opt = document.createElement("option");
+        opt.value = id;
+        opt.textContent = pic ? pic.name : id;
+        sel.appendChild(opt);
+    }
+
+    const current = typeof getDevPictureFieldId === 'function' ? getDevPictureFieldId() : null;
+    sel.value = current || "";
+}
+
+function onDevPictureFieldShow() {
+    const sel = document.getElementById("devPictureFieldSelect");
+    if (!sel) return;
+    const value = sel.value || null;
+    if (typeof setDevPictureFieldId === 'function') setDevPictureFieldId(value);
+    onResetSky();
 }
 
 function onDevResetAchievements() {

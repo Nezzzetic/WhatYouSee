@@ -162,6 +162,20 @@ body {
     line-height: 1;
 }
 
+.dev-picture-row {
+    display: flex;
+    gap: 8px;
+}
+
+.dev-picture-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+.dev-picture-row button {
+    flex: 0 0 auto;
+}
+
 /* U-05: браузерные жесты (pinch-zoom страницы, скролл) на канвасе отключены */
 #canvas-container canvas {
     touch-action: none;
