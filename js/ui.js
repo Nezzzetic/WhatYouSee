@@ -893,17 +893,21 @@ function setupPeekPullGesture(peek) {
         event.preventDefault();
     }, true);
 
-    // Тап по самой полосе (не по кнопке) тоже разворачивает шторку
-    peek.addEventListener('click', (event) => {
+    // Тап по свёрнутой шторке разворачивает её
+    peek.addEventListener('click', () => {
         if (sheetOpen) return;
-        if (event.target.closest('button')) return;
         openSheet(sheetSection);
     });
 }
 
 function setupSheetControls() {
-    document.getElementById('peekAtlasBtn')?.addEventListener('click', () => openSheet('atlas'));
-    document.getElementById('peekRewardsBtn')?.addEventListener('click', () => openSheet('rewards'));
+    // Свёрнутая шторка — единая цель: тап или потягивание вверх открывают её
+    // на том разделе, где игрок был в прошлый раз.
+    document.getElementById('peekBar')?.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        openSheet(sheetSection);
+    });
     document.getElementById('segAtlasBtn')?.addEventListener('click', () => switchSheetSection('atlas'));
     document.getElementById('segRewardsBtn')?.addEventListener('click', () => switchSheetSection('rewards'));
     document.getElementById('sheetCloseBtn')?.addEventListener('click', closeSheet);

@@ -38,14 +38,10 @@
         <div id="canvas-container"></div>
 
         <!-- U-09: свёрнутая шторка — торчит нижним краем, её тянут вверх или жмут -->
-        <div id="peekBar" class="sheet-peek">
+        <div id="peekBar" class="sheet-peek" role="button" tabindex="0"
+             aria-label="Открыть атлас и награды">
             <div class="sheet-grab" aria-hidden="true"></div>
-            <div class="sheet-peek-row">
-                <button type="button" id="peekAtlasBtn" class="peek-btn">Атлас</button>
-                <button type="button" id="peekRewardsBtn" class="peek-btn">
-                    Награды<span id="peekRewardsBadge" class="peek-badge" hidden></span>
-                </button>
-            </div>
+            <span id="peekRewardsBadge" class="peek-badge" hidden></span>
         </div>
 
         <!-- U-09: шторка — Атлас и Награды, управление в подвале -->
