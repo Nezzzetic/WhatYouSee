@@ -15,7 +15,7 @@
 :root {
     /* Высота свёрнутой шторки. Дублируется в BOTTOM_UI_FALLBACK_HEIGHT
        (constants.js) — камера резервирует ровно эту полосу. */
-    --peek-h: 76px;
+    --peek-h: 40px;
 }
 
 body {
@@ -577,7 +577,7 @@ button:disabled {
    U-09: ШТОРКА — peek-строка, sheet, рельс, атлас и награды
    ============================================================================= */
 
-/* --- свёрнутая шторка: торчит нижним краем, читается как «потяни вверх» --- */
+/* --- свёрнутая шторка: голый край с ручкой, кнопок здесь нет --- */
 
 .sheet-peek {
     position: fixed;
@@ -586,9 +586,11 @@ button:disabled {
     bottom: 0;
     z-index: 40;
     width: min(560px, 100%);
+    height: var(--peek-h);
     margin: 0 auto;
-    min-height: var(--peek-h);
-    padding: 0 10px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border-top: 1px solid #232838;
     border-radius: 22px 22px 0 0;
     background: rgba(13, 16, 26, 0.97);
@@ -603,10 +605,9 @@ button:disabled {
     cursor: grabbing;
 }
 
-.sheet-peek-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.sheet-peek:hover .sheet-grab,
+.sheet-peek:focus-visible .sheet-grab {
+    background: #6b7396;
 }
 
 /* Развёрнутая шторка встаёт на место свёрнутой — полосу убираем */
@@ -619,32 +620,13 @@ button:disabled {
     line-height: 1;
 }
 
-.peek-btn {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    height: 40px;
-    padding: 0 10px;
-    border: 1px solid #2b2e3a;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.03);
-    color: #c8cde0;
-    font-size: 13px;
-    cursor: pointer;
-}
-
-/* Глобальное button:hover (0,1,1) весит больше классов (0,1,0) и перекрашивает
-   активные кнопки в чёрный — поэтому у каждой свой явный :hover. */
-.peek-btn:hover {
-    border-color: #4a5270;
-    background: rgba(255, 255, 255, 0.07);
-    color: #eef1fa;
-}
-
+/* Единственный сигнал на свёрнутой шторке: в Наградах есть что забрать */
 .peek-badge {
     position: absolute;
-    top: 4px;
-    right: 5px;
+    top: 50%;
+    left: 50%;
+    margin-left: 42px;
+    transform: translateY(-50%);
     width: 8px;
     height: 8px;
     border-radius: 50%;
@@ -717,6 +699,13 @@ button:disabled {
     margin: 9px auto 2px;
     border-radius: 99px;
     background: #39405a;
+}
+
+.sheet-peek .sheet-grab {
+    width: 56px;
+    height: 5px;
+    margin: 0;
+    background: #4a5270;
 }
 
 .sheet-title {
