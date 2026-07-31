@@ -4,7 +4,21 @@
 // КОНСТАНТЫ
 // =============================================================================
 
-const ACHIEVEMENT_STEP_REWARD = 5; // плоско: 5 ✦ за каждый шаг
+// B-01: награда за шаг растёт вместе с тиром, по индексу шага в цепочке.
+// До перекалибровки ставка была плоской (5 ✦), и первый тир «1 созвездие цвета»
+// платил столько же, сколько пятый «60 созвездий цвета» — достижения работали
+// стартовым бонусом и выгорали за месяц. Теперь шаг пятого тира стоит больше
+// трёх ночей, и цепочки становятся долгим доходом.
+const ACHIEVEMENT_STEP_REWARDS = [10, 20, 30, 45, 70];
+// Запасное значение для цепочек короче/длиннее пяти шагов (сейчас таких нет).
+const ACHIEVEMENT_STEP_REWARD_FALLBACK = 10;
+
+// B-01: объёмные цепочки (цвета и размеры) — пороги ×8 от исходных [1,5,15,30,60].
+// Награды перераспределяют ценность, но не время: без этого шаг всё равно берётся
+// в первый месяц (при 30 созвездиях за ночь жёлтый выбирал свои 60 к пятой ночи).
+// НЕ применять к «Зодчему небес»: его тиры [10,50,250,1000,5000] и так тянутся
+// до 167-й ночи, ×8 дал бы 40 000 созвездий — три с половиной года.
+const ACHIEVEMENT_VOLUME_TIERS = [8, 40, 120, 240, 480];
 
 // colorValue тира → внутреннее имя цвета
 const ACHIEVEMENT_BUCKET_BY_VALUE = { '-100': 'red', '-50': 'orange', '0': 'yellow', '50': 'white', '100': 'blue' };
@@ -20,7 +34,7 @@ const ACHIEVEMENT_SIZE_KEYS = ['3', '4', '5', '6', '7', '8plus'];
 // =============================================================================
 
 function buildColorChain(color) {
-    const tiers = [1, 5, 15, 30, 60];
+    const tiers = ACHIEVEMENT_VOLUME_TIERS;
     return {
         id: 'color_' + color,
         title: ACHIEVEMENT_COLOR_TITLE[color],
@@ -34,7 +48,7 @@ function buildColorChain(color) {
 }
 
 function buildExactSizeChain(size) {
-    const tiers = [1, 5, 15, 30, 60];
+    const tiers = ACHIEVEMENT_VOLUME_TIERS;
     return {
         id: 'size_' + size,
         title: `${size}★`,
@@ -93,7 +107,9 @@ const ACHIEVEMENT_CHAINS = [
         id: 'size_8plus',
         title: '8★+',
         icon: '✴️',
-        steps: [1, 3, 8, 15, 25].map(n => ({
+        // B-01: тоже объёмная цепочка — ×8 от прежних [1,3,8,15,25].
+        // Своя шкала (не ACHIEVEMENT_VOLUME_TIERS): 8★+ созвездия редки сами по себе.
+        steps: [8, 24, 64, 120, 200].map(n => ({
             id: `size_8plus_${n}`,
             desc: `${n} созвездий от 8★`,
             check: { type: 'starCountTotal', mode: 'gte', size: 8, n }
@@ -154,17 +170,45 @@ const ACHIEVEMENT_CHAINS = [
         title: 'Созвездие-всё',
         icon: '🌌',
         steps: [{ id: 'unite_all_1', desc: 'Объедини все звёзды поля в одно созвездие', check: { type: 'uniteAll' } }]
+    },
+    // U-10: награда за огранку — ОДНОЙ цепочкой, а не 29 записями «Огранка: Чипсина».
+    // Так «унести награду в ачивки» стоит +1 слот: список остаётся читаемым,
+    // атлас остаётся коллекцией, фигура держит только состояние (грани и венец) —
+    // кнопок забора на карточках нет. Пороги подтверждены прогоном; между 15-й и
+    // 29-й фигурой цепочка молчит долго — это принято: огранка не часть основного
+    // пути (3 месяца), а слой мастерства (год).
+    {
+        id: 'ogranshchik',
+        title: 'Огранщик',
+        icon: '💎',
+        steps: [1, 3, 7, 15, 29].map(n => ({
+            id: `ogranshchik_${n}`,
+            desc: n === 29
+                ? 'Огранить все 29 фигур атласа'
+                : `${n} огранённых фигур (все 5 цветов у каждой)`,
+            check: { type: 'facetedShapes', n }
+        }))
     }
     // U-09: пер-фигурные цепочки shape_* удалены. Огранка — свойство фигуры
-    // (isShapeFaceted), а не достижение; награда за неё приедет в U-10.
+    // (isShapeFaceted), а не достижение; награда за неё — цепочка «Огранщик» выше.
 ];
 
 function getAchievementChainById(chainId) {
     return ACHIEVEMENT_CHAINS.find(c => c.id === chainId) || null;
 }
 
-function getAchievementChainStepReward(chain) {
-    return chain && typeof chain.stepReward === 'number' ? chain.stepReward : ACHIEVEMENT_STEP_REWARD;
+/**
+ * B-01: награда за шаг — по индексу шага в цепочке, а не плоская ставка.
+ * Раньше функция принимала только цепочку и умела подменять ставку через
+ * chain.stepReward (этим пользовались удалённые в U-09 цепочки shape_*);
+ * подмены больше нет ни у одной цепочки, поле не читается.
+ */
+function getAchievementChainStepReward(chain, stepIndex) {
+    const i = Number(stepIndex);
+    if (!Number.isInteger(i) || i < 0 || i >= ACHIEVEMENT_STEP_REWARDS.length) {
+        return ACHIEVEMENT_STEP_REWARD_FALLBACK;
+    }
+    return ACHIEVEMENT_STEP_REWARDS[i];
 }
 
 /** S-01: полный комплект страницы — все фигуры страницы созданы. */
@@ -222,8 +266,9 @@ let announcedSpecialChains = new Set();
 
 // Версия схемы достижений (S-01: сброс Радуги/Мозаики; S-02 v3: пер-фигурные
 // цепочки переведены на цвета; U-09 v4: цепочки shape_* удалены, цвета стали
-// огранкой — миграция сбрасывает ВЕСЬ прогресс, включая ✦ и страницы атласа).
-const ACHIEVEMENTS_SAVE_VERSION = 4;
+// огранкой; B-01 v5: пороги объёмных цепочек ×8 и ступенчатая награда за шаг —
+// обе миграции сбрасывают ВЕСЬ прогресс, включая ✦ и страницы атласа).
+const ACHIEVEMENTS_SAVE_VERSION = 5;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -424,14 +469,19 @@ let achievementsMigrationNeedsFullReset = false;
  * - v<4 (U-09): цепочки shape_* удалены, цвета стали огранкой, награды за цвета
  *   убраны. Пересчитывать старый прогресс бессмысленно (решение заказчика):
  *   **полный сброс всего прогресса**, включая ✦ и открытые страницы атласа.
- *   Home Demo, живых игроков нет — честный старт с нуля.
+ * - v<5 (B-01): пороги объёмных цепочек ×8 и ступенчатая награда за шаг. Без
+ *   сброса игрок с «60 жёлтых» стоял бы на пятом тире, а после правки откатился
+ *   на второй, сохранив уже забранные ✦ — это не миграция, а обесценивание.
+ *   Совместить со сбросом U-09 не вышло: она вышла отдельным релизом и заняла v4.
+ *
+ * Home Demo, живых игроков нет — честный старт с нуля дешевле пересчёта.
  */
 function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (version < 4) {
-        // Сбрасывать по шагам смысла нет — v4 обнуляет всё разом.
+    if (version < 5) {
+        // Сбрасывать по шагам смысла нет — обнуляем всё разом.
         initAchievementState();
         achievementsMigrationNeedsFullReset = true;
     }
@@ -573,6 +623,10 @@ function evaluateAchievementCheck(check, snap) {
             const key = check.mode === 'gte' ? '8plus' : String(check.size);
             return (c.starCountTotals[key] || 0) >= check.n;
         }
+        // U-10: огранка — производное свойство, счётчика в сейве нет.
+        // Считаем по shapeColors тем же предикатом, что рисует венец на карточке.
+        case 'facetedShapes':
+            return getFacetedShapeCount() >= check.n;
         case 'rainbowNights':
             return c.rainbowNights >= check.n;
         case 'mosaicNights':
@@ -602,6 +656,7 @@ function getAchievementStepProgress(check) {
             const key = check.mode === 'gte' ? '8plus' : String(check.size);
             return { current: c.starCountTotals[key] || 0, target: check.n };
         }
+        case 'facetedShapes': return { current: getFacetedShapeCount(), target: check.n };
         case 'rainbowNights': return { current: c.rainbowNights, target: check.n };
         case 'mosaicNights': return { current: c.mosaicNights, target: check.n };
         case 'pageSpecialNights': return { current: c.pageSpecialNights[check.id] || 0, target: check.n };
@@ -781,7 +836,8 @@ function claimAchievementStep(chainId) {
     if (!chain || !p || !p.claimable) return false;
     if (p.stepIndex >= chain.steps.length) return false;
 
-    awardMetaScore(getAchievementChainStepReward(chain));
+    // B-01: платим за тот шаг, который забирают, — до сдвига индекса
+    awardMetaScore(getAchievementChainStepReward(chain, p.stepIndex));
     p.stepIndex += 1;
     p.claimable = false;
 
@@ -871,8 +927,9 @@ const REWARD_PAGES = [
         chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony']
     },
     {
-        id: 'path', icon: '💎', title: 'Путь',
-        chainIds: ['nights', 'constellations', 'minimalism', 'unite_all']
+        // U-10: «Огранщик» встаёт первой записью, страница переименована
+        id: 'path', icon: '💎', title: 'Огранка и путь',
+        chainIds: ['ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all']
     }
 ];
 
@@ -995,7 +1052,8 @@ function createAchievementRow(chain) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'achv-claim-btn';
-        btn.textContent = `+${getAchievementChainStepReward(chain)} ✦`;
+        // B-01: подпись должна совпадать с тем, что реально начислится за этот шаг
+        btn.textContent = `+${getAchievementChainStepReward(chain, p.stepIndex)} ✦`;
         btn.title = 'Забрать награду';
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
