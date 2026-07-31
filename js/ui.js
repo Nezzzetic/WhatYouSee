@@ -5,8 +5,12 @@
 // =============================================================================
 
 function updateScoreUI() {
+    const value = String(getMetaScore());
+    // ✦ живёт в двух местах: peek-строка на поле и шапка шторки, когда она открыта
     const scoreEl = document.getElementById("scoreCounterValue");
-    if (scoreEl) scoreEl.textContent = getMetaScore();
+    if (scoreEl) scoreEl.textContent = value;
+    const sheetScoreEl = document.getElementById("sheetScoreValue");
+    if (sheetScoreEl) sheetScoreEl.textContent = value;
 }
 
 function updateMetaPageProgressUI() {
@@ -26,11 +30,8 @@ function renderFieldGoalClaimButtons() {
 // =============================================================================
 
 function updateProgressionUI() {
-    const metaEl = document.getElementById("atlasMetaScoreDisplay");
-    if (metaEl) metaEl.textContent = String(getMetaScore());
-
     updateScoreUI();
-    updateAtlasButtonState();
+    updatePeekBar();
 }
 
 function showLevelCompleteToast(levelPts) {
@@ -354,11 +355,8 @@ function refreshConstellationHintsIfLevelComplete() {
 
 function onConstellationCreated(shapeName) {
     if (!shapeName) return;
-    updateAtlasButtonState();
-    const atlasOverlay = document.getElementById('atlasOverlay');
-    if (atlasOverlay && atlasOverlay.classList.contains('visible')) {
-        renderAtlasOverlay();
-    }
+    updatePeekBar();
+    refreshSheetIfOpen();
 }
 
 function drawHintPattern(canvas, pattern, color) {
@@ -397,16 +395,8 @@ function drawHintPattern(canvas, pattern, color) {
 }
 
 // =============================================================================
-// ATLAS OVERLAY
+// ATLAS DATA
 // =============================================================================
-
-let atlasPageIndex = 0;
-let isAtlasListDragging = false;
-let atlasListDragStartX = 0;
-let atlasListDragStartY = 0;
-let atlasListScrollStartLeft = 0;
-let atlasListScrollStartTop = 0;
-let atlasListDragHandlersBound = false;
 
 function getFallbackPatternFromSignature(signature) {
     const starCount = Math.max(3, Math.min(6, signature?.starCount || 4));
@@ -466,127 +456,58 @@ function getAtlasPageEntries(pageIndex) {
     return ATLAS_PAGES[pageIndex].map(name => getAtlasEntryForShape(name));
 }
 
-function renderAtlasPageNav() {
-    const nav = document.getElementById('atlasPageNav');
-    if (!nav) return;
-    nav.innerHTML = '';
-
-    for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'hint-filter-btn atlas-page-btn';
-        if (i === atlasPageIndex) btn.classList.add('active');
-        const unlocked = isAtlasPageUnlocked(i);
-        btn.textContent = unlocked ? `Стр. ${i + 1}` : `Стр. ${i + 1} 🔒`;
-        btn.addEventListener('click', () => {
-            atlasPageIndex = i;
-            renderAtlasPageNav();
-            renderAtlasList();
-        });
-        nav.appendChild(btn);
-    }
-}
-
-/** S-02: блок цветового прогресса пер-фигурной цепочки на карточке атласа. */
-function createAtlasShapeChainBlock(shapeName) {
-    if (typeof getShapeChainForShape !== 'function') return null;
-    const chain = getShapeChainForShape(shapeName);
-    if (!chain) return null;
-    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    const total = chain.steps.length;
-    const done = p.stepIndex >= total;
-
-    const block = document.createElement('div');
-    block.className = 'atlas-chain';
-
-    // S-02: 5 цветных счётчиков «создано/квота» — какие цвета собраны, что осталось.
-    const normName = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
-    const counts = (achievementCounters && achievementCounters.shapeColors
-        && achievementCounters.shapeColors[normName]) || {};
-    const colors = document.createElement('div');
-    colors.className = 'atlas-chain-colors';
-    for (const color of ACHIEVEMENT_COLOR_KEYS) {
-        const quota = SHAPE_COLOR_QUOTAS[color] || 1;
-        const have = Math.min(counts[color] || 0, quota);
-        const complete = have >= quota;
-        const pip = document.createElement('span');
-        pip.className = 'atlas-color-pip' + (complete ? ' atlas-color-pip-done' : '');
-        pip.title = `${ACHIEVEMENT_COLOR_RU[color]}: ${have}/${quota}`;
-        pip.textContent = complete
-            ? `${ACHIEVEMENT_COLOR_ICON[color]}✓`
-            : `${ACHIEVEMENT_COLOR_ICON[color]} ${have}/${quota}`;
-        colors.appendChild(pip);
-    }
-    block.appendChild(colors);
-
-    if (done) {
-        const doneEl = document.createElement('div');
-        doneEl.className = 'atlas-chain-progress atlas-chain-done';
-        doneEl.textContent = 'Все цвета собраны';
-        block.appendChild(doneEl);
-        return block;
-    }
-
-    const step = chain.steps[p.stepIndex];
-
-    if (p.claimable && typeof claimAchievementStep === 'function') {
-        const claimBtn = document.createElement('button');
-        claimBtn.type = 'button';
-        claimBtn.className = 'atlas-chain-claim';
-        claimBtn.textContent = `Забрать +${getAchievementChainStepReward(chain)} ✦`;
-        claimBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            claimAchievementStep(chain.id);
-            renderAtlasOverlay();
-        });
-        block.appendChild(claimBtn);
-    } else {
-        const progEl = document.createElement('div');
-        progEl.className = 'atlas-chain-progress';
-        progEl.title = step.desc;
-        progEl.textContent = `Собрано цветов: ${p.stepIndex}/${total}`;
-        block.appendChild(progEl);
-    }
-
-    return block;
-}
+/** U-09: цвет карточки — золото у огранённой фигуры, иначе цвет из SHAPES. */
+const ATLAS_FACETED_COLOR = [255, 211, 92];
 
 function createAtlasEntryCard(entry) {
+    const faceted = entry.isCreated && typeof isShapeFaceted === 'function' && isShapeFaceted(entry.name);
+    const drawColor = faceted ? ATLAS_FACETED_COLOR : entry.color;
+
     const card = document.createElement('div');
-    card.className = `atlas-card atlas-card-${entry.atlasState}`;
+    card.className = 'atlas-card'
+        + (entry.isCreated ? ' atlas-card-known' : ' atlas-card-unknown')
+        + (faceted ? ' atlas-card-faceted' : '');
+
+    if (faceted) {
+        const crown = document.createElement('span');
+        crown.className = 'atlas-card-crown';
+        crown.textContent = '👑';
+        card.appendChild(crown);
+    }
 
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-card-canvas';
-    const patternOnly = !entry.isCreated;
-    canvas.width = patternOnly ? 80 : 64;
-    canvas.height = patternOnly ? 80 : 64;
+    canvas.width = 76;
+    canvas.height = 76;
     card.appendChild(canvas);
 
-    const content = document.createElement('div');
-    content.className = 'atlas-card-content';
-    card.appendChild(content);
-
+    const title = document.createElement('div');
     if (entry.isCreated) {
-        const title = document.createElement('div');
         title.className = 'atlas-card-title';
         title.textContent = getDisplayShapeName(entry.name);
-        title.style.color = `rgb(${entry.color[0]},${entry.color[1]},${entry.color[2]})`;
-        content.appendChild(title);
-
-        // S-01: прогресс пер-фигурной цепочки достижений
-        const chainBlock = createAtlasShapeChainBlock(entry.name);
-        if (chainBlock) content.appendChild(chainBlock);
+        title.style.color = `rgb(${drawColor[0]},${drawColor[1]},${drawColor[2]})`;
     } else {
-        // S-01: имя фигуры — сюрприз до первого создания
-        const title = document.createElement('div');
+        // Имя фигуры — сюрприз до первого создания
         title.className = 'atlas-card-title atlas-card-title-unknown';
-        title.textContent = '???';
-        content.appendChild(title);
+        title.textContent = '? ? ?';
+    }
+    card.appendChild(title);
+
+    // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
+    if (entry.isCreated) {
+        const facets = document.createElement('div');
+        facets.className = 'atlas-facets';
+        for (const color of ACHIEVEMENT_COLOR_KEYS) {
+            const lit = typeof isShapeFacetLit === 'function' && isShapeFacetLit(entry.name, color);
+            const gem = document.createElement('span');
+            gem.className = `atlas-facet atlas-facet-${color}` + (lit ? ' atlas-facet-lit' : '');
+            gem.title = ACHIEVEMENT_COLOR_RU[color];
+            facets.appendChild(gem);
+        }
+        card.appendChild(facets);
     }
 
-    if (entry.pattern) {
-        drawHintPattern(canvas, entry.pattern, entry.color);
-    }
+    if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor);
 
     return card;
 }
@@ -596,11 +517,13 @@ function renderAtlasList() {
     if (!list) return;
     list.innerHTML = '';
 
-    if (!isAtlasPageUnlocked(atlasPageIndex)) {
-        // S-01: страницы открываются автоматически при накоплении ✦
+    const pageIndex = getSheetPageIndex('atlas');
+
+    if (!isAtlasPageUnlocked(pageIndex)) {
+        // Страницы открываются автоматически при накоплении ✦
         const locked = document.createElement('div');
         locked.className = 'atlas-page-locked';
-        const cost = getAtlasPageUnlockCost(atlasPageIndex);
+        const cost = getAtlasPageUnlockCost(pageIndex);
 
         const lockedText = document.createElement('p');
         lockedText.textContent = `Страница откроется сама, когда накопится ${cost} ✦.`;
@@ -608,116 +531,388 @@ function renderAtlasList() {
 
         const progressText = document.createElement('p');
         progressText.className = 'atlas-page-locked-progress';
-        progressText.textContent = `Сейчас: ${Math.min(getMetaScore(), cost)}/${cost} ✦`;
+        progressText.textContent = `Сейчас: ${Math.min(getMetaScore(), cost)} / ${cost} ✦`;
         locked.appendChild(progressText);
 
         list.appendChild(locked);
         return;
     }
 
-    const entries = getAtlasPageEntries(atlasPageIndex);
-    for (const entry of entries) {
+    for (const entry of getAtlasPageEntries(pageIndex)) {
         list.appendChild(createAtlasEntryCard(entry));
     }
 }
 
-function setupAtlasListDragScroll() {
-    if (atlasListDragHandlersBound) return;
+// =============================================================================
+// U-09: ШТОРКА — общий каркас обеих половин
+// =============================================================================
 
-    const listEl = document.getElementById('atlasList');
-    if (!listEl) return;
+let sheetSection = 'atlas';          // 'atlas' | 'rewards'
+let sheetOpen = false;
+let sheetPageIndices = { atlas: 0, rewards: 0 };
+let sheetHandlersBound = false;
 
-    const startDrag = (clientX, clientY) => {
-        isAtlasListDragging = true;
-        atlasListDragStartX = clientX;
-        atlasListDragStartY = clientY;
-        atlasListScrollStartLeft = listEl.scrollLeft;
-        atlasListScrollStartTop = listEl.scrollTop;
-        listEl.classList.add('dragging');
-    };
-
-    const moveDrag = (clientX, clientY) => {
-        if (!isAtlasListDragging) return;
-        const dx = clientX - atlasListDragStartX;
-        const dy = clientY - atlasListDragStartY;
-        listEl.scrollLeft = atlasListScrollStartLeft - dx;
-        listEl.scrollTop = atlasListScrollStartTop - dy;
-    };
-
-    const endDrag = () => {
-        if (!isAtlasListDragging) return;
-        isAtlasListDragging = false;
-        listEl.classList.remove('dragging');
-    };
-
-    listEl.addEventListener('mousedown', (event) => {
-        if (event.button !== 0) return;
-        startDrag(event.clientX, event.clientY);
-        event.preventDefault();
-    });
-    listEl.addEventListener('mousemove', (event) => {
-        moveDrag(event.clientX, event.clientY);
-        if (isAtlasListDragging) event.preventDefault();
-    });
-    listEl.addEventListener('mouseleave', endDrag);
-    window.addEventListener('mouseup', endDrag);
-
-    listEl.addEventListener('touchstart', (event) => {
-        if (!event.touches || event.touches.length !== 1) return;
-        startDrag(event.touches[0].clientX, event.touches[0].clientY);
-    }, { passive: true });
-    listEl.addEventListener('touchmove', (event) => {
-        if (!event.touches || event.touches.length !== 1) return;
-        moveDrag(event.touches[0].clientX, event.touches[0].clientY);
-    }, { passive: true });
-    listEl.addEventListener('touchend', endDrag);
-    listEl.addEventListener('touchcancel', endDrag);
-
-    atlasListDragHandlersBound = true;
+function getSheetPageCount(section) {
+    return section === 'rewards' ? REWARD_PAGE_COUNT : ATLAS_PAGE_COUNT;
 }
 
-function renderAtlasOverlay() {
-    updateProgressionUI();
-    renderAtlasPageNav();
-    renderAtlasList();
-    setupAtlasListDragScroll();
+function getSheetPageIndex(section) {
+    const key = section || sheetSection;
+    const max = getSheetPageCount(key) - 1;
+    return Math.max(0, Math.min(max, sheetPageIndices[key] || 0));
 }
 
-function showAtlasOverlay() {
-    renderAtlasOverlay();
-    const overlay = document.getElementById('atlasOverlay');
-    if (overlay) overlay.classList.add('visible');
+function setSheetPageIndex(section, index) {
+    const key = section || sheetSection;
+    const count = getSheetPageCount(key);
+    sheetPageIndices[key] = Math.max(0, Math.min(count - 1, index));
 }
 
-function hideAtlasOverlay() {
-    const overlay = document.getElementById('atlasOverlay');
-    if (overlay) overlay.classList.remove('visible');
+function isSheetOpen() {
+    return sheetOpen;
 }
 
-function onAtlasOverlayClick(event) {
-    if (event.target && event.target.id === 'atlasOverlay') {
-        hideAtlasOverlay();
+/** Заголовок шторки: раздел и текущая страница. */
+function renderSheetTitle() {
+    const el = document.getElementById('sheetTitle');
+    if (!el) return;
+    const pageIndex = getSheetPageIndex();
+    if (sheetSection === 'atlas') {
+        el.innerHTML = `АТЛАС · <b>Страница ${pageIndex + 1}</b>`;
+    } else {
+        const page = REWARD_PAGES[pageIndex];
+        el.innerHTML = `НАГРАДЫ · <b>${page ? page.title : ''}</b>`;
     }
 }
 
-function updateAtlasButtonState() {
-    const atlasBtn = document.getElementById('atlasBtn');
-    if (!atlasBtn) return;
-    // S-01: страницы открываются автоматически; подсветка — только
-    // при забираемом шаге пер-фигурной цепочки
-    const chainClaimable = typeof hasClaimableShapeChains === 'function' && hasClaimableShapeChains();
+/** Эмблема страницы атласа — её первое созвездие; запертая — замок. */
+function createAtlasRailIcon(pageIndex) {
+    if (!isAtlasPageUnlocked(pageIndex)) {
+        const lock = document.createElement('span');
+        lock.className = 'rail-lock';
+        lock.textContent = '🔒';
+        return lock;
+    }
+    const firstShape = ATLAS_PAGES[pageIndex] && ATLAS_PAGES[pageIndex][0];
+    const pattern = firstShape ? SHAPE_PATTERNS[firstShape] : null;
+    const canvas = document.createElement('canvas');
+    canvas.className = 'rail-canvas';
+    canvas.width = 30;
+    canvas.height = 30;
+    if (pattern) drawHintPattern(canvas, pattern, [200, 208, 228]);
+    return canvas;
+}
 
-    atlasBtn.classList.toggle('atlas-btn-claimable', chainClaimable);
-    atlasBtn.textContent = '📖';
-    const label = chainClaimable ? 'Атлас — есть награда' : 'Атлас';
-    atlasBtn.title = label;
-    atlasBtn.setAttribute('aria-label', label);
+function renderSheetRail() {
+    const rail = document.getElementById('sheetRail');
+    if (!rail) return;
+    rail.innerHTML = '';
+
+    const count = getSheetPageCount(sheetSection);
+    const active = getSheetPageIndex();
+
+    for (let i = 0; i < count; i++) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'rail-btn' + (i === active ? ' rail-btn-on' : '');
+
+        if (sheetSection === 'atlas') {
+            btn.appendChild(createAtlasRailIcon(i));
+            btn.setAttribute('aria-label', `Страница ${i + 1}`);
+        } else {
+            const page = REWARD_PAGES[i];
+            const icon = document.createElement('span');
+            icon.className = 'rail-emoji';
+            icon.textContent = page.icon;
+            btn.appendChild(icon);
+            btn.setAttribute('aria-label', page.title);
+            // Бейдж — единственный указатель, куда идти за ✦
+            if (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(i)) {
+                const badge = document.createElement('span');
+                badge.className = 'rail-badge';
+                btn.appendChild(badge);
+            }
+        }
+
+        btn.addEventListener('click', () => {
+            setSheetPageIndex(sheetSection, i);
+            renderSheet();
+        });
+        rail.appendChild(btn);
+    }
+}
+
+function renderSheetSegment() {
+    const atlasBtn = document.getElementById('segAtlasBtn');
+    const rewardsBtn = document.getElementById('segRewardsBtn');
+    if (atlasBtn) atlasBtn.classList.toggle('seg-btn-on', sheetSection === 'atlas');
+    if (rewardsBtn) rewardsBtn.classList.toggle('seg-btn-on', sheetSection === 'rewards');
+}
+
+function renderSheet() {
+    const atlasList = document.getElementById('atlasList');
+    const achvList = document.getElementById('achievementsList');
+    const content = document.getElementById('sheetContent');
+    const isAtlas = sheetSection === 'atlas';
+
+    if (atlasList) atlasList.hidden = !isAtlas;
+    if (achvList) achvList.hidden = isAtlas;
+    // Прокрутка — только в Наградах; атлас всегда влезает целиком
+    if (content) content.classList.toggle('sheet-content-scroll', !isAtlas);
+
+    if (isAtlas) {
+        renderAtlasList();
+    } else {
+        recomputeAchievementsClaimable();
+        renderAchievementsList();
+        if (content) content.scrollTop = 0;
+    }
+
+    renderSheetTitle();
+    renderSheetRail();
+    renderSheetSegment();
+    updateScoreUI();
+    updatePeekBar();
+}
+
+function refreshSheetIfOpen() {
+    if (sheetOpen) renderSheet();
+}
+
+function openSheet(section) {
+    if (section === 'atlas' || section === 'rewards') sheetSection = section;
+    sheetOpen = true;
+    const sheet = document.getElementById('sheet');
+    const scrim = document.getElementById('sheetScrim');
+    if (sheet) { sheet.hidden = false; sheet.classList.add('sheet-open'); }
+    if (scrim) scrim.hidden = false;
+    if (document.body) document.body.classList.add('sheet-open-body');
+    renderSheet();
+}
+
+function closeSheet() {
+    if (!sheetOpen) return;
+    sheetOpen = false;
+    const sheet = document.getElementById('sheet');
+    const scrim = document.getElementById('sheetScrim');
+    if (sheet) {
+        sheet.classList.remove('sheet-open');
+        sheet.style.transform = '';
+        sheet.hidden = true;
+    }
+    if (scrim) scrim.hidden = true;
+    if (document.body) document.body.classList.remove('sheet-open-body');
+}
+
+function switchSheetSection(section) {
+    if (sheetSection === section) return;
+    sheetSection = section;
+    renderSheet();
+}
+
+function stepSheetPage(delta) {
+    const count = getSheetPageCount(sheetSection);
+    const next = getSheetPageIndex() + delta;
+    if (next < 0 || next >= count) return false;
+    setSheetPageIndex(sheetSection, next);
+    renderSheet();
+    return true;
+}
+
+/** Peek-строка: ✦ и бейдж «в Наградах есть что забрать». */
+function updatePeekBar() {
+    const badge = document.getElementById('peekRewardsBadge');
+    if (badge) {
+        const claimable = typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
+        badge.hidden = !claimable;
+    }
+}
+
+// =============================================================================
+// U-09: ЖЕСТЫ ШТОРКИ
+// =============================================================================
+
+const SHEET_SWIPE_MIN_PX = 48;       // порог смены страницы
+const SHEET_CLOSE_MIN_PX = 70;       // порог закрытия потягиванием вниз
+const SHEET_OPEN_MIN_PX = 40;        // порог открытия вытягиванием вверх
+const SHEET_AXIS_DECIDE_PX = 10;     // после стольких px решаем, чей это жест
+
+/** Единая точка координат: работает и для мыши, и для пальца. */
+function getGesturePoint(event) {
+    if (event.touches && event.touches.length) return event.touches[0];
+    if (event.changedTouches && event.changedTouches.length) return event.changedTouches[0];
+    if (typeof event.clientX === 'number') return event;
+    return null;
+}
+
+function isMultiTouch(event) {
+    return !!(event.touches && event.touches.length > 1);
+}
+
+/**
+ * Правило bottom sheet: тянут вниз в самом верху списка (или за ручку) —
+ * закрытие; тянут вниз в середине — прокрутка (только Награды); ведут вбок
+ * под углом < 30° — листание страниц.
+ *
+ * Слушаем и touch, и mouse: на десктопе шторка тянется мышью так же, как
+ * пальцем на телефоне.
+ */
+function setupSheetGestures() {
+    if (sheetHandlersBound) return;
+    const sheet = document.getElementById('sheet');
+    const content = document.getElementById('sheetContent');
+    const handle = document.getElementById('sheetHandle');
+    const peek = document.getElementById('peekBar');
+    if (!sheet || !content || !handle) return;
+
+    let startX = 0, startY = 0;
+    let axis = null;                 // null | 'x' | 'closing' | 'scroll'
+    let fromHandle = false;
+    let tracking = false;
+
+    const onStart = (event) => {
+        if (isMultiTouch(event)) { tracking = false; return; }
+        if (event.type === 'mousedown' && event.button !== 0) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        startX = p.clientX;
+        startY = p.clientY;
+        axis = null;
+        tracking = true;
+        fromHandle = handle.contains(event.target);
+    };
+
+    const onMove = (event) => {
+        if (!tracking || isMultiTouch(event)) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        const dx = p.clientX - startX;
+        const dy = p.clientY - startY;
+
+        if (axis === null) {
+            if (Math.abs(dx) < SHEET_AXIS_DECIDE_PX && Math.abs(dy) < SHEET_AXIS_DECIDE_PX) return;
+            // Ближе к горизонтали (< 30°) — листаем страницы
+            if (Math.abs(dx) > Math.abs(dy) * 1.73) {
+                axis = 'x';
+            } else if (dy > 0 && (fromHandle || content.scrollTop <= 0)) {
+                axis = 'closing';
+            } else {
+                axis = 'scroll';   // отдаём браузеру: вертикальная прокрутка Наград
+            }
+        }
+
+        if (axis === 'scroll') return;
+
+        if (event.cancelable) event.preventDefault();
+        if (axis === 'closing') {
+            sheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
+        }
+    };
+
+    const onEnd = (event) => {
+        if (!tracking) return;
+        tracking = false;
+        const p = getGesturePoint(event);
+        const dx = p ? p.clientX - startX : 0;
+        const dy = p ? p.clientY - startY : 0;
+
+        sheet.style.transform = '';
+
+        if (axis === 'x' && Math.abs(dx) >= SHEET_SWIPE_MIN_PX) {
+            stepSheetPage(dx < 0 ? 1 : -1);
+        } else if (axis === 'closing' && dy >= SHEET_CLOSE_MIN_PX) {
+            closeSheet();
+        }
+        axis = null;
+    };
+
+    sheet.addEventListener('touchstart', onStart, { passive: true });
+    sheet.addEventListener('touchmove', onMove, { passive: false });
+    sheet.addEventListener('touchend', onEnd);
+    sheet.addEventListener('touchcancel', onEnd);
+    sheet.addEventListener('mousedown', onStart);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onEnd);
+
+    // Вытягивание шторки вверх за peek-строку — обратный жест к закрытию
+    if (peek) setupPeekPullGesture(peek);
+
+    // Десктоп: колесо вбок листает страницы
+    sheet.addEventListener('wheel', (event) => {
+        if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+        event.preventDefault();
+        stepSheetPage(event.deltaX > 0 ? 1 : -1);
+    }, { passive: false });
+
+    sheetHandlersBound = true;
+}
+
+/** Тянем peek-строку вверх — шторка открывается на последнем разделе. */
+function setupPeekPullGesture(peek) {
+    let startY = 0;
+    let startX = 0;
+    let tracking = false;
+    let pulled = false;
+
+    const start = (event) => {
+        if (isMultiTouch(event)) { tracking = false; return; }
+        if (event.type === 'mousedown' && event.button !== 0) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        startY = p.clientY;
+        startX = p.clientX;
+        tracking = true;
+        pulled = false;
+    };
+
+    const move = (event) => {
+        if (!tracking || sheetOpen || isMultiTouch(event)) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        const dy = startY - p.clientY;
+        const dx = Math.abs(p.clientX - startX);
+        if (dy >= SHEET_OPEN_MIN_PX && dy > dx) {
+            pulled = true;
+            tracking = false;
+            openSheet(sheetSection);
+        }
+    };
+
+    const end = () => { tracking = false; };
+
+    peek.addEventListener('touchstart', start, { passive: true });
+    peek.addEventListener('touchmove', move, { passive: true });
+    peek.addEventListener('touchend', end);
+    peek.addEventListener('touchcancel', end);
+    peek.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+
+    // Потянули вверх — click по кнопке под пальцем не должен переключать раздел
+    peek.addEventListener('click', (event) => {
+        if (!pulled) return;
+        pulled = false;
+        event.stopPropagation();
+        event.preventDefault();
+    }, true);
+}
+
+function setupSheetControls() {
+    document.getElementById('peekAtlasBtn')?.addEventListener('click', () => openSheet('atlas'));
+    document.getElementById('peekRewardsBtn')?.addEventListener('click', () => openSheet('rewards'));
+    document.getElementById('segAtlasBtn')?.addEventListener('click', () => switchSheetSection('atlas'));
+    document.getElementById('segRewardsBtn')?.addEventListener('click', () => switchSheetSection('rewards'));
+    document.getElementById('sheetScrim')?.addEventListener('click', closeSheet);
+    setupSheetGestures();
 }
 
 function onGlobalPopupKeydown(event) {
     if (event.key === 'Escape') {
-        hideAtlasOverlay();
-        if (typeof hideAchievementsOverlay === 'function') hideAchievementsOverlay();
+        closeSheet();
+        return;
     }
+    if (!sheetOpen) return;
+    if (event.key === 'ArrowLeft') stepSheetPage(-1);
+    if (event.key === 'ArrowRight') stepSheetPage(1);
 }
 

@@ -78,13 +78,8 @@ function maybeAutoUnlockAtlasPages() {
         if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
         if (typeof updateProgressionUI === 'function') updateProgressionUI();
         if (typeof refreshConstellationHintsIfLevelComplete === 'function') refreshConstellationHintsIfLevelComplete();
-        if (typeof document !== 'undefined') {
-            const atlasOverlay = document.getElementById('atlasOverlay');
-            if (atlasOverlay && atlasOverlay.classList.contains('visible')
-                && typeof renderAtlasOverlay === 'function') {
-                renderAtlasOverlay();
-            }
-        }
+        // Открытие страницы меняет и сетку атласа, и эмблемы рельса
+        if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
         saveProgression();
     }
     return unlockedAny;
@@ -409,6 +404,15 @@ function loadProgression() {
         atlasClaimedShapes = new Set(state.atlasClaimedShapes || [...createdShapes]);
 
         if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(state);
+
+        // U-09: сейв старше v4 (цвета стали огранкой, награды за них убраны) —
+        // пересчитывать нечего, сбрасываем весь прогресс: ✦, страницы, фигуры.
+        if (typeof consumeAchievementsFullResetFlag === 'function'
+            && consumeAchievementsFullResetFlag()) {
+            resetProgressionForFullReset();
+            saveProgression();
+            return true;
+        }
 
         // Каталог-29: старый (геометрический) сейв → сброс прогрессии по фигурам.
         if ((Number(state.catalogVersion) || 0) < CATALOG_SAVE_VERSION) {
