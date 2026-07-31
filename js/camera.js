@@ -30,7 +30,11 @@ let zoomLevel = DEFAULT_ZOOM;
  */
 function getMinZoomLevel() {
     const w = Math.max(width, 1);
-    const h = Math.max(height, 1);
+    // U-09: считаем от высоты, не перекрытой свёрнутой шторкой, — на минимальном
+    // зуме поле должно целиком помещаться НАД нижним UI, а не под ним.
+    const h = typeof getUsableViewHeight === 'function'
+        ? Math.max(getUsableViewHeight(), 1)
+        : Math.max(height, 1);
     return Math.min(w / FIELD_WIDTH, h / FIELD_HEIGHT);
 }
 
@@ -66,11 +70,15 @@ function clampCamera() {
         camX = constrain(camX, 0, FIELD_WIDTH - viewW);
     }
 
-    const viewH = height / zoomLevel;
-    if (viewH >= FIELD_HEIGHT) {
-        camY = (FIELD_HEIGHT - viewH) / 2;
+    // U-09: по вертикали ограничиваем не по всей высоте канваса, а по «рабочей»
+    // полосе над свёрнутой шторкой. Тогда камера уезжает ниже ровно настолько,
+    // чтобы нижний край поля вышел из-под UI и до его звёзд можно было дотянуться.
+    const usableH = typeof getUsableViewHeight === 'function' ? getUsableViewHeight() : height;
+    const usableViewH = usableH / zoomLevel;
+    if (usableViewH >= FIELD_HEIGHT) {
+        camY = (FIELD_HEIGHT - usableViewH) / 2;
     } else {
-        camY = constrain(camY, 0, FIELD_HEIGHT - viewH);
+        camY = constrain(camY, 0, FIELD_HEIGHT - usableViewH);
     }
 }
 

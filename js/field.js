@@ -513,8 +513,10 @@ function centerCamera() {
     // всё поле в кадре, игрок сам приближается при желании.
     zoomLevel = getMinZoomLevel();
     clampZoomToField();
+    const usableH = typeof getUsableViewHeight === 'function' ? getUsableViewHeight() : height;
     camX = FIELD_WIDTH / 2 - (width / zoomLevel) / 2;
-    camY = FIELD_HEIGHT / 2 - (height / zoomLevel) / 2;
+    // U-09: центрируем поле в полосе над свёрнутой шторкой, а не в полном канвасе
+    camY = FIELD_HEIGHT / 2 - (usableH / zoomLevel) / 2;
     clampCamera();
 }
 

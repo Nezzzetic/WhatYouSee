@@ -4,13 +4,10 @@
 // SCORE UI
 // =============================================================================
 
+/** U-09: ✦ живёт только в шапке шторки — на поле счётчика нет. */
 function updateScoreUI() {
-    const value = String(getMetaScore());
-    // ✦ живёт в двух местах: peek-строка на поле и шапка шторки, когда она открыта
-    const scoreEl = document.getElementById("scoreCounterValue");
-    if (scoreEl) scoreEl.textContent = value;
     const sheetScoreEl = document.getElementById("sheetScoreValue");
-    if (sheetScoreEl) sheetScoreEl.textContent = value;
+    if (sheetScoreEl) sheetScoreEl.textContent = String(getMetaScore());
 }
 
 function updateMetaPageProgressUI() {
@@ -895,6 +892,13 @@ function setupPeekPullGesture(peek) {
         event.stopPropagation();
         event.preventDefault();
     }, true);
+
+    // Тап по самой полосе (не по кнопке) тоже разворачивает шторку
+    peek.addEventListener('click', (event) => {
+        if (sheetOpen) return;
+        if (event.target.closest('button')) return;
+        openSheet(sheetSection);
+    });
 }
 
 function setupSheetControls() {
@@ -902,6 +906,7 @@ function setupSheetControls() {
     document.getElementById('peekRewardsBtn')?.addEventListener('click', () => openSheet('rewards'));
     document.getElementById('segAtlasBtn')?.addEventListener('click', () => switchSheetSection('atlas'));
     document.getElementById('segRewardsBtn')?.addEventListener('click', () => switchSheetSection('rewards'));
+    document.getElementById('sheetCloseBtn')?.addEventListener('click', closeSheet);
     document.getElementById('sheetScrim')?.addEventListener('click', closeSheet);
     setupSheetGestures();
 }
