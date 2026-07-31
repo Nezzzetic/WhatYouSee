@@ -287,12 +287,9 @@ function isDraftConstellationValid(lines) {
 // =============================================================================
 
 /** Открыт ли поверх канваса модальный оверлей (атлас/достижения) — тогда игнорируем ввод по полю. */
+/** U-09: пока шторка открыта, поле не рисует и не панорамируется. */
 function isBlockingOverlayOpen() {
-    const ids = ['atlasOverlay', 'achievementsOverlay'];
-    return ids.some(id => {
-        const el = document.getElementById(id);
-        return el && el.classList.contains('visible');
-    });
+    return typeof isSheetOpen === 'function' && isSheetOpen();
 }
 
 /** D-01: событие пришло с канваса, а не с DOM-кнопки/панели поверх него. */
@@ -815,11 +812,7 @@ function undoLastConstellation() {
     updateProgressionUI();
     updateUndoConstellationButtonState();
     refreshConstellationHintsIfLevelComplete();
-    updateAtlasButtonState();
-    const atlasOverlay = document.getElementById('atlasOverlay');
-    if (atlasOverlay && atlasOverlay.classList.contains('visible')) {
-        renderAtlasOverlay();
-    }
+    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     autoSave();
 }
 
@@ -850,7 +843,7 @@ function revealConstellationArt() {
     refreshConstellationHints();
     updateScoreUI(total, '', 0);
     updateProgressionUI();
-    updateAtlasButtonState();
+    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     showLevelCompleteToast(levelPts);
     autoSave();
 }

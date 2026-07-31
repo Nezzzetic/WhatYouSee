@@ -6,6 +6,12 @@
     box-sizing: border-box;
 }
 
+/* Атрибут hidden слабее, чем display:flex/grid у класса — принуждаем явно,
+   иначе скрытые через .hidden = true узлы шторки остаются на экране. */
+[hidden] {
+    display: none !important;
+}
+
 body {
     background: #000;
     color: #eee;
@@ -42,42 +48,7 @@ body {
     padding: 8px 10px;
 }
 
-.hud-top-right-stack {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 40;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-}
-
-.hud-top-right-stack .hud-corner {
-    position: static;
-}
-
-#scoreCounter {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px;
-    font-variant-numeric: tabular-nums;
-}
-
-.score-counter-icon {
-    font-size: 18px;
-    line-height: 1;
-    color: #ffd700;
-    text-shadow: 0 0 10px rgba(255, 215, 0, 0.35);
-}
-
-#scoreCounterValue {
-    font-size: 22px;
-    font-weight: 700;
-    color: #ffd700;
-    text-shadow: 0 0 12px rgba(255, 215, 0, 0.35);
-}
+/* U-09: правый верхний угол освобождён — ✦ переехал в peek-строку внизу поля */
 
 .hud-bottom-right {
     bottom: 12px;
@@ -131,7 +102,7 @@ body {
 .dev-controls {
     position: fixed;
     left: 12px;
-    bottom: 56px; /* D-01: выше зоны тройного тапа, чтобы не перекрывать её */
+    bottom: 72px; /* D-01: выше зоны тройного тапа и peek-строки (U-09) */
     z-index: 39;
     display: flex;
     flex-direction: column;
@@ -317,118 +288,6 @@ body {
     box-shadow: 0 0 10px rgba(255, 210, 100, 0.35);
 }
 
-/* --- Achievements overlay --- */
-
-#achievementsOverlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.82);
-    z-index: 1200;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-}
-
-#achievementsOverlay.visible {
-    display: flex;
-}
-
-#achievementsWindow {
-    width: min(980px, 100%);
-    height: min(860px, calc(100vh - 24px));
-    height: min(860px, calc(100dvh - 24px));
-    background: #0d0d12;
-    border: 1px solid #3a3a46;
-    border-radius: 8px;
-    padding: 12px 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow: hidden;
-}
-
-#achievementsWindow .btn-cancel-small {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    padding: 0;
-    font-size: 16px;
-    line-height: 1;
-}
-
-.achievements-list {
-    flex: 1;
-    min-height: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
-    align-content: start;
-    gap: 12px 8px;
-    padding: 6px 4px 6px 0;
-}
-
-.achv-slot {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 2px;
-}
-
-.achv-slot-done {
-    opacity: 0.6;
-}
-
-.achv-icon-wrap {
-    position: relative;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #252632;
-    border-radius: 12px;
-    background: #0a0b12;
-}
-
-.achv-slot-claimable .achv-icon-wrap {
-    border-color: #e8c66a;
-    box-shadow: 0 0 8px rgba(255, 210, 100, 0.3);
-}
-
-.achv-icon {
-    font-size: 30px;
-    line-height: 1;
-    cursor: pointer;
-    user-select: none;
-}
-
-.achv-claim-overlay {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border: none;
-    border-radius: 12px;
-    background: rgba(22, 17, 6, 0.84);
-    color: #ffe9b0;
-    font-size: 14px;
-    font-weight: 700;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-variant-numeric: tabular-nums;
-}
-
-.achv-claim-overlay:hover {
-    background: rgba(44, 33, 12, 0.92);
-    color: #fff0c8;
-}
-
 .achv-stars {
     display: flex;
     gap: 2px;
@@ -446,47 +305,11 @@ body {
     color: #ffd45a;
 }
 
-.achv-tooltip {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-top: 4px;
-    width: max-content;
-    max-width: 180px;
-    padding: 8px 10px;
-    border: 1px solid #3a4050;
-    border-radius: 8px;
-    background: rgba(15, 17, 26, 0.98);
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-    z-index: 20;
-    text-align: center;
-    pointer-events: none;
-}
-
-.achv-slot.tip-open .achv-tooltip {
-    display: block;
-}
-
-.achv-tooltip-title {
-    font-size: 13px;
-    font-weight: 700;
-    color: #f0f0ff;
-    margin-bottom: 3px;
-}
-
-.achv-tooltip-text {
-    font-size: 12px;
-    color: #c2c8d6;
-    line-height: 1.3;
-}
-
 /* --- Achievement toasts (top-right stack) --- */
 
 .achv-toast-stack {
     position: fixed;
-    top: 68px;
+    top: 12px;
     right: 12px;
     z-index: 1500;
     display: flex;
@@ -703,116 +526,6 @@ button:disabled {
     display: none !important;
 }
 
-/* --- Atlas overlay --- */
-
-#atlasOverlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.82);
-    z-index: 1200;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-}
-
-#atlasOverlay.visible {
-    display: flex;
-}
-
-#atlasWindow {
-    width: min(980px, 100%);
-    height: min(860px, calc(100vh - 24px));
-    height: min(860px, calc(100dvh - 24px));
-    background: #0d0d12;
-    border: 1px solid #3a3a46;
-    border-radius: 8px;
-    padding: 12px 12px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow: hidden;
-}
-
-.atlas-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.atlas-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #f0f0ff;
-}
-
-#atlasWindow .btn-cancel-small {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    padding: 0;
-    font-size: 16px;
-    line-height: 1;
-}
-
-.atlas-meta-block {
-    border: 1px solid #252632;
-    border-radius: 8px;
-    padding: 10px;
-    background: #0a0b12;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-}
-
-.atlas-page-nav {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.atlas-page-btn.active {
-    border-color: #ffd700;
-    color: #ffd700;
-}
-
-.atlas-page-locked {
-    grid-column: 1 / -1;
-    padding: 24px;
-    text-align: center;
-    color: #aab;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-}
-
-.atlas-unlock-page-btn {
-    padding: 8px 16px;
-    border-radius: 6px;
-    border: 1px solid #4a6;
-    background: #1a2a1a;
-    color: #cfc;
-    cursor: pointer;
-}
-
-.atlas-unlock-page-btn:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-}
-
-.atlas-pill-created {
-    background: rgba(80, 200, 120, 0.2);
-    color: #8f8;
-}
-
-.atlas-pill-target {
-    background: rgba(255, 200, 80, 0.2);
-    color: #fd8;
-}
-
 .level-complete-toast {
     position: fixed;
     top: 50%;
@@ -846,176 +559,511 @@ button:disabled {
     color: #eef;
 }
 
-.atlas-level-block {
-    border: 1px solid #252632;
-    border-radius: 8px;
-    padding: 10px;
-    background: #0a0b12;
+.atlas-page-locked-progress {
+    color: #8b93a8;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+
+/* =============================================================================
+   U-09: ШТОРКА — peek-строка, sheet, рельс, атлас и награды
+   ============================================================================= */
+
+/* --- peek-строка на поле: ✦ и вызов обеих половин --- */
+
+.peek-bar {
+    position: fixed;
+    left: 12px;
+    right: 78px; /* правый нижний угол занят Undo (44px + отступы) */
+    bottom: 12px;
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border: 1px solid #2b2e3a;
+    border-radius: 14px;
+    background: rgba(10, 12, 20, 0.86);
+    backdrop-filter: blur(6px);
+    touch-action: none; /* вытягивание шторки вверх, а не прокрутка страницы */
+    user-select: none;
+}
+
+/* На телефоне шторка накрывает peek-строку сама, на десктопе она уже
+   экрана — без этого строка торчит из-под неё с обеих сторон. */
+.sheet-open-body .peek-bar {
+    display: none;
+}
+
+.peek-score {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 10px 0 8px;
+    font-size: 17px;
+    font-weight: 700;
+    color: #ffd35c;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.peek-score-icon {
+    font-size: 13px;
+    line-height: 1;
+}
+
+.peek-btn {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid #2b2e3a;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #c8cde0;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* Глобальное button:hover (0,1,1) весит больше классов (0,1,0) и перекрашивает
+   активные кнопки в чёрный — поэтому у каждой свой явный :hover. */
+.peek-btn:hover {
+    border-color: #4a5270;
+    background: rgba(255, 255, 255, 0.07);
+    color: #eef1fa;
+}
+
+.peek-badge {
+    position: absolute;
+    top: 4px;
+    right: 5px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffd35c;
+    box-shadow: 0 0 6px rgba(255, 211, 92, 0.7);
+}
+
+/* --- сама шторка --- */
+
+.sheet-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1190;
+    background: rgba(0, 0, 0, 0.35);
+}
+
+.sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1200;
+    width: min(560px, 100%);
+    margin: 0 auto;
+    height: min(85vh, 680px);
+    height: min(85dvh, 680px);
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    border-top: 1px solid #232838;
+    border-radius: 22px 22px 0 0;
+    background: rgba(13, 16, 26, 0.97);
+    backdrop-filter: blur(14px);
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+    touch-action: none;
+}
+
+/* Ручка — единственная зона, где потягивание вниз закрывает всегда */
+.sheet-handle {
+    position: relative;
+    flex: none;
+    padding-bottom: 8px;
+    cursor: grab;
+    touch-action: none;
+    user-select: none;
+}
+
+.sheet-handle:active {
+    cursor: grabbing;
+}
+
+/* ✦ остаётся на виду, пока шторка открыта */
+.sheet-score {
+    position: absolute;
+    right: 14px;
+    bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffd35c;
+    font-variant-numeric: tabular-nums;
+    pointer-events: none;
+}
+
+.sheet-grab {
+    width: 38px;
+    height: 4px;
+    margin: 9px auto 2px;
+    border-radius: 99px;
+    background: #39405a;
+}
+
+.sheet-title {
+    padding: 8px 16px 0;
+    text-align: center;
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    color: #878ea6;
+}
+
+.sheet-title b {
+    font-size: 13px;
+    font-weight: 650;
+    letter-spacing: 0;
+    color: #e9ebf4;
+}
+
+.sheet-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding: 4px 14px 8px;
+}
+
+/* Прокрутка — только в Наградах */
+.sheet-content-scroll {
+    overflow-y: auto;
+    touch-action: pan-y;
+    scrollbar-width: none;
+}
+
+.sheet-content-scroll::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- подвал: рельс + сегмент, обе строки в нижних ~104 px --- */
+
+.sheet-footer {
+    flex: none;
+    padding: 8px 10px 12px;
+    border-top: 1px solid #232838;
+    background: rgba(9, 11, 18, 0.96);
+}
+
+.sheet-rail {
+    display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 5px;
 }
 
-.atlas-xp-bar-container {
-    height: 8px;
-    border-radius: 999px;
-}
-
-.atlas-filter-bar {
+.rail-btn {
+    position: relative;
+    flex: none;
+    width: 33px;
+    height: 33px;
+    padding: 0;
     display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #232838;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.03);
+    color: #878ea6;
+    font-size: 14px;
+    cursor: pointer;
 }
 
-.atlas-list {
+.rail-btn:hover {
+    border-color: #4a5270;
+    background: rgba(255, 255, 255, 0.07);
+}
+
+.rail-btn-on,
+.rail-btn-on:hover {
+    border-color: #ffd35c;
+    background: #ffd35c;
+    box-shadow: 0 0 14px rgba(255, 211, 92, 0.28);
+}
+
+.rail-btn-on .rail-emoji {
+    filter: brightness(0.25) saturate(1.4);
+}
+
+.rail-btn-on .rail-canvas {
+    filter: invert(1) brightness(0.4);
+}
+
+.rail-canvas {
+    width: 30px;
+    height: 30px;
+}
+
+.rail-lock {
+    font-size: 11px;
+    opacity: 0.4;
+}
+
+.rail-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ffd35c;
+    border: 2px solid #090b12;
+}
+
+.sheet-seg {
+    display: flex;
+    gap: 3px;
+    margin-top: 8px;
+    padding: 3px;
+    border: 1px solid #232838;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.seg-btn {
     flex: 1;
-    min-height: 0;
-    overflow: auto;
+    padding: 7px 0;
+    border: none;
+    border-radius: 99px;
+    background: transparent;
+    color: #878ea6;
+    font-size: 12.5px;
+    cursor: pointer;
+}
+
+.seg-btn:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-color: transparent;
+    color: #eef1fa;
+}
+
+.seg-btn-on,
+.seg-btn-on:hover {
+    background: #ffd35c;
+    border-color: transparent;
+    color: #12131a;
+    font-weight: 700;
+}
+
+/* --- атлас: сетка 3 колонки, карточка = фигура + имя + 5 граней --- */
+
+.atlas-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     align-content: start;
     gap: 8px;
-    padding-right: 4px;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    cursor: grab;
-    user-select: none;
-}
-
-.atlas-list::-webkit-scrollbar {
-    display: none;
-}
-
-.atlas-list.dragging {
-    cursor: grabbing;
 }
 
 .atlas-card {
-    border: 1px solid #2a2d3a;
-    border-radius: 6px;
-    padding: 8px;
-    background: #11111a;
+    position: relative;
     display: flex;
     flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    min-height: 182px;
+    align-items: center;
+    gap: 3px;
+    padding: 9px 6px 8px;
+    border: 1px solid #232838;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
 }
 
 .atlas-card-unknown {
-    opacity: 0.95;
+    opacity: 0.45;
 }
 
-.atlas-card-unknown .atlas-card-canvas {
-    width: 80px;
-    height: 80px;
-    margin: 0 auto;
+.atlas-card-faceted {
+    border-color: rgba(255, 211, 92, 0.55);
+    background:
+        radial-gradient(120% 80% at 50% 0%, rgba(255, 211, 92, 0.16) 0%, rgba(255, 211, 92, 0) 70%),
+        rgba(255, 255, 255, 0.025);
+}
+
+.atlas-card-crown {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 12px;
 }
 
 .atlas-card-canvas {
-    width: 64px;
-    height: 64px;
-    border-radius: 6px;
-    background: #0a0a14;
-    border: 1px solid #1a1a2a;
-    align-self: center;
-}
-
-.atlas-card-content {
-    flex: 1;
-    min-width: 0;
+    width: 100%;
+    max-width: 76px;
+    height: auto;
+    aspect-ratio: 1;
 }
 
 .atlas-card-title {
-    font-size: 13px;
-    line-height: 1.2;
+    font-size: 11px;
     font-weight: 600;
+    line-height: 1.2;
     text-align: center;
 }
 
-.atlas-card-meta {
-    margin-top: 6px;
+.atlas-card-title-unknown {
+    color: #5c6379;
+    letter-spacing: 1px;
+}
+
+.atlas-facets {
     display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
     justify-content: center;
-    min-height: 18px;
+    gap: 3px;
+    margin-top: 2px;
 }
 
-.atlas-pill {
-    font-size: 10px;
-    border: 1px solid #3a3d4d;
-    border-radius: 999px;
-    padding: 2px 7px;
-    color: #aeb4c5;
-    background: #131620;
+/* Грань: ромб, тусклый контур — не горит, залитый цветом — горит */
+.atlas-facet {
+    width: 7px;
+    height: 7px;
+    transform: rotate(45deg);
+    border: 1px solid #2f3547;
+    background: transparent;
 }
 
-.atlas-card-actions {
+.atlas-facet-lit {
+    border-color: transparent;
+}
+
+.atlas-facet-red.atlas-facet-lit    { background: #ff6b5a; box-shadow: 0 0 5px rgba(255, 107, 90, 0.6); }
+.atlas-facet-orange.atlas-facet-lit { background: #ffa34d; box-shadow: 0 0 5px rgba(255, 163, 77, 0.6); }
+.atlas-facet-yellow.atlas-facet-lit { background: #ffe066; box-shadow: 0 0 5px rgba(255, 224, 102, 0.6); }
+.atlas-facet-white.atlas-facet-lit  { background: #ffffff; box-shadow: 0 0 5px rgba(255, 255, 255, 0.6); }
+.atlas-facet-blue.atlas-facet-lit   { background: #9fd8ff; box-shadow: 0 0 5px rgba(159, 216, 255, 0.6); }
+
+.atlas-page-locked {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    padding: 40px 16px;
+    text-align: center;
+    color: #878ea6;
+    font-size: 13px;
+}
+
+/* --- награды: страницы строк --- */
+
+.achv-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.achv-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 10px;
+    min-height: 84px;
+    padding: 10px 12px;
+    border: 1px solid #232838;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.025);
+}
+
+.achv-row-done {
+    opacity: 0.55;
+}
+
+.achv-row-claimable {
+    border-color: rgba(255, 211, 92, 0.5);
+    background: rgba(255, 211, 92, 0.06);
+}
+
+.achv-row-locked {
+    opacity: 0.6;
+}
+
+.achv-row-icon {
+    flex: none;
+    width: 34px;
+    font-size: 24px;
+    line-height: 1;
+    text-align: center;
+}
+
+.achv-row-body {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.achv-row-head {
+    display: flex;
+    align-items: baseline;
     gap: 8px;
 }
 
-.atlas-claim-btn {
-    border-color: #4d7ea0;
-    color: #c8e7ff;
+.achv-row-title {
+    font-size: 14px;
+    font-weight: 650;
+    color: #e9ebf4;
 }
 
-.atlas-claim-btn:hover {
-    background: #182330;
+.achv-row-title-hidden {
+    color: #5c6379;
+    letter-spacing: 2px;
 }
 
-.atlas-favorite-btn {
-    min-width: 34px;
-    width: 34px;
-    height: 30px;
-    padding: 0;
-    border-radius: 999px;
-    border-color: #555;
-    color: #9ea3b3;
+.achv-row-step {
+    font-size: 11.5px;
+    line-height: 1.3;
+    color: #878ea6;
 }
 
-.atlas-favorite-btn.active {
-    border-color: #ffd86a;
-    color: #ffe9ad;
-    background: #31280f;
+.achv-row-bar {
+    position: relative;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.07);
+    overflow: hidden;
 }
 
-.atlas-empty {
-    border: 1px dashed #33384a;
-    border-radius: 8px;
-    padding: 14px;
-    color: #9ca3b8;
-    text-align: center;
-    margin: 8px 0;
-    grid-column: 1 / -1;
+.achv-row-bar i {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: #ffd35c;
 }
 
-.constellation-card-badge {
-    font-size: 9px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: #8fd3ff;
+.achv-row-tail {
+    flex: none;
+    display: flex;
+    align-items: center;
+}
+
+.achv-claim-btn {
+    padding: 7px 12px;
+    border: 1px solid #b08a2e;
+    border-radius: 99px;
+    background: rgba(44, 33, 12, 0.85);
+    color: #ffe9b0;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    font-variant-numeric: tabular-nums;
+}
+
+.achv-claim-btn:hover {
+    background: rgba(64, 48, 18, 0.95);
+    color: #fff0c8;
 }
 
 /* --- P-01: узкие портретные вьюпорты --- */
 
 @media (max-width: 480px) {
-    #atlasWindow,
-    #achievementsWindow {
-        padding: 10px 8px 12px;
-    }
-
-    .atlas-list {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
-    .atlas-card {
-        min-height: 160px;
-    }
-
     .achv-toast-stack {
         left: 12px;
         right: 12px;
@@ -1027,57 +1075,8 @@ button:disabled {
     }
 }
 
-/* =============================================================================
-   S-01: пер-фигурные цепочки достижений на карточках атласа
-   ============================================================================= */
-
-.atlas-card-title-unknown {
-    color: #6a7089;
-    letter-spacing: 2px;
-}
-
-.atlas-chain {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.atlas-chain .achv-stars {
-    font-size: 13px;
-}
-
-.atlas-chain-progress {
-    font-size: 10px;
-    color: #8b93a8;
-    font-variant-numeric: tabular-nums;
-    text-align: center;
-}
-
-.atlas-chain-done {
-    color: #ffd45a;
-}
-
-.atlas-chain-claim {
-    border: 1px solid #b08a2e;
-    border-radius: 999px;
-    padding: 3px 10px;
-    background: rgba(44, 33, 12, 0.85);
-    color: #ffe9b0;
-    font-size: 11px;
-    font-weight: 700;
-    cursor: pointer;
-    font-variant-numeric: tabular-nums;
-}
-
-.atlas-chain-claim:hover {
-    background: rgba(64, 48, 18, 0.95);
-    color: #fff0c8;
-}
-
-.atlas-page-locked-progress {
-    color: #8b93a8;
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
+@media (max-height: 640px) {
+    .sheet {
+        height: 88dvh;
+    }
 }

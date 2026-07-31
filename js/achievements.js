@@ -47,25 +47,6 @@ function buildExactSizeChain(size) {
     };
 }
 
-/** S-01: пер-фигурная цепочка (по одной на каждую фигуру атласа). */
-function buildShapeChain(shapeName) {
-    return {
-        id: 'shape_' + shapeName,
-        title: shapeName,
-        icon: '✨',
-        isShapeChain: true,
-        shapeName,
-        stepReward: SHAPE_CHAIN_STEP_REWARD,
-        steps: SHAPE_CHAIN_TIERS.map((n, i) => ({
-            id: `shape_${shapeName}_${n}`,
-            desc: i === 0
-                ? `Создай «${shapeName}» впервые`
-                : `«${shapeName}» — ${n} созданий`,
-            check: { type: 'shapeTotal', shape: shapeName, n }
-        }))
-    };
-}
-
 const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
 
 // S-01 / atlas-pages-graph: особые достижения страниц 2–6 (у страниц 0/1 —
@@ -173,18 +154,13 @@ const ACHIEVEMENT_CHAINS = [
         title: 'Созвездие-всё',
         icon: '🌌',
         steps: [{ id: 'unite_all_1', desc: 'Объедини все звёзды поля в одно созвездие', check: { type: 'uniteAll' } }]
-    },
-    ...ACHIEVEMENT_ALL_ATLAS_SHAPES.map(buildShapeChain)
+    }
+    // U-09: пер-фигурные цепочки shape_* удалены. Огранка — свойство фигуры
+    // (isShapeFaceted), а не достижение; награда за неё приедет в U-10.
 ];
 
 function getAchievementChainById(chainId) {
     return ACHIEVEMENT_CHAINS.find(c => c.id === chainId) || null;
-}
-
-function getShapeChainForShape(shapeName) {
-    const normalized = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
-    if (!normalized) return null;
-    return getAchievementChainById('shape_' + normalized);
 }
 
 function getAchievementChainStepReward(chain) {
@@ -198,18 +174,34 @@ function isAtlasPageSetComplete(pageIndex) {
 }
 
 /**
- * Видимость цепочки:
- * - пер-фигурная — после первого создания фигуры (живёт на карточке атласа);
- * - Радуга/Мозаика — за полный комплект страницы 0/1;
- * - остальные — всегда.
+ * Видимость цепочки: страничные особые «просыпаются» за полный комплект своей
+ * страницы, остальные видны всегда.
+ *
+ * U-09: невидимая цепочка больше не исчезает из списка — она рисуется замком
+ * с условием (см. getChainLockReason). Эта функция по-прежнему решает, набирает
+ * ли цепочка claimable и тостится ли она.
  */
 function isAchievementChainVisible(chain) {
     if (!chain) return false;
-    if (chain.isShapeChain) return isShapeCreated(chain.shapeName);
     if (typeof chain.requiresPageComplete === 'number') {
         return isAtlasPageSetComplete(chain.requiresPageComplete);
     }
     return true;
+}
+
+/**
+ * U-09: почему запись на странице «Особые» показана замком, а не собой.
+ * Два вида замка — страница атласа ещё не открыта, либо открыта, но комплект
+ * фигур не собран. Возвращает null, если цепочка открыта.
+ */
+function getChainLockReason(chain) {
+    if (!chain || typeof chain.requiresPageComplete !== 'number') return null;
+    const page = chain.requiresPageComplete;
+    if (isAtlasPageSetComplete(page)) return null;
+    const pageUnlocked = typeof isAtlasPageUnlocked === 'function' ? isAtlasPageUnlocked(page) : true;
+    return pageUnlocked
+        ? `Соберите все фигуры страницы ${page + 1}`
+        : `Страница ${page + 1} ещё не открыта`;
 }
 
 // =============================================================================
@@ -223,13 +215,15 @@ let rainbowCountedThisNight = false;
 let mosaicCountedThisNight = false;
 // atlas-pages-graph: id особых достижений страниц 2–6, засчитанных этой ночью (≤1/ночь)
 let pageSpecialsCountedThisNight = new Set();
-// S-01: фигуры, засчитанные в пер-фигурные цепочки этой ночью (анти-гринд ≤1/ночь)
+// S-01: фигуры, засчитанные в огранку этой ночью (анти-гринд ≤1/ночь)
 let shapesCountedThisNight = new Set();
 // S-01: особые достижения (Радуга/Мозаика), о доступности которых уже оповестили
 let announcedSpecialChains = new Set();
 
-// Версия схемы достижений (S-01: сброс Радуги/Мозаики при миграции старых сейвов)
-const ACHIEVEMENTS_SAVE_VERSION = 2;
+// Версия схемы достижений (S-01: сброс Радуги/Мозаики; S-02 v3: пер-фигурные
+// цепочки переведены на цвета; U-09 v4: цепочки shape_* удалены, цвета стали
+// огранкой — миграция сбрасывает ВЕСЬ прогресс, включая ✦ и страницы атласа).
+const ACHIEVEMENTS_SAVE_VERSION = 4;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -244,8 +238,59 @@ function makeDefaultAchievementCounters() {
         mosaicNights: 0,
         // atlas-pages-graph: id особого достижения страницы → всего засчитанных ночей
         pageSpecialNights: { vitrazh: 0, kaleidoscope: 0, gobelen: 0, orchestra: 0, symphony: 0 },
-        shapeTotals: {} // S-01: имя фигуры → всего засчитанных созданий (≤1/ночь)
+        // U-09: имя фигуры → { color: число засчитанных созданий } (≤1/ночь на фигуру).
+        // Ненулевой счётчик = грань горит; число нужно только для корректного отката.
+        shapeColors: {}
     };
+}
+
+/** S-02: нормализует сохранённую карту цветов фигуры до полного набора ключей. */
+function sanitizeShapeColorMap(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const name of Object.keys(raw)) {
+        const src = raw[name] || {};
+        const rec = {};
+        for (const color of ACHIEVEMENT_COLOR_KEYS) {
+            rec[color] = Math.max(0, Number(src[color]) || 0);
+        }
+        out[name] = rec;
+    }
+    return out;
+}
+
+/**
+ * U-09: сколько граней фигуры горит. Квот больше нет — грань загорается
+ * с первого создания фигуры в этом цвете, поэтому считаем ненулевые бакеты.
+ */
+function shapeFacetCount(shapeName) {
+    if (!achievementCounters || !achievementCounters.shapeColors) return 0;
+    const normalized = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
+    const counts = achievementCounters.shapeColors[normalized];
+    if (!counts) return 0;
+    let done = 0;
+    for (const color of ACHIEVEMENT_COLOR_KEYS) {
+        if ((counts[color] || 0) > 0) done++;
+    }
+    return done;
+}
+
+/** U-09: горит ли конкретная грань (фигура создавалась в этом цвете). */
+function isShapeFacetLit(shapeName, color) {
+    if (!achievementCounters || !achievementCounters.shapeColors) return false;
+    const normalized = typeof normalizeShapeName === 'function' ? normalizeShapeName(shapeName) : shapeName;
+    const counts = achievementCounters.shapeColors[normalized];
+    return !!(counts && (counts[color] || 0) > 0);
+}
+
+/** U-09: фигура огранена — собрана во всех пяти цветах. */
+function isShapeFaceted(shapeName) {
+    return shapeFacetCount(shapeName) >= ACHIEVEMENT_COLOR_KEYS.length;
+}
+
+/** U-09: сколько фигур атласа огранено (пригодится «Огранщику» в U-10). */
+function getFacetedShapeCount() {
+    return ACHIEVEMENT_ALL_ATLAS_SHAPES.filter(isShapeFaceted).length;
 }
 
 function initAchievementState() {
@@ -273,14 +318,14 @@ function resetAchievementsForFullReset() {
  */
 function resetShapeAchievementsForCatalogMigration() {
     if (achievementCounters) {
-        achievementCounters.shapeTotals = {};
+        achievementCounters.shapeColors = {};
         achievementCounters.rainbowNights = 0;
         achievementCounters.mosaicNights = 0;
         achievementCounters.pageSpecialNights = makeDefaultAchievementCounters().pageSpecialNights;
     }
     for (const chain of ACHIEVEMENT_CHAINS) {
         if (!achievementProgress[chain.id]) continue;
-        if (chain.isShapeChain || typeof chain.requiresPageComplete === 'number') {
+        if (typeof chain.requiresPageComplete === 'number') {
             achievementProgress[chain.id].stepIndex = 0;
             achievementProgress[chain.id].claimable = false;
         }
@@ -337,7 +382,7 @@ function applyAchievementSaveData(state) {
             rainbowNights: Number(s.rainbowNights) || 0,
             mosaicNights: Number(s.mosaicNights) || 0,
             pageSpecialNights: Object.assign({}, def.pageSpecialNights, s.pageSpecialNights || {}),
-            shapeTotals: Object.assign({}, s.shapeTotals || {})
+            shapeColors: sanitizeShapeColorMap(s.shapeColors)
         };
     }
 
@@ -366,33 +411,37 @@ function applyAchievementSaveData(state) {
 }
 
 /**
- * S-01: миграция сейвов до «спирали».
- * - Радуга/Мозаика переезжают в особенные достижения страниц — прогресс сбрасывается (решение заказчика).
- * - Фигурам из createdShapes (созданным при старой системе) даётся stepIndex=1 и счётчик 1
- *   без награды: 25 ✦ за них уже были выплачены через SHAPE_OPEN_POINTS.
+ * U-09: выставляется миграцией, когда сейв старше v4. Читается в loadProgression
+ * (progression.js) — сброс всего прогресса делается там, потому что ✦, страницы
+ * атласа и createdShapes живут вне этого модуля.
+ */
+let achievementsMigrationNeedsFullReset = false;
+
+/**
+ * Миграция сейвов достижений.
+ * - v<2 (S-01): Радуга/Мозаика переехали в особые достижения страниц — сброс.
+ * - v<3 (S-02): пер-фигурные цепочки переведены со счётчика повторов на цвета.
+ * - v<4 (U-09): цепочки shape_* удалены, цвета стали огранкой, награды за цвета
+ *   убраны. Пересчитывать старый прогресс бессмысленно (решение заказчика):
+ *   **полный сброс всего прогресса**, включая ✦ и открытые страницы атласа.
+ *   Home Demo, живых игроков нет — честный старт с нуля.
  */
 function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (achievementProgress.rainbow) achievementProgress.rainbow.stepIndex = 0;
-    if (achievementProgress.mosaic) achievementProgress.mosaic.stepIndex = 0;
-    if (achievementCounters) {
-        achievementCounters.rainbowNights = 0;
-        achievementCounters.mosaicNights = 0;
+    if (version < 4) {
+        // Сбрасывать по шагам смысла нет — v4 обнуляет всё разом.
+        initAchievementState();
+        achievementsMigrationNeedsFullReset = true;
     }
-    rainbowCountedThisNight = false;
-    mosaicCountedThisNight = false;
+}
 
-    for (const chain of ACHIEVEMENT_CHAINS) {
-        if (!chain.isShapeChain) continue;
-        if (typeof isShapeCreated !== 'function' || !isShapeCreated(chain.shapeName)) continue;
-        const p = achievementProgress[chain.id];
-        if (p && p.stepIndex === 0) p.stepIndex = 1;
-        if (achievementCounters && !(achievementCounters.shapeTotals[chain.shapeName] > 0)) {
-            achievementCounters.shapeTotals[chain.shapeName] = 1;
-        }
-    }
+/** U-09: одноразовый флаг — читается и гасится в loadProgression. */
+function consumeAchievementsFullResetFlag() {
+    const needed = achievementsMigrationNeedsFullReset;
+    achievementsMigrationNeedsFullReset = false;
+    return needed;
 }
 
 // =============================================================================
@@ -534,8 +583,6 @@ function evaluateAchievementCheck(check, snap) {
             return c.levelsCompleted >= check.n;
         case 'totalConstellations':
             return c.totalConstellations >= check.n;
-        case 'shapeTotal':
-            return (c.shapeTotals[check.shape] || 0) >= check.n;
         case 'singleConstellation':
             return snap.revealed && snap.count === 1;
         case 'uniteAll':
@@ -560,7 +607,6 @@ function getAchievementStepProgress(check) {
         case 'pageSpecialNights': return { current: c.pageSpecialNights[check.id] || 0, target: check.n };
         case 'levelsCompleted': return { current: c.levelsCompleted, target: check.n };
         case 'totalConstellations': return { current: c.totalConstellations, target: check.n };
-        case 'shapeTotal': return { current: c.shapeTotals[check.shape] || 0, target: check.n };
         default: return null;
     }
 }
@@ -596,19 +642,9 @@ function recomputeAchievementsClaimable(notify) {
     }
 }
 
-/** Claimable в сетке 🏆 (пер-фигурные живут на карточках атласа — не учитываются). */
+/** Есть ли где-нибудь в Наградах забираемый шаг (бейдж на peek-строке). */
 function hasClaimableAchievements() {
     return ACHIEVEMENT_CHAINS.some(chain => {
-        if (chain.isShapeChain) return false;
-        const p = achievementProgress[chain.id];
-        return p && p.claimable;
-    });
-}
-
-/** S-01: есть ли забираемый шаг у пер-фигурных цепочек (подсветка кнопки атласа). */
-function hasClaimableShapeChains() {
-    return ACHIEVEMENT_CHAINS.some(chain => {
-        if (!chain.isShapeChain) return false;
         const p = achievementProgress[chain.id];
         return p && p.claimable;
     });
@@ -620,18 +656,18 @@ function hasClaimableShapeChains() {
 
 function recordAchievementCommit(constellation) {
     applyConstellationToCounters(constellation, +1);
-    recordShapeCommitForChains(constellation);
+    recordShapeCommitForFacets(constellation);
     afterAchievementStateChanged();
 }
 
 function recordAchievementUndo(constellation) {
     applyConstellationToCounters(constellation, -1);
-    recordShapeUndoForChains(constellation);
+    recordShapeUndoForFacets(constellation);
     afterAchievementStateChanged();
 }
 
 // =============================================================================
-// S-01: ПЕР-ФИГУРНЫЕ ЦЕПОЧКИ — СЧЁТ НА КОММИТЕ (≤1/ночь) И ОТКАТ
+// U-09: ОГРАНКА — СЧЁТ ГРАНЕЙ НА КОММИТЕ (≤1/ночь на фигуру) И ОТКАТ
 // =============================================================================
 
 function getCommittedAtlasShapeName(constellation) {
@@ -642,22 +678,38 @@ function getCommittedAtlasShapeName(constellation) {
     return name;
 }
 
-function recordShapeCommitForChains(constellation) {
+/** Суммарно засчитанных созданий фигуры (по всем цветам). */
+function shapeTotalCreations(counts) {
+    if (!counts) return 0;
+    let total = 0;
+    for (const color of ACHIEVEMENT_COLOR_KEYS) total += counts[color] || 0;
+    return total;
+}
+
+function recordShapeCommitForFacets(constellation) {
     const name = getCommittedAtlasShapeName(constellation);
     if (!name) return;
-    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 за ночь
+    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 засчёт на фигуру за ночь
+
+    // U-09: цвет зажигает свою грань с первого раза (квот нет); красный и синий
+    // банан за одну ночь получить нельзя — только +1 грань на фигуру за небо.
+    const ids = collectStarIdsFromLines(constellation.lines);
+    const bucket = constellationColorBucket([...ids]);
+    if (!bucket) return;
 
     shapesCountedThisNight.add(name);
-    achievementCounters.shapeTotals[name] = (achievementCounters.shapeTotals[name] || 0) + 1;
+    if (!achievementCounters.shapeColors[name]) {
+        achievementCounters.shapeColors[name] = { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 };
+    }
+    const counts = achievementCounters.shapeColors[name];
+    counts[bucket] = (counts[bucket] || 0) + 1;
 
-    // Сюрприз-момент: первое создание фигуры — имя раскрыто на коммите.
-    // Награда шага 1 собирается вручную с карточки атласа (флоу как у остальных).
-    const chain = getShapeChainForShape(name);
-    const p = chain ? achievementProgress[chain.id] : null;
-    if (chain && p && p.stepIndex === 0 && achievementCounters.shapeTotals[name] === 1) {
+    // Сюрприз-момент: самое первое создание фигуры (в любом цвете) — имя раскрыто.
+    if (shapeTotalCreations(counts) === 1) {
         showShapeRevealToast(name);
     }
 
+    // U-09: тоста огранки в этой задаче нет — фигура молча золотится в атласе.
     announceNewlyAvailableSpecialChains();
 }
 
@@ -673,12 +725,16 @@ function announceNewlyAvailableSpecialChains() {
     }
 }
 
-function recordShapeUndoForChains(constellation) {
+function recordShapeUndoForFacets(constellation) {
     const name = getCommittedAtlasShapeName(constellation);
     if (!name) return;
     if (!shapesCountedThisNight.has(name)) return;
     shapesCountedThisNight.delete(name);
-    achievementCounters.shapeTotals[name] = Math.max(0, (achievementCounters.shapeTotals[name] || 0) - 1);
+    // Откат того же созвездия → тот же бакет, что был засчитан на коммите.
+    const ids = collectStarIdsFromLines(constellation.lines);
+    const bucket = constellationColorBucket([...ids]);
+    const counts = achievementCounters.shapeColors[name];
+    if (counts && bucket) counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
 }
 
 
@@ -710,18 +766,9 @@ function recordAchievementReveal() {
 function afterAchievementStateChanged() {
     recomputeAchievementsClaimable(true);
     saveProgression();
-    updateAchievementsButtonState();
-    if (typeof updateAtlasButtonState === 'function') updateAtlasButtonState();
-    const overlay = document.getElementById('achievementsOverlay');
-    if (overlay && overlay.classList.contains('visible')) {
-        renderAchievementsOverlay();
-    }
-    // S-01: прогресс пер-фигурных цепочек живёт на карточках атласа
-    const atlasOverlay = document.getElementById('atlasOverlay');
-    if (atlasOverlay && atlasOverlay.classList.contains('visible')
-        && typeof renderAtlasOverlay === 'function') {
-        renderAtlasOverlay();
-    }
+    // U-09: обе половины живут в шторке — перерисовываем её, если открыта
+    if (typeof updatePeekBar === 'function') updatePeekBar();
+    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
 }
 
 // =============================================================================
@@ -746,15 +793,8 @@ function claimAchievementStep(chainId) {
     saveProgression();
 
     updateProgressionUI();
-    updateAchievementsButtonState();
     if (typeof updateUndoConstellationButtonState === 'function') updateUndoConstellationButtonState();
-    renderAchievementsOverlay();
-    // S-01: клейм пер-фигурной цепочки происходит из атласа — обновить его
-    const atlasOverlay = document.getElementById('atlasOverlay');
-    if (atlasOverlay && atlasOverlay.classList.contains('visible')
-        && typeof renderAtlasOverlay === 'function') {
-        renderAtlasOverlay();
-    }
+    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     return true;
 }
 
@@ -809,138 +849,172 @@ function showShapeRevealToast(shapeName) {
 // ОВЕРЛЕЙ UI
 // =============================================================================
 
-function buildAchievementTooltipText(chain, p, done) {
-    if (done) return 'Выполнено — все ступени пройдены';
-    const step = chain.steps[p.stepIndex];
-    const prog = getAchievementStepProgress(step.check);
-    return step.desc + (prog ? ` (${Math.min(prog.current, prog.target)}/${prog.target})` : '');
+// =============================================================================
+// U-09: НАГРАДЫ — 4 СТРАНИЦЫ СТРОК В ШТОРКЕ
+// =============================================================================
+
+/**
+ * Порядок фиксирован и не зависит от наличия забора: игрок ищет готовое
+ * по бейджу на иконке рельса, а не по перескакивающим строкам.
+ */
+const REWARD_PAGES = [
+    {
+        id: 'colors', icon: '🎨', title: 'Цвета',
+        chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue']
+    },
+    {
+        id: 'sizes', icon: '★', title: 'Размеры',
+        chainIds: ['size_3', 'size_4', 'size_5', 'size_6', 'size_7', 'size_8plus']
+    },
+    {
+        id: 'specials', icon: '🌈', title: 'Особые',
+        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony']
+    },
+    {
+        id: 'path', icon: '💎', title: 'Путь',
+        chainIds: ['nights', 'constellations', 'minimalism', 'unite_all']
+    }
+];
+
+const REWARD_PAGE_COUNT = REWARD_PAGES.length;
+
+function getRewardPageChains(pageIndex) {
+    const page = REWARD_PAGES[pageIndex];
+    if (!page) return [];
+    return page.chainIds.map(getAchievementChainById).filter(Boolean);
 }
 
-function createAchievementSlot(chain) {
-    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    const total = chain.steps.length;
-    const done = p.stepIndex >= total;
+/** U-09: бейдж на иконке рельса — на этой странице есть что забрать. */
+function rewardPageHasClaimable(pageIndex) {
+    return getRewardPageChains(pageIndex).some(chain => {
+        const p = achievementProgress[chain.id];
+        return p && p.claimable;
+    });
+}
 
-    const slot = document.createElement('div');
-    slot.className = 'achv-slot'
-        + (done ? ' achv-slot-done' : '')
-        + (p.claimable ? ' achv-slot-claimable' : '');
+/** Текст текущего шага: описание + «12 / 15» или «готово». */
+function buildAchievementStepText(chain, p) {
+    const step = chain.steps[p.stepIndex];
+    const prog = getAchievementStepProgress(step.check);
+    if (p.claimable) return `${step.desc} · готово`;
+    if (!prog) return step.desc;
+    return `${step.desc} · ${Math.min(prog.current, prog.target)} / ${prog.target}`;
+}
 
-    // --- иконка + кнопка-оверлей ---
-    const iconWrap = document.createElement('div');
-    iconWrap.className = 'achv-icon-wrap';
-
-    const icon = document.createElement('div');
-    icon.className = 'achv-icon';
-    icon.textContent = chain.icon || '❓';
-    iconWrap.appendChild(icon);
-
-    if (p.claimable && !done) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'achv-claim-overlay';
-        btn.textContent = `+${getAchievementChainStepReward(chain)}✦`;
-        btn.title = 'Забрать награду';
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            claimAchievementStep(chain.id);
-        });
-        iconWrap.appendChild(btn);
-    }
-    slot.appendChild(iconWrap);
-
-    // --- ряд звёзд (по одной на шаг цепочки) ---
+function createAchievementStarsRow(chain, p) {
     const stars = document.createElement('div');
     stars.className = 'achv-stars';
-    for (let i = 0; i < total; i++) {
+    for (let i = 0; i < chain.steps.length; i++) {
         const s = document.createElement('span');
         const filled = i < p.stepIndex;
         s.className = 'achv-star' + (filled ? ' achv-star-filled' : '');
         s.textContent = filled ? '★' : '☆';
         stars.appendChild(s);
     }
-    slot.appendChild(stars);
-
-    // --- тултип ---
-    const tip = document.createElement('div');
-    tip.className = 'achv-tooltip';
-    const tipTitle = document.createElement('div');
-    tipTitle.className = 'achv-tooltip-title';
-    tipTitle.textContent = chain.title;
-    tip.appendChild(tipTitle);
-    const tipText = document.createElement('div');
-    tipText.className = 'achv-tooltip-text';
-    tipText.textContent = buildAchievementTooltipText(chain, p, done);
-    tip.appendChild(tipText);
-    slot.appendChild(tip);
-
-    icon.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleAchievementTooltip(slot);
-    });
-
-    return slot;
+    return stars;
 }
 
-function toggleAchievementTooltip(slot) {
-    const list = document.getElementById('achievementsList');
-    const wasOpen = slot.classList.contains('tip-open');
-    if (list) list.querySelectorAll('.achv-slot.tip-open').forEach(s => s.classList.remove('tip-open'));
-    if (!wasOpen) slot.classList.add('tip-open');
+/** U-09: строка-замок — цепочка есть, но имя и иконка ещё скрыты. */
+function createAchievementLockedRow(reason) {
+    const row = document.createElement('div');
+    row.className = 'achv-row achv-row-locked';
+
+    const icon = document.createElement('div');
+    icon.className = 'achv-row-icon';
+    icon.textContent = '🔒';
+    row.appendChild(icon);
+
+    const body = document.createElement('div');
+    body.className = 'achv-row-body';
+
+    const title = document.createElement('div');
+    title.className = 'achv-row-title achv-row-title-hidden';
+    title.textContent = '? ? ?';
+    body.appendChild(title);
+
+    const text = document.createElement('div');
+    text.className = 'achv-row-step';
+    text.textContent = reason;
+    body.appendChild(text);
+
+    row.appendChild(body);
+    return row;
 }
 
-function closeAllAchievementTooltips() {
-    const list = document.getElementById('achievementsList');
-    if (list) list.querySelectorAll('.achv-slot.tip-open').forEach(s => s.classList.remove('tip-open'));
+function createAchievementRow(chain) {
+    const lockReason = getChainLockReason(chain);
+    if (lockReason) return createAchievementLockedRow(lockReason);
+
+    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
+    const done = p.stepIndex >= chain.steps.length;
+
+    const row = document.createElement('div');
+    row.className = 'achv-row'
+        + (done ? ' achv-row-done' : '')
+        + (p.claimable ? ' achv-row-claimable' : '');
+
+    const icon = document.createElement('div');
+    icon.className = 'achv-row-icon';
+    icon.textContent = chain.icon || '❓';
+    row.appendChild(icon);
+
+    const body = document.createElement('div');
+    body.className = 'achv-row-body';
+
+    const head = document.createElement('div');
+    head.className = 'achv-row-head';
+    const title = document.createElement('span');
+    title.className = 'achv-row-title';
+    title.textContent = chain.title;
+    head.appendChild(title);
+    head.appendChild(createAchievementStarsRow(chain, p));
+    body.appendChild(head);
+
+    const step = document.createElement('div');
+    step.className = 'achv-row-step';
+    step.textContent = done ? 'Все ступени пройдены' : buildAchievementStepText(chain, p);
+    body.appendChild(step);
+
+    if (!done) {
+        const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
+        const bar = document.createElement('div');
+        bar.className = 'achv-row-bar';
+        const fill = document.createElement('i');
+        const ratio = p.claimable ? 1
+            : (prog && prog.target > 0 ? Math.min(1, prog.current / prog.target) : 0);
+        fill.style.width = `${Math.round(ratio * 100)}%`;
+        bar.appendChild(fill);
+        body.appendChild(bar);
+    }
+
+    row.appendChild(body);
+
+    const tail = document.createElement('div');
+    tail.className = 'achv-row-tail';
+    if (p.claimable && !done) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'achv-claim-btn';
+        btn.textContent = `+${getAchievementChainStepReward(chain)} ✦`;
+        btn.title = 'Забрать награду';
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            claimAchievementStep(chain.id);
+        });
+        tail.appendChild(btn);
+    }
+    row.appendChild(tail);
+
+    return row;
 }
 
 function renderAchievementsList() {
     const list = document.getElementById('achievementsList');
     if (!list) return;
     list.innerHTML = '';
-    for (const chain of ACHIEVEMENT_CHAINS) {
-        // S-01: пер-фигурные цепочки живут на карточках атласа;
-        // Радуга/Мозаика появляются только при полном комплекте страницы
-        if (chain.isShapeChain) continue;
-        if (!isAchievementChainVisible(chain)) continue;
-        list.appendChild(createAchievementSlot(chain));
+    for (const chain of getRewardPageChains(getSheetPageIndex('rewards'))) {
+        list.appendChild(createAchievementRow(chain));
     }
-}
-
-function renderAchievementsOverlay() {
-    updateProgressionUI();
-    const metaEl = document.getElementById('achievementsMetaScoreDisplay');
-    if (metaEl) metaEl.textContent = String(getMetaScore());
-    recomputeAchievementsClaimable();
-    renderAchievementsList();
-}
-
-function showAchievementsOverlay() {
-    renderAchievementsOverlay();
-    const overlay = document.getElementById('achievementsOverlay');
-    if (overlay) overlay.classList.add('visible');
-}
-
-function hideAchievementsOverlay() {
-    closeAllAchievementTooltips();
-    const overlay = document.getElementById('achievementsOverlay');
-    if (overlay) overlay.classList.remove('visible');
-}
-
-function onAchievementsOverlayClick(event) {
-    if (event.target && event.target.id === 'achievementsOverlay') {
-        hideAchievementsOverlay();
-    }
-}
-
-function updateAchievementsButtonState() {
-    const btn = document.getElementById('achievementsBtn');
-    if (!btn) return;
-    const claimable = hasClaimableAchievements();
-    btn.classList.toggle('achv-btn-claimable', claimable);
-    const label = claimable ? 'Достижения — есть награда' : 'Достижения';
-    btn.title = label;
-    btn.setAttribute('aria-label', label);
 }
 
 // Инициализация дефолтами при загрузке модуля (до loadProgression).

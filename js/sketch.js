@@ -110,21 +110,13 @@ function setup() {
     updateScoreUI(0, '', 0);
     updateProgressionUI();
     initConstellationHints();
-    hideAtlasOverlay();
-    hideAchievementsOverlay();
-    updateAtlasButtonState();
+    closeSheet();
     recomputeAchievementsClaimable();
-    updateAchievementsButtonState();
+    updatePeekBar();
 
     updateUndoConstellationButtonState();
 
-    document.getElementById("atlasBtn")?.addEventListener("click", showAtlasOverlay);
-    document.getElementById("closeAtlasBtn")?.addEventListener("click", hideAtlasOverlay);
-    document.getElementById("atlasOverlay")?.addEventListener("click", onAtlasOverlayClick);
-    document.getElementById("achievementsBtn")?.addEventListener("click", showAchievementsOverlay);
-    document.getElementById("closeAchievementsBtn")?.addEventListener("click", hideAchievementsOverlay);
-    document.getElementById("achievementsOverlay")?.addEventListener("click", onAchievementsOverlayClick);
-    document.getElementById("achievementsWindow")?.addEventListener("click", closeAllAchievementTooltips);
+    setupSheetControls();
     const devControls = document.getElementById("devControls");
     const resetBtn = document.getElementById("resetButton");
     const fullResetBtn = document.getElementById("fullResetButton");
@@ -255,7 +247,7 @@ function regenerateFieldStarsAfterReset() {
 
 function startNewDailySky(options) {
     const opts = options || {};
-    hideAtlasOverlay();
+    closeSheet();
     resetFieldSessionState();
     clearSave();
 
@@ -270,9 +262,8 @@ function startNewDailySky(options) {
     updateScoreUI(0, '', 0);
     updateProgressionUI();
     refreshConstellationHints();
-    updateAtlasButtonState();
     recomputeAchievementsClaimable();
-    updateAchievementsButtonState();
+    updatePeekBar();
     updateUndoConstellationButtonState();
 
     if (opts.saveAfter !== false) {
@@ -281,7 +272,7 @@ function startNewDailySky(options) {
 }
 
 function onResetSky() {
-    hideAtlasOverlay();
+    closeSheet();
     resetFieldSessionState();
 
     if (shouldLoadPictureField()) {
@@ -305,9 +296,8 @@ function onResetSky() {
     updateScoreUI(0, '', 0);
     updateProgressionUI();
     refreshConstellationHints();
-    updateAtlasButtonState();
     recomputeAchievementsClaimable();
-    updateAchievementsButtonState();
+    updatePeekBar();
     updateUndoConstellationButtonState();
 
     clearSave();
@@ -369,16 +359,15 @@ function onDevResetAchievements() {
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
     saveProgression();
     recomputeAchievementsClaimable();
-    updateAchievementsButtonState();
-    const overlay = document.getElementById('achievementsOverlay');
-    if (overlay && overlay.classList.contains('visible')) renderAchievementsOverlay();
+    updatePeekBar();
+    refreshSheetIfOpen();
     if (typeof console !== 'undefined' && console.info) console.info('[dev] Достижения сброшены');
 }
 
 function onFullReset() {
     if (!confirm('Полный сброс удалит ВСЕ данные: очки, прогресс, уровень, пользовательские виды. Продолжить?')) return;
 
-    hideAtlasOverlay();
+    closeSheet();
     resetFieldSessionState();
     customTypes = [];
 
@@ -396,9 +385,8 @@ function onFullReset() {
     updateScoreUI(0, '', 0);
     updateProgressionUI();
     refreshConstellationHints();
-    updateAtlasButtonState();
     recomputeAchievementsClaimable();
-    updateAchievementsButtonState();
+    updatePeekBar();
     updateUndoConstellationButtonState();
 
     clearSave();

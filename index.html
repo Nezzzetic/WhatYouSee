@@ -9,15 +9,6 @@
 </head>
 <body>
     <div id="app">
-        <div id="hudTopRight" class="hud-top-right-stack">
-            <div id="scoreCounter" class="hud-corner" aria-label="Очки">
-                <span class="score-counter-icon" aria-hidden="true">✦</span>
-                <span id="scoreCounterValue">0</span>
-            </div>
-            <button type="button" id="atlasBtn" class="hud-icon-btn" title="Атлас" aria-label="Атлас">📖</button>
-            <button type="button" id="achievementsBtn" class="hud-icon-btn" title="Достижения" aria-label="Достижения">🏆</button>
-        </div>
-
         <div id="gameActions" class="hud-corner hud-bottom-right">
             <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn" title="Отменить последнее созвездие" disabled aria-label="Отменить последнее созвездие">↩</button>
         </div>
@@ -46,33 +37,42 @@
 
         <div id="canvas-container"></div>
 
-        <div id="atlasOverlay">
-            <div id="atlasWindow">
-                <div class="atlas-header">
-                    <div class="atlas-title">Атлас созвездий</div>
-                    <button type="button" id="closeAtlasBtn" class="btn-cancel-small" title="Закрыть">&times;</button>
+        <!-- U-09: peek-строка на поле — ✦ и вызов обеих половин шторки -->
+        <div id="peekBar" class="peek-bar">
+            <div class="peek-score" aria-label="Очки">
+                <span class="peek-score-icon" aria-hidden="true">✦</span>
+                <span id="scoreCounterValue">0</span>
+            </div>
+            <button type="button" id="peekAtlasBtn" class="peek-btn">Атлас</button>
+            <button type="button" id="peekRewardsBtn" class="peek-btn">
+                Награды<span id="peekRewardsBadge" class="peek-badge" hidden></span>
+            </button>
+        </div>
+
+        <!-- U-09: шторка — Атлас и Награды, управление в подвале -->
+        <div id="sheetScrim" class="sheet-scrim" hidden></div>
+        <div id="sheet" class="sheet" hidden>
+            <div id="sheetHandle" class="sheet-handle">
+                <div class="sheet-grab" aria-hidden="true"></div>
+                <div id="sheetTitle" class="sheet-title"></div>
+                <div class="sheet-score" aria-label="Очки">
+                    <span class="peek-score-icon" aria-hidden="true">✦</span>
+                    <span id="sheetScoreValue">0</span>
                 </div>
-                <div class="atlas-meta-block">
-                    <span class="resource-label">Очки</span>
-                    <span id="atlasMetaScoreDisplay" class="resource-value">0</span>
+            </div>
+            <div id="sheetContent" class="sheet-content">
+                <div id="atlasList" class="atlas-grid" hidden></div>
+                <div id="achievementsList" class="achv-list" hidden></div>
+            </div>
+            <div class="sheet-footer">
+                <div id="sheetRail" class="sheet-rail"></div>
+                <div class="sheet-seg">
+                    <button type="button" id="segAtlasBtn" class="seg-btn">Атлас</button>
+                    <button type="button" id="segRewardsBtn" class="seg-btn">Награды</button>
                 </div>
-                <div id="atlasPageNav" class="atlas-page-nav"></div>
-                <div id="atlasList" class="atlas-list atlas-page-grid"></div>
             </div>
         </div>
-        <div id="achievementsOverlay">
-            <div id="achievementsWindow">
-                <div class="atlas-header">
-                    <div class="atlas-title">Достижения</div>
-                    <button type="button" id="closeAchievementsBtn" class="btn-cancel-small" title="Закрыть">&times;</button>
-                </div>
-                <div class="atlas-meta-block">
-                    <span class="resource-label">Очки</span>
-                    <span id="achievementsMetaScoreDisplay" class="resource-value">0</span>
-                </div>
-                <div id="achievementsList" class="achievements-list"></div>
-            </div>
-        </div>
+
         <div id="levelCompleteToast" class="level-complete-toast" hidden></div>
         <div id="achvToastStack" class="achv-toast-stack"></div>
     </div>
