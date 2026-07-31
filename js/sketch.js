@@ -49,6 +49,25 @@ function getTopUIHeight() {
     return 0;
 }
 
+/**
+ * U-09: свёрнутая шторка закрывает нижнюю полосу канваса. Камера и минимальный
+ * зум считаются от «рабочей» высоты — иначе нижний край поля навсегда остаётся
+ * под UI и до тех звёзд не дотянуться.
+ */
+function getBottomUIHeight() {
+    const peek = document.getElementById('peekBar');
+    if (!peek) return 0;
+    // Шторка открыта — свёрнутая полоса скрыта, но резерв оставляем прежний,
+    // чтобы камера не прыгала при открытии и закрытии.
+    const measured = peek.offsetHeight;
+    return measured > 0 ? measured : BOTTOM_UI_FALLBACK_HEIGHT;
+}
+
+/** Высота канваса, не перекрытая нижним UI. */
+function getUsableViewHeight() {
+    return Math.max(1, height - getBottomUIHeight());
+}
+
 /** Match p5 canvas size to the visible game area (e.g. after CSS margin for side HUD). */
 function resizeGameCanvasToContainer() {
     const container = document.getElementById('canvas-container');

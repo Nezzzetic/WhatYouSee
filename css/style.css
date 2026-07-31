@@ -12,6 +12,12 @@
     display: none !important;
 }
 
+:root {
+    /* Высота свёрнутой шторки. Дублируется в BOTTOM_UI_FALLBACK_HEIGHT
+       (constants.js) — камера резервирует ровно эту полосу. */
+    --peek-h: 76px;
+}
+
 body {
     background: #000;
     color: #eee;
@@ -51,7 +57,8 @@ body {
 /* U-09: правый верхний угол освобождён — ✦ переехал в peek-строку внизу поля */
 
 .hud-bottom-right {
-    bottom: 12px;
+    /* U-09: над свёрнутой шторкой, чтобы Undo не жался к самому краю экрана */
+    bottom: calc(var(--peek-h) + 12px);
     right: 12px;
     display: flex;
     flex-direction: row;
@@ -102,7 +109,8 @@ body {
 .dev-controls {
     position: fixed;
     left: 12px;
-    bottom: 72px; /* D-01: выше зоны тройного тапа и peek-строки (U-09) */
+    /* D-01: выше зоны тройного тапа и свёрнутой шторки (U-09) */
+    bottom: calc(var(--peek-h) + 12px);
     z-index: 39;
     display: flex;
     flex-direction: column;
@@ -569,42 +577,41 @@ button:disabled {
    U-09: ШТОРКА — peek-строка, sheet, рельс, атлас и награды
    ============================================================================= */
 
-/* --- peek-строка на поле: ✦ и вызов обеих половин --- */
+/* --- свёрнутая шторка: торчит нижним краем, читается как «потяни вверх» --- */
 
-.peek-bar {
+.sheet-peek {
     position: fixed;
-    left: 12px;
-    right: 78px; /* правый нижний угол занят Undo (44px + отступы) */
-    bottom: 12px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 40;
+    width: min(560px, 100%);
+    margin: 0 auto;
+    min-height: var(--peek-h);
+    padding: 0 10px 12px;
+    border-top: 1px solid #232838;
+    border-radius: 22px 22px 0 0;
+    background: rgba(13, 16, 26, 0.97);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.45);
+    touch-action: none; /* вытягивание шторки вверх, а не прокрутка страницы */
+    user-select: none;
+    cursor: grab;
+}
+
+.sheet-peek:active {
+    cursor: grabbing;
+}
+
+.sheet-peek-row {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px;
-    border: 1px solid #2b2e3a;
-    border-radius: 14px;
-    background: rgba(10, 12, 20, 0.86);
-    backdrop-filter: blur(6px);
-    touch-action: none; /* вытягивание шторки вверх, а не прокрутка страницы */
-    user-select: none;
 }
 
-/* На телефоне шторка накрывает peek-строку сама, на десктопе она уже
-   экрана — без этого строка торчит из-под неё с обеих сторон. */
-.sheet-open-body .peek-bar {
+/* Развёрнутая шторка встаёт на место свёрнутой — полосу убираем */
+.sheet-open-body .sheet-peek {
     display: none;
-}
-
-.peek-score {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 0 10px 0 8px;
-    font-size: 17px;
-    font-weight: 700;
-    color: #ffd35c;
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
 }
 
 .peek-score-icon {
@@ -616,7 +623,7 @@ button:disabled {
     position: relative;
     flex: 1;
     min-width: 0;
-    height: 36px;
+    height: 40px;
     padding: 0 10px;
     border: 1px solid #2b2e3a;
     border-radius: 10px;
@@ -819,14 +826,42 @@ button:disabled {
     border: 2px solid #090b12;
 }
 
+/* Сегмент разделов + «вниз»: обе цели под большим пальцем */
+.sheet-bottom-row {
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    margin-top: 8px;
+}
+
 .sheet-seg {
+    flex: 1;
+    min-width: 0;
     display: flex;
     gap: 3px;
-    margin-top: 8px;
     padding: 3px;
     border: 1px solid #232838;
     border-radius: 99px;
     background: rgba(255, 255, 255, 0.04);
+}
+
+.sheet-close-btn {
+    flex: none;
+    width: 44px;
+    padding: 0;
+    border: 1px solid #232838;
+    border-radius: 99px;
+    background: rgba(255, 255, 255, 0.04);
+    color: #878ea6;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.sheet-close-btn:hover {
+    border-color: #4a5270;
+    background: rgba(255, 255, 255, 0.08);
+    color: #eef1fa;
 }
 
 .seg-btn {

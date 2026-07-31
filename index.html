@@ -37,16 +37,15 @@
 
         <div id="canvas-container"></div>
 
-        <!-- U-09: peek-строка на поле — ✦ и вызов обеих половин шторки -->
-        <div id="peekBar" class="peek-bar">
-            <div class="peek-score" aria-label="Очки">
-                <span class="peek-score-icon" aria-hidden="true">✦</span>
-                <span id="scoreCounterValue">0</span>
+        <!-- U-09: свёрнутая шторка — торчит нижним краем, её тянут вверх или жмут -->
+        <div id="peekBar" class="sheet-peek">
+            <div class="sheet-grab" aria-hidden="true"></div>
+            <div class="sheet-peek-row">
+                <button type="button" id="peekAtlasBtn" class="peek-btn">Атлас</button>
+                <button type="button" id="peekRewardsBtn" class="peek-btn">
+                    Награды<span id="peekRewardsBadge" class="peek-badge" hidden></span>
+                </button>
             </div>
-            <button type="button" id="peekAtlasBtn" class="peek-btn">Атлас</button>
-            <button type="button" id="peekRewardsBtn" class="peek-btn">
-                Награды<span id="peekRewardsBadge" class="peek-badge" hidden></span>
-            </button>
         </div>
 
         <!-- U-09: шторка — Атлас и Награды, управление в подвале -->
@@ -66,9 +65,13 @@
             </div>
             <div class="sheet-footer">
                 <div id="sheetRail" class="sheet-rail"></div>
-                <div class="sheet-seg">
-                    <button type="button" id="segAtlasBtn" class="seg-btn">Атлас</button>
-                    <button type="button" id="segRewardsBtn" class="seg-btn">Награды</button>
+                <div class="sheet-bottom-row">
+                    <div class="sheet-seg">
+                        <button type="button" id="segAtlasBtn" class="seg-btn">Атлас</button>
+                        <button type="button" id="segRewardsBtn" class="seg-btn">Награды</button>
+                    </div>
+                    <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
+                            title="Свернуть" aria-label="Свернуть">↓</button>
                 </div>
             </div>
         </div>
