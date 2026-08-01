@@ -188,6 +188,18 @@ function isShapeCreated(shapeName) {
     return createdShapes.has(normalized);
 }
 
+/**
+ * Первое создание фигуры. Возвращает false, если фигура уже создавалась, —
+ * поэтому это единственная точка «ровно один раз на фигуру за всю игру».
+ *
+ * Награда за открытие живёт в цепочке «Первооткрыватель» (страница 💎), а не
+ * начисляется здесь молча: раньше ✦ капали без следа в Наградах, и событие
+ * нельзя было ни увидеть заранее, ни отследить.
+ *
+ * Пересчёт цепочки здесь не нужен: этот же коммит доходит до
+ * `recordAchievementCommit` (drawing.js), а он вызывает
+ * `afterAchievementStateChanged` — к тому моменту фигура уже в `createdShapes`.
+ */
 function markShapeCreated(shapeName) {
     const normalized = normalizeShapeName(shapeName);
     if (!normalized) return false;
