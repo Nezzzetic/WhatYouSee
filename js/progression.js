@@ -192,11 +192,13 @@ function isShapeCreated(shapeName) {
  * Первое создание фигуры. Возвращает false, если фигура уже создавалась, —
  * поэтому это единственная точка «ровно один раз на фигуру за всю игру».
  *
- * B-01: здесь же начисляется UNIQUE_DISCOVERY_BONUS. После U-09 первое создание
- * перестало платить вовсе (пер-фигурные цепочки удалены), хотя это самое яркое
- * событие игры — сюрприз-имя на коммите. Начисление стоит ПОСЛЕ добавления в
- * createdShapes: awardMetaScore может открыть страницу атласа и перерисовать UI,
- * а тот должен видеть фигуру уже созданной.
+ * Награда за открытие живёт в цепочке «Первооткрыватель» (страница 💎), а не
+ * начисляется здесь молча: раньше ✦ капали без следа в Наградах, и событие
+ * нельзя было ни увидеть заранее, ни отследить.
+ *
+ * Пересчёт цепочки здесь не нужен: этот же коммит доходит до
+ * `recordAchievementCommit` (drawing.js), а он вызывает
+ * `afterAchievementStateChanged` — к тому моменту фигура уже в `createdShapes`.
  */
 function markShapeCreated(shapeName) {
     const normalized = normalizeShapeName(shapeName);
@@ -204,15 +206,6 @@ function markShapeCreated(shapeName) {
     if (createdShapes.has(normalized)) return false;
     createdShapes.add(normalized);
     globalDiscoveredShapes.add(normalized);
-
-    const bonus = typeof UNIQUE_DISCOVERY_BONUS === 'number' ? UNIQUE_DISCOVERY_BONUS : 0;
-    if (bonus > 0) {
-        awardMetaScore(bonus);
-        // Начисленные ✦ не отобрать назад — откат за этот коммит блокируем,
-        // иначе созвездие исчезнет, а награда за его открытие останется.
-        if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
-    }
-
     saveProgression();
     return true;
 }

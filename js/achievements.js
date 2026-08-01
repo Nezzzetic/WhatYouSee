@@ -176,6 +176,32 @@ const ACHIEVEMENT_CHAINS = [
         icon: '🌌',
         steps: [{ id: 'unite_all_1', desc: 'Объедини все звёзды поля в одно созвездие', check: { type: 'uniteAll' } }]
     },
+    // Разведка атласа: награда за первое создание фигуры переехала сюда из разового
+    // начисления в markShapeCreated. Раньше каждое открытие молча капало ✦ — событие
+    // было, а следа в Наградах не оставалось. Теперь это видимая цель с прогрессом.
+    {
+        id: 'razvedka',
+        title: 'Первооткрыватель',
+        icon: '🔭',
+        // Своя шкала вместо общей: та же сумма, что раньше капала по 35 ✦ за
+        // каждое открытие, распределена по ступеням пропорционально их «весу».
+        // Приросты порогов 1·5·6·8·9 фигур × 35 ✦ = 35·175·210·280·315,
+        // в сумме ровно 1015 ✦ — столько же, сколько давали 29 открытий.
+        //
+        // Пороги нарочно разведены ровнее, чем у «Огранщика» (1·3·7·15·29):
+        // там удвоение — это про редкое достижение, а здесь награда не назначена,
+        // а распределена, и её нельзя запирать за последней ступенью. При 1·3·7·15·29
+        // почти половина суммы (490 ✦) висела бы на «открой все 29», куда за три
+        // месяца доходит только охотник — референс останавливается на 27,6.
+        stepRewards: [35, 175, 210, 280, 315],
+        steps: [1, 6, 12, 20, 29].map(n => ({
+            id: `razvedka_${n}`,
+            desc: n === 29
+                ? 'Открыть все 29 фигур атласа'
+                : `${n} открытых фигур атласа`,
+            check: { type: 'createdAtlasShapes', n }
+        }))
+    },
     // U-10: награда за огранку — ОДНОЙ цепочкой, а не 29 записями «Огранка: Чипсина».
     // Так «унести награду в ачивки» стоит +1 слот: список остаётся читаемым,
     // атлас остаётся коллекцией, фигура держит только состояние (грани и венец) —
@@ -204,15 +230,18 @@ function getAchievementChainById(chainId) {
 
 /**
  * B-01: награда за шаг — по индексу шага в цепочке, а не плоская ставка.
- * Раньше функция принимала только цепочку и умела подменять ставку через
- * chain.stepReward (этим пользовались удалённые в U-09 цепочки shape_*);
- * подмены больше нет ни у одной цепочки, поле не читается.
+ *
+ * Цепочка может задать свою шкалу через `stepRewards` — это нужно там, где
+ * награда не назначена, а распределена: «Первооткрыватель» делит между своими
+ * ступенями ровно ту сумму, что раньше выдавалась по 35 ✦ за каждое открытие.
+ * Общая шкала остаётся правилом, своя — обоснованным исключением.
  */
 function getAchievementChainStepReward(chain, stepIndex) {
     const i = Number(stepIndex);
-    if (!Number.isInteger(i) || i < 0 || i >= ACHIEVEMENT_STEP_REWARDS.length) {
-        return ACHIEVEMENT_STEP_REWARD_FALLBACK;
-    }
+    if (!Number.isInteger(i) || i < 0) return ACHIEVEMENT_STEP_REWARD_FALLBACK;
+    const own = chain && Array.isArray(chain.stepRewards) ? chain.stepRewards : null;
+    if (own) return i < own.length ? own[i] : ACHIEVEMENT_STEP_REWARD_FALLBACK;
+    if (i >= ACHIEVEMENT_STEP_REWARDS.length) return ACHIEVEMENT_STEP_REWARD_FALLBACK;
     return ACHIEVEMENT_STEP_REWARDS[i];
 }
 
@@ -341,6 +370,16 @@ function isShapeFaceted(shapeName) {
 /** U-09: сколько фигур атласа огранено (пригодится «Огранщику» в U-10). */
 function getFacetedShapeCount() {
     return ACHIEVEMENT_ALL_ATLAS_SHAPES.filter(isShapeFaceted).length;
+}
+
+/**
+ * Сколько фигур атласа уже открыто — прогресс «Первооткрывателя».
+ * Как и огранка, это производное свойство: считается по createdShapes,
+ * своего счётчика в сейве нет.
+ */
+function getCreatedAtlasShapeCount() {
+    if (typeof isShapeCreated !== 'function') return 0;
+    return ACHIEVEMENT_ALL_ATLAS_SHAPES.filter(isShapeCreated).length;
 }
 
 function initAchievementState() {
@@ -632,6 +671,8 @@ function evaluateAchievementCheck(check, snap) {
         // Считаем по shapeColors тем же предикатом, что рисует венец на карточке.
         case 'facetedShapes':
             return getFacetedShapeCount() >= check.n;
+        case 'createdAtlasShapes':
+            return getCreatedAtlasShapeCount() >= check.n;
         case 'rainbowNights':
             return c.rainbowNights >= check.n;
         case 'mosaicNights':
@@ -662,6 +703,7 @@ function getAchievementStepProgress(check) {
             return { current: c.starCountTotals[key] || 0, target: check.n };
         }
         case 'facetedShapes': return { current: getFacetedShapeCount(), target: check.n };
+        case 'createdAtlasShapes': return { current: getCreatedAtlasShapeCount(), target: check.n };
         case 'rainbowNights': return { current: c.rainbowNights, target: check.n };
         case 'mosaicNights': return { current: c.mosaicNights, target: check.n };
         case 'pageSpecialNights': return { current: c.pageSpecialNights[check.id] || 0, target: check.n };
@@ -932,9 +974,10 @@ const REWARD_PAGES = [
         chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony']
     },
     {
-        // U-10: «Огранщик» встаёт первой записью, страница переименована
+        // U-10: «Огранщик» на странице огранки, страница переименована.
+        // «Первооткрыватель» встаёт перед ним: открыть фигуру — шаг до её огранки.
         id: 'path', icon: '💎', title: 'Огранка и путь',
-        chainIds: ['ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all']
+        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all']
     }
 ];
 
@@ -1053,17 +1096,25 @@ function createAchievementRow(chain) {
 
     const tail = document.createElement('div');
     tail.className = 'achv-row-tail';
-    if (p.claimable && !done) {
+    if (!done) {
+        // Кнопка стоит всегда, пока цепочка не пройдена: игрок видит цену шага
+        // заранее, а не узнаёт её в момент, когда забирать уже можно.
+        // Забирать нечего — та же кнопка, но неактивная.
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'achv-claim-btn';
+        btn.className = 'achv-claim-btn' + (p.claimable ? '' : ' achv-claim-btn-idle');
         // B-01: подпись должна совпадать с тем, что реально начислится за этот шаг
         btn.textContent = `+${getAchievementChainStepReward(chain, p.stepIndex)} ✦`;
-        btn.title = 'Забрать награду';
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            claimAchievementStep(chain.id);
-        });
+        if (p.claimable) {
+            btn.title = 'Забрать награду';
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                claimAchievementStep(chain.id);
+            });
+        } else {
+            btn.disabled = true;
+            btn.title = 'Награда за текущую ступень — выполните её условие';
+        }
         tail.appendChild(btn);
     }
     row.appendChild(tail);
