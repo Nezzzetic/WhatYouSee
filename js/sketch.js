@@ -383,14 +383,23 @@ function onDevResetAchievements() {
     if (typeof console !== 'undefined' && console.info) console.info('[dev] Достижения сброшены');
 }
 
-function onFullReset() {
-    if (!confirm('Полный сброс удалит ВСЕ данные: очки, прогресс, уровень, пользовательские виды. Продолжить?')) return;
+/**
+ * Полный сброс без вопросов: прогресс, поле, UI.
+ * T-01: тот же путь использует `__test.reset()`, поэтому здесь есть хук
+ * `beforeFieldRegen` — он срабатывает после сброса прогрессии, но ДО генерации
+ * поля. Тестовый сценарий доводит им прогресс до нужного состояния (например,
+ * открывает страницы атласа), чтобы дневные цели и видимость фигур считались
+ * уже от него.
+ */
+function performFullReset(options) {
+    const opts = options || {};
 
     closeSheet();
     resetFieldSessionState();
     customTypes = [];
 
     resetProgressionForFullReset();
+    if (typeof opts.beforeFieldRegen === 'function') opts.beforeFieldRegen();
     saveProgression();
 
     regenerateFieldStarsAfterReset();
@@ -410,4 +419,9 @@ function onFullReset() {
 
     clearSave();
     autoSave();
+}
+
+function onFullReset() {
+    if (!confirm('Полный сброс удалит ВСЕ данные: очки, прогресс, уровень, пользовательские виды. Продолжить?')) return;
+    performFullReset();
 }
