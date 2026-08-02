@@ -38,6 +38,41 @@ function getMinZoomLevel() {
     return Math.min(w / FIELD_WIDTH, h / FIELD_HEIGHT);
 }
 
+/**
+ * V-11: чистое ядро расчёта множителя альфы подписей. Вынесено отдельно от
+ * getLabelZoomAlphaFactor(), чтобы проверяться без p5 и без глобалов.
+ * @returns {number} 0..1
+ */
+function computeLabelZoomAlphaFactor(zoom, minZoom, defaultZoom, lo, hi) {
+    const span = defaultZoom - minZoom;
+    // Вырожденный диапазон: на очень большом экране minZoom может подойти вплотную
+    // к DEFAULT_ZOOM (или перерасти его). Делить не на что — подписи видны.
+    if (!(span > 1e-6)) return 1;
+    const t = Math.max(0, Math.min(1, (zoom - minZoom) / span));
+    const fadeSpan = hi - lo;
+    if (!(fadeSpan > 1e-6)) return t >= hi ? 1 : 0;
+    if (t <= lo) return 0;
+    if (t >= hi) return 1;
+    const u = (t - lo) / fadeSpan;
+    return u * u * (3 - 2 * u); // smoothstep: без излома на границах коридора
+}
+
+/**
+ * V-11: во сколько раз приглушены подписи созвездий на текущем зуме.
+ * 0 на минимальном зуме (подписей нет), 1 на DEFAULT_ZOOM и выше — приближение
+ * сверх дефолтного на видимость влиять не должно. Считается на каждом кадре:
+ * getMinZoomLevel() меняется при resize, повороте и открытии шторки.
+ */
+function getLabelZoomAlphaFactor() {
+    return computeLabelZoomAlphaFactor(
+        zoomLevel,
+        getMinZoomLevel(),
+        DEFAULT_ZOOM,
+        LABEL_ZOOM_FADE_LO,
+        LABEL_ZOOM_FADE_HI
+    );
+}
+
 function clampZoomToField() {
     zoomLevel = constrain(zoomLevel, getMinZoomLevel(), MAX_ZOOM);
 }
@@ -351,7 +386,7 @@ function getAtlasCollectPulseStrength(constellation) {
     return 1 - elapsed / ATLAS_COLLECT_PULSE_MS;
 }
 
-function drawCollectedAtlasConstellationLabel(constellation, labelAnchor) {
+function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAlpha = 1) {
     // V-09: простой стиль — обычный текст цветом от звёзд (lineColor), без
     // золотого ★-бейджа и декоративного цвета фигуры. Одноразовый collect-пульс
     // сохранён, перекрашен в lineColor.
@@ -361,20 +396,27 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor) {
     const pulse = getAtlasCollectPulseStrength(constellation);
 
     if (pulse > 0) {
+        // V-11: кольцо гаснет вместе с текстом — его радиус тоже `/ zoomLevel`,
+        // на отзуме это окружность на пол-экрана без подписи внутри.
         noFill();
-        stroke(c[0], c[1], c[2], 90 + 120 * pulse);
+        stroke(c[0], c[1], c[2], (90 + 120 * pulse) * zoomAlpha);
         strokeWeight((2 + 3 * pulse) / zoomLevel);
         const ringR = (42 + 28 * pulse) / zoomLevel;
         ellipse(labelAnchor.x, labelAnchor.y, ringR * 2, ringR * 2);
     }
 
     noStroke();
-    fill(c[0], c[1], c[2]);
+    fill(c[0], c[1], c[2], 255 * zoomAlpha);
     textSize(labelSize);
     text(name, labelAnchor.x, labelAnchor.y);
 }
 
 function drawConstellationLabelsOnTile() {
+    // V-11: множитель считается один раз за кадр, до цикла по созвездиям.
+    // На дальнем зуме подписей нет вовсе — выходим сразу, не перебирая небо.
+    const zoomAlpha = getLabelZoomAlphaFactor();
+    if (zoomAlpha <= 0) return;
+
     noStroke();
     textAlign(CENTER, CENTER);
 
@@ -395,14 +437,17 @@ function drawConstellationLabelsOnTile() {
                 const elapsed = millis() - revealTime - LABEL_FADE_DELAY - offset;
                 alpha = constrain(elapsed / LABEL_FADE_DURATION, 0, 1) * 255;
             }
-            fill(235, 235, 255, alpha);
+            // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
+            // волна отыгрывает своё независимо, и при обратном зуме после ночи
+            // имена появляются сразу в полную силу, а не проигрывают волну заново.
+            fill(235, 235, 255, alpha * zoomAlpha);
             textSize(REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel);
             text(constellation.customName || constellation.name, labelAnchor.x, labelAnchor.y);
             continue;
         }
 
         if (constellation.atlasCollected) {
-            drawCollectedAtlasConstellationLabel(constellation, labelAnchor);
+            drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAlpha);
             continue;
         }
 
@@ -410,7 +455,7 @@ function drawConstellationLabelsOnTile() {
             && isShapeRecognizedOnUnlockedAtlas(constellation)) {
             // V-09: имя распознанной атласной — простой стиль, цвет от звёзд.
             const c = constellation.lineColor || LINE_COLOR;
-            fill(c[0], c[1], c[2]);
+            fill(c[0], c[1], c[2], 255 * zoomAlpha);
             textSize(COLLECTED_ATLAS_LABEL_SIZE / zoomLevel);
             text(constellation.name, labelAnchor.x, labelAnchor.y);
         }
