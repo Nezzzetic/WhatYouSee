@@ -105,7 +105,20 @@ function addDaysToSkyDateInt(dateInt, days) {
     return date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
 }
 
+// T-01: единственный шов, через который тестовый харнесс (`?test=1`, testApi.js)
+// фиксирует дату неба — от неё зависят раскладка поля, дневные цели и воскресная
+// картинка. Вне харнесса всегда null, расчёт обычный (dev-режим ходит по дням
+// через devDayOffset и этот шов не трогает).
+let testSkyDateOverride = null;
+
+function setTestSkyDateOverride(dateInt) {
+    testSkyDateOverride = (typeof dateInt === 'number' && Number.isFinite(dateInt))
+        ? Math.floor(dateInt)
+        : null;
+}
+
 function getEffectiveSkyDateInt() {
+    if (testSkyDateOverride !== null) return testSkyDateOverride;
     const offset = typeof getDevDayOffset === 'function' ? getDevDayOffset() : 0;
     if (offset <= 0) return getLocalCalendarSkyDateInt();
     return addDaysToSkyDateInt(getLocalCalendarSkyDateInt(), offset);
