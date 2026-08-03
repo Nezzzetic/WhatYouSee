@@ -12,7 +12,7 @@
 // поэтому проверяет игру, а не свою копию правил.
 //
 // ⚠️ `__test.reset()` — это полный сброс: он стирает локальный прогресс
-// (`starsReborn_v02`, `starsReborn_progression`) и, если передан `seed`,
+// (`starsReborn_v03`, `starsReborn_progression`) и, если передан `seed`,
 // подменяет playerId. Открывать `?test=1` на профиле, где играют, не стоит.
 //
 // Эталонный сценарий — `dev/docs/tools/smoke.js`.
@@ -302,12 +302,16 @@
     }
 
     /**
-     * @param {string} name имя фигуры каталога-29
+     * L-01: принимает **только ASCII-ID** фигуры ('banana'), не локализованное
+     * имя. Тест не должен зависеть от языка: со сменой локали ID не меняется,
+     * а «Банан»/«Banana» — меняется.
+     *
+     * @param {string} name ID фигуры каталога-29
      * @returns {{name, starIds, edges, visibleInAtlas, duplicateOnField} | null}
      */
     function findShape(name) {
         const pattern = typeof CATALOG_29 !== 'undefined' ? CATALOG_29[name] : null;
-        if (!pattern) fail('findShape: «' + name + '» нет в каталоге-29');
+        if (!pattern) fail('findShape: ID «' + name + '» нет в каталоге-29 (нужен ASCII-ID, не имя)');
 
         const vertexCount = pattern.stars.length;
         const patternAdj = [];
@@ -447,6 +451,9 @@
             atlasPagesOpen: [...unlockedPageIndices].sort((a, b) => a - b),
             chains: chainsDump(),
             undoFloor,
+            // L-01: язык рядом с версиями сейва — сценарий должен видеть, в какой
+            // локали он прогнался, не разбирая URL сам.
+            locale: typeof getLocale === 'function' ? getLocale() : null,
             saveVersion: {
                 achievements: ACHIEVEMENTS_SAVE_VERSION,
                 catalog: CATALOG_SAVE_VERSION

@@ -1,5 +1,6 @@
 ﻿<!DOCTYPE html>
-<html lang="ru">
+<!-- L-01: lang перевыставляется из getLocale() при старте (i18n.js) -->
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,7 +11,9 @@
 <body>
     <div id="app">
         <div id="gameActions" class="hud-corner hud-bottom-right">
-            <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn" title="Отменить последнее созвездие" disabled aria-label="Отменить последнее созвездие">↩</button>
+            <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn"
+                    data-i18n-title="field.undoLast" data-i18n-aria="field.undoLast"
+                    disabled>↩</button>
         </div>
 
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>
@@ -30,7 +33,7 @@
         </div>
 
         <div id="constellation-hints" class="hints-panel-hidden" hidden>
-            <div class="level-patterns-title">Паттерны</div>
+            <div class="level-patterns-title" data-i18n="hints.title">Patterns</div>
             <div id="hintStarFilterBar" class="hint-filter-bar"></div>
             <div id="hintList" class="hint-list"></div>
         </div>
@@ -39,7 +42,7 @@
 
         <!-- U-09: свёрнутая шторка — торчит нижним краем, её тянут вверх или жмут -->
         <div id="peekBar" class="sheet-peek" role="button" tabindex="0"
-             aria-label="Открыть атлас и награды">
+             data-i18n-aria="sheet.open">
             <div class="sheet-grab" aria-hidden="true"></div>
             <span id="peekRewardsBadge" class="peek-badge" hidden></span>
         </div>
@@ -50,7 +53,7 @@
             <div id="sheetHandle" class="sheet-handle">
                 <div class="sheet-grab" aria-hidden="true"></div>
                 <div id="sheetTitle" class="sheet-title"></div>
-                <div class="sheet-score" aria-label="Очки">
+                <div class="sheet-score" data-i18n-aria="sheet.score">
                     <span class="peek-score-icon" aria-hidden="true">✦</span>
                     <span id="sheetScoreValue">0</span>
                 </div>
@@ -63,11 +66,11 @@
                 <div id="sheetRail" class="sheet-rail"></div>
                 <div class="sheet-bottom-row">
                     <div class="sheet-seg">
-                        <button type="button" id="segAtlasBtn" class="seg-btn">Атлас</button>
-                        <button type="button" id="segRewardsBtn" class="seg-btn">Награды</button>
+                        <button type="button" id="segAtlasBtn" class="seg-btn" data-i18n="sheet.segAtlas">Atlas</button>
+                        <button type="button" id="segRewardsBtn" class="seg-btn" data-i18n="sheet.segRewards">Rewards</button>
                     </div>
                     <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
-                            title="Свернуть" aria-label="Свернуть">↓</button>
+                            data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse">↓</button>
                 </div>
             </div>
         </div>
@@ -76,7 +79,10 @@
         <div id="achvToastStack" class="achv-toast-stack"></div>
     </div>
 
-    <!-- T-01: харнесс идёт первым, чтобы ловить ошибки с самой загрузки;
+    <!-- L-01: i18n идёт самым первым — словари нужны уже на этапе объявления
+         констант, а lang выставляется до первого кадра -->
+    <script src="js/i18n.js"></script>
+    <!-- T-01: харнесс идёт следом, чтобы ловить ошибки с самой загрузки;
          без ?test=1 он выходит сразу и ничего не создаёт -->
     <script src="js/testApi.js"></script>
     <script src="js/audio.js"></script>

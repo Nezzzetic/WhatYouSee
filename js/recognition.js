@@ -451,7 +451,7 @@ function recognizeShapeLegacy(lines, starIds) {
     const starCount = starIds.size;
     const lineCount = lines.length;
 
-    if (starCount < 3 || starCount > 5) return 'Фигура';
+    if (starCount < 3 || starCount > 5) return SHAPE_UNRECOGNIZED;
 
     // Build graph: degree of each vertex
     const degree = {};
@@ -483,17 +483,17 @@ function recognizeShapeLegacy(lines, starIds) {
             // Check specific silhouettes before generic triangle.
             // Pizza slice: any closed triangle; reject needles (min interior angle <= 15°).
             if (pizzaSliceMetricsPass(lengths, angles)) {
-                return 'Кусок пиццы';
+                return 'pizza-slice';
             }
 
             // Elongated sharp triangle silhouette is interpreted as a mouse cursor.
             if (minAngle <= 40 && maxAngle >= 80) {
-                return 'Курсор мыши';
+                return 'mouse-cursor';
             }
             if (sideRatioOk(lengths, SIDE_RATIO_THRESHOLD)) {
-                return 'Треугольник';
+                return 'triangle';
             }
-            return 'Фигура';
+            return SHAPE_UNRECOGNIZED;
         }
         if (lineCount === 2 && isChain) {
             const ordered = getOrderedStarsForChain(lines, starIds);
@@ -509,19 +509,19 @@ function recognizeShapeLegacy(lines, starIds) {
                 const angle = angleBetweenPoints(endA, mid, endB);
 
                 if (angle >= 35 && angle <= 80 && lenRatio >= 1.15 && lenRatio <= 2.8) {
-                    return 'Мороженное';
+                    return 'ice-cream';
                 }
 
                 if (caterpillarChainGeometryOk(lines, starIds)) {
-                    return 'Гусеница';
+                    return 'caterpillar';
                 }
 
                 if (sidesOk && Math.abs(angle - 90) <= ANGLE_TOLERANCE) {
-                    return 'Победа';
+                    return 'victory';
                 }
             }
         }
-        return 'Фигура';
+        return SHAPE_UNRECOGNIZED;
     }
 
     // === 4 stars ===
@@ -548,21 +548,21 @@ function recognizeShapeLegacy(lines, starIds) {
             const squarish = isSquareLikeQuad(angles, spanX, spanY);
 
             if (!sidesOk && minAngle <= 65 && maxAngle >= 120 && (maxLen / Math.max(1, minLen)) >= 1.45) {
-                return 'Утюг';
+                return 'iron';
             }
 
             if (sidesOk && squarish && (spanX / Math.max(1, spanY)) >= 1.45) {
-                return 'Очки';
+                return 'glasses';
             }
 
-            if (sidesOk && squarish) return 'Квадрат';
-            const kiteEn = typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled('Кайт');
-            if (kiteEn && kiteQuadMetricsFromOrdered(ordered)) return 'Кайт';
+            if (sidesOk && squarish) return 'square';
+            const kiteEn = typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled('deltoid');
+            if (kiteEn && kiteQuadMetricsFromOrdered(ordered)) return 'deltoid';
             if (sidesOk) {
-                const rombEn = typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled('Ромб');
-                if (rombEn) return 'Ромб';
+                const rombEn = typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled('rhombus');
+                if (rombEn) return 'rhombus';
             }
-            return 'Четырёхугольник';
+            return 'quadrilateral';
         }
         if (lineCount === 3) {
             if (isChain) {
@@ -585,35 +585,35 @@ function recognizeShapeLegacy(lines, starIds) {
                 if (arcShape &&
                     minChainAngle < 55 &&
                     maxChainAngle > 120) {
-                    return 'Крюк';
+                    return 'hook';
                 }
 
                 const segLens = getChainSegmentLengths(ordered);
                 if (arcShape &&
                     trusyChainMetricsPass(chainAng, segLens) &&
                     chainAspect >= TRUSY_MIN_CHAIN_ASPECT) {
-                    return 'Трусы';
+                    return 'briefs';
                 }
 
                 if (arcShape && bananaChainMetricsPass(chainAng)) {
-                    return 'Банан';
+                    return 'banana';
                 }
 
                 if (arcShape &&
                     chainAng.every(a => a >= 95 && a <= 170)) {
-                    return 'Сосиска';
+                    return 'sausage';
                 }
 
                 if (!arcShape &&
                     minChainAngle <= 80 &&
                     maxChainAngle >= 120) {
-                    return 'Носок';
+                    return 'sock';
                 }
 
                 if (chainAnglesOk(chainAng, CHAIN_MIN_ANGLE)) {
-                    return 'Цепочка-4';
+                    return 'chain-4';
                 }
-                return 'Зигзаг';
+                return 'zigzag';
             }
             if (hasCenter && centerDegree === 3) {
                 let centerId = null;
@@ -640,13 +640,13 @@ function recognizeShapeLegacy(lines, starIds) {
                         const shortestRatio = branchLengths[0] / Math.max(1, branchLengths[2]);
                         const middleRatio = branchLengths[1] / Math.max(1, branchLengths[2]);
                         if (shortestRatio <= 0.72 && middleRatio >= 0.76) {
-                            return 'Резиновая уточка';
+                            return 'rubber-duck';
                         }
                     }
                 }
-                return 'Вилка';
+                return 'fork';
             }
-            return 'Зигзаг';
+            return 'zigzag';
         }
         if (lineCount === 4 && hasCenter) {
             if (centerDegree === 3) {
@@ -674,14 +674,14 @@ function recognizeShapeLegacy(lines, starIds) {
                         const shortToMid = branchLengths[0] / Math.max(1, branchLengths[1]);
                         const longToMid = branchLengths[2] / Math.max(1, branchLengths[1]);
                         if (shortToMid >= 0.7 && longToMid >= 1.2) {
-                            return 'Бабочка';
+                            return 'butterfly';
                         }
                     }
                 }
             }
-            return 'Песочные часы';
+            return 'hourglass';
         }
-        return 'Фигура';
+        return SHAPE_UNRECOGNIZED;
     }
 
     // === 5 stars ===
@@ -690,9 +690,9 @@ function recognizeShapeLegacy(lines, starIds) {
             const ordered = getOrderedStarsForClosedShape(lines, starIds);
             const lengths = getEdgeLengthsClosed(ordered);
             if (sideRatioOk(lengths, SIDE_RATIO_THRESHOLD)) {
-                return 'Пентагон';
+                return 'pentagon';
             }
-            return 'Пятиугольник';
+            return 'pentagon-irregular';
         }
         if (lineCount === 4 && isChain) {
             const ordered = getOrderedStarsForChain(lines, starIds);
@@ -702,18 +702,18 @@ function recognizeShapeLegacy(lines, starIds) {
                 const centerAngle = chainAng[1];
                 const outerAverage = (chainAng[0] + chainAng[2]) / 2;
                 if (centerAngle <= 65 && outerAverage >= 95 && outerAverage <= 165) {
-                    return 'Сердечко';
+                    return 'heart';
                 }
             }
 
             if (mustacheFiveStarGeometryOk(lines, starIds)) {
-                return 'Усы';
+                return 'mustache';
             }
 
             if (chainAnglesOk(chainAng, CHAIN_MIN_ANGLE)) {
-                return 'Цепочка-5';
+                return 'chain-5';
             }
-            return 'Фигура';
+            return SHAPE_UNRECOGNIZED;
         }
         if (hasCenter && centerDegree >= 4) {
             if (centerDegree === 4) {
@@ -740,12 +740,12 @@ function recognizeShapeLegacy(lines, starIds) {
                         const maxRay = Math.max(...rayLengths);
                         const minRay = Math.min(...rayLengths);
                         if ((maxRay / Math.max(1, minRay)) >= 1.8) {
-                            return 'Единорог';
+                            return 'unicorn';
                         }
                     }
                 }
             }
-            return 'Звезда';
+            return 'star';
         }
         if (hasCenter && centerDegree === 3) {
             let centerId = null;
@@ -773,16 +773,16 @@ function recognizeShapeLegacy(lines, starIds) {
                     const shortIsDistinct = (branchLengths[0] / Math.max(1, branchLengths[1])) <= 0.8;
                     const longPairSimilar = (branchLengths[2] / Math.max(1, branchLengths[1])) <= 1.35;
                     if (shortIsDistinct && longPairSimilar) {
-                        return 'Медуза';
+                        return 'jellyfish';
                     }
                 }
             }
-            return 'Дерево';
+            return 'tree';
         }
-        return 'Фигура';
+        return SHAPE_UNRECOGNIZED;
     }
 
-    return 'Фигура';
+    return SHAPE_UNRECOGNIZED;
 }
 
 // =============================================================================
@@ -1077,7 +1077,7 @@ function getRecognitionCandidatesPool(inputFeatures) {
             ? RECOG_HYBRID_EXCLUDED_SHAPE_NAMES
             : null;
     const builtinCandidates = (enabledBuiltinShapes || (typeof BUILTIN_SHAPE_NAMES !== 'undefined' ? BUILTIN_SHAPE_NAMES : Object.keys(SHAPE_PATTERNS || {})))
-        .filter(name => name !== 'Фигура')
+        .filter(name => name !== SHAPE_UNRECOGNIZED)
         .filter(name => !!SHAPE_PATTERNS[name])
         .filter(name => !hybridExcluded || !hybridExcluded.has(name));
     const degreeSignature = inputFeatures.degreeSequence.join(',');
@@ -1159,7 +1159,7 @@ function rankRecognitionCandidates(lines, starIds, legacyLabel) {
             RECOG_WEIGHT_GLOBAL * s.global -
             s.penalty * 0.22;
 
-        if (legacyLabel && legacyLabel !== 'Фигура' && legacyLabel === name) {
+        if (legacyLabel && legacyLabel !== SHAPE_UNRECOGNIZED && legacyLabel === name) {
             score += RECOG_LEGACY_BONUS;
         }
         if (typeof isShapeVisibleInAtlas === 'function' && isShapeVisibleInAtlas(name)) {
@@ -1186,13 +1186,13 @@ function rankRecognitionCandidates(lines, starIds, legacyLabel) {
 
 function makeFallbackRecognition(legacyLabel) {
     return {
-        label: 'Фигура',
+        label: SHAPE_UNRECOGNIZED,
         confidence: 0,
         secondBest: null,
         delta: 0,
         state: 'fallback',
         candidates: [],
-        legacyLabel: legacyLabel || 'Фигура',
+        legacyLabel: legacyLabel || SHAPE_UNRECOGNIZED,
         details: null
     };
 }
@@ -1205,11 +1205,11 @@ function makeFallbackRecognition(legacyLabel) {
  */
 function recognizeShapeTopologyDetailed(lines, starIds) {
     const ids = starIds ? [...starIds] : [];
-    if (ids.length < 2 || ids.length > 5) return makeFallbackRecognition('Фигура');
-    if (typeof topologyRecognizeName !== 'function') return makeFallbackRecognition('Фигура');
+    if (ids.length < 2 || ids.length > 5) return makeFallbackRecognition(SHAPE_UNRECOGNIZED);
+    if (typeof topologyRecognizeName !== 'function') return makeFallbackRecognition(SHAPE_UNRECOGNIZED);
 
     const name = topologyRecognizeName(ids, lines, (id) => getStarById(id));
-    if (!name) return makeFallbackRecognition('Фигура');
+    if (!name) return makeFallbackRecognition(SHAPE_UNRECOGNIZED);
 
     // Гейт активности: наружу отдаём только встроенные включённые фигуры.
     // Все 29 фигур каталога-29 включены (страницы атласа 0–6). Видимость
@@ -1239,13 +1239,13 @@ function recognizeShapeDetailed(lines, starIds) {
     const starCount = starIds ? starIds.size : 0;
     if (starCount < 3 || starCount > 7) {
         return {
-            label: 'Фигура',
+            label: SHAPE_UNRECOGNIZED,
             confidence: 0,
             secondBest: null,
             delta: 0,
             state: 'fallback',
             candidates: [],
-            legacyLabel: 'Фигура',
+            legacyLabel: SHAPE_UNRECOGNIZED,
             details: null
         };
     }
@@ -1254,7 +1254,7 @@ function recognizeShapeDetailed(lines, starIds) {
     const { ranked } = rankRecognitionCandidates(lines, starIds, legacyLabel);
     if (ranked.length === 0) {
         return {
-            label: 'Фигура',
+            label: SHAPE_UNRECOGNIZED,
             confidence: 0,
             secondBest: null,
             delta: 0,
@@ -1272,22 +1272,22 @@ function recognizeShapeDetailed(lines, starIds) {
     const kiteGeomOk = kiteQuadGeometryOk(lines, starIds);
     const mustacheGeomOk = mustacheFiveStarGeometryOk(lines, starIds);
     let rankedForPick = ranked.filter(entry => {
-        if (entry.label === 'Кусок пиццы' && !pizzaGeomOk) return false;
-        if (entry.label === 'Гусеница' && !caterpillarGeomOk) return false;
-        if (entry.label === 'Трусы' && !trusyGeomOk) return false;
-        if (entry.label === 'Банан' && !bananaGeomOk) return false;
-        if (entry.label === 'Кайт' && !kiteGeomOk) return false;
-        if (entry.label === 'Усы' && !mustacheGeomOk) return false;
+        if (entry.label === 'pizza-slice' && !pizzaGeomOk) return false;
+        if (entry.label === 'caterpillar' && !caterpillarGeomOk) return false;
+        if (entry.label === 'briefs' && !trusyGeomOk) return false;
+        if (entry.label === 'banana' && !bananaGeomOk) return false;
+        if (entry.label === 'deltoid' && !kiteGeomOk) return false;
+        if (entry.label === 'mustache' && !mustacheGeomOk) return false;
         return true;
     });
     if (rankedForPick.length === 0) {
         rankedForPick = ranked.filter(entry =>
-            entry.label !== 'Кусок пиццы' && entry.label !== 'Гусеница' && entry.label !== 'Трусы' &&
-            entry.label !== 'Банан' && entry.label !== 'Кайт' && entry.label !== 'Усы');
+            entry.label !== 'pizza-slice' && entry.label !== 'caterpillar' && entry.label !== 'briefs' &&
+            entry.label !== 'banana' && entry.label !== 'deltoid' && entry.label !== 'mustache');
     }
     if (rankedForPick.length === 0) {
         return {
-            label: 'Фигура',
+            label: SHAPE_UNRECOGNIZED,
             confidence: 0,
             secondBest: null,
             delta: 0,
@@ -1303,7 +1303,7 @@ function recognizeShapeDetailed(lines, starIds) {
     const delta = second ? (best.score - second.score) : best.score;
 
     let state = 'fallback';
-    let label = 'Фигура';
+    let label = SHAPE_UNRECOGNIZED;
     if (best.score >= RECOG_ACCEPT_THRESHOLD && delta >= RECOG_MARGIN_THRESHOLD) {
         state = 'accept';
         label = best.label;
@@ -1332,7 +1332,7 @@ function applyAtlasUnlockedRecognitionPreference(result) {
     if (!result) return result;
 
     const canUseAtlasLabel = (name) => {
-        if (!name || name === 'Фигура') return false;
+        if (!name || name === SHAPE_UNRECOGNIZED) return false;
         if (typeof isBuiltinShapeEnabled === 'function' && !isBuiltinShapeEnabled(name)) return false;
         return typeof isShapeVisibleInAtlas === 'function' && isShapeVisibleInAtlas(name);
     };
@@ -1377,13 +1377,14 @@ function recognizeShape(lines, starIds) {
 // =============================================================================
 
 /**
- * Returns a random name from FALLBACK_NAMES not already used on the field.
- * @param {string[]} usedNames - current constellation.name values on the field
- * @returns {string} unique fallback name, or 'Фигура' if pool is exhausted
+ * L-01: возвращает ID fallback-имени (`fb12`), а не само слово — на экран оно
+ * попадёт через shapeLabel(). Индекс один на все локали.
+ * @param {string[]} usedNames - текущие constellation.name на поле (тоже ID)
+ * @returns {string} свободный ID из пула, либо SHAPE_UNRECOGNIZED, если пул исчерпан
  */
 function pickFallbackName(usedNames) {
     const usedSet = new Set(usedNames);
-    const available = FALLBACK_NAMES.filter(name => !usedSet.has(name));
-    if (available.length === 0) return 'Фигура';
+    const available = FALLBACK_NAME_IDS.filter(id => !usedSet.has(id));
+    if (available.length === 0) return SHAPE_UNRECOGNIZED;
     return available[Math.floor(Math.random() * available.length)];
 }

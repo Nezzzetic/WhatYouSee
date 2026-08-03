@@ -51,7 +51,7 @@ function hasAtlasCollectedConstellationOnField() {
 /** Уже есть созвездие с этой атласной фигурой (ignoreConstellation — не считать, напр. текущий коммит). */
 function isAtlasShapeAlreadyOnField(shapeName, ignoreConstellation = null) {
     const normalized = normalizeShapeName(shapeName);
-    if (!normalized || normalized === 'Фигура') return false;
+    if (!normalized || normalized === SHAPE_UNRECOGNIZED) return false;
     if (typeof isShapeOnAtlas === 'function' && !isShapeOnAtlas(normalized)) return false;
 
     const committed = Array.isArray(constellations) ? constellations : [];
@@ -98,7 +98,7 @@ function recomputeAtlasCollectedStarColors() {
     const next = new Map();
     for (const c of constellations) {
         if (!c || !c.atlasCollected) continue;
-        const shapeInfo = SHAPES[c.shape] || SHAPES[c.name] || SHAPES['Фигура'];
+        const shapeInfo = SHAPES[c.shape] || SHAPES[c.name] || SHAPES[SHAPE_UNRECOGNIZED];
         const color = shapeInfo.color;
         for (const seg of c.lines || []) {
             if (!seg) continue;
@@ -254,7 +254,7 @@ function getDraftUnlockedAtlasShapeHint() {
         return null;
     }
 
-    if (!label || label === 'Фигура') return null;
+    if (!label || label === SHAPE_UNRECOGNIZED) return null;
     if (typeof isBuiltinShapeEnabled === 'function' && !isBuiltinShapeEnabled(label)) return null;
     if (typeof isShapeVisibleInAtlas !== 'function' || !isShapeVisibleInAtlas(label)) return null;
     if (isAtlasShapeAlreadyOnField(label)) return null;
@@ -626,13 +626,13 @@ function buildConstellationCommitPayload(lines) {
     });
 
     if (isBuiltinShapeName(shape) && !isBuiltinShapeEnabled(shape)) {
-        shape = 'Фигура';
+        shape = SHAPE_UNRECOGNIZED;
         recognizedState = 'fallback';
         recognizedCandidates = [];
     }
     const recognizedClass = shape;
 
-    if (shape === 'Фигура') {
+    if (shape === SHAPE_UNRECOGNIZED) {
         const signature = computeConstellationSignature(lines, starIds);
 
         if (customTypes.length > 0) {
@@ -670,8 +670,8 @@ function commitConstellationFromPayload(payload) {
         ? clampShapeToAtlasVisibility(shape)
         : shape;
     // M-02: запрет дублирующихся атласных имён на одном поле
-    if (finalShape !== 'Фигура' && isAtlasShapeAlreadyOnField(finalShape)) {
-        finalShape = 'Фигура';
+    if (finalShape !== SHAPE_UNRECOGNIZED && isAtlasShapeAlreadyOnField(finalShape)) {
+        finalShape = SHAPE_UNRECOGNIZED;
     }
     const scoreClass = typeof clampShapeToAtlasVisibility === 'function'
         ? clampShapeToAtlasVisibility(recognizedClass || shape)
@@ -689,14 +689,14 @@ function commitConstellationFromPayload(payload) {
 
     // S-01: первое создание фигуры фиксируется на коммите (сюрприз-имя,
     // первая копия сразу становится atlas-collected)
-    if (finalShape !== 'Фигура' && isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)) {
+    if (finalShape !== SHAPE_UNRECOGNIZED && isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)) {
         markShapeCreated(finalShape);
     }
 
     const labelAnchor = computeConstellationLabelAnchor(lines, starIds, finalShape);
     const isAtlasCollect = canCollectAtlasShapeOnField(finalShape);
     const { isSpecial: isFirstStarCountOnField } = registerStarCountOnCommit(starCount);
-    const displayName = finalShape === 'Фигура'
+    const displayName = finalShape === SHAPE_UNRECOGNIZED
         ? pickFallbackName(constellations.map(c => c.name))
         : finalShape;
     const constellation = {
@@ -976,8 +976,9 @@ function getConstellationAtFieldPoint(fx, fy) {
 }
 
 function openConstellationRenamePrompt(constellation) {
-    const current = constellation.customName || constellation.name;
-    const result = prompt('Переименовать созвездие:', current);
+    const current = constellation.customName || getConstellationDisplayName(constellation);
+    // Промпт переводится, введённое игроком имя — нет (решение исполнителя L-01).
+    const result = prompt(t('field.renamePrompt'), current);
     if (result === null || result.trim() === '') return;
     constellation.customName = result.trim();
     autoSave();
@@ -1023,7 +1024,10 @@ function computeConstellationLabelAnchor(lines, starIds, shapeName) {
 
     const safeMargin = 18;
     const cx = constrain((minX + maxX) / 2, safeMargin, FIELD_WIDTH - safeMargin);
-    const labelText = typeof shapeName === 'string' && shapeName.trim().length > 0 ? shapeName.trim() : 'Созвездие';
+    // L-01: ширину прикидываем по локализованной подписи — длина строк разная.
+    const labelText = typeof shapeName === 'string' && shapeName.trim().length > 0
+        ? shapeLabel(shapeName.trim())
+        : t('field.constellation');
     const estimatedLabelWidth = Math.max(72, labelText.length * 9);
     const labelHalfW = estimatedLabelWidth / 2;
     const labelHalfH = 11;

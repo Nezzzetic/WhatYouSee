@@ -424,8 +424,8 @@ function createMustachePracticeAnchorStar(id, x, y) {
 
 /** Только 5 звёзд — эталонная M из SHAPE_PATTERNS «Усы» в центре поля (режим `?mustache=1`). */
 function generateStarsMustachePractice() {
-    const pattern = SHAPE_PATTERNS && SHAPE_PATTERNS['Усы'] && Array.isArray(SHAPE_PATTERNS['Усы'].stars)
-        ? SHAPE_PATTERNS['Усы'].stars
+    const pattern = SHAPE_PATTERNS && SHAPE_PATTERNS['mustache'] && Array.isArray(SHAPE_PATTERNS['mustache'].stars)
+        ? SHAPE_PATTERNS['mustache'].stars
         : [[0.05, 0.5], [0.26, 0.38], [0.5, 0.52], [0.74, 0.38], [0.95, 0.5]];
     const cx = FIELD_WIDTH / 2;
     const cy = FIELD_HEIGHT / 2;

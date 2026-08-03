@@ -17,19 +17,38 @@ let devDayOffset = 0;
 let globalDiscoveredShapes = new Set();
 let atlasClaimedShapes = new Set();
 
-// Версия каталога фигур в сейве. 1 = каталог-29 (топологический режим).
+// Версия каталога фигур в сейве. 1 = каталог-29 (топологический режим),
+// 2 = тот же каталог, но ключи — ASCII-ID вместо русских имён (L-01).
 // Сейвы без поля catalogVersion — с геометрического демо: прогрессия по
 // фигурам сбрасывается при загрузке (demo-to-graph-catalog).
-const CATALOG_SAVE_VERSION = 1;
+const CATALOG_SAVE_VERSION = 2;
 
 // =============================================================================
 // HELPERS
 // =============================================================================
 
+/**
+ * L-01: в реестре ID есть встроенные фигуры (ключи SHAPES), sentinel и ID
+ * fallback-имён. Пользовательские виды сюда тоже попадают: registerCustomType
+ * кладёт их в SHAPES (customTypes.js).
+ */
+function isKnownShapeId(id) {
+    if (id === SHAPE_UNRECOGNIZED) return true;
+    if (typeof FALLBACK_NAME_IDS !== 'undefined' && FALLBACK_NAME_IDS.includes(id)) return true;
+    return typeof SHAPES === 'object' && SHAPES !== null
+        && Object.prototype.hasOwnProperty.call(SHAPES, id);
+}
+
+/**
+ * Единственная точка нормализации имени фигуры. Она же страхует от сейва,
+ * проскочившего мимо версии: значение вне реестра ID (например, кириллическое
+ * имя из сейва до L-01) превращается в null, а не расползается по счётчикам.
+ */
 function normalizeShapeName(shapeName) {
     if (typeof shapeName !== 'string') return null;
     const trimmed = shapeName.trim();
-    return trimmed.length > 0 ? trimmed : null;
+    if (trimmed.length === 0) return null;
+    return isKnownShapeId(trimmed) ? trimmed : null;
 }
 
 function ensurePlayerId() {
@@ -70,7 +89,7 @@ function maybeAutoUnlockAtlasPages() {
         unlockedPageIndices.add(next);
         unlockedAny = true;
         if (typeof showInfoToast === 'function') {
-            showInfoToast('📖', 'Открыта страница атласа', `Страница ${next + 1} — новые фигуры в наборе`);
+            showInfoToast('📖', t('toast.atlasPageTitle'), t('toast.atlasPageSub', { n: next + 1 }));
         }
         next = getNextLockedAtlasPageIndex();
     }
@@ -142,8 +161,8 @@ function isShapeVisibleInAtlas(shapeName) {
 /** Атласная фигура с закрытой страницы не показывается и не идёт в итоги уровня. */
 function clampShapeToAtlasVisibility(shapeName) {
     const normalized = normalizeShapeName(shapeName);
-    if (!normalized || normalized === 'Фигура') return 'Фигура';
-    if (isShapeOnAtlas(normalized) && !isShapeVisibleInAtlas(normalized)) return 'Фигура';
+    if (!normalized || normalized === SHAPE_UNRECOGNIZED) return SHAPE_UNRECOGNIZED;
+    if (isShapeOnAtlas(normalized) && !isShapeVisibleInAtlas(normalized)) return SHAPE_UNRECOGNIZED;
     return normalized;
 }
 
@@ -151,7 +170,7 @@ function clampShapeToAtlasVisibility(shapeName) {
 function isShapeRecognizedOnUnlockedAtlas(constellation) {
     if (!constellation) return false;
     const name = normalizeShapeName(constellation.shape || constellation.name);
-    if (!name || name === 'Фигура') return false;
+    if (!name || name === SHAPE_UNRECOGNIZED) return false;
     if (!isShapeVisibleInAtlas(name)) return false;
 
     const committed = Array.isArray(constellations) ? constellations : [];
@@ -300,9 +319,8 @@ function getCurrentLevelThreshold() {
 }
 
 function getLevelName(level) {
-    if (level < 1) return LEVEL_NAMES[0];
-    if (level > LEVEL_NAMES.length) return LEVEL_NAMES[LEVEL_NAMES.length - 1];
-    return LEVEL_NAMES[level - 1];
+    const index = Math.max(0, Math.min(LEVEL_NAME_COUNT - 1, Math.floor(level) - 1));
+    return t('level.' + index);
 }
 
 function isFavoriteShape(shapeName) {

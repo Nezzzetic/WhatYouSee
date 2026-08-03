@@ -204,8 +204,8 @@ function drawConstellationSkeletonLinesWorld(tiles) {
             // atlas-collected и prominent для recognizedAtlas убраны.
             const prominent = constellationArtRevealed;
             const shapeInfo = prominent
-                ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES['Фигура'])
-                : SHAPES['Фигура'];
+                ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
+                : SHAPES[SHAPE_UNRECOGNIZED];
             // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
             const lineColor = constellation.lineColor || LINE_COLOR;
 
@@ -328,7 +328,7 @@ function drawCurrentAndPendingLinesWorld(tiles) {
 function drawConstellationLineArtImage(constellation) {
     if (!shouldShowConstellationLineArt(constellation)) return;
     const shapeName = constellation.shape || constellation.name;
-    const shapeInfo = SHAPES[shapeName] || SHAPES['Фигура'];
+    const shapeInfo = SHAPES[shapeName] || SHAPES[SHAPE_UNRECOGNIZED];
     if (!shapeInfo.image || !constellation.imageTransform) return;
     const img = constellationImages[shapeName];
     if (!img || !img.complete || img.naturalWidth === 0) return;
@@ -392,7 +392,7 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAl
     // сохранён, перекрашен в lineColor.
     const c = constellation.lineColor || LINE_COLOR;
     const labelSize = COLLECTED_ATLAS_LABEL_SIZE / zoomLevel;
-    const name = constellation.name;
+    const name = getConstellationDisplayName(constellation);
     const pulse = getAtlasCollectPulseStrength(constellation);
 
     if (pulse > 0) {
@@ -442,7 +442,7 @@ function drawConstellationLabelsOnTile() {
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
             fill(235, 235, 255, alpha * zoomAlpha);
             textSize(REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel);
-            text(constellation.customName || constellation.name, labelAnchor.x, labelAnchor.y);
+            text(getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y);
             continue;
         }
 
@@ -457,7 +457,7 @@ function drawConstellationLabelsOnTile() {
             const c = constellation.lineColor || LINE_COLOR;
             fill(c[0], c[1], c[2], 255 * zoomAlpha);
             textSize(COLLECTED_ATLAS_LABEL_SIZE / zoomLevel);
-            text(constellation.name, labelAnchor.x, labelAnchor.y);
+            text(getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y);
         }
     }
 }
