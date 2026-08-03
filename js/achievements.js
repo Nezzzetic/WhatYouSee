@@ -32,8 +32,13 @@ const ACHIEVEMENT_VOLUME_TIERS = [1, 5, 60, 120, 240];
 // colorValue тира → внутреннее имя цвета
 const ACHIEVEMENT_BUCKET_BY_VALUE = { '-100': 'red', '-50': 'orange', '0': 'yellow', '50': 'white', '100': 'blue' };
 const ACHIEVEMENT_COLOR_KEYS = ['red', 'orange', 'yellow', 'white', 'blue'];
-const ACHIEVEMENT_COLOR_RU = { red: 'красный', orange: 'оранжевый', yellow: 'жёлтый', white: 'белый', blue: 'голубой' };
-const ACHIEVEMENT_COLOR_TITLE = { red: 'Багровые', orange: 'Янтарные', yellow: 'Золотые', white: 'Жемчужные', blue: 'Лазурные' };
+// L-01: названия цветов и заголовки цепочек переехали в словари (i18n.js).
+// `ACHIEVEMENT_COLOR_RU` был картой «ключ → русское прилагательное»; теперь это
+// `t('color.' + key)`, а заголовок цепочки — `t('chain.color_red.title')`.
+/** Прилагательное цвета на языке игрока («red» / «красный»). */
+function achievementColorLabel(color) {
+    return t('color.' + color);
+}
 const ACHIEVEMENT_COLOR_ICON = { red: '🔴', orange: '🟠', yellow: '🟡', white: '⚪', blue: '🔵' };
 const ACHIEVEMENT_SIZE_ICON = { 3: '3️⃣', 4: '4️⃣', 5: '5️⃣', 6: '6️⃣', 7: '7️⃣' };
 const ACHIEVEMENT_SIZE_KEYS = ['3', '4', '5', '6', '7', '8plus'];
@@ -46,11 +51,11 @@ function buildColorChain(color) {
     const tiers = ACHIEVEMENT_VOLUME_TIERS;
     return {
         id: 'color_' + color,
-        title: ACHIEVEMENT_COLOR_TITLE[color],
+        title: t(`chain.color_${color}.title`),
         icon: ACHIEVEMENT_COLOR_ICON[color],
         steps: tiers.map(n => ({
             id: `color_${color}_${n}`,
-            desc: `${n} созвездий цвета «${ACHIEVEMENT_COLOR_RU[color]}»`,
+            desc: tp('chain.color.step', n, { color: achievementColorLabel(color) }),
             check: { type: 'colorTotal', color, n }
         }))
     };
@@ -60,11 +65,12 @@ function buildExactSizeChain(size) {
     const tiers = ACHIEVEMENT_VOLUME_TIERS;
     return {
         id: 'size_' + size,
+        // Заголовок — «4★»: цифра со звездой одинакова во всех локалях.
         title: `${size}★`,
         icon: ACHIEVEMENT_SIZE_ICON[size],
         steps: tiers.map(n => ({
             id: `size_${size}_${n}`,
-            desc: `${n} созвездий по ${size}★`,
+            desc: tp('chain.size.step', n, { size }),
             check: { type: 'starCountTotal', mode: 'exact', size, n }
         }))
     };
@@ -76,16 +82,16 @@ const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
 // Радуга/Мозаика ниже). Каждое — ночная коллекция (≤1/ночь, тиры 1→3→7→15→30),
 // со своей осью, видимость по полному комплекту созданных фигур страницы.
 const ATLAS_PAGE_SPECIALS = [
-    { page: 2, id: 'vitrazh', title: 'Витраж', icon: '🪟', mechanic: 'pageColors',
-      desc: 'фигуры стр. 3 на поле во всех 5 цветах' },
-    { page: 3, id: 'kaleidoscope', title: 'Калейдоскоп', icon: '🔮', mechanic: 'pageAllOnField',
-      desc: 'все 5 фигур стр. 4 на поле' },
-    { page: 4, id: 'gobelen', title: 'Гобелен', icon: '🧶', mechanic: 'pageCountOnField', k: 3,
-      desc: '3+ фигуры стр. 5 на поле' },
-    { page: 5, id: 'orchestra', title: 'Оркестр', icon: '🎻', mechanic: 'pageAllCreatedNight',
-      desc: 'создай все 5 фигур стр. 6 за ночь' },
-    { page: 6, id: 'symphony', title: 'Симфония', icon: '🎼', mechanic: 'shapeCreatedNight', shape: 'Перфекционист',
-      desc: 'создай Перфекциониста за ночь' }
+    { page: 2, id: 'vitrazh', title: t('chain.vitrazh.title'), icon: '🪟', mechanic: 'pageColors',
+      desc: t('chain.vitrazh.desc') },
+    { page: 3, id: 'kaleidoscope', title: t('chain.kaleidoscope.title'), icon: '🔮', mechanic: 'pageAllOnField',
+      desc: t('chain.kaleidoscope.desc') },
+    { page: 4, id: 'gobelen', title: t('chain.gobelen.title'), icon: '🧶', mechanic: 'pageCountOnField', k: 3,
+      desc: t('chain.gobelen.desc') },
+    { page: 5, id: 'orchestra', title: t('chain.orchestra.title'), icon: '🎻', mechanic: 'pageAllCreatedNight',
+      desc: t('chain.orchestra.desc') },
+    { page: 6, id: 'symphony', title: t('chain.symphony.title'), icon: '🎼', mechanic: 'shapeCreatedNight', shape: 'perfectionist',
+      desc: t('chain.symphony.desc') }
 ];
 
 const ATLAS_PAGE_SPECIAL_TIERS = [1, 3, 7, 15, 30];
@@ -99,7 +105,7 @@ function buildPageSpecialChain(spec) {
         pageSpecial: spec,
         steps: ATLAS_PAGE_SPECIAL_TIERS.map(n => ({
             id: `${spec.id}_${n}`,
-            desc: `${n} ноч(ей): ${spec.desc}`,
+            desc: tp('chain.pageSpecial.step', n, { desc: spec.desc }),
             check: { type: 'pageSpecialNights', id: spec.id, n }
         }))
     };
@@ -121,49 +127,49 @@ const ACHIEVEMENT_CHAINS = [
         // исходные [1,3], остальные три — вдвое мягче расчётных ×8 [64,120,200].
         steps: [1, 3, 32, 60, 100].map(n => ({
             id: `size_8plus_${n}`,
-            desc: `${n} созвездий от 8★`,
+            desc: tp('chain.size8plus.step', n),
             check: { type: 'starCountTotal', mode: 'gte', size: 8, n }
         }))
     },
     {
         id: 'rainbow',
-        title: 'Радуга',
+        title: t('chain.rainbow.title'),
         icon: '🌈',
         requiresPageComplete: 0, // S-01: особенное достижение страницы 0
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `rainbow_${n}`,
-            desc: `${n} ночей с полной радугой (все 5 цветов за ночь)`,
+            desc: tp('chain.rainbow.step', n),
             check: { type: 'rainbowNights', n }
         }))
     },
     {
         id: 'nights',
-        title: 'Странник ночей',
+        title: t('chain.nights.title'),
         icon: '🌙',
         steps: [1, 5, 25, 100, 250].map(n => ({
             id: `nights_${n}`,
-            desc: `${n} завершённых ночей`,
+            desc: tp('chain.nights.step', n),
             check: { type: 'levelsCompleted', n }
         }))
     },
     {
         id: 'constellations',
-        title: 'Зодчий небес',
+        title: t('chain.constellations.title'),
         icon: '🏛️',
         steps: [10, 50, 250, 1000, 5000].map(n => ({
             id: `constellations_${n}`,
-            desc: `${n} созвездий создано всего`,
+            desc: tp('chain.constellations.step', n),
             check: { type: 'totalConstellations', n }
         }))
     },
     {
         id: 'mosaic',
-        title: 'Мозаика',
+        title: t('chain.mosaic.title'),
         icon: '🧩',
         requiresPageComplete: 1, // S-01: особенное достижение страницы 1
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `mosaic_${n}`,
-            desc: `${n} ночей с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)`,
+            desc: tp('chain.mosaic.step', n),
             check: { type: 'mosaicNights', n }
         }))
     },
@@ -171,22 +177,22 @@ const ACHIEVEMENT_CHAINS = [
     ...ATLAS_PAGE_SPECIALS.map(buildPageSpecialChain),
     {
         id: 'minimalism',
-        title: 'Минимализм',
+        title: t('chain.minimalism.title'),
         icon: '🔷',
-        steps: [{ id: 'minimalism_1', desc: 'Заверши ночь одним созвездием', check: { type: 'singleConstellation' } }]
+        steps: [{ id: 'minimalism_1', desc: t('chain.minimalism.step'), check: { type: 'singleConstellation' } }]
     },
     {
         id: 'unite_all',
-        title: 'Созвездие-всё',
+        title: t('chain.unite_all.title'),
         icon: '🌌',
-        steps: [{ id: 'unite_all_1', desc: 'Объедини все звёзды поля в одно созвездие', check: { type: 'uniteAll' } }]
+        steps: [{ id: 'unite_all_1', desc: t('chain.unite_all.step'), check: { type: 'uniteAll' } }]
     },
     // Разведка атласа: награда за первое создание фигуры переехала сюда из разового
     // начисления в markShapeCreated. Раньше каждое открытие молча капало ✦ — событие
     // было, а следа в Наградах не оставалось. Теперь это видимая цель с прогрессом.
     {
         id: 'razvedka',
-        title: 'Первооткрыватель',
+        title: t('chain.razvedka.title'),
         icon: '🔭',
         // Своя шкала вместо общей: та же сумма, что раньше капала по 35 ✦ за
         // каждое открытие, распределена по ступеням пропорционально их «весу».
@@ -202,8 +208,8 @@ const ACHIEVEMENT_CHAINS = [
         steps: [1, 6, 12, 20, 29].map(n => ({
             id: `razvedka_${n}`,
             desc: n === 29
-                ? 'Открыть все 29 фигур атласа'
-                : `${n} открытых фигур атласа`,
+                ? t('chain.razvedka.stepAll')
+                : tp('chain.razvedka.step', n),
             check: { type: 'createdAtlasShapes', n }
         }))
     },
@@ -215,13 +221,13 @@ const ACHIEVEMENT_CHAINS = [
     // пути (3 месяца), а слой мастерства (год).
     {
         id: 'ogranshchik',
-        title: 'Огранщик',
+        title: t('chain.ogranshchik.title'),
         icon: '💎',
         steps: [1, 3, 7, 15, 29].map(n => ({
             id: `ogranshchik_${n}`,
             desc: n === 29
-                ? 'Огранить все 29 фигур атласа'
-                : `${n} огранённых фигур (все 5 цветов у каждой)`,
+                ? t('chain.ogranshchik.stepAll')
+                : tp('chain.ogranshchik.step', n),
             check: { type: 'facetedShapes', n }
         }))
     }
@@ -283,8 +289,8 @@ function getChainLockReason(chain) {
     if (isAtlasPageSetComplete(page)) return null;
     const pageUnlocked = typeof isAtlasPageUnlocked === 'function' ? isAtlasPageUnlocked(page) : true;
     return pageUnlocked
-        ? `Соберите все фигуры страницы ${page + 1}`
-        : `Страница ${page + 1} ещё не открыта`;
+        ? t('rewards.lockCollectPage', { n: page + 1 })
+        : t('rewards.lockPageLocked', { n: page + 1 });
 }
 
 // =============================================================================
@@ -306,8 +312,10 @@ let announcedSpecialChains = new Set();
 // Версия схемы достижений (S-01: сброс Радуги/Мозаики; S-02 v3: пер-фигурные
 // цепочки переведены на цвета; U-09 v4: цепочки shape_* удалены, цвета стали
 // огранкой; B-01 v5: пороги объёмных цепочек ×8 и ступенчатая награда за шаг —
-// обе миграции сбрасывают ВЕСЬ прогресс, включая ✦ и страницы атласа).
-const ACHIEVEMENTS_SAVE_VERSION = 5;
+// обе миграции сбрасывают ВЕСЬ прогресс, включая ✦ и страницы атласа;
+// L-01 v6: имена фигур стали ASCII-ID, старые ключи shapeColors/createdShapes
+// больше не резолвятся — сброс всего прогресса, решение заказчика 2026-08-03).
+const ACHIEVEMENTS_SAVE_VERSION = 6;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -522,6 +530,10 @@ let achievementsMigrationNeedsFullReset = false;
  *   сброса игрок с «60 жёлтых» стоял бы на пятом тире, а после правки откатился
  *   на второй, сохранив уже забранные ✦ — это не миграция, а обесценивание.
  *   Совместить со сбросом U-09 не вышло: она вышла отдельным релизом и заняла v4.
+ * - v<6 (L-01): русские имена фигур перестали быть идентификаторами. Ключи
+ *   `shapeColors`, `createdShapes`, `constellations[].shape` в старом сейве —
+ *   кириллица, в реестре ID её нет: пересчитывать нечего, таблицу соответствия
+ *   заводить ради одного релиза дороже, чем сбросить. Решение заказчика.
  *
  * Home Demo, живых игроков нет — честный старт с нуля дешевле пересчёта.
  */
@@ -529,7 +541,7 @@ function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (version < 5) {
+    if (version < 6) {
         // Сбрасывать по шагам смысла нет — обнуляем всё разом.
         initAchievementState();
         achievementsMigrationNeedsFullReset = true;
@@ -613,7 +625,7 @@ function getFieldAchievementSnapshot() {
 
         const name = typeof normalizeShapeName === 'function'
             ? normalizeShapeName(c.shape || c.name) : (c.shape || c.name);
-        if (!name || name === 'Фигура') continue;
+        if (!name || name === SHAPE_UNRECOGNIZED) continue;
         const pageIdx = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(name) : -1;
         if (pageIdx < 0) continue;
         if (!pageShapesOnField[pageIdx]) pageShapesOnField[pageIdx] = new Set();
@@ -780,7 +792,7 @@ function recordAchievementUndo(constellation) {
 function getCommittedAtlasShapeName(constellation) {
     if (!constellation || !achievementCounters) return null;
     const name = normalizeShapeName(constellation.shape);
-    if (!name || name === 'Фигура') return null;
+    if (!name || name === SHAPE_UNRECOGNIZED) return null;
     if (typeof isShapeVisibleInAtlas === 'function' && !isShapeVisibleInAtlas(name)) return null;
     return name;
 }
@@ -827,8 +839,8 @@ function announceNewlyAvailableSpecialChains() {
         if (announcedSpecialChains.has(chain.id)) continue;
         if (!isAchievementChainVisible(chain)) continue;
         announcedSpecialChains.add(chain.id);
-        showInfoToast(chain.icon, 'Новое достижение доступно',
-            `${chain.title} — коллекция страницы ${chain.requiresPageComplete + 1} собрана`);
+        showInfoToast(chain.icon, t('toast.newChainTitle'),
+            t('toast.newChainSub', { title: chain.title, n: chain.requiresPageComplete + 1 }));
     }
 }
 
@@ -945,12 +957,13 @@ function showInfoToast(iconText, title, sub) {
 }
 
 function showAchievementToast(chain) {
-    showInfoToast(chain.icon || '🏆', 'Достижение выполнено', chain.title);
+    showInfoToast(chain.icon || '🏆', t('toast.achievement'), chain.title);
 }
 
 /** S-01: сюрприз-момент — первое создание фигуры атласа (раскрытие имени). */
-function showShapeRevealToast(shapeName) {
-    showInfoToast('📖', 'Новая фигура атласа!', `«${shapeName}»`);
+function showShapeRevealToast(shapeId) {
+    showInfoToast('📖', t('toast.newShapeTitle'),
+        t('toast.newShapeSub', { name: shapeLabel(shapeId) }));
 }
 
 // =============================================================================
@@ -967,21 +980,21 @@ function showShapeRevealToast(shapeName) {
  */
 const REWARD_PAGES = [
     {
-        id: 'colors', icon: '🎨', title: 'Цвета',
+        id: 'colors', icon: '🎨', title: t('rewardPage.colors'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue']
     },
     {
-        id: 'sizes', icon: '★', title: 'Размеры',
+        id: 'sizes', icon: '★', title: t('rewardPage.sizes'),
         chainIds: ['size_3', 'size_4', 'size_5', 'size_6', 'size_7', 'size_8plus']
     },
     {
-        id: 'specials', icon: '🌈', title: 'Особые',
+        id: 'specials', icon: '🌈', title: t('rewardPage.specials'),
         chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony']
     },
     {
         // U-10: «Огранщик» на странице огранки, страница переименована.
         // «Первооткрыватель» встаёт перед ним: открыть фигуру — шаг до её огранки.
-        id: 'path', icon: '💎', title: 'Огранка и путь',
+        id: 'path', icon: '💎', title: t('rewardPage.path'),
         chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all']
     }
 ];
@@ -1006,9 +1019,13 @@ function rewardPageHasClaimable(pageIndex) {
 function buildAchievementStepText(chain, p) {
     const step = chain.steps[p.stepIndex];
     const prog = getAchievementStepProgress(step.check);
-    if (p.claimable) return `${step.desc} · готово`;
+    if (p.claimable) return t('rewards.stepReady', { desc: step.desc });
     if (!prog) return step.desc;
-    return `${step.desc} · ${Math.min(prog.current, prog.target)} / ${prog.target}`;
+    return t('rewards.stepProgress', {
+        desc: step.desc,
+        current: Math.min(prog.current, prog.target),
+        target: prog.target
+    });
 }
 
 function createAchievementStarsRow(chain, p) {
@@ -1039,7 +1056,7 @@ function createAchievementLockedRow(reason) {
 
     const title = document.createElement('div');
     title.className = 'achv-row-title achv-row-title-hidden';
-    title.textContent = '? ? ?';
+    title.textContent = t('atlas.unknownCard');
     body.appendChild(title);
 
     const text = document.createElement('div');
@@ -1082,7 +1099,7 @@ function createAchievementRow(chain) {
 
     const step = document.createElement('div');
     step.className = 'achv-row-step';
-    step.textContent = done ? 'Все ступени пройдены' : buildAchievementStepText(chain, p);
+    step.textContent = done ? t('rewards.allDone') : buildAchievementStepText(chain, p);
     body.appendChild(step);
 
     if (!done) {
@@ -1111,14 +1128,14 @@ function createAchievementRow(chain) {
         // B-01: подпись должна совпадать с тем, что реально начислится за этот шаг
         btn.textContent = `+${getAchievementChainStepReward(chain, p.stepIndex)} ✦`;
         if (p.claimable) {
-            btn.title = 'Забрать награду';
+            btn.title = t('rewards.claim');
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 claimAchievementStep(chain.id);
             });
         } else {
             btn.disabled = true;
-            btn.title = 'Награда за текущую ступень — выполните её условие';
+            btn.title = t('rewards.claimIdle');
         }
         tail.appendChild(btn);
     }

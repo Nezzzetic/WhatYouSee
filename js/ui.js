@@ -36,12 +36,12 @@ function showLevelCompleteToast(levelPts) {
     if (!toast) return;
 
     const level = levelPts || 0;
-    const lines = ['<strong>Уровень завершён</strong>'];
+    const lines = [`<strong>${t('toast.levelComplete')}</strong>`];
 
-    if (level > 0) lines.push(`+${level} за уровень`);
+    if (level > 0) lines.push(t('toast.levelPoints', { n: level }));
 
     toast.innerHTML =
-        `<button class="toast-close-btn" aria-label="Закрыть">×</button>` +
+        `<button class="toast-close-btn" aria-label="${t('toast.close')}">×</button>` +
         lines.join('<br>');
     toast.hidden = false;
 
@@ -73,15 +73,20 @@ let hintListDragStartX = 0;
 let hintListScrollStartLeft = 0;
 let hintListDragHandlersBound = false;
 
+/**
+ * L-01: на вход идёт ID фигуры или fallback-имени, на выход — локализованное имя.
+ * Пользовательские виды (их вводит игрок) shapeLabel возвращает как есть.
+ */
 function getDisplayShapeName(shapeName) {
-    if (typeof shapeName !== 'string') return 'Неизвестное созвездие';
+    if (typeof shapeName !== 'string') return t('hints.unknownConstellation');
     const trimmed = shapeName.trim();
-    return trimmed.length > 0 ? trimmed : 'Неизвестное созвездие';
+    if (trimmed.length === 0) return t('hints.unknownConstellation');
+    return shapeLabel(trimmed);
 }
 
 function getShapeColor(shapeName) {
-    const shapeInfo = SHAPES[shapeName] || SHAPES['Фигура'];
-    return shapeInfo && Array.isArray(shapeInfo.color) ? shapeInfo.color : SHAPES['Фигура'].color;
+    const shapeInfo = SHAPES[shapeName] || SHAPES[SHAPE_UNRECOGNIZED];
+    return shapeInfo && Array.isArray(shapeInfo.color) ? shapeInfo.color : SHAPES[SHAPE_UNRECOGNIZED].color;
 }
 
 function getHintEntriesByStarCount() {
@@ -107,14 +112,16 @@ function getHintEntriesByStarCount() {
         if (!groups.has(starCount)) groups.set(starCount, []);
         groups.get(starCount).push({
             name: getDisplayShapeName(customType.name),
-            color: Array.isArray(customType.color) ? customType.color : getShapeColor('Фигура'),
+            color: Array.isArray(customType.color) ? customType.color : getShapeColor(SHAPE_UNRECOGNIZED),
             pattern,
             isCustom: true
         });
     }
 
+    // L-01: сортируем по тому, что игрок видит, и в его локали — не по ID.
     for (const entries of groups.values()) {
-        entries.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
+        entries.sort((a, b) => getDisplayShapeName(a.name)
+            .localeCompare(getDisplayShapeName(b.name), getLocale()));
     }
 
     return groups;
@@ -187,7 +194,7 @@ function renderHintFilterButtons() {
     knownBtn.className = 'hint-filter-btn';
     if (hintFilterMode.type === 'known') knownBtn.classList.add('active');
     knownBtn.textContent = '✓';
-    knownBtn.title = 'Собранные созвездия';
+    knownBtn.title = t('hints.filterKnown');
     knownBtn.addEventListener('click', () => {
         hintFilterMode = { type: 'known', value: null };
         renderHintFilterButtons();
@@ -201,7 +208,7 @@ function renderHintFilterButtons() {
         btn.className = 'hint-filter-btn';
         if (hintFilterMode.type === 'star' && hintFilterMode.value === count) btn.classList.add('active');
         btn.textContent = `${count}★`;
-        btn.title = `${count} звезд`;
+        btn.title = tp('hints.filterStars', count);
         btn.addEventListener('click', () => {
             hintFilterMode = { type: 'star', value: count };
             renderHintFilterButtons();
@@ -215,7 +222,7 @@ function renderHintFilterButtons() {
     unknownBtn.className = 'hint-filter-btn';
     if (hintFilterMode.type === 'undiscovered') unknownBtn.classList.add('active');
     unknownBtn.textContent = '???';
-    unknownBtn.title = 'Ещё не собранные (открытые страницы атласа)';
+    unknownBtn.title = t('hints.filterUndiscovered');
     unknownBtn.addEventListener('click', () => {
         hintFilterMode = { type: 'undiscovered', value: null };
         renderHintFilterButtons();
@@ -228,7 +235,7 @@ function renderHintFilterButtons() {
     favoritesBtn.className = 'hint-filter-btn';
     if (hintFilterMode.type === 'favorite') favoritesBtn.classList.add('active');
     favoritesBtn.textContent = '★';
-    favoritesBtn.title = 'Только избранные';
+    favoritesBtn.title = t('hints.filterFavorite');
     favoritesBtn.addEventListener('click', () => {
         hintFilterMode = { type: 'favorite', value: null };
         renderHintFilterButtons();
@@ -248,8 +255,8 @@ function renderHintList() {
         const empty = document.createElement('div');
         empty.className = 'hint-empty';
         empty.textContent = hintFilterMode.type === 'undiscovered'
-            ? 'Все формы на открытых страницах собраны'
-            : 'Пока нет собранных созвездий';
+            ? t('hints.emptyUndiscovered')
+            : t('hints.emptyKnown');
         listEl.appendChild(empty);
         return;
     }
@@ -258,7 +265,8 @@ function renderHintList() {
         const ca = a.pattern?.stars?.length || 0;
         const cb = b.pattern?.stars?.length || 0;
         if (ca !== cb) return ca - cb;
-        return a.name.localeCompare(b.name, 'ru');
+        return getDisplayShapeName(a.name)
+            .localeCompare(getDisplayShapeName(b.name), getLocale());
     });
 
     for (const entry of entries) {
@@ -486,7 +494,7 @@ function createAtlasEntryCard(entry) {
     } else {
         // Имя фигуры — сюрприз до первого создания
         title.className = 'atlas-card-title atlas-card-title-unknown';
-        title.textContent = '? ? ?';
+        title.textContent = t('atlas.unknownCard');
     }
     card.appendChild(title);
 
@@ -498,7 +506,7 @@ function createAtlasEntryCard(entry) {
             const lit = typeof isShapeFacetLit === 'function' && isShapeFacetLit(entry.name, color);
             const gem = document.createElement('span');
             gem.className = `atlas-facet atlas-facet-${color}` + (lit ? ' atlas-facet-lit' : '');
-            gem.title = ACHIEVEMENT_COLOR_RU[color];
+            gem.title = achievementColorLabel(color);
             facets.appendChild(gem);
         }
         card.appendChild(facets);
@@ -523,12 +531,15 @@ function renderAtlasList() {
         const cost = getAtlasPageUnlockCost(pageIndex);
 
         const lockedText = document.createElement('p');
-        lockedText.textContent = `Страница откроется сама, когда накопится ${cost} ✦.`;
+        lockedText.textContent = t('atlas.pageLocked', { n: cost });
         locked.appendChild(lockedText);
 
         const progressText = document.createElement('p');
         progressText.className = 'atlas-page-locked-progress';
-        progressText.textContent = `Сейчас: ${Math.min(getMetaScore(), cost)} / ${cost} ✦`;
+        progressText.textContent = t('atlas.pageLockedProgress', {
+            current: Math.min(getMetaScore(), cost),
+            target: cost
+        });
         locked.appendChild(progressText);
 
         list.appendChild(locked);
@@ -575,10 +586,10 @@ function renderSheetTitle() {
     if (!el) return;
     const pageIndex = getSheetPageIndex();
     if (sheetSection === 'atlas') {
-        el.innerHTML = `АТЛАС · <b>Страница ${pageIndex + 1}</b>`;
+        el.innerHTML = t('sheet.atlasTitle', { n: pageIndex + 1 });
     } else {
         const page = REWARD_PAGES[pageIndex];
-        el.innerHTML = `НАГРАДЫ · <b>${page ? page.title : ''}</b>`;
+        el.innerHTML = t('sheet.rewardsTitle', { title: page ? page.title : '' });
     }
 }
 
@@ -615,7 +626,7 @@ function renderSheetRail() {
 
         if (sheetSection === 'atlas') {
             btn.appendChild(createAtlasRailIcon(i));
-            btn.setAttribute('aria-label', `Страница ${i + 1}`);
+            btn.setAttribute('aria-label', t('sheet.page', { n: i + 1 }));
         } else {
             const page = REWARD_PAGES[i];
             const icon = document.createElement('span');

@@ -115,7 +115,7 @@ function setup() {
         skyStartTime = millis();
         skyFadeScale = 0.25;
         if (shouldLoadMustachePracticeLevel() && typeof console !== 'undefined' && console.warn) {
-            console.warn('[mustache=1] Загружено сохранение: эталон «Усы» не применён. Открой с ?dev=1 для кнопки «Сбросить небо», или удали ключ localStorage starsReborn_v02.');
+            console.warn('[mustache=1] Загружено сохранение: эталон «Усы» не применён. Открой с ?dev=1 для кнопки «Сбросить небо», или удали ключ localStorage starsReborn_v03.');
         }
         if (shouldLoadPictureField() && typeof console !== 'undefined' && console.warn) {
             console.warn('[picture] Загружено сохранение: поле-картинка не применена. Нажми «Сбросить небо» в dev-панели, чтобы перегенерировать.');
