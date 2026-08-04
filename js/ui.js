@@ -655,6 +655,114 @@ function renderSheetSegment() {
     const rewardsBtn = document.getElementById('segRewardsBtn');
     if (atlasBtn) atlasBtn.classList.toggle('seg-btn-on', sheetSection === 'atlas');
     if (rewardsBtn) rewardsBtn.classList.toggle('seg-btn-on', sheetSection === 'rewards');
+    renderObservatorySegButton();
+    renderObservatoryLockHint();
+}
+
+// =============================================================================
+// B-02: ОБСЕРВАТОРИЯ В UI
+// =============================================================================
+
+/** Развёрнут ли хинт запертой обсерватории (сворачивается сменой раздела). */
+let observatoryHintOpen = false;
+
+/**
+ * Третья кнопка сегмента. Она обещание, а не сюрприз: видна с первой ночи.
+ * 🔒 — заперта, 🌌 — «уйти в обсерваторию», 🌃 — «вернуться на небо»
+ * (подсвечена, потому что за шторкой сейчас именно обсерватория).
+ */
+function renderObservatorySegButton() {
+    const btn = document.getElementById('segObservatoryBtn');
+    if (!btn) return;
+
+    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+
+    btn.classList.toggle('seg-btn-locked', !unlocked);
+    btn.classList.toggle('seg-btn-on', unlocked && inObservatory);
+
+    let key;
+    if (!unlocked) {
+        btn.textContent = '🔒';
+        key = 'observatory.lockedTitle';
+    } else if (inObservatory) {
+        btn.textContent = '🌃';
+        key = 'observatory.toField';
+    } else {
+        btn.textContent = '🌌';
+        key = 'observatory.toObservatory';
+    }
+    btn.setAttribute('title', t(key));
+    btn.setAttribute('aria-label', t(key));
+}
+
+function renderObservatoryLockHint() {
+    const hint = document.getElementById('observatoryLockHint');
+    if (!hint) return;
+
+    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    if (unlocked) observatoryHintOpen = false;
+    hint.hidden = !observatoryHintOpen || unlocked;
+    if (hint.hidden) return;
+
+    const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
+    const target = OBSERVATORY_UNLOCK_COST;
+
+    const titleEl = document.getElementById('obsLockTitleText');
+    const subEl = document.getElementById('obsLockSubText');
+    const fillEl = document.getElementById('obsLockBarFill');
+    const progressEl = document.getElementById('obsLockProgressText');
+
+    if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
+    if (subEl) subEl.textContent = t('observatory.lockedSub');
+    if (fillEl) {
+        const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
+        fillEl.style.width = (ratio * 100).toFixed(1) + '%';
+    }
+    // Бар свой, не ✦ из шапки: тот — баланс, он обнуляется автосписанием
+    // страницы атласа и до порога не доберётся никогда.
+    if (progressEl) {
+        progressEl.textContent = t('observatory.lockedProgress', { current, target });
+    }
+}
+
+/** Тап по кнопке: заперта — разворачиваем хинт, открыта — меняем мир. */
+function onObservatorySegClick() {
+    if (typeof isObservatoryUnlocked !== 'function' || !isObservatoryUnlocked()) {
+        observatoryHintOpen = !observatoryHintOpen;
+        renderObservatoryLockHint();
+        return;
+    }
+    // Результат перехода лежит ПОД шторкой — оставить её открытой значит
+    // показать игроку, что «ничего не произошло».
+    const next = (typeof isObservatoryMode === 'function' && isObservatoryMode())
+        ? 'field'
+        : 'observatory';
+    closeSheet();
+    setAppMode(next);
+}
+
+/** Тумблер 🔗/✋ вместо ↩ и обратно; вызывается при смене режима приложения. */
+function updateObservatoryUI() {
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+
+    const undoBtn = document.getElementById('undoLastConstellationBtn');
+    if (undoBtn) undoBtn.hidden = inObservatory;
+
+    const seg = document.getElementById('observatoryModeSeg');
+    if (seg) seg.hidden = !inObservatory;
+
+    if (inObservatory) {
+        const mode = typeof getObservatoryMode === 'function' ? getObservatoryMode() : 'connect';
+        const connectBtn = document.getElementById('obsModeConnectBtn');
+        const moveBtn = document.getElementById('obsModeMoveBtn');
+        // Активное положение подсвечено всегда: в «перемещать» тап красит звезду,
+        // а в «соединять» нет, и перепутать это дорого.
+        if (connectBtn) connectBtn.classList.toggle('seg-btn-on', mode === 'connect');
+        if (moveBtn) moveBtn.classList.toggle('seg-btn-on', mode === 'move');
+    }
+
+    renderObservatorySegButton();
 }
 
 function renderSheet() {
@@ -715,6 +823,7 @@ function closeSheet() {
 function switchSheetSection(section) {
     if (sheetSection === section) return;
     sheetSection = section;
+    observatoryHintOpen = false; // B-02: открытие другого раздела сворачивает хинт
     renderSheet();
 }
 
@@ -921,6 +1030,10 @@ function setupSheetControls() {
     });
     document.getElementById('segAtlasBtn')?.addEventListener('click', () => switchSheetSection('atlas'));
     document.getElementById('segRewardsBtn')?.addEventListener('click', () => switchSheetSection('rewards'));
+    // B-02: третья кнопка сегмента и тумблер режима холста
+    document.getElementById('segObservatoryBtn')?.addEventListener('click', onObservatorySegClick);
+    document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));
+    document.getElementById('obsModeMoveBtn')?.addEventListener('click', () => setObservatoryMode('move'));
     document.getElementById('sheetCloseBtn')?.addEventListener('click', closeSheet);
     document.getElementById('sheetScrim')?.addEventListener('click', closeSheet);
     setupSheetGestures();

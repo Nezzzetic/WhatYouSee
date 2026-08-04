@@ -451,6 +451,8 @@
             atlasPagesOpen: [...unlockedPageIndices].sort((a, b) => a - b),
             chains: chainsDump(),
             undoFloor,
+            // B-02: накопитель обсерватории живёт параллельно балансу ✦
+            observatory: observatoryState(),
             // L-01: язык рядом с версиями сейва — сценарий должен видеть, в какой
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
@@ -479,6 +481,110 @@
         };
     }
 
+    // =========================================================================
+    // ОБСЕРВАТОРИЯ (B-02)
+    // =========================================================================
+    //
+    // Координаты — МИРОВЫЕ (0..FIELD_WIDTH / 0..FIELD_HEIGHT), как у stars() поля.
+    // В сейве они лежат нормированными, но сценарию удобнее один масштаб на обе
+    // половины игры.
+
+    function observatoryStarView(star) {
+        return {
+            id: star.id,
+            x: star.x,
+            y: star.y,
+            colorValue: star.colorValue
+        };
+    }
+
+    function observatoryStarsDump() {
+        return observatoryStars.map(observatoryStarView);
+    }
+
+    function observatoryLinesDump() {
+        return observatoryLines.map(l => [l.startId, l.endId]);
+    }
+
+    function observatoryState() {
+        return {
+            appMode: getAppMode(),
+            unlocked: isObservatoryUnlocked(),
+            mode: getObservatoryMode(),
+            lifetimeEarned: getLifetimeMetaEarned(),
+            unlockCost: OBSERVATORY_UNLOCK_COST,
+            starCost: OBSERVATORY_STAR_COST,
+            starsDue: getObservatoryStarsDue(),
+            starCount: observatoryStars.length,
+            lineCount: observatoryLines.length
+        };
+    }
+
+    const observatory = {
+        enter: () => {
+            if (!isObservatoryUnlocked()) fail('observatory.enter: обсерватория ещё заперта');
+            setAppMode('observatory');
+            return observatoryState();
+        },
+        leave: () => {
+            setAppMode('field');
+            return observatoryState();
+        },
+        mode: (value) => {
+            if (value !== undefined) setObservatoryMode(String(value));
+            return getObservatoryMode();
+        },
+        stars: observatoryStarsDump,
+        lines: observatoryLinesDump,
+        state: observatoryState,
+        /** Позиция — мировые координаты; связи проверяются на разрыв как пальцем. */
+        move: (id, x, y) => {
+            const star = getObservatoryStarById(Number(id));
+            if (!star) fail('observatory.move: нет звезды ' + id);
+            star.x = Math.max(0, Math.min(FIELD_WIDTH, Number(x)));
+            star.y = Math.max(0, Math.min(FIELD_HEIGHT, Number(y)));
+            // Разрыв растянутых связей — то же, что делает mouseReleased
+            const maxEdge = getMaxEdgeLength();
+            const doomed = observatoryLines.filter(l => {
+                if (l.startId !== star.id && l.endId !== star.id) return false;
+                const a = getObservatoryStarById(l.startId);
+                const b = getObservatoryStarById(l.endId);
+                return a && b && Math.hypot(a.x - b.x, a.y - b.y) > maxEdge + 1e-6;
+            });
+            for (const l of doomed) removeObservatoryLine(l.startId, l.endId);
+            scheduleObservatorySave();
+            return { star: observatoryStarView(star), broken: doomed.length };
+        },
+        /** Есть связь — снимает её, нет — проводит (та же протяжка, что пальцем). */
+        connect: (a, b) => {
+            const ia = Number(a);
+            const ib = Number(b);
+            if (!getObservatoryStarById(ia) || !getObservatoryStarById(ib)) {
+                fail('observatory.connect: нет звезды ' + ia + ' или ' + ib);
+            }
+            if (hasObservatoryLine(ia, ib)) {
+                removeObservatoryLine(ia, ib);
+                scheduleObservatorySave();
+                return { connected: false, lineCount: observatoryLines.length };
+            }
+            if (!isObservatoryEdgeLengthValid(ia, ib)) {
+                fail('observatory.connect: связь ' + ia + '-' + ib + ' длиннее getMaxEdgeLength()');
+            }
+            observatoryLines.push({ startId: ia, endId: ib });
+            scheduleObservatorySave();
+            return { connected: true, lineCount: observatoryLines.length };
+        },
+        tapColor: (id) => {
+            const star = getObservatoryStarById(Number(id));
+            if (!star) fail('observatory.tapColor: нет звезды ' + id);
+            cycleObservatoryStarColor(star);
+            return star.colorValue;
+        },
+        grantDue: () => ({ granted: grantObservatoryStarsDue(), starCount: observatoryStars.length }),
+        /** Записать холст в localStorage немедленно (обычно это дебаунс 500 мс). */
+        save: () => { saveObservatoryNow(); return observatoryState(); }
+    };
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -501,6 +607,7 @@
         state,
         claim,
         ui,
+        observatory,
         errors,
         clearErrors,
         // Служебное: открыть/закрыть шторку без жеста (жесты — уровень MobAI).
