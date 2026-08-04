@@ -303,6 +303,13 @@ function mousePressed(event) {
     if (isBlockingOverlayOpen()) return;
     if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
 
+    // B-02: обсерватория — свой мир со своими правилами ввода. Ветка ранняя,
+    // до любых полевых проверок (переименование, locked, bbox — там ничего этого нет).
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
+        observatoryMousePressed();
+        return;
+    }
+
     const fieldMouseX = mouseX / zoomLevel + camX;
     const fieldMouseY = mouseY / zoomLevel + camY;
 
@@ -331,6 +338,11 @@ function mousePressed(event) {
 }
 
 function mouseDragged() {
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
+        observatoryMouseDragged();
+        return;
+    }
+
     if (isPanning) {
         const dx = (mouseX - panStartMouseX) / zoomLevel;
         const dy = (mouseY - panStartMouseY) / zoomLevel;
@@ -382,6 +394,11 @@ function mouseDragged() {
 }
 
 function mouseReleased() {
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
+        observatoryMouseReleased();
+        return;
+    }
+
     if (isPanning) {
         isPanning = false;
         return;
@@ -485,6 +502,8 @@ function enterPinchMode() {
     // Второй палец отменяет черновик/пан — подтверждено заказчиком
     currentLines = [];
     resetDragState();
+    // B-02: в обсерватории отменяется и незавершённая протяжка/перенос звезды
+    if (typeof resetObservatoryDragState === 'function') resetObservatoryDragState();
     isPanning = false;
     isPinching = true;
     const t0 = touches[0];
@@ -985,6 +1004,11 @@ function openConstellationRenamePrompt(constellation) {
 }
 
 function mouseMoved() {
+    // B-02: в обсерватории переименовывать нечего — курсор всегда обычный
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
+        cursor(ARROW);
+        return;
+    }
     if (!constellationArtRevealed) {
         cursor(ARROW);
         return;

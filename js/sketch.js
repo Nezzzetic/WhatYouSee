@@ -42,6 +42,72 @@ function generateNebulaBuffer() {
 let constellationImages = {};
 
 // =============================================================================
+// APP MODE (B-02)
+// =============================================================================
+//
+// Обсерватория ЗАМЕНЯЕТ СОБОЙ игровое поле, а не живёт отдельным слоем поверх
+// канваса. Камера у режимов общая (те же camX/camY/zoomLevel, тот же clampCamera),
+// но своя позиция: переключатель прячет одну и достаёт другую — поле обязано
+// вернуться ровно там, где его оставили.
+
+let appMode = 'field';
+let fieldCameraSlot = null;
+let observatoryCameraSlot = null;
+
+function getAppMode() {
+    return appMode;
+}
+
+function isObservatoryMode() {
+    return appMode === 'observatory';
+}
+
+function captureCameraSlot() {
+    return { camX, camY, zoom: zoomLevel };
+}
+
+function restoreCameraSlot(slot) {
+    if (!slot) {
+        centerCamera();
+        return;
+    }
+    camX = slot.camX;
+    camY = slot.camY;
+    zoomLevel = slot.zoom;
+    clampZoomToField(); // экран мог повернуться, пока режим лежал в кармане
+    clampCamera();
+}
+
+function setAppMode(mode) {
+    if (mode !== 'field' && mode !== 'observatory') return false;
+    if (appMode === mode) return false;
+    if (mode === 'observatory' && !isObservatoryUnlocked()) return false;
+
+    if (appMode === 'field') {
+        fieldCameraSlot = captureCameraSlot();
+    } else {
+        observatoryCameraSlot = captureCameraSlot();
+    }
+
+    // Незавершённый жест не должен доехать до другого мира
+    currentLines = [];
+    resetDragState();
+    isPanning = false;
+    isPinching = false;
+    wasPinching = false;
+    if (typeof resetObservatoryDragState === 'function') resetObservatoryDragState();
+
+    appMode = mode;
+    restoreCameraSlot(appMode === 'field' ? fieldCameraSlot : observatoryCameraSlot);
+
+    // Подсказки созвездий в обсерватории не нужны — фигур здесь нет
+    setConstellationHintsPanelVisible(false);
+    if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+    updateUndoConstellationButtonState();
+    return true;
+}
+
+// =============================================================================
 // SETUP
 // =============================================================================
 
@@ -107,6 +173,9 @@ function setup() {
     }
 
     loadProgression();
+    // B-02: холст живёт своим ключом и переживает смену дня — поднимаем его
+    // сразу после прогрессии (нужен playerId) и до генерации поля.
+    initObservatory();
 
     if (!loadGame()) {
         startNewDailySky({ saveAfter: true });
@@ -134,6 +203,7 @@ function setup() {
     updatePeekBar();
 
     updateUndoConstellationButtonState();
+    updateObservatoryUI();
 
     setupSheetControls();
     const devControls = document.getElementById("devControls");
@@ -166,9 +236,17 @@ function setup() {
 // =============================================================================
 
 function draw() {
-    updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
     drawSkyGradient();
     if (nebulaBuffer) image(nebulaBuffer, 0, 0);
+
+    // B-02: обсерватория — второй мир на том же канвасе. Ни счётчиков, ни
+    // подписей черновика: здесь нечего считать.
+    if (appMode === 'observatory') {
+        drawObservatoryMode();
+        return;
+    }
+
+    updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
     drawFieldMode();
     drawDraftStarCountLabelScreen();
     drawFloatingScores();
@@ -399,8 +477,18 @@ function performFullReset(options) {
     customTypes = [];
 
     resetProgressionForFullReset();
+    // B-02: вайп забирает и холст. Отдельного confirm не заводим — тот, что уже
+    // стоит в onFullReset, покрывает и обсерваторию (решение заказчика 2026-08-04).
+    if (typeof resetObservatoryForFullReset === 'function') resetObservatoryForFullReset();
+    appMode = 'field';
+    fieldCameraSlot = null;
+    observatoryCameraSlot = null;
     if (typeof opts.beforeFieldRegen === 'function') opts.beforeFieldRegen();
     saveProgression();
+    // Хук beforeFieldRegen (T-01) открывает страницы бесплатно, накопитель не
+    // трогая, — после вайпа обсерватория обязана быть закрытой и пустой.
+    // Вызов защитный: при lifetimeMetaEarned = 0 выдавать нечего.
+    if (typeof grantObservatoryStarsDue === 'function') grantObservatoryStarsDue();
 
     regenerateFieldStarsAfterReset();
     skyStartTime = millis();
@@ -416,6 +504,7 @@ function performFullReset(options) {
     recomputeAchievementsClaimable();
     updatePeekBar();
     updateUndoConstellationButtonState();
+    updateObservatoryUI();
 
     clearSave();
     autoSave();

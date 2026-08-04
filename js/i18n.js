@@ -275,7 +275,18 @@ en: {
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Rename constellation:',
     'field.constellation': 'Constellation',
-    'field.undoLast': 'Undo last constellation'
+    'field.undoLast': 'Undo last constellation',
+
+    // --- Обсерватория (B-02) --------------------------------------------------
+    'observatory.toObservatory': 'Go to the observatory',
+    'observatory.toField': 'Back to tonight’s sky',
+    'observatory.modeConnect': 'Connect stars',
+    'observatory.modeMove': 'Move and recolour stars',
+    'observatory.lockedTitle': 'Observatory — a sky of your own',
+    'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
+    'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
+    'observatory.unlockedTitle': 'Observatory unlocked',
+    'observatory.unlockedSub': '7 stars are waiting for you'
 },
 
 // -----------------------------------------------------------------------------
@@ -515,7 +526,18 @@ ru: {
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Переименовать созвездие:',
     'field.constellation': 'Созвездие',
-    'field.undoLast': 'Отменить последнее созвездие'
+    'field.undoLast': 'Отменить последнее созвездие',
+
+    // --- Обсерватория (B-02) --------------------------------------------------
+    'observatory.toObservatory': 'Перейти в обсерваторию',
+    'observatory.toField': 'Вернуться на небо',
+    'observatory.modeConnect': 'Соединять звёзды',
+    'observatory.modeMove': 'Перемещать и красить звёзды',
+    'observatory.lockedTitle': 'Обсерватория — своё небо, которое можно переставлять',
+    'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
+    'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
+    'observatory.unlockedTitle': 'Обсерватория открыта',
+    'observatory.unlockedSub': '7 звёзд ждут'
 }
 
 };

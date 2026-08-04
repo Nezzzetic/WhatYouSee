@@ -14,6 +14,15 @@
             <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn"
                     data-i18n-title="field.undoLast" data-i18n-aria="field.undoLast"
                     disabled>↩</button>
+            <!-- B-02: в обсерватории ↩ прячется, на её месте тумблер режима -->
+            <div id="observatoryModeSeg" class="sheet-seg obs-mode-seg" hidden>
+                <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
+                        data-i18n-title="observatory.modeConnect"
+                        data-i18n-aria="observatory.modeConnect">🔗</button>
+                <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
+                        data-i18n-title="observatory.modeMove"
+                        data-i18n-aria="observatory.modeMove">✋</button>
+            </div>
         </div>
 
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>
@@ -64,10 +73,19 @@
             </div>
             <div class="sheet-footer">
                 <div id="sheetRail" class="sheet-rail"></div>
+                <!-- B-02: хинт запертой обсерватории — свой прогресс-бар «за всё время»,
+                     не ✦ из шапки (тот обнуляется автосписанием страницы атласа) -->
+                <div id="observatoryLockHint" class="obs-lock-hint" hidden>
+                    <div class="obs-lock-title"><span aria-hidden="true">🔒</span> <span id="obsLockTitleText"></span></div>
+                    <div class="obs-lock-sub" id="obsLockSubText"></div>
+                    <div class="obs-lock-bar"><div id="obsLockBarFill" class="obs-lock-bar-fill"></div></div>
+                    <div class="obs-lock-progress" id="obsLockProgressText"></div>
+                </div>
                 <div class="sheet-bottom-row">
                     <div class="sheet-seg">
                         <button type="button" id="segAtlasBtn" class="seg-btn" data-i18n="sheet.segAtlas">Atlas</button>
                         <button type="button" id="segRewardsBtn" class="seg-btn" data-i18n="sheet.segRewards">Rewards</button>
+                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon">🔒</button>
                     </div>
                     <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
                             data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse">↓</button>
@@ -91,6 +109,8 @@
     <script src="js/field.js"></script>
     <script src="js/camera.js"></script>
     <script src="js/drawing.js"></script>
+    <!-- B-02: обсерватория опирается на camera.js (клампы, зазоры) и field.js (maxEdge) -->
+    <script src="js/observatory.js"></script>
     <script src="js/topologyRecognition.js"></script>
     <script src="js/recognition.js"></script>
     <script src="js/customTypes.js"></script>

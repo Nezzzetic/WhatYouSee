@@ -13,6 +13,13 @@ let favoriteShapes = new Set();
 let playerId = '';
 let devDayOffset = 0;
 
+// B-02: параллельный накопитель обсерватории. `lifetimeMetaEarned` растёт вместе
+// с каждым начислением ✦ и НЕ уменьшается никогда — в отличие от metaScore,
+// который обнуляется автосписанием страниц атласа. `observatoryStarsGranted` —
+// сколько звёзд уже выдано холсту, разница с расчётной и есть «долг».
+let lifetimeMetaEarned = 0;
+let observatoryStarsGranted = 0;
+
 // Legacy (migration only)
 let globalDiscoveredShapes = new Set();
 let atlasClaimedShapes = new Set();
@@ -75,9 +82,74 @@ function awardMetaScore(amount) {
     const n = Math.max(0, Math.floor(amount));
     if (n <= 0) return 0;
     metaScore += n;
+    // B-02: копилку наращиваем ДО автосписания страниц — иначе те же ✦, что
+    // молча ушли на страницу атласа, до накопителя бы не доехали.
+    lifetimeMetaEarned += n;
+    const wasObservatoryUnlocked = observatoryUnlockedNotified;
     maybeAutoUnlockAtlasPages();
+    if (typeof grantObservatoryStarsDue === 'function') grantObservatoryStarsDue();
+    if (!wasObservatoryUnlocked) notifyObservatoryUnlockedIfNeeded();
     saveProgression();
     return n;
+}
+
+// =============================================================================
+// OBSERVATORY ACCUMULATOR (B-02)
+// =============================================================================
+
+/** Одноразовый флаг тоста «Обсерватория открыта» (живёт в сейве прогрессии). */
+let observatoryUnlockedNotified = false;
+
+function getLifetimeMetaEarned() {
+    return lifetimeMetaEarned;
+}
+
+/** Порог — условие, а не цена: ✦ за него не списываются. */
+function isObservatoryUnlocked() {
+    return lifetimeMetaEarned >= OBSERVATORY_UNLOCK_COST;
+}
+
+/** Сколько звёзд холст ещё не получил. */
+function getObservatoryStarsDue() {
+    const earned = Math.floor(lifetimeMetaEarned / OBSERVATORY_STAR_COST);
+    return Math.max(0, earned - observatoryStarsGranted);
+}
+
+/** Учёт выданных звёзд; саму раздачу делает observatory.js. */
+function markObservatoryStarsGranted(count) {
+    const n = Math.max(0, Math.floor(count));
+    if (n <= 0) return 0;
+    observatoryStarsGranted += n;
+    return n;
+}
+
+/**
+ * Тост показывается ровно один раз — в момент, когда порог взят. Кнопка сегмента
+ * при этом уже перерисована (renderSheetSegment вызывается из renderSheet).
+ */
+function notifyObservatoryUnlockedIfNeeded() {
+    if (observatoryUnlockedNotified || !isObservatoryUnlocked()) return false;
+    observatoryUnlockedNotified = true;
+    if (typeof showInfoToast === 'function') {
+        showInfoToast('🌌', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
+    }
+    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+    return true;
+}
+
+/**
+ * Реконструкция накопителя для сейва, где поля ещё нет (миграции не будет).
+ * ✦ покидают баланс единственным путём — оплатой страницы атласа
+ * (`metaScore -=` встречается в коде дважды, оба раза это цена страницы),
+ * поэтому сумма восстанавливается точно.
+ */
+function reconstructLifetimeMetaEarned() {
+    let sum = metaScore;
+    for (const pageIndex of unlockedPageIndices) {
+        sum += getAtlasPageUnlockCost(pageIndex);
+    }
+    return sum;
 }
 
 /** S-01: страницы атласа открываются автоматически, как только хватает ✦. */
@@ -370,6 +442,11 @@ function resetProgressionForFullReset() {
     globalDiscoveredShapes = new Set();
     atlasClaimedShapes = new Set();
     devDayOffset = 0;
+    // B-02: полный сброс — это вайп, холст уходит вместе с остальным.
+    // Ключ хранения удаляет performFullReset (sketch.js).
+    lifetimeMetaEarned = 0;
+    observatoryStarsGranted = 0;
+    observatoryUnlockedNotified = false;
     if (typeof resetAchievementsForFullReset === 'function') resetAchievementsForFullReset();
 }
 
@@ -390,7 +467,12 @@ function saveProgression() {
             favoriteShapes: [...favoriteShapes],
             playerId: ensurePlayerId(),
             devDayOffset,
-            catalogVersion: CATALOG_SAVE_VERSION
+            catalogVersion: CATALOG_SAVE_VERSION,
+            // B-02: накопитель обсерватории. Версию сейва не поднимаем —
+            // отсутствие полей чинится реконструкцией, а не миграцией.
+            lifetimeMetaEarned,
+            observatoryStarsGranted,
+            observatoryUnlockedNotified
         };
         if (typeof getAchievementSaveData === 'function') {
             Object.assign(state, getAchievementSaveData());
@@ -432,6 +514,18 @@ function loadProgression() {
         }
         globalDiscoveredShapes = new Set(createdShapes);
         atlasClaimedShapes = new Set(state.atlasClaimedShapes || [...createdShapes]);
+
+        // B-02: поля нет (сейв до обсерватории) — восстанавливаем точно, без
+        // миграции и без сброса прогресса. Считается один раз: дальше поле живёт само.
+        lifetimeMetaEarned = Number.isFinite(Number(state.lifetimeMetaEarned))
+            ? Math.max(0, Math.floor(Number(state.lifetimeMetaEarned)))
+            : reconstructLifetimeMetaEarned();
+        observatoryStarsGranted = Math.max(0, Math.floor(Number(state.observatoryStarsGranted) || 0));
+        // Старый сейв, где порог уже взят: тост не показываем задним числом —
+        // игрок увидит открытую кнопку 🌌 и без него.
+        observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
+            ? !!state.observatoryUnlockedNotified
+            : isObservatoryUnlocked();
 
         if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(state);
 
