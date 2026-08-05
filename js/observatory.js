@@ -225,15 +225,29 @@ function addObservatoryStar() {
 }
 
 /**
+ * Сколько звёзд холст уже получил. Это и есть счётчик выданного: звёзды
+ * отсюда не исчезают никогда, поэтому их количество — точный ответ.
+ * Отдельного поля в сейве прогрессии нет намеренно (см. getObservatoryStarsDue).
+ */
+function getObservatoryGrantedStarCount() {
+    return observatoryStars.length;
+}
+
+/**
  * Догон выдачи: вызывается при загрузке и при каждом awardMetaScore.
+ *
+ * Пишем ОБА ключа немедленно, а не дебаунсом: холст и накопитель обязаны
+ * лечь на диск одной операцией. Разъехавшаяся запись — ровно тот сценарий,
+ * который раньше давал двойную выдачу.
+ *
  * @returns {number} сколько звёзд выдано за этот вызов
  */
 function grantObservatoryStarsDue() {
     const due = typeof getObservatoryStarsDue === 'function' ? getObservatoryStarsDue() : 0;
     if (due <= 0) return 0;
     for (let i = 0; i < due; i++) addObservatoryStar();
-    markObservatoryStarsGranted(due);
-    scheduleObservatorySave();
+    saveObservatoryNow();
+    if (typeof saveProgression === 'function') saveProgression();
     return due;
 }
 

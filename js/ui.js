@@ -681,7 +681,9 @@ function renderObservatorySegButton() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 
     btn.classList.toggle('seg-btn-locked', !unlocked);
-    btn.classList.toggle('seg-btn-on', unlocked && inObservatory);
+    // Жёлтой подсветки (seg-btn-on) у этой кнопки нет: она не показывает раздел,
+    // а меняет мир за шторкой, и «включённого» состояния у неё не бывает.
+    // Куда ведёт тап — говорит сама иконка: 🌌 туда, 🌃 обратно.
 
     let key;
     if (!unlocked) {
@@ -756,12 +758,12 @@ function onObservatorySegClick() {
         renderObservatoryLockHint();
         return;
     }
-    // Результат перехода лежит ПОД шторкой — оставить её открытой значит
-    // показать игроку, что «ничего не произошло».
+    // Шторку НЕ закрываем: игрок может сходить туда-обратно, не поднимая её
+    // каждый раз заново. Что мир сменился, видно по иконке кнопки — она
+    // перерисовывается тут же, из setAppMode → updateObservatoryUI.
     const next = (typeof isObservatoryMode === 'function' && isObservatoryMode())
         ? 'field'
         : 'observatory';
-    closeSheet();
     setAppMode(next);
 }
 

@@ -15,10 +15,10 @@ let devDayOffset = 0;
 
 // B-02: параллельный накопитель обсерватории. `lifetimeMetaEarned` растёт вместе
 // с каждым начислением ✦ и НЕ уменьшается никогда — в отличие от metaScore,
-// который обнуляется автосписанием страниц атласа. `observatoryStarsGranted` —
-// сколько звёзд уже выдано холсту, разница с расчётной и есть «долг».
+// который обнуляется автосписанием страниц атласа.
+// Счётчика «сколько звёзд уже выдано» здесь намеренно НЕТ: он считается по
+// самому холсту (см. getObservatoryStarsDue).
 let lifetimeMetaEarned = 0;
-let observatoryStarsGranted = 0;
 
 // Legacy (migration only)
 let globalDiscoveredShapes = new Set();
@@ -109,18 +109,26 @@ function isObservatoryUnlocked() {
     return lifetimeMetaEarned >= OBSERVATORY_UNLOCK_COST;
 }
 
-/** Сколько звёзд холст ещё не получил. */
+/**
+ * Сколько звёзд холст ещё не получил.
+ *
+ * ⚠️ Выданное считается ПО САМОМУ ХОЛСТУ, а не отдельным счётчиком в сейве
+ * прогрессии. Отдельный счётчик здесь уже был и породил двойную выдачу:
+ * холст и прогрессия лежат в РАЗНЫХ ключах localStorage и пишутся в разные
+ * моменты (холст — дебаунсом 500 мс, прогрессия — из awardMetaScore). Стоило
+ * вкладке закрыться между двумя записями, как счётчик уезжал назад, а звёзды
+ * на холсте оставались — и следующая загрузка выдавала их заново поверх.
+ *
+ * Звёзды с холста не исчезают никогда, поэтому их количество — точный и
+ * единственный ответ на вопрос «сколько уже выдано». Рассинхрону взяться
+ * неоткуда: считаем по тому же файлу, в который кладём.
+ */
 function getObservatoryStarsDue() {
     const earned = Math.floor(lifetimeMetaEarned / OBSERVATORY_STAR_COST);
-    return Math.max(0, earned - observatoryStarsGranted);
-}
-
-/** Учёт выданных звёзд; саму раздачу делает observatory.js. */
-function markObservatoryStarsGranted(count) {
-    const n = Math.max(0, Math.floor(count));
-    if (n <= 0) return 0;
-    observatoryStarsGranted += n;
-    return n;
+    const granted = typeof getObservatoryGrantedStarCount === 'function'
+        ? getObservatoryGrantedStarCount()
+        : 0;
+    return Math.max(0, earned - granted);
 }
 
 /**
@@ -445,7 +453,6 @@ function resetProgressionForFullReset() {
     // B-02: полный сброс — это вайп, холст уходит вместе с остальным.
     // Ключ хранения удаляет performFullReset (sketch.js).
     lifetimeMetaEarned = 0;
-    observatoryStarsGranted = 0;
     observatoryUnlockedNotified = false;
     if (typeof resetAchievementsForFullReset === 'function') resetAchievementsForFullReset();
 }
@@ -470,8 +477,8 @@ function saveProgression() {
             catalogVersion: CATALOG_SAVE_VERSION,
             // B-02: накопитель обсерватории. Версию сейва не поднимаем —
             // отсутствие полей чинится реконструкцией, а не миграцией.
+            // observatoryStarsGranted здесь больше нет: выданное считается по холсту.
             lifetimeMetaEarned,
-            observatoryStarsGranted,
             observatoryUnlockedNotified
         };
         if (typeof getAchievementSaveData === 'function') {
@@ -520,7 +527,6 @@ function loadProgression() {
         lifetimeMetaEarned = Number.isFinite(Number(state.lifetimeMetaEarned))
             ? Math.max(0, Math.floor(Number(state.lifetimeMetaEarned)))
             : reconstructLifetimeMetaEarned();
-        observatoryStarsGranted = Math.max(0, Math.floor(Number(state.observatoryStarsGranted) || 0));
         // Старый сейв, где порог уже взят: тост не показываем задним числом —
         // игрок увидит открытую кнопку 🌌 и без него.
         observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
