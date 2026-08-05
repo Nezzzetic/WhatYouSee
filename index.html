@@ -36,6 +36,7 @@
                 <select id="devPictureFieldSelect" aria-label="Поле-картинка"></select>
                 <button id="devPictureFieldShowBtn" type="button">Показать</button>
             </div>
+            <button id="devAddMetaButton">+100 ✦ (как забор награды)</button>
             <button id="devNewDayButton">Новый день</button>
             <button id="devResetAchievementsButton">Сбросить достижения</button>
             <button id="fullResetButton" class="btn-danger">Полный сброс</button>
@@ -73,19 +74,21 @@
             </div>
             <div class="sheet-footer">
                 <div id="sheetRail" class="sheet-rail"></div>
-                <!-- B-02: хинт запертой обсерватории — свой прогресс-бар «за всё время»,
-                     не ✦ из шапки (тот обнуляется автосписанием страницы атласа) -->
-                <div id="observatoryLockHint" class="obs-lock-hint" hidden>
-                    <div class="obs-lock-title"><span aria-hidden="true">🔒</span> <span id="obsLockTitleText"></span></div>
-                    <div class="obs-lock-sub" id="obsLockSubText"></div>
-                    <div class="obs-lock-bar"><div id="obsLockBarFill" class="obs-lock-bar-fill"></div></div>
-                    <div class="obs-lock-progress" id="obsLockProgressText"></div>
-                </div>
                 <div class="sheet-bottom-row">
+                    <!-- B-02: хинт запертой обсерватории — поповер поверх подвала.
+                         Он НЕ в потоке: вёрстка шторки от него не съезжает.
+                         Прогресс-бар свой, «за всё время», а не ✦ из шапки —
+                         тот обнуляется автосписанием страницы атласа. -->
+                    <div id="observatoryLockHint" class="obs-lock-hint" role="dialog" hidden>
+                        <div class="obs-lock-title"><span aria-hidden="true">🔒</span> <span id="obsLockTitleText"></span></div>
+                        <div class="obs-lock-sub" id="obsLockSubText"></div>
+                        <div class="obs-lock-bar"><div id="obsLockBarFill" class="obs-lock-bar-fill"></div></div>
+                        <div class="obs-lock-progress" id="obsLockProgressText"></div>
+                    </div>
                     <div class="sheet-seg">
                         <button type="button" id="segAtlasBtn" class="seg-btn" data-i18n="sheet.segAtlas">Atlas</button>
                         <button type="button" id="segRewardsBtn" class="seg-btn" data-i18n="sheet.segRewards">Rewards</button>
-                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon">🔒</button>
+                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon">🔭</button>
                     </div>
                     <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
                             data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse">↓</button>
