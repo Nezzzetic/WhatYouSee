@@ -668,8 +668,10 @@ let observatoryHintOpen = false;
 
 /**
  * Третья кнопка сегмента. Она обещание, а не сюрприз: видна с первой ночи.
- * 🔒 — заперта, 🌌 — «уйти в обсерваторию», 🌃 — «вернуться на небо»
- * (подсвечена, потому что за шторкой сейчас именно обсерватория).
+ * Заперта — серый 🔭 (не замок: замок читается как «нельзя», телескоп — как
+ * «сюда потом можно»; замок живёт внутри хинта, где объясняет условие).
+ * 🌌 — «уйти в обсерваторию», 🌃 — «вернуться на небо» (подсвечена, потому
+ * что за шторкой сейчас именно обсерватория).
  */
 function renderObservatorySegButton() {
     const btn = document.getElementById('segObservatoryBtn');
@@ -683,7 +685,7 @@ function renderObservatorySegButton() {
 
     let key;
     if (!unlocked) {
-        btn.textContent = '🔒';
+        btn.textContent = '🔭';
         key = 'observatory.lockedTitle';
     } else if (inObservatory) {
         btn.textContent = '🌃';
@@ -726,10 +728,31 @@ function renderObservatoryLockHint() {
     }
 }
 
+/**
+ * Поповер закрывается тапом по нему самому и тапом мимо. Слушатель один на
+ * документ и вешается лениво: пока хинт свёрнут, он выходит первой строкой.
+ * Кнопка исключена — она сама переключает, иначе тап по ней открыл бы и тут же
+ * закрыл хинт.
+ */
+let observatoryHintDismissBound = false;
+
+function bindObservatoryHintDismiss() {
+    if (observatoryHintDismissBound) return;
+    observatoryHintDismissBound = true;
+    document.addEventListener('click', (event) => {
+        if (!observatoryHintOpen) return;
+        const btn = document.getElementById('segObservatoryBtn');
+        if (btn && btn.contains(event.target)) return;
+        observatoryHintOpen = false;
+        renderObservatoryLockHint();
+    });
+}
+
 /** Тап по кнопке: заперта — разворачиваем хинт, открыта — меняем мир. */
 function onObservatorySegClick() {
     if (typeof isObservatoryUnlocked !== 'function' || !isObservatoryUnlocked()) {
         observatoryHintOpen = !observatoryHintOpen;
+        if (observatoryHintOpen) bindObservatoryHintDismiss();
         renderObservatoryLockHint();
         return;
     }
@@ -809,6 +832,7 @@ function openSheet(section) {
 function closeSheet() {
     if (!sheetOpen) return;
     sheetOpen = false;
+    observatoryHintOpen = false; // B-02: поповер не переживает закрытие шторки
     const sheet = document.getElementById('sheet');
     const scrim = document.getElementById('sheetScrim');
     if (sheet) {

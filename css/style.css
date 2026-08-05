@@ -890,21 +890,49 @@ button:disabled {
     line-height: 1;
 }
 
-/* Заперта — приглушена, как rail-lock у закрытых страниц атласа */
+/* Заперта — серый телескоп: обещание, а не запрет. Замок остаётся внутри
+   хинта, где он объясняет условие, а не просто «нельзя». */
 .seg-btn-locked,
 .seg-btn-locked:hover {
-    opacity: 0.45;
+    opacity: 0.5;
     background: transparent;
     color: #878ea6;
+    filter: grayscale(1);
 }
 
-/* Хинт запертой обсерватории — строка над сегментом, внутри подвала шторки */
+/* Хинт запертой обсерватории — ПОПОВЕР поверх подвала, а не строка в потоке:
+   разворачивание не должно двигать сегмент и рельс под пальцем. */
+.sheet-bottom-row {
+    position: relative;
+}
+
 .obs-lock-hint {
-    margin-top: 8px;
-    padding: 9px 11px 10px;
-    border: 1px solid #232838;
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    z-index: 6;
+    width: min(300px, 100%);
+    padding: 10px 12px 11px;
+    border: 1px solid #2f3547;
     border-radius: 12px;
-    background: rgba(255, 255, 255, 0.03);
+    background: #12141d;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* Уголок целится в центр кнопки 🔭. Считаем от правого края строки подвала:
+   44 px кнопки «↓» + 8 px зазора + половина 44-пиксельной 🔭 = 74 px,
+   минус половина уголка = 69 px. */
+.obs-lock-hint::after {
+    content: '';
+    position: absolute;
+    right: 69px;
+    bottom: -6px;
+    width: 10px;
+    height: 10px;
+    background: #12141d;
+    border-right: 1px solid #2f3547;
+    border-bottom: 1px solid #2f3547;
+    transform: rotate(45deg);
 }
 
 .obs-lock-title {

@@ -219,6 +219,7 @@ function setup() {
     resetBtn?.addEventListener("click", onResetSky);
     fullResetBtn?.addEventListener("click", onFullReset);
     devNewDayBtn?.addEventListener("click", onDevNewDay);
+    document.getElementById("devAddMetaButton")?.addEventListener("click", onDevAddMetaScore);
     devResetAchvBtn?.addEventListener("click", onDevResetAchievements);
     initDevPictureFieldFromUrl();
     populateDevPictureFieldSelect();
@@ -449,6 +450,37 @@ function onDevPictureFieldShow() {
     const value = sel.value || null;
     if (typeof setDevPictureFieldId === 'function') setDevPictureFieldId(value);
     onResetSky();
+}
+
+/**
+ * Dev: +100 ✦ ровно тем же путём, что забор награды за шаг цепочки —
+ * `awardMetaScore` + хвост `claimAchievementStep` (achievements.js:904).
+ * Отсюда бесплатно приезжают все побочные события: автооткрытие страницы
+ * атласа с тостом, выдача звёзд обсерватории, тост об её открытии, пересчёт
+ * забираемых шагов и тост «новое достижение доступно».
+ *
+ * Как и настоящий забор, поднимает undoFloor: событие необратимое.
+ */
+const DEV_META_SCORE_STEP = 100;
+
+function onDevAddMetaScore() {
+    const before = getMetaScore();
+    awardMetaScore(DEV_META_SCORE_STEP);
+    if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
+    recomputeAchievementsClaimable(true);
+    saveProgression();
+
+    updateProgressionUI();
+    updateUndoConstellationButtonState();
+    updateObservatoryUI();
+    refreshSheetIfOpen();
+    updatePeekBar();
+
+    if (typeof console !== 'undefined' && console.info) {
+        console.info('[dev] +' + DEV_META_SCORE_STEP + ' ✦:', before, '→', getMetaScore(),
+            '· за всё время:', getLifetimeMetaEarned(),
+            '· звёзд обсерватории:', observatoryStars.length);
+    }
 }
 
 function onDevResetAchievements() {
