@@ -139,7 +139,8 @@ function notifyObservatoryUnlockedIfNeeded() {
     if (observatoryUnlockedNotified || !isObservatoryUnlocked()) return false;
     observatoryUnlockedNotified = true;
     if (typeof showInfoToast === 'function') {
-        showInfoToast('🌌', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
+        // Телескоп, а не 🌌: примета обсерватории во всём UI одна (см. ui.js)
+        showInfoToast('🔭', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
     }
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
@@ -528,7 +529,7 @@ function loadProgression() {
             ? Math.max(0, Math.floor(Number(state.lifetimeMetaEarned)))
             : reconstructLifetimeMetaEarned();
         // Старый сейв, где порог уже взят: тост не показываем задним числом —
-        // игрок увидит открытую кнопку 🌌 и без него.
+        // игрок увидит ожившую кнопку 🔭 и без него.
         observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
             ? !!state.observatoryUnlockedNotified
             : isObservatoryUnlocked();

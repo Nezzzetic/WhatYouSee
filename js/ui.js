@@ -668,11 +668,19 @@ let observatoryHintOpen = false;
 
 /**
  * Третья кнопка сегмента. Она обещание, а не сюрприз: видна с первой ночи.
- * Заперта — серый 🔭 (не замок: замок читается как «нельзя», телескоп — как
- * «сюда потом можно»; замок живёт внутри хинта, где объясняет условие).
- * 🌌 — «уйти в обсерваторию», 🌃 — «вернуться на небо» (подсвечена, потому
- * что за шторкой сейчас именно обсерватория).
+ *
+ * Иконка ОДНА во всех состояниях — 🔭. Обсерватория опознаётся по телескопу
+ * ещё запертой, и менять символ при открытии значило бы подменить примету, по
+ * которой игрок эту кнопку уже запомнил. Замок живёт внутри хинта, где
+ * объясняет условие, а не просто говорит «нельзя».
+ *
+ * Отличается только приглушённость запертой. Жёлтой подсветки (seg-btn-on)
+ * нет ни в одном состоянии: кнопка не показывает раздел, а меняет мир за
+ * шторкой, и «включённой» не бывает. Куда ведёт тап, говорит подсказка, а
+ * какой мир сейчас — сам экран под шторкой (она при переходе не закрывается).
  */
+const OBSERVATORY_SEG_ICON = '🔭';
+
 function renderObservatorySegButton() {
     const btn = document.getElementById('segObservatoryBtn');
     if (!btn) return;
@@ -681,19 +689,14 @@ function renderObservatorySegButton() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 
     btn.classList.toggle('seg-btn-locked', !unlocked);
-    // Жёлтой подсветки (seg-btn-on) у этой кнопки нет: она не показывает раздел,
-    // а меняет мир за шторкой, и «включённого» состояния у неё не бывает.
-    // Куда ведёт тап — говорит сама иконка: 🌌 туда, 🌃 обратно.
+    btn.textContent = OBSERVATORY_SEG_ICON;
 
     let key;
     if (!unlocked) {
-        btn.textContent = '🔭';
         key = 'observatory.lockedTitle';
     } else if (inObservatory) {
-        btn.textContent = '🌃';
         key = 'observatory.toField';
     } else {
-        btn.textContent = '🌌';
         key = 'observatory.toObservatory';
     }
     btn.setAttribute('title', t(key));
