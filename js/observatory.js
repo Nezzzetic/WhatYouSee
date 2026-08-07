@@ -19,6 +19,12 @@
 let observatoryStars = [];
 /** Связи: {startId, endId}. Граф без правил — ни фигур, ни лимитов, ни запрета пересечений. */
 let observatoryLines = [];
+/**
+ * U-12: имена созвездий холста — {stars:[id…], nameId, custom, dx, dy}.
+ * Созвездие здесь — связная компонента из двух и более звёзд; имени вне
+ * компоненты не существует. `dx`/`dy` — смещение подписи от центра компоненты.
+ */
+let observatoryNames = [];
 /** Фоновая россыпь: своя, детерминированная по playerId (в сейв не пишется). */
 let observatoryBackgroundStars = [];
 /** 'connect' — соединять 🔗 (по умолчанию), 'move' — перемещать ✋. */
@@ -35,6 +41,16 @@ const OBSERVATORY_TAP_MAX_MS = 250;
 
 /** Сколько раз пробуем положить новую звезду с min-distance, прежде чем класть куда легло. */
 const OBSERVATORY_PLACE_ATTEMPTS = 60;
+
+// U-12: подписи. Числа этого блока настраиваются на устройстве — держим их
+// рядом с порогами тапа, а не в constants.js: класс один и тот же.
+
+/** Дальше этого подпись от центра созвездия не уходит; у мелкого — минимум столько. */
+const OBSERVATORY_LABEL_RADIUS_MIN = 120;
+/** Запас вокруг текстового прямоугольника подписи при попадании пальцем (экранные px). */
+const OBSERVATORY_LABEL_HIT_PAD = 10;
+/** Звезда строго под пальцем выигрывает у подписи, накрывшей её (мировые ед.). */
+const OBSERVATORY_LABEL_STAR_PRIORITY = STAR_SIZE * 1.5;
 
 // =============================================================================
 // ХРАНЕНИЕ
@@ -59,7 +75,18 @@ function saveObservatoryNow() {
                 c: s.colorValue
             })),
             lines: observatoryLines.map(l => [l.startId, l.endId]),
-            mode: observatoryMode
+            mode: observatoryMode,
+            // U-12: имена — величина, не выводимая из холста, поэтому лежат
+            // в ЭТОМ же ключе. Второй ключ = второй момент записи = рассинхрон
+            // (урок B-02, там он выдавал звёзды дважды). Поле аддитивное:
+            // старый сейв без него читается как холст без имён, миграции нет.
+            names: observatoryNames.map(e => ({
+                stars: e.stars.slice(),
+                nameId: e.nameId || null,
+                custom: e.custom || null,
+                dnx: (e.dx || 0) / FIELD_WIDTH,
+                dny: (e.dy || 0) / FIELD_HEIGHT
+            }))
         };
         localStorage.setItem(OBSERVATORY_SAVE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -79,6 +106,7 @@ function scheduleObservatorySave() {
 function loadObservatory() {
     observatoryStars = [];
     observatoryLines = [];
+    observatoryNames = [];
     observatoryNextStarId = 0;
     try {
         const raw = localStorage.getItem(OBSERVATORY_SAVE_KEY);
@@ -110,7 +138,26 @@ function loadObservatory() {
             observatoryLines.push({ startId: a, endId: b });
         }
 
+        // U-12: имя привязано к НАБОРУ звёзд, а не к своему порядковому номеру.
+        // Дальше syncObservatoryNames() сведёт эти записи с фактическими
+        // компонентами — тем же правилом, что работает при слиянии и распаде.
+        for (const n of Array.isArray(state.names) ? state.names : []) {
+            if (!n || !Array.isArray(n.stars)) continue;
+            const ids = n.stars
+                .map(v => Math.floor(Number(v)))
+                .filter(v => Number.isFinite(v) && seenIds.has(v));
+            if (ids.length < 2) continue;
+            observatoryNames.push({
+                stars: ids.sort((a, b) => a - b),
+                nameId: typeof n.nameId === 'string' ? n.nameId : null,
+                custom: (typeof n.custom === 'string' && n.custom) ? n.custom : null,
+                dx: Number(n.dnx) * FIELD_WIDTH || 0,
+                dy: Number(n.dny) * FIELD_HEIGHT || 0
+            });
+        }
+
         if (state.mode === 'move' || state.mode === 'connect') observatoryMode = state.mode;
+        syncObservatoryNames();
         return true;
     } catch (e) {
         console.warn('Observatory load failed:', e);
@@ -132,6 +179,7 @@ function clearObservatorySave() {
 function resetObservatoryForFullReset() {
     observatoryStars = [];
     observatoryLines = [];
+    observatoryNames = [];
     observatoryNextStarId = 0;
     observatoryMode = 'connect';
     resetObservatoryDragState();
@@ -291,6 +339,268 @@ function getObservatoryDoomedLines() {
 }
 
 // =============================================================================
+// ИМЕНА СОЗВЕЗДИЙ (U-12)
+// =============================================================================
+//
+// Созвездие холста — связная компонента графа связей из двух и более звёзд.
+// Коммита здесь нет: компоненты пересчитываются по observatoryLines, и имя
+// живёт ровно столько, сколько живёт компонента. Одинокая звезда — не созвездие.
+//
+// Пересчёт делается ПРИ ИЗМЕНЕНИИ ГРАФА (связь добавили/убрали, звезду отпустили,
+// холст загрузили), а не в draw(): на сотне звёзд покадровый обход — лишняя работа.
+// Центр подписи при этом всё равно едет за звёздами — он считается на отрисовке.
+
+/** Связные компоненты из ≥2 звёзд; каждая — отсортированный массив id. */
+function getObservatoryComponents() {
+    const adj = new Map();
+    for (const l of observatoryLines) {
+        if (!adj.has(l.startId)) adj.set(l.startId, []);
+        if (!adj.has(l.endId)) adj.set(l.endId, []);
+        adj.get(l.startId).push(l.endId);
+        adj.get(l.endId).push(l.startId);
+    }
+
+    const seen = new Set();
+    const out = [];
+    for (const startId of adj.keys()) {
+        if (seen.has(startId)) continue;
+        seen.add(startId);
+        const stack = [startId];
+        const group = [];
+        while (stack.length > 0) {
+            const id = stack.pop();
+            group.push(id);
+            for (const next of adj.get(id) || []) {
+                if (seen.has(next)) continue;
+                seen.add(next);
+                stack.push(next);
+            }
+        }
+        if (group.length >= 2) out.push(group.sort((a, b) => a - b));
+    }
+    return out;
+}
+
+/**
+ * Свободное имя из пула fallback-имён. Пул кончился — берём случайное с
+ * повтором (решение заказчика, развилка 4а): уникальность имён на холсте
+ * ничего не значит, а sentinel «Фигура» посреди своего неба выглядит поломкой.
+ */
+function pickObservatoryNameId(usedIds) {
+    const id = pickFallbackName(usedIds);
+    if (id !== SHAPE_UNRECOGNIZED) return id;
+    return FALLBACK_NAME_IDS[Math.floor(Math.random() * FALLBACK_NAME_IDS.length)];
+}
+
+function observatoryStarSetKey(ids) {
+    return ids.join(',');
+}
+
+/**
+ * Сверка реестра имён с фактическими компонентами. Одно правило на все события:
+ *
+ *   - состав компоненты не изменился → запись сохраняется целиком (имя + смещение);
+ *   - состав изменился (слияние или распад) → случайное имя пропадает, а СВОЁ имя
+ *     претендует на компоненту с наибольшим пересечением; при споре двух своих
+ *     выигрывает то, чья прежняя компонента была больше (развилки 1а и 2а);
+ *   - компонента без имени получает случайное.
+ *
+ * Она же восстанавливает привязку после загрузки — по тому же пересечению.
+ */
+function syncObservatoryNames() {
+    const components = getObservatoryComponents();
+    const next = new Array(components.length).fill(null);
+
+    const byKey = new Map();
+    components.forEach((ids, i) => byKey.set(observatoryStarSetKey(ids), i));
+
+    const leftovers = [];
+    for (const entry of observatoryNames) {
+        const i = byKey.get(observatoryStarSetKey(entry.stars));
+        if (i !== undefined && next[i] === null) {
+            next[i] = entry;
+        } else {
+            leftovers.push(entry);
+        }
+    }
+
+    // Бо́льшая прежняя компонента выбирает первой — так «своё имя достаётся
+    // куску, где больше звёзд» работает и при слиянии, и при распаде
+    const claims = leftovers
+        .filter(e => e.custom)
+        .sort((a, b) => b.stars.length - a.stars.length);
+
+    for (const entry of claims) {
+        const own = new Set(entry.stars);
+        let best = -1;
+        let bestOverlap = 0;
+        for (let i = 0; i < components.length; i++) {
+            if (next[i] !== null) continue;
+            let overlap = 0;
+            for (const id of components[i]) {
+                if (own.has(id)) overlap++;
+            }
+            if (overlap === 0) continue;
+            // Равное пересечение — за бо́льшим куском
+            if (overlap > bestOverlap ||
+                (overlap === bestOverlap && components[i].length > components[best].length)) {
+                bestOverlap = overlap;
+                best = i;
+            }
+        }
+        if (best >= 0) {
+            next[best] = {
+                stars: components[best],
+                nameId: entry.nameId,
+                custom: entry.custom,
+                dx: entry.dx,
+                dy: entry.dy
+            };
+        }
+    }
+
+    const used = [];
+    for (const entry of next) {
+        if (entry && entry.nameId) used.push(entry.nameId);
+    }
+    for (let i = 0; i < components.length; i++) {
+        if (next[i] !== null) {
+            next[i].stars = components[i];
+            continue;
+        }
+        const nameId = pickObservatoryNameId(used);
+        used.push(nameId);
+        next[i] = { stars: components[i], nameId, custom: null, dx: 0, dy: 0 };
+    }
+
+    observatoryNames = next;
+}
+
+/** Имя на экран: своё не переводится, случайное достаётся из словаря. */
+function getObservatoryLabelText(entry) {
+    if (!entry) return '';
+    if (entry.custom) return entry.custom;
+    if (typeof shapeLabel === 'function') return shapeLabel(entry.nameId || '');
+    return entry.nameId || '';
+}
+
+/**
+ * Геометрия подписи: центр компоненты, её радиус, зажатое смещение и итоговая
+ * точка. Смещение зажимается ЗДЕСЬ, а не при записи, — тогда подпись сама
+ * подтягивается, когда игрок стягивает созвездие в точку.
+ */
+function getObservatoryLabelGeometry(entry) {
+    if (!entry || !Array.isArray(entry.stars)) return null;
+
+    let sumX = 0;
+    let sumY = 0;
+    let count = 0;
+    for (const id of entry.stars) {
+        const s = getObservatoryStarById(id);
+        if (!s) continue;
+        sumX += s.x;
+        sumY += s.y;
+        count++;
+    }
+    if (count === 0) return null;
+
+    const cx = sumX / count;
+    const cy = sumY / count;
+
+    let radius = 0;
+    for (const id of entry.stars) {
+        const s = getObservatoryStarById(id);
+        if (!s) continue;
+        radius = Math.max(radius, Math.hypot(s.x - cx, s.y - cy));
+    }
+    const limit = Math.max(radius, OBSERVATORY_LABEL_RADIUS_MIN);
+
+    let dx = Number(entry.dx) || 0;
+    let dy = Number(entry.dy) || 0;
+    const dist = Math.hypot(dx, dy);
+    if (dist > limit && dist > 1e-9) {
+        dx *= limit / dist;
+        dy *= limit / dist;
+    }
+
+    return { cx, cy, limit, dx, dy, x: cx + dx, y: cy + dy };
+}
+
+/** Цвет подписи — средний цвет звёзд компоненты, как у связей. */
+function observatoryLabelRgb(entry) {
+    let sum = 0;
+    let count = 0;
+    for (const id of entry.stars) {
+        const s = getObservatoryStarById(id);
+        if (!s) continue;
+        sum += s.colorValue;
+        count++;
+    }
+    return colorValueToRgb(count > 0 ? sum / count : 0);
+}
+
+/**
+ * Подпись под пальцем. Хит-бокс — текстовый прямоугольник с запасом, а не радиус:
+ * подпись лежит у центра созвездия, то есть ровно там, где на плотном холсте
+ * стоят звёзды (риск №1 задачи). На дальнем зуме подписей нет — и попадать не во что.
+ */
+function getObservatoryLabelAt(fieldX, fieldY) {
+    const zoomAlpha = typeof getLabelZoomAlphaFactor === 'function'
+        ? getLabelZoomAlphaFactor() : 1;
+    if (zoomAlpha <= 0) return null;
+
+    const labelSize = COLLECTED_ATLAS_LABEL_SIZE / zoomLevel;
+    const pad = OBSERVATORY_LABEL_HIT_PAD / zoomLevel;
+
+    push();
+    textSize(labelSize);
+    let best = null;
+    let bestDist = Infinity;
+    for (const entry of observatoryNames) {
+        const g = getObservatoryLabelGeometry(entry);
+        if (!g) continue;
+        const halfW = textWidth(getObservatoryLabelText(entry)) / 2 + pad;
+        const halfH = labelSize / 2 + pad;
+        if (Math.abs(fieldX - g.x) > halfW || Math.abs(fieldY - g.y) > halfH) continue;
+        const d = Math.hypot(fieldX - g.x, fieldY - g.y);
+        if (d < bestDist) {
+            bestDist = d;
+            best = entry;
+        }
+    }
+    pop();
+    return best;
+}
+
+/** U-04 на холсте: тем же промптом, теми же правилами перевода. */
+function openObservatoryRenamePrompt(entry) {
+    if (!entry) return false;
+    const current = getObservatoryLabelText(entry);
+    // Промпт переводится, введённое игроком имя — нет (решение исполнителя L-01)
+    const result = prompt(t('observatory.renamePrompt'), current);
+    if (result === null || result.trim() === '') return false;
+    entry.custom = result.trim();
+    saveObservatoryNow();
+    return true;
+}
+
+/** Сдвинуть подпись в мировые координаты (x, y); возвращает зажатое смещение. */
+function setObservatoryLabelPosition(entry, x, y) {
+    const g = getObservatoryLabelGeometry(entry);
+    if (!g) return null;
+    let dx = x - g.cx;
+    let dy = y - g.cy;
+    const dist = Math.hypot(dx, dy);
+    if (dist > g.limit && dist > 1e-9) {
+        dx *= g.limit / dist;
+        dy *= g.limit / dist;
+    }
+    entry.dx = dx;
+    entry.dy = dy;
+    return { dx, dy, limit: g.limit };
+}
+
+// =============================================================================
 // РЕЖИМ ХОЛСТА
 // =============================================================================
 
@@ -314,6 +624,9 @@ function setObservatoryMode(mode) {
 let observatoryDragStar = null;      // режим «перемещать»: тащим эту звезду
 let observatoryConnectAnchor = null; // режим «соединять»: якорь протяжки
 let observatoryPressStar = null;     // звезда под пальцем на нажатии (кандидат в тап)
+let observatoryDragLabel = null;     // U-12: подпись под пальцем (тап → переименование)
+let observatoryLabelGrabDx = 0;      // чтобы подпись не прыгала центром под палец
+let observatoryLabelGrabDy = 0;
 let observatoryPressScreenX = 0;
 let observatoryPressScreenY = 0;
 let observatoryPressMs = 0;
@@ -323,6 +636,7 @@ function resetObservatoryDragState() {
     observatoryDragStar = null;
     observatoryConnectAnchor = null;
     observatoryPressStar = null;
+    observatoryDragLabel = null;
     observatoryPressMovedOut = false;
 }
 
@@ -360,6 +674,22 @@ function observatoryMousePressed() {
     observatoryPressScreenY = mouseY;
     observatoryPressMs = millis();
     observatoryPressMovedOut = false;
+    observatoryDragLabel = null;
+
+    // U-12: подпись перехватывает нажатие только в ✋ и только если под пальцем
+    // нет звезды вплотную. Иначе подпись, накрывшая звезду, отнимала бы у неё
+    // перекраску — а красят здесь куда чаще, чем переименовывают.
+    if (observatoryMode === 'move' &&
+        !(star && Math.hypot(star.x - fx, star.y - fy) <= OBSERVATORY_LABEL_STAR_PRIORITY)) {
+        const label = getObservatoryLabelAt(fx, fy);
+        if (label) {
+            const g = getObservatoryLabelGeometry(label);
+            observatoryDragLabel = label;
+            observatoryLabelGrabDx = g ? fx - g.x : 0;
+            observatoryLabelGrabDy = g ? fy - g.y : 0;
+            return; // ни панорамы, ни перетаскивания звезды
+        }
+    }
 
     if (!star) {
         isPanning = true;
@@ -393,6 +723,13 @@ function observatoryMouseDragged() {
     const fx = mouseX / zoomLevel + camX;
     const fy = mouseY / zoomLevel + camY;
 
+    // U-12: подпись ходит в пределах радиуса своего созвездия
+    if (observatoryDragLabel) {
+        setObservatoryLabelPosition(observatoryDragLabel,
+            fx - observatoryLabelGrabDx, fy - observatoryLabelGrabDy);
+        return;
+    }
+
     if (observatoryMode === 'move') {
         if (!observatoryDragStar) return;
         // Звезда следует за пальцем; связи тянутся сами, обречённые подсвечиваются
@@ -411,10 +748,12 @@ function observatoryMouseDragged() {
     if (hasObservatoryLine(a, b)) {
         // Протяжка по существующей связи её убирает
         removeObservatoryLine(a, b);
+        syncObservatoryNames();
         scheduleObservatorySave();
     } else if (isObservatoryEdgeLengthValid(a, b)) {
         observatoryLines.push({ startId: a, endId: b });
         if (typeof playEdgeSnap === 'function') playEdgeSnap(2);
+        syncObservatoryNames();
         scheduleObservatorySave();
     }
     observatoryConnectAnchor = star;
@@ -430,6 +769,15 @@ function observatoryMouseReleased() {
     const heldMs = millis() - observatoryPressMs;
     const isTap = !observatoryPressMovedOut && heldMs <= OBSERVATORY_TAP_MAX_MS;
 
+    // U-12: тап по подписи переименовывает, протяжка её просто оставляет на месте
+    if (observatoryDragLabel) {
+        const label = observatoryDragLabel;
+        resetObservatoryDragState();
+        if (isTap) openObservatoryRenamePrompt(label);
+        else scheduleObservatorySave();
+        return;
+    }
+
     if (observatoryMode === 'move') {
         if (isTap && observatoryPressStar) {
             // Тап красит звезду — только в «перемещать»; в «соединять» тап молчит
@@ -439,6 +787,7 @@ function observatoryMouseReleased() {
             // не потеряно — вернул звезду в радиус, связь уцелела
             const doomed = getObservatoryDoomedLines();
             for (const l of doomed) removeObservatoryLine(l.startId, l.endId);
+            if (doomed.length > 0) syncObservatoryNames();
             scheduleObservatorySave();
         }
     }
@@ -542,6 +891,30 @@ function drawObservatoryDraftLine() {
     if (trimmed) line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);
 }
 
+/**
+ * U-12: подписи созвездий. Центр берётся на отрисовке, поэтому подпись едет
+ * за звёздами прямо во время перетаскивания, сохраняя своё смещение.
+ * Гаснут на дальнем зуме вместе с полевыми (V-11).
+ */
+function drawObservatoryLabels() {
+    const zoomAlpha = typeof getLabelZoomAlphaFactor === 'function'
+        ? getLabelZoomAlphaFactor() : 1;
+    if (zoomAlpha <= 0) return;
+
+    push();
+    noStroke();
+    textAlign(CENTER, CENTER);
+    textSize(COLLECTED_ATLAS_LABEL_SIZE / zoomLevel);
+    for (const entry of observatoryNames) {
+        const g = getObservatoryLabelGeometry(entry);
+        if (!g) continue;
+        const rgb = observatoryLabelRgb(entry);
+        fill(rgb[0], rgb[1], rgb[2], 255 * zoomAlpha);
+        text(getObservatoryLabelText(entry), g.x, g.y);
+    }
+    pop();
+}
+
 function drawObservatoryMode() {
     push();
     scale(zoomLevel);
@@ -551,6 +924,7 @@ function drawObservatoryMode() {
     drawObservatoryLines();
     drawObservatoryDraftLine();
     drawObservatoryStars();
+    drawObservatoryLabels();
 
     pop();
 }
@@ -564,6 +938,8 @@ function initObservatory() {
     loadObservatory();
     // Догон: ✦ могли накопиться в сессиях, когда обсерватории ещё не было
     grantObservatoryStarsDue();
+    // U-12: битый/пустой сейв тоже обязан прийти к согласованному реестру имён
+    syncObservatoryNames();
 
     if (typeof document !== 'undefined') {
         document.addEventListener('visibilitychange', () => {
