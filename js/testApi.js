@@ -643,6 +643,41 @@
         save: () => { saveObservatoryNow(); return observatoryState(); }
     };
 
+    /**
+     * V-12: срез волны создания созвездия. Без него браузерный слой умеет только
+     * поймать скриншот посреди 300 мс — это не утверждение. Волна чисто
+     * визуальная: на state/очки/огранку не влияет, коммит её не ждёт.
+     */
+    function commitWaveState() {
+        // `commitWave` — script-level let из drawing.js: на window его нет,
+        // но по имени из другого скрипта он виден.
+        const wave = commitWave;
+        if (!wave) {
+            return { active: false, elapsedMs: -1, totalMs: 0, stepMs: 0, labelAlpha: 1, edges: [], stars: [] };
+        }
+        const c = wave.constellation;
+        const elapsedMs = getCommitWaveElapsed();
+        const tailMs = Math.max(COMMIT_WAVE_STAR_FLASH_MS, COMMIT_WAVE_LABEL_FADE_MS);
+        return {
+            active: elapsedMs >= 0,
+            elapsedMs,
+            totalMs: computeCommitWaveTotal(wave.edgeCount, wave.stepMs, COMMIT_WAVE_EDGE_MS, tailMs),
+            stepMs: wave.stepMs,
+            labelAlpha: getCommitWaveLabelAlpha(c),
+            edges: (c.lines || []).map((seg, i) => ({
+                startId: seg.startId,
+                endId: seg.endId,
+                progress: getCommitWaveEdgeProgress(c, i)
+            })),
+            stars: [...wave.starArrivalMs.entries()].map(([id, arrivalMs]) => ({
+                id,
+                arrivalMs,
+                pending: isCommitWavePending(id),
+                flash: getCommitWaveStarFlash(id)
+            }))
+        };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -666,6 +701,7 @@
         claim,
         ui,
         observatory,
+        commitWave: commitWaveState,
         errors,
         clearErrors,
         // Служебное: открыть/закрыть шторку без жеста (жесты — уровень MobAI).

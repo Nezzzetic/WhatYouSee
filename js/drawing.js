@@ -25,6 +25,150 @@ function getDraftChainColorRgb() {
 /** starId → RGB для вершин собранных атласных созвездий (до конца уровня). */
 let atlasCollectedStarColors = new Map();
 
+// =============================================================================
+// V-12 — ВОЛНА СОЗДАНИЯ СОЗВЕЗДИЯ
+// =============================================================================
+// Слот один: одновременно анимируется только последнее закоммиченное созвездие.
+// Состояние живёт ВНЕ сейва (как atlasCollectedStarColors): после перезагрузки
+// волна не проигрывается заново, версия сейва не поднимается.
+
+let commitWave = null;  // { constellation, startMs, stepMs, edgeCount, starArrivalMs: Map }
+
+/**
+ * Шаг между стартами соседних рёбер. Длинное созвездие не растягивает волну —
+ * шаг ужимается так, чтобы вся она уложилась в COMMIT_WAVE_TOTAL_MAX_MS.
+ * Чистая функция: проверяется статикой без p5 и глобалов.
+ */
+function computeCommitWaveStep(edgeCount, edgeMs, stepMs, totalMaxMs) {
+    if (edgeCount <= 1) return stepMs;
+    const room = (totalMaxMs - edgeMs) / (edgeCount - 1);
+    return Math.max(0, Math.min(stepMs, room));
+}
+
+/** Прогресс ребра с индексом i: 0 — ещё не начато, 1 — дочерчено. */
+function computeCommitWaveEdgeProgress(elapsed, edgeIndex, stepMs, edgeMs) {
+    if (edgeMs <= 0) return 1;
+    const local = elapsed - edgeIndex * stepMs;
+    if (local <= 0) return 0;
+    if (local >= edgeMs) return 1;
+    return local / edgeMs;
+}
+
+/** Вспышка звезды: 0 → 1 → 0 за flashMs от момента прихода волны. */
+function computeCommitWaveFlash(elapsed, arrivalMs, flashMs) {
+    if (flashMs <= 0) return 0;
+    const local = elapsed - arrivalMs;
+    if (local < 0 || local >= flashMs) return 0;
+    return Math.sin((local / flashMs) * Math.PI);
+}
+
+/**
+ * Общая длительность волны: последнее ребро дочерчено + хвост.
+ * Хвост — максимум из вспышки последней звезды и проявления подписи, иначе
+ * состояние гасло бы раньше, чем подпись доехала до полной яркости.
+ */
+function computeCommitWaveTotal(edgeCount, stepMs, edgeMs, tailMs) {
+    if (edgeCount <= 0) return 0;
+    return (edgeCount - 1) * stepMs + edgeMs + tailMs;
+}
+
+/**
+ * Запускает волну по только что закоммиченному созвездию.
+ * Порядок рёбер = порядок соединения игроком (currentLines пушится по ребру
+ * за жест; харнесс отдаёт рёбра в порядке переданного списка).
+ */
+function startCommitWave(constellation) {
+    if (!constellation || !Array.isArray(constellation.lines) || constellation.lines.length === 0) {
+        commitWave = null;
+        return;
+    }
+    const edgeCount = constellation.lines.length;
+    const stepMs = computeCommitWaveStep(
+        edgeCount, COMMIT_WAVE_EDGE_MS, COMMIT_WAVE_STEP_MS, COMMIT_WAVE_TOTAL_MAX_MS
+    );
+
+    // Звезда — конец нескольких рёбер вспыхивает один раз, по самому раннему приходу.
+    const starArrivalMs = new Map();
+    const arrive = (id, ms) => {
+        const prev = starArrivalMs.get(id);
+        if (prev === undefined || ms < prev) starArrivalMs.set(id, ms);
+    };
+    for (let i = 0; i < edgeCount; i++) {
+        const seg = constellation.lines[i];
+        if (!seg) continue;
+        arrive(seg.startId, i * stepMs);
+        arrive(seg.endId, i * stepMs + COMMIT_WAVE_EDGE_MS);
+    }
+
+    commitWave = {
+        constellation,
+        startMs: millis(),
+        stepMs,
+        edgeCount,
+        starArrivalMs
+    };
+}
+
+function cancelCommitWave() {
+    commitWave = null;
+}
+
+/** Прошедшее время волны, или -1 если волны нет / она уже отыграла. */
+function getCommitWaveElapsed() {
+    if (!commitWave) return -1;
+    const elapsed = millis() - commitWave.startMs;
+    const tailMs = Math.max(COMMIT_WAVE_STAR_FLASH_MS, COMMIT_WAVE_LABEL_FADE_MS);
+    const total = computeCommitWaveTotal(
+        commitWave.edgeCount, commitWave.stepMs, COMMIT_WAVE_EDGE_MS, tailMs
+    );
+    if (elapsed < 0 || elapsed >= total) {
+        commitWave = null;
+        return -1;
+    }
+    return elapsed;
+}
+
+/** Прогресс ребра волнового созвездия; для всех прочих созвездий — 1. */
+function getCommitWaveEdgeProgress(constellation, edgeIndex) {
+    if (!commitWave || commitWave.constellation !== constellation) return 1;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return 1;
+    return computeCommitWaveEdgeProgress(elapsed, edgeIndex, commitWave.stepMs, COMMIT_WAVE_EDGE_MS);
+}
+
+/** true, если волна ещё не дошла до звезды — locked-вид пока не применяем. */
+function isCommitWavePending(starId) {
+    if (!commitWave) return false;
+    const arrival = commitWave.starArrivalMs.get(starId);
+    if (arrival === undefined) return false;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return false;
+    return elapsed < arrival;
+}
+
+/** Сила вспышки звезды в момент прихода волны: 0..1. */
+function getCommitWaveStarFlash(starId) {
+    if (!commitWave) return 0;
+    const arrival = commitWave.starArrivalMs.get(starId);
+    if (arrival === undefined) return 0;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return 0;
+    return computeCommitWaveFlash(elapsed, arrival, COMMIT_WAVE_STAR_FLASH_MS);
+}
+
+/**
+ * Проявление подписи атласного созвездия: отсчитывается от конца волны, чтобы
+ * имя не выскакивало вместе с коммитом. Для всех прочих созвездий — 1.
+ */
+function getCommitWaveLabelAlpha(constellation) {
+    if (!commitWave || commitWave.constellation !== constellation) return 1;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return 1;
+    const waveEnd = (commitWave.edgeCount - 1) * commitWave.stepMs + COMMIT_WAVE_EDGE_MS;
+    if (COMMIT_WAVE_LABEL_FADE_MS <= 0) return elapsed >= waveEnd ? 1 : 0;
+    return Math.max(0, Math.min(1, (elapsed - waveEnd) / COMMIT_WAVE_LABEL_FADE_MS));
+}
+
 function assignConstellationImageTransform(constellation) {
     if (!constellation || !Array.isArray(constellation.lines) || constellation.lines.length === 0) {
         constellation.imageTransform = null;
@@ -82,12 +226,10 @@ function normalizeAtlasCollectedOnField() {
         const shapeName = normalizeShapeName(c.shape || c.name);
         if (!isShapeCreated(shapeName)) {
             c.atlasCollected = false;
-            c.collectedAtMs = 0;
             continue;
         }
         if (keptNames.has(shapeName)) {
             c.atlasCollected = false;
-            c.collectedAtMs = 0;
         } else {
             keptNames.add(shapeName);
         }
@@ -700,7 +842,6 @@ function commitConstellationFromPayload(payload) {
         isUniqueDiscovery: false,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
-        collectedAtMs: isAtlasCollect ? millis() : 0,
         imageTransform: null,
         lineColor: colorValueToRgb(getMeanColorValue([...starIds]))
     };
@@ -708,6 +849,10 @@ function commitConstellationFromPayload(payload) {
         assignConstellationImageTransform(constellation);
     }
     constellations.push(constellation);
+
+    // V-12: волна создания. Ставится до пересчётов и раскрытия — если этот же
+    // коммит завершает уровень, revealConstellationArt её ниже отменит.
+    startCommitWave(constellation);
 
     const floaterAnchor = labelAnchor || center;
     if (floaterAnchor) {
@@ -765,6 +910,9 @@ function undoLastConstellation() {
     if (constellations.length <= undoFloor) return;
     const last = constellations.pop();
 
+    // V-12: иначе волна продолжила бы бежать по созвездию, которого уже нет.
+    cancelCommitWave();
+
     for (const id of collectStarIdsFromLines(last.lines)) {
         const s = getStarById(id);
         if (s) s.locked = false;
@@ -813,6 +961,9 @@ function tryRevealConstellationArtIfComplete() {
 function revealConstellationArt() {
     if (constellationArtRevealed) return;
     playLevelComplete();
+    // V-12: у раскрытия своя волна имён и свой стиль линий — волна создания
+    // последнего созвездия отменяется, чтобы они не дрались за одни и те же рёбра.
+    cancelCommitWave();
     constellationArtRevealed = true;
     revealTime = millis();
     raiseUndoFloor();
