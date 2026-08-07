@@ -461,6 +461,19 @@ const DEV_META_SCORE_STEP = 100;
 
 function onDevAddMetaScore() {
     const before = getMetaScore();
+
+    // A-03: отклик забора приходится вешать отдельной строкой — эта функция
+    // дублирует хвост `claimAchievementStep` руками, а не зовёт его. Иначе
+    // dev-кнопка молча разошлась бы с боевым путём ровно там, где ей полагается
+    // быть его точной копией (в том числе для калибровки звука и дуги).
+    const fromRect = (function () {
+        const btn = document.getElementById('devAddMetaButton');
+        return btn ? btn.getBoundingClientRect() : null;
+    })();
+    if (typeof initAudio === 'function') initAudio();
+    if (typeof playClaim === 'function') playClaim(DEV_META_SCORE_STEP);
+    if (typeof flyClaimReward === 'function') flyClaimReward(fromRect, DEV_META_SCORE_STEP);
+
     awardMetaScore(DEV_META_SCORE_STEP);
     if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
     recomputeAchievementsClaimable(true);

@@ -1213,6 +1213,82 @@ button:disabled {
     cursor: default;
 }
 
+/* --- A-03: перелёт награды от кнопки забора к счётчику ✦ --- */
+
+/* Три вложенных узла — это не украшательство, а способ получить дугу без
+   покадровки на JS: внешний едет по X линейно, средний по Y с ease-out,
+   сумма двух независимых осей и даёт кривую. Длительности приезжают
+   из JS (--claim-ms ← CLAIM_COIN_MS), чтобы уборка узла и конец анимации
+   не разъезжались. Слой между шторкой (1200) и тостами (1500). */
+.claim-coin {
+    position: fixed;
+    z-index: 1300;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    animation: claimCoinX var(--claim-ms, 520ms) linear forwards;
+}
+
+.claim-coin-y {
+    animation: claimCoinY var(--claim-ms, 520ms) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+}
+
+/* Форма и цвет — те же, что у кнопки забора: подпись словно отрывается от неё */
+.claim-coin-pill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transform: translate(-50%, -50%);
+    padding: 6px 11px;
+    border: 1px solid #b08a2e;
+    border-radius: 99px;
+    background: rgba(44, 33, 12, 0.95);
+    color: #ffe9b0;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    box-shadow: 0 0 14px rgba(255, 211, 92, 0.35);
+    animation: claimCoinPop var(--claim-ms, 520ms) ease-out forwards;
+}
+
+@keyframes claimCoinX {
+    to { transform: translateX(var(--claim-dx, 0)); }
+}
+
+@keyframes claimCoinY {
+    to { transform: translateY(var(--claim-dy, 0)); }
+}
+
+@keyframes claimCoinPop {
+    0%   { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+    12%  { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
+    70%  { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(0.55); opacity: 0; }
+}
+
+/* Прилёт: счётчик вздрагивает — награда доехала именно сюда */
+.sheet-score.score-pulse {
+    animation: scorePulse var(--score-pulse-ms, 320ms) ease-out;
+}
+
+@keyframes scorePulse {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.28); color: #fff3c4; }
+    100% { transform: scale(1); }
+}
+
+/* Перелёт — украшение поверх честного числа: без анимаций счётчик просто
+   обновляется сразу (flyClaimReward отказывается лететь и зажим не ставится). */
+@media (prefers-reduced-motion: reduce) {
+    .claim-coin,
+    .claim-coin-y,
+    .claim-coin-pill,
+    .sheet-score.score-pulse {
+        animation: none;
+    }
+}
+
 /* --- P-01: узкие портретные вьюпорты --- */
 
 @media (max-width: 480px) {

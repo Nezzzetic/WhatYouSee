@@ -6,8 +6,139 @@
 
 /** U-09: ✦ живёт только в шапке шторки — на поле счётчика нет. */
 function updateScoreUI() {
+    // A-03: пока к счётчику летит награда, число ждёт прилёта. Иначе перелёт
+    // превращается в декорацию к уже случившемуся.
+    if (_scoreHoldCount > 0) return;
     const sheetScoreEl = document.getElementById("sheetScoreValue");
     if (sheetScoreEl) sheetScoreEl.textContent = String(getMetaScore());
+}
+
+// =============================================================================
+// A-03: ЗАЖИМ СЧЁТЧИКА ✦ И ПЕРЕЛЁТ НАГРАДЫ
+// =============================================================================
+//
+// Зажим — счётчик, а не флаг, по двум причинам. Первая: к `updateScoreUI` ведут
+// ДВА независимых пути — хвост `claimAchievementStep` и `updateProgressionUI`
+// изнутри самого `awardMetaScore` (открытие страницы атласа, progression.js).
+// Вторая: монет в воздухе бывает несколько, и число должно приехать после последней.
+//
+// ⚠️ Главный риск всей задачи — застрявший зажим: несостоявшийся прилёт заморозил бы
+// счётчик навсегда. Страховок три: release идемпотентен, таймер снимает зажим
+// безусловно, и `visibilitychange` сбрасывает его в ноль при уходе вкладки в фон.
+
+let _scoreHoldCount = 0;
+let _scoreHoldTimer = null;
+
+function holdScoreDisplay() {
+    _scoreHoldCount++;
+    if (_scoreHoldTimer) clearTimeout(_scoreHoldTimer);
+    _scoreHoldTimer = setTimeout(() => releaseScoreDisplay(true),
+        CLAIM_COIN_MS + CLAIM_COIN_SAFETY_MS);
+}
+
+/** @param {boolean} [all] — снять зажим целиком (страховка), а не одну монету. */
+function releaseScoreDisplay(all) {
+    if (_scoreHoldCount <= 0) return;
+    _scoreHoldCount = all ? 0 : _scoreHoldCount - 1;
+    if (_scoreHoldCount > 0) return;
+    if (_scoreHoldTimer) {
+        clearTimeout(_scoreHoldTimer);
+        _scoreHoldTimer = null;
+    }
+    updateScoreUI();
+    pulseScoreDisplay();
+}
+
+/** Счётчик коротко вздрагивает: награда доехала именно сюда. */
+function pulseScoreDisplay() {
+    const el = document.querySelector('.sheet-score');
+    if (!el) return;
+    el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
+    el.classList.remove('score-pulse');
+    void el.offsetWidth; // reflow — иначе повторный пульс в серии не запустится
+    el.classList.add('score-pulse');
+    setTimeout(() => el.classList.remove('score-pulse'), CLAIM_SCORE_PULSE_MS);
+}
+
+function prefersReducedMotion() {
+    try {
+        return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    } catch (e) {
+        return false;
+    }
+}
+
+/**
+ * «Монета» с наградой летит от кнопки забора к счётчику ✦ в шапке шторки.
+ *
+ * @param {DOMRect|null} fromRect — прямоугольник кнопки, снятый ДО начисления:
+ *        хвост забора зовёт `refreshSheetIfOpen()`, и к моменту полёта самого
+ *        узла кнопки уже не существует.
+ * @param {number} amount — размер награды. Летит именно она; счётчик на прилёте
+ *        покажет реальный `getMetaScore()`, который после списания за страницу
+ *        атласа бывает и меньше прежнего.
+ * @returns {boolean} — взят ли зажим счётчика (false → число обновляется сразу).
+ */
+function flyClaimReward(fromRect, amount) {
+    const target = document.querySelector('.sheet-score') || document.getElementById('sheetScoreValue');
+    if (!fromRect || !target || prefersReducedMotion()) return false;
+    if (document.querySelectorAll('.claim-coin').length >= CLAIM_COIN_MAX) return false;
+
+    // Нулевой прямоугольник даёт скрытый элемент (свёрнутая dev-панель, строка
+    // цепочки с другой страницы Наград). Лететь из угла экрана хуже, чем не лететь.
+    if (!fromRect.width && !fromRect.height) return false;
+
+    const toRect = target.getBoundingClientRect();
+    if (!toRect.width && !toRect.height) return false; // шторка закрыта — лететь некуда
+
+    const fromX = fromRect.left + fromRect.width / 2;
+    const fromY = fromRect.top + fromRect.height / 2;
+
+    const coin = document.createElement('div');
+    coin.className = 'claim-coin';
+    coin.style.left = `${fromX}px`;
+    coin.style.top = `${fromY}px`;
+    coin.style.setProperty('--claim-dx', `${toRect.left + toRect.width / 2 - fromX}px`);
+    coin.style.setProperty('--claim-dy', `${toRect.top + toRect.height / 2 - fromY}px`);
+    // Единственный источник длительности — константа: CSS её наследует, а уборка
+    // узла считает от неё же, иначе анимация и `setTimeout` разъедутся.
+    coin.style.setProperty('--claim-ms', `${CLAIM_COIN_MS}ms`);
+
+    // Дуга без покадровки на JS: внешний узел едет по X линейно, средний —
+    // по Y с ease-in. Сумма двух независимых осей и даёт параболу.
+    const yAxis = document.createElement('div');
+    yAxis.className = 'claim-coin-y';
+    const pill = document.createElement('span');
+    pill.className = 'claim-coin-pill';
+    // Та же подпись, что на кнопке: она словно отрывается от неё и улетает.
+    pill.textContent = `+${amount} ✦`;
+
+    yAxis.appendChild(pill);
+    coin.appendChild(yAxis);
+    document.body.appendChild(coin);
+
+    holdScoreDisplay();
+
+    let done = false;
+    const land = () => {
+        if (done) return;
+        done = true;
+        if (coin.parentNode) coin.parentNode.removeChild(coin);
+        releaseScoreDisplay();
+    };
+    // Как в `showInfoToast`: событие плюс страховочный таймер — `animationend`
+    // не приходит, если узел снесли или вкладка ушла в фон.
+    coin.addEventListener('animationend', (e) => { if (e.target === coin) land(); });
+    setTimeout(land, CLAIM_COIN_MS + CLAIM_COIN_SAFETY_MS);
+    return true;
+}
+
+// Вкладка ушла в фон — анимации замирают, `animationend` может не прийти вовсе.
+// Счётчик оттаивает сразу: показать актуальное число важнее, чем долететь.
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) releaseScoreDisplay(true);
+    });
 }
 
 function updateMetaPageProgressUI() {

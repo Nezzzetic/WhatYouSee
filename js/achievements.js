@@ -1054,6 +1054,18 @@ function afterAchievementStateChanged() {
 // ЗАБОР НАГРАДЫ
 // =============================================================================
 
+/**
+ * A-03: где сейчас стоит кнопка забора этой цепочки.
+ *
+ * Ищем по `data-chain-id`, а не через обработчик клика, — тогда точку старта
+ * знает сам `claimAchievementStep`, и `__test.claim()` гоняет ровно ту же
+ * анимацию, что палец: проверяется игра, а не копия правил.
+ */
+function getClaimButtonRect(chainId) {
+    const btn = document.querySelector(`.achv-claim-btn[data-chain-id="${chainId}"]`);
+    return btn ? btn.getBoundingClientRect() : null;
+}
+
 function claimAchievementStep(chainId) {
     const chain = getAchievementChainById(chainId);
     const p = achievementProgress[chainId];
@@ -1061,7 +1073,18 @@ function claimAchievementStep(chainId) {
     if (!chain.daily && p.stepIndex >= chain.steps.length) return false;
 
     // B-01: платим за тот шаг, который забирают, — до сдвига индекса
-    awardMetaScore(getAchievementChainStepReward(chain, p.stepIndex));
+    const reward = getAchievementChainStepReward(chain, p.stepIndex);
+
+    // A-03: отклик снимается и запускается ДО начисления. Прямоугольник кнопки —
+    // потому что хвост ниже зовёт `refreshSheetIfOpen()` и узла кнопки не станет;
+    // зажим счётчика — потому что `awardMetaScore` сам добирается до `updateScoreUI`,
+    // если забор открыл страницу атласа.
+    const fromRect = getClaimButtonRect(chainId);
+    if (typeof initAudio === 'function') initAudio();
+    if (typeof playClaim === 'function') playClaim(reward);
+    if (typeof flyClaimReward === 'function') flyClaimReward(fromRect, reward);
+
+    awardMetaScore(reward);
     if (chain.daily) {
         // M-05: ступеней нет — stepIndex не двигается, «забрано» живёт в блоке
         // суток до прихода нового неба.
@@ -1316,6 +1339,8 @@ function createAchievementRow(chain) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'achv-claim-btn' + (p.claimable ? '' : ' achv-claim-btn-idle');
+        // A-03: по нему `claimAchievementStep` находит точку старта перелёта ✦
+        btn.dataset.chainId = chain.id;
         // B-01: подпись должна совпадать с тем, что реально начислится за этот шаг
         btn.textContent = `+${getAchievementChainStepReward(chain, p.stepIndex)} ✦`;
         if (p.claimable) {

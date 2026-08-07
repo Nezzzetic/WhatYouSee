@@ -92,6 +92,88 @@ function playAchievementGet() {
     } catch (e) {}
 }
 
+// A-03: ЗАБОР НАГРАДЫ
+//
+// Отличать этот звук от `playAchievementGet` нотами бессмысленно: тот уже восходящее
+// арпеджио. Разводим их РЕГИСТРОМ И ТЕЛОМ — тост «шаг выполнен» остаётся ярким
+// колокольчиком без низа (triangle, 784…1319 Гц), а забор получает тёплую синусоиду
+// с суб-слоем на октаву ниже корня. В руке это два разных события, а не два оттенка одного.
+//
+// Корень — E4 (`CHAIN_BASE_FREQ`), тональность общая с лестницей цепочки A-02.
+const CLAIM_ROOT_FREQ = CHAIN_BASE_FREQ;      // E4, 330 Гц
+const CLAIM_NOTES = [0, 7, 12, 19];           // E4 · B4 · E5 · B5 (квинты пентатоники)
+const CLAIM_NOTE_STEP = 0.05;                 // задержка между нотами, с
+const CLAIM_NOTE_TAIL = 0.25;                 // хвост ноты, с
+const CLAIM_SUB_TAIL = 0.35;                  // хвост суб-слоя, с
+
+const CLAIM_DEBOUNCE_MS = 80;                 // жёсткий пол: быстрее — просто молчим
+const CLAIM_SERIES_WINDOW_MS = 800;           // внутри окна забор считается частью серии
+const CLAIM_SERIES_STEP = 2;                  // полутонов вверх за каждый забор серии
+const CLAIM_SERIES_MAX = 6;                   // потолок транспонирования
+
+let _lastClaimTime = 0;
+let _claimSeriesShift = 0;
+
+/** Сколько нот дать за награду: 10 ✦ и 315 ✦ не должны звучать одинаково. */
+function claimNoteCount(reward) {
+    const n = typeof reward === 'number' && isFinite(reward) ? reward : 0;
+    if (n <= CLAIM_SOUND_TIER_SMALL) return 2;
+    if (n <= CLAIM_SOUND_TIER_MID) return 3;
+    return 4;
+}
+
+/**
+ * Забор награды цепочки. `reward` — начисляемые ✦ (влияет только на число нот).
+ *
+ * Серия заборов (следующий шаг бывает выполнен сразу) поднимается по полутонам,
+ * а не повторяет одну и ту же фразу: пять заборов подряд звучат восходящим
+ * пробегом, а не кашей из пяти одинаковых арпеджио.
+ */
+function playClaim(reward) {
+    if (!_audioCtx) return;
+    const now = Date.now();
+    if (now - _lastClaimTime < CLAIM_DEBOUNCE_MS) return;
+    _claimSeriesShift = (now - _lastClaimTime < CLAIM_SERIES_WINDOW_MS)
+        ? Math.min(CLAIM_SERIES_MAX, _claimSeriesShift + CLAIM_SERIES_STEP)
+        : 0;
+    _lastClaimTime = now;
+
+    try {
+        const t = _audioCtx.currentTime;
+        const shift = Math.pow(2, _claimSeriesShift / 12);
+        const root = CLAIM_ROOT_FREQ * shift;
+        const count = claimNoteCount(reward);
+
+        // Суб-слой: октава вниз от корня. Именно его нет у звука «выполнено».
+        const sub = _audioCtx.createOscillator();
+        const subGain = _audioCtx.createGain();
+        sub.connect(subGain);
+        subGain.connect(_audioCtx.destination);
+        sub.type = 'sine';
+        sub.frequency.setValueAtTime(root / 2, t);
+        subGain.gain.setValueAtTime(0.0001, t);
+        subGain.gain.exponentialRampToValueAtTime(0.12, t + 0.02); // мягкая атака, без щелчка
+        subGain.gain.exponentialRampToValueAtTime(0.001, t + CLAIM_SUB_TAIL);
+        sub.start(t);
+        sub.stop(t + CLAIM_SUB_TAIL);
+
+        for (let i = 0; i < count; i++) {
+            const osc = _audioCtx.createOscillator();
+            const gain = _audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(_audioCtx.destination);
+            osc.type = 'sine';
+            const start = t + i * CLAIM_NOTE_STEP;
+            osc.frequency.setValueAtTime(root * Math.pow(2, CLAIM_NOTES[i] / 12), start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.15, start + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + CLAIM_NOTE_TAIL);
+            osc.start(start);
+            osc.stop(start + CLAIM_NOTE_TAIL);
+        }
+    } catch (e) {}
+}
+
 // Восходящий арпеджио: конец уровня
 function playLevelComplete() {
     if (!_audioCtx) return;
