@@ -29,6 +29,18 @@ const ACHIEVEMENT_STEP_REWARD_FALLBACK = 10;
 // до 167-й ночи, ×8 дал бы 40 000 созвездий — три с половиной года.
 const ACHIEVEMENT_VOLUME_TIERS = [1, 5, 60, 120, 240];
 
+// M-05: суточные квесты. Сумма 10 + 20 = 30 — ровно то, что давал за завершённую
+// ночь LEVEL_COMPLETE_POINTS (снят в этой же задаче): темп открытия страниц
+// атласа не двигается, B-01 калибровался именно на 30 ✦ за ночь, и менять эту
+// цифру — отдельная реформа (прогон вариантов 20/30/40/45 — в task-доке).
+//
+// Раздача 10 / 20 — решение заказчика: приход платит мало и сразу, закрытая
+// ночь — много и в конце. Один эффект у перестройки всё же есть, и прогон его
+// не видит (он считает, что небо закрывается каждую ночь): игрок, который зашёл
+// и не доиграл, получает теперь 10 вместо нуля.
+const DAILY_QUEST_ENTRY_REWARD = 10;
+const DAILY_QUEST_NIGHT_REWARD = 20;
+
 // colorValue тира → внутреннее имя цвета
 const ACHIEVEMENT_BUCKET_BY_VALUE = { '-100': 'red', '-50': 'orange', '0': 'yellow', '50': 'white', '100': 'blue' };
 const ACHIEVEMENT_COLOR_KEYS = ['red', 'orange', 'yellow', 'white', 'blue'];
@@ -116,6 +128,26 @@ function getPageSpecialForPage(pageIndex) {
 }
 
 const ACHIEVEMENT_CHAINS = [
+    // M-05: суточные квесты — единственные бесконечные цепочки. Шаг ровно один,
+    // `stepIndex` не двигается никогда: «пройдено» и «следующая ступень» к ним
+    // неприменимы. Всё состояние живёт в `achievementCounters.daily` и
+    // обнуляется вместе со сменой неба, а не по часам (ensureDailyQuestsForToday).
+    {
+        id: 'daily_entry',
+        title: t('chain.daily_entry.title'),
+        icon: '✨',
+        daily: true,
+        stepRewards: [DAILY_QUEST_ENTRY_REWARD],
+        steps: [{ id: 'daily_entry_1', desc: t('chain.daily_entry.step'), check: { type: 'dailyEntry' } }]
+    },
+    {
+        id: 'daily_night',
+        title: t('chain.daily_night.title'),
+        icon: '🌠',
+        daily: true,
+        stepRewards: [DAILY_QUEST_NIGHT_REWARD],
+        steps: [{ id: 'daily_night_1', desc: t('chain.daily_night.step'), check: { type: 'dailyNight' } }]
+    },
     ...ACHIEVEMENT_COLOR_KEYS.map(buildColorChain),
     ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
     {
@@ -332,8 +364,114 @@ function makeDefaultAchievementCounters() {
         pageSpecialNights: { vitrazh: 0, kaleidoscope: 0, gobelen: 0, orchestra: 0, symphony: 0 },
         // U-09: имя фигуры → { color: число засчитанных созданий } (≤1/ночь на фигуру).
         // Ненулевой счётчик = грань горит; число нужно только для корректного отката.
-        shapeColors: {}
+        shapeColors: {},
+        // M-05: состояние суточных квестов
+        daily: makeDefaultDailyQuestState()
     };
+}
+
+/**
+ * M-05: состояние пары суточных квестов.
+ *
+ * `date` — сутки, к которым относятся флаги (`getEffectiveSkyDateInt()`).
+ * Расхождение с текущими сутками означает «пришло новое небо» и обнуляет блок.
+ * Привязка к дате, а не к состоянию сессии, — это ещё и защита от повторной
+ * оплаты: дев-сброс неба (`onResetSky`) даёт новое поле тех же суток, и старый
+ * `levelCompletePointsAwarded` позволял забрать 30 ✦ заново.
+ *
+ * `*Done` — защёлки от событий, а не предикаты по текущему полю: откат созвездия
+ * их не гасит. Именно поэтому забор суточного квеста не поднимает undoFloor.
+ */
+function makeDefaultDailyQuestState() {
+    return {
+        date: 0,
+        entryDone: false,
+        entryClaimed: false,
+        nightDone: false,
+        nightClaimed: false
+    };
+}
+
+/** M-05: нормализует сохранённый блок суток (в старом сейве его просто нет). */
+function sanitizeDailyQuestState(raw) {
+    const def = makeDefaultDailyQuestState();
+    if (!raw || typeof raw !== 'object') return def;
+    return {
+        date: Number(raw.date) || 0,
+        entryDone: !!raw.entryDone,
+        entryClaimed: !!raw.entryClaimed,
+        nightDone: !!raw.nightDone,
+        nightClaimed: !!raw.nightClaimed
+    };
+}
+
+// =============================================================================
+// M-05: СУТОЧНЫЕ КВЕСТЫ
+// =============================================================================
+
+function getDailyQuestState() {
+    if (!achievementCounters) return null;
+    if (!achievementCounters.daily) achievementCounters.daily = makeDefaultDailyQuestState();
+    return achievementCounters.daily;
+}
+
+/**
+ * Суточные квесты обновляются ВМЕСТЕ С НЕБОМ, а не по часам.
+ *
+ * Зовётся только оттуда, откуда небо и так меняется: хвост `loadProgression`,
+ * `startNewDailySky`, `performFullReset`. Из `recomputeAchievementsClaimable`
+ * — намеренно НЕТ.
+ *
+ * Так у игрока, сидящего в игре с 23:50, в полночь не переворачивается ничего —
+ * ровно как не переворачивается небо (`isSavedSkyDateStale` срабатывает только
+ * на загрузке). Обновляйся квесты по часам, а небо нет — защёлка `nightDone`
+ * мгновенно оказалась бы снова выполненной на том же уже закрытом поле, и одна
+ * ночь оплатилась бы дважды.
+ *
+ * Дев-обход по дням (`devDayOffset`) и харнесс (`setTestSkyDateOverride`) уже
+ * сидят внутри `getEffectiveSkyDateInt()` — своего кода им здесь не нужно.
+ */
+function ensureDailyQuestsForToday() {
+    const daily = getDailyQuestState();
+    if (!daily) return false;
+    const today = typeof getEffectiveSkyDateInt === 'function' ? getEffectiveSkyDateInt() : 0;
+    if (daily.date === today) return false;
+    achievementCounters.daily = makeDefaultDailyQuestState();
+    achievementCounters.daily.date = today;
+    return true;
+}
+
+/** Забран ли этот суточный квест в текущие сутки. */
+function isDailyQuestClaimed(chainId) {
+    const daily = getDailyQuestState();
+    if (!daily) return false;
+    return chainId === 'daily_night' ? !!daily.nightClaimed : !!daily.entryClaimed;
+}
+
+function markDailyQuestClaimed(chainId) {
+    const daily = getDailyQuestState();
+    if (!daily) return;
+    if (chainId === 'daily_night') daily.nightClaimed = true;
+    else daily.entryClaimed = true;
+}
+
+/**
+ * Защёлка «в эти сутки игрок уже создал созвездие» — условие квеста «Приход».
+ *
+ * Именно созвездие, а не загрузка страницы: иначе это был бы единственный доход
+ * в игре, не требующий игры. Откатом не гасится — заход состоялся.
+ */
+function markDailyQuestEntry() {
+    const daily = getDailyQuestState();
+    if (!daily || daily.entryDone) return;
+    daily.entryDone = true;
+}
+
+/** Защёлка «небо этих суток закрыто» — ставится на раскрытии. */
+function markDailyQuestNight() {
+    const daily = getDailyQuestState();
+    if (!daily || daily.nightDone) return;
+    daily.nightDone = true;
 }
 
 /** S-02: нормализует сохранённую карту цветов фигуры до полного набора ключей. */
@@ -484,7 +622,10 @@ function applyAchievementSaveData(state) {
             rainbowNights: Number(s.rainbowNights) || 0,
             mosaicNights: Number(s.mosaicNights) || 0,
             pageSpecialNights: Object.assign({}, def.pageSpecialNights, s.pageSpecialNights || {}),
-            shapeColors: sanitizeShapeColorMap(s.shapeColors)
+            shapeColors: sanitizeShapeColorMap(s.shapeColors),
+            // M-05: в сейве до этой задачи поля нет — берётся дефолт, версия
+            // достижений не поднимается и прогресс не теряется.
+            daily: sanitizeDailyQuestState(s.daily)
         };
     }
 
@@ -690,6 +831,11 @@ function evaluateAchievementCheck(check, snap) {
             return getFacetedShapeCount() >= check.n;
         case 'createdAtlasShapes':
             return getCreatedAtlasShapeCount() >= check.n;
+        // M-05: обе проверки читают защёлки суток, а не состояние поля
+        case 'dailyEntry':
+            return !!(c.daily && c.daily.entryDone);
+        case 'dailyNight':
+            return !!(c.daily && c.daily.nightDone);
         case 'rainbowNights':
             return c.rainbowNights >= check.n;
         case 'mosaicNights':
@@ -743,6 +889,15 @@ function recomputeAchievementsClaimable(notify) {
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
         if (!p) continue;
+        // M-05: у суточного квеста нет ступеней и нет «пройдено» — только
+        // «выполнен сегодня» и «уже забран сегодня».
+        if (chain.daily) {
+            const wasDailyClaimable = p.claimable;
+            p.claimable = evaluateAchievementCheck(chain.steps[0].check, snap)
+                && !isDailyQuestClaimed(chain.id);
+            if (notify && p.claimable && !wasDailyClaimable) showAchievementToast(chain);
+            continue;
+        }
         if (p.stepIndex >= chain.steps.length) {
             p.claimable = false; // цепочка завершена
             continue;
@@ -774,6 +929,8 @@ function hasClaimableAchievements() {
 // =============================================================================
 
 function recordAchievementCommit(constellation) {
+    // M-05: первое созвездие за сутки закрывает квест «Приход»
+    markDailyQuestEntry();
     applyConstellationToCounters(constellation, +1);
     recordShapeCommitForFacets(constellation);
     afterAchievementStateChanged();
@@ -860,6 +1017,9 @@ function recordShapeUndoForFacets(constellation) {
 function recordAchievementReveal() {
     if (!achievementCounters) return;
     achievementCounters.levelsCompleted += 1;
+    // M-05: закрытая ночь больше не платит напрямую — она закрывает суточный
+    // квест, а ✦ приходят обычным забором в Наградах.
+    markDailyQuestNight();
 
     // Радуга и Мозаика — не чаще 1 раза за небо
     const snap = getFieldAchievementSnapshot();
@@ -898,15 +1058,27 @@ function claimAchievementStep(chainId) {
     const chain = getAchievementChainById(chainId);
     const p = achievementProgress[chainId];
     if (!chain || !p || !p.claimable) return false;
-    if (p.stepIndex >= chain.steps.length) return false;
+    if (!chain.daily && p.stepIndex >= chain.steps.length) return false;
 
     // B-01: платим за тот шаг, который забирают, — до сдвига индекса
     awardMetaScore(getAchievementChainStepReward(chain, p.stepIndex));
-    p.stepIndex += 1;
+    if (chain.daily) {
+        // M-05: ступеней нет — stepIndex не двигается, «забрано» живёт в блоке
+        // суток до прихода нового неба.
+        markDailyQuestClaimed(chain.id);
+    } else {
+        p.stepIndex += 1;
+    }
     p.claimable = false;
 
-    // Забор — необратимое событие: блокируем откат
-    if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
+    // Забор — необратимое событие: блокируем откат.
+    //
+    // M-05: кроме суточных. undoFloor существует потому, что забор необратим,
+    // а условие обратимо откатом; у суточных условия обратить нельзя — обе
+    // защёлки не гаснут, а раскрытие ночи само уже подняло пол. Морозь их как
+    // обычные цепочки — откат умер бы совсем: игрок забирает суточный квест
+    // каждую ночь, и всё нарисованное до забора замерзало бы навсегда.
+    if (!chain.daily && typeof raiseUndoFloor === 'function') raiseUndoFloor();
 
     // Следующий шаг может оказаться сразу выполнен → тост об этом (notify=true)
     recomputeAchievementsClaimable(true);
@@ -980,6 +1152,13 @@ function showShapeRevealToast(shapeId) {
  */
 const REWARD_PAGES = [
     {
+        // M-05: суточные квесты стоят первой страницей, потому что
+        // `sheetPageIndices` (ui.js) в сейве не живёт и на каждой загрузке равен
+        // нулю — игрок попадает прямо на сегодняшнее.
+        id: 'daily', icon: '🌗', title: t('rewardPage.daily'),
+        chainIds: ['daily_entry', 'daily_night']
+    },
+    {
         id: 'colors', icon: '🎨', title: t('rewardPage.colors'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue']
     },
@@ -1018,6 +1197,13 @@ function rewardPageHasClaimable(pageIndex) {
 /** Текст текущего шага: описание + «12 / 15» или «готово». */
 function buildAchievementStepText(chain, p) {
     const step = chain.steps[p.stepIndex];
+    // M-05: у суточного квеста три состояния и ни одного числа — условие
+    // бинарное, считать нечего.
+    if (chain.daily) {
+        if (p.claimable) return t('rewards.stepReady', { desc: step.desc });
+        if (isDailyQuestClaimed(chain.id)) return t('rewards.dailyClaimed');
+        return step.desc;
+    }
     const prog = getAchievementStepProgress(step.check);
     if (p.claimable) return t('rewards.stepReady', { desc: step.desc });
     if (!prog) return step.desc;
@@ -1073,7 +1259,8 @@ function createAchievementRow(chain) {
     if (lockReason) return createAchievementLockedRow(lockReason);
 
     const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    const done = p.stepIndex >= chain.steps.length;
+    // M-05: суточный квест не бывает «пройден» — он возвращается с новым небом
+    const done = !chain.daily && p.stepIndex >= chain.steps.length;
 
     const row = document.createElement('div');
     row.className = 'achv-row'
@@ -1094,7 +1281,9 @@ function createAchievementRow(chain) {
     title.className = 'achv-row-title';
     title.textContent = chain.title;
     head.appendChild(title);
-    head.appendChild(createAchievementStarsRow(chain, p));
+    // M-05: ряд ☆ означает «пройдено ступеней из пяти» — у бесконечного квеста
+    // это единственная одинокая звёздочка ни о чём.
+    if (!chain.daily) head.appendChild(createAchievementStarsRow(chain, p));
     body.appendChild(head);
 
     const step = document.createElement('div');
@@ -1102,7 +1291,9 @@ function createAchievementRow(chain) {
     step.textContent = done ? t('rewards.allDone') : buildAchievementStepText(chain, p);
     body.appendChild(step);
 
-    if (!done) {
+    // M-05: у суточного квеста нет прогресс-бара — условие бинарное, полоса
+    // между 0 % и 100 % ничего не показывает.
+    if (!done && !chain.daily) {
         const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
         const bar = document.createElement('div');
         bar.className = 'achv-row-bar';

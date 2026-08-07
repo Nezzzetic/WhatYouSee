@@ -975,15 +975,15 @@ function revealConstellationArt() {
     }
     recomputeAtlasCollectedStarColors();
 
-    const { levelPts, total } = awardEndOfLevelPoints();
-
+    // M-05: прямой выплаты за небо больше нет — раскрытие только взводит
+    // защёлку суточного квеста, ✦ приходят обычным забором в Наградах.
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
 
     refreshConstellationHints();
-    updateScoreUI(total, '', 0);
+    updateScoreUI(0, '', 0);
     updateProgressionUI();
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
-    showLevelCompleteToast(levelPts);
+    showLevelCompleteToast();
     autoSave();
 }
 

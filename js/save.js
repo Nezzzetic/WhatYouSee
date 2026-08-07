@@ -32,8 +32,11 @@ function saveGame() {
             bestScore,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
-            dailyTargetShapes: getDailyTargetShapes(),
-            levelCompletePointsAwarded
+            dailyTargetShapes: getDailyTargetShapes()
+            // M-05: `levelCompletePointsAwarded` убран вместе с выплатой за ночь.
+            // «Ночь уже оплачена» теперь живёт в блоке суток достижений и привязано
+            // к дате, а не к сессии поля: дев-сброс неба больше не позволяет
+            // забрать награду за те же сутки второй раз.
         };
         localStorage.setItem(SAVE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -93,7 +96,6 @@ function loadGame() {
             : [false, false, false];
         bestScore = Math.max(state.bestScore || 0, getFieldScore());
         resetRecordScoreBadge();
-        levelCompletePointsAwarded = !!state.levelCompletePointsAwarded;
 
         rebuildStarCountStateFromConstellations();
 
