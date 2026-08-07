@@ -516,8 +516,36 @@
             starCost: OBSERVATORY_STAR_COST,
             starsDue: getObservatoryStarsDue(),
             starCount: observatoryStars.length,
-            lineCount: observatoryLines.length
+            lineCount: observatoryLines.length,
+            // U-12: сколько созвездий (компонент из ≥2 звёзд) названо
+            nameCount: observatoryNames.length
         };
+    }
+
+    /** U-12: реестр имён с посчитанной геометрией подписи. */
+    function observatoryNameView(entry) {
+        const g = getObservatoryLabelGeometry(entry);
+        return {
+            stars: entry.stars.slice(),
+            nameId: entry.nameId,
+            custom: entry.custom,
+            name: getObservatoryLabelText(entry),
+            dx: g ? g.dx : entry.dx,
+            dy: g ? g.dy : entry.dy,
+            radius: g ? g.limit : 0,
+            x: g ? g.x : null,
+            y: g ? g.y : null
+        };
+    }
+
+    function observatoryNamesDump() {
+        return observatoryNames.map(observatoryNameView);
+    }
+
+    /** Запись имени созвездия, которому принадлежит звезда starId. */
+    function observatoryNameEntryOf(starId) {
+        const id = Number(starId);
+        return observatoryNames.find(e => e.stars.includes(id)) || null;
     }
 
     const observatory = {
@@ -552,6 +580,7 @@
                 return a && b && Math.hypot(a.x - b.x, a.y - b.y) > maxEdge + 1e-6;
             });
             for (const l of doomed) removeObservatoryLine(l.startId, l.endId);
+            if (doomed.length > 0) syncObservatoryNames();
             scheduleObservatorySave();
             return { star: observatoryStarView(star), broken: doomed.length };
         },
@@ -564,6 +593,7 @@
             }
             if (hasObservatoryLine(ia, ib)) {
                 removeObservatoryLine(ia, ib);
+                syncObservatoryNames();
                 scheduleObservatorySave();
                 return { connected: false, lineCount: observatoryLines.length };
             }
@@ -571,6 +601,7 @@
                 fail('observatory.connect: связь ' + ia + '-' + ib + ' длиннее getMaxEdgeLength()');
             }
             observatoryLines.push({ startId: ia, endId: ib });
+            syncObservatoryNames();
             scheduleObservatorySave();
             return { connected: true, lineCount: observatoryLines.length };
         },
@@ -579,6 +610,33 @@
             if (!star) fail('observatory.tapColor: нет звезды ' + id);
             cycleObservatoryStarColor(star);
             return star.colorValue;
+        },
+        // --- Имена созвездий (U-12) ------------------------------------------
+        names: observatoryNamesDump,
+        /** Имя созвездия, в котором лежит звезда starId, — или null у одинокой. */
+        nameOf: (starId) => {
+            const entry = observatoryNameEntryOf(starId);
+            return entry ? getObservatoryLabelText(entry) : null;
+        },
+        /** Своё имя без промпта: тот же результат, что у ввода игрока. */
+        rename: (starId, value) => {
+            const entry = observatoryNameEntryOf(starId);
+            if (!entry) fail('observatory.rename: звезда ' + starId + ' не в созвездии');
+            const name = String(value === undefined || value === null ? '' : value).trim();
+            if (name === '') fail('observatory.rename: пустое имя ничего не меняет');
+            entry.custom = name;
+            saveObservatoryNow();
+            return observatoryNameView(entry);
+        },
+        /** Смещение подписи от центра созвездия; возвращается ЗАЖАТОЕ радиусом. */
+        moveLabel: (starId, dx, dy) => {
+            const entry = observatoryNameEntryOf(starId);
+            if (!entry) fail('observatory.moveLabel: звезда ' + starId + ' не в созвездии');
+            const g = getObservatoryLabelGeometry(entry);
+            if (!g) fail('observatory.moveLabel: у созвездия нет геометрии');
+            setObservatoryLabelPosition(entry, g.cx + Number(dx), g.cy + Number(dy));
+            scheduleObservatorySave();
+            return observatoryNameView(entry);
         },
         grantDue: () => ({ granted: grantObservatoryStarsDue(), starCount: observatoryStars.length }),
         /** Записать холст в localStorage немедленно (обычно это дебаунс 500 мс). */

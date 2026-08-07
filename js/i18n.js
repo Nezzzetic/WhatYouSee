@@ -255,7 +255,8 @@ en: {
     'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
     'observatory.unlockedTitle': 'Observatory unlocked',
-    'observatory.unlockedSub': '7 stars are waiting for you'
+    'observatory.unlockedSub': '7 stars are waiting for you',
+    'observatory.renamePrompt': 'Name this constellation:'
 },
 
 // -----------------------------------------------------------------------------
@@ -475,7 +476,8 @@ ru: {
     'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
     'observatory.unlockedTitle': 'Обсерватория открыта',
-    'observatory.unlockedSub': '7 звёзд ждут'
+    'observatory.unlockedSub': '7 звёзд ждут',
+    'observatory.renamePrompt': 'Назвать созвездие:'
 }
 
 };
