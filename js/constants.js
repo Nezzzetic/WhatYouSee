@@ -19,9 +19,6 @@ const STAR_EDGE_MARGIN = 100;
 const MIN_STAR_DISTANCE = 60;
 const BACKGROUND_STAR_COUNT = 600;
 
-/** Тест «усы»: на поле только 5 эталонных звёзд в центре. Включение: `index.html?mustache=1` при пустом сохранении, либо `true` здесь. */
-const DEBUG_MUSTACHE_PRACTICE_FORCE = false;
-
 /** M-03: вставлять якорные звёзды фигур в начало дня. false = скрытые подсказки отключены. */
 const INJECT_ANCHOR_STARS = false;
 
@@ -158,79 +155,20 @@ const MIN_STARS_PER_CONSTELLATION = 2;
 const MAX_STARS_PER_CONSTELLATION = 100;
 
 // =============================================================================
-// GEOMETRIC THRESHOLDS (strict recognition)
+// RECOGNITION
 // =============================================================================
+//
+// R-02: геометрический слой выведен целиком. Отсюда ушли пороги гибридного
+// ранжирования (RECOG_WEIGHT_*, RECOG_ACCEPT/AMBIG/MARGIN_THRESHOLD,
+// RECOG_LEGACY_BONUS, RECOG_ATLAS_VISIBLE_BONUS), пер-фигурные валидаторы
+// (TRUSY_*, KITE_*, MUSTACHE_*, PIZZA_SLICE_*, CATERPILLAR_*, SQUARE_*,
+// SHAPE_BANANA_INTERIOR_*), общие пороги углов (SIDE_RATIO_THRESHOLD,
+// ANGLE_TOLERANCE, COLLINEAR_HEIGHT, CHAIN_MIN_ANGLE, RECOG_MIN_EDGE_LENGTH)
+// и сам переключатель RECOGNITION_MODE — режим остался один.
+// Ограничения §4 живут в topologyRecognition.js со своими числами.
 
-const SIDE_RATIO_THRESHOLD = 1.8;
-const ANGLE_TOLERANCE = 25;
-const COLLINEAR_HEIGHT = 15;
-const CHAIN_MIN_ANGLE = 30;
-// Банан: два внутренних угла цепочки из 4 звёзд (допустимый интервал [min, max]).
-const SHAPE_BANANA_INTERIOR_MIN_DEG = 135;
-const SHAPE_BANANA_INTERIOR_MAX_DEG = 170;
-// Трусы (цепочка из 4 звёзд, 3 сегмента): два «развернутых» изгиба ~110°, боковые и средняя дуга близки по длине (не «только мешок»).
-const TRUSY_CHAIN_ANGLE_CENTER = 103;
-const TRUSY_CHAIN_ANGLE_TOLERANCE = 28;
-const TRUSY_MAX_EDGE_LEN_RATIO = 1.6;
-const TRUSY_MIN_CHAIN_ASPECT = 1.02;
-
-// Гусеница: цепочка 3★, почти прямая — угол в средней звезде заметно тупой (не V и не ~90°).
-const CATERPILLAR_MIN_CHAIN_ANGLE = 90 + ANGLE_TOLERANCE; // 115°
-
-// Pizza slice (closed 3-star triangle): any triangle; reject needle tips (min interior angle).
-const PIZZA_SLICE_MIN_MIN_ANGLE = 15;
-
-// Кайт: замкнутый ромбовидный четырёхугольник (в т.ч. ромб ~82°/98° из SHAPE_PATTERNS).
-const KITE_SIDE_RATIO_THRESHOLD = 3.5; // maxEdge/minEdge (у змея часто две короткие и две длинные)
-const KITE_MIN_SPAN_MAJOR_OVER_MINOR = 1.05; // max(spanX,spanY)/min — любая ориентация
-/** Квадрат: все углы близки к 90° (у эталонного кайта углы ~82°/98° — не квадрат). */
-const SQUARE_ANGLE_TOLERANCE = 6;
-const SQUARE_MAX_MAJOR_OVER_MINOR = 1.10;
-
-// Усы: плоская M. getChainAngles даёт тупой угол между соседними рёбрами (~130–175°) для широкой M из SHAPE_PATTERNS.
-/** M не должна быть сильно вытянута по вертикали: spanY/spanX не больше этого. */
-const MUSTACHE_FLAT_MAX_SPAN_Y_OVER_X = 1.05;
-/** Режим «плоская M» (как эталон mustache=1): все три угла тупые. */
-const MUSTACHE_OBTUSE_MIN = 108;
-const MUSTACHE_OBTUSE_MAX = 178;
-/** Насколько средний угол может быть меньше боковых (впадина чуть «острее»). */
-const MUSTACHE_OBTUSE_MIDDLE_MAX_BELOW_SIDES = 22;
-const MUSTACHE_OBTUSE_SIDE_SYMMETRY_MAX = 48;
-/** Режим с острыми боковыми углами (другой стиль рисования). */
-const MUSTACHE_PEAK_ANGLE_MIN = 35;
-const MUSTACHE_PEAK_ANGLE_MAX = 115;
-const MUSTACHE_VALLEY_ANGLE_MIN = 75;
-const MUSTACHE_VALLEY_ANGLE_MAX = 165;
-const MUSTACHE_VALLEY_OVER_PEAK_MIN = 4;
-const MUSTACHE_PEAK_SYMMETRY_MAX = 45;
-
-// =============================================================================
-// RECOGNITION SCORING (hybrid matcher)
-// =============================================================================
-
-const RECOG_WEIGHT_TOPO = 0.30;
-const RECOG_WEIGHT_LEN = 0.20;
-const RECOG_WEIGHT_ANG = 0.25;
-const RECOG_WEIGHT_TURN = 0.15;
-const RECOG_WEIGHT_GLOBAL = 0.10;
-
-// Home demo tuning: slightly more forgiving to reduce false fallback.
-const RECOG_ACCEPT_THRESHOLD = 0.70;
-const RECOG_AMBIG_THRESHOLD = 0.55;
-const RECOG_MARGIN_THRESHOLD = 0.05;
-const RECOG_LEGACY_BONUS = 0.12;
-/** Бонус кандидату с открытой страницы атласа (раньше «второй» 3★ не проходил порог). */
-const RECOG_ATLAS_VISIBLE_BONUS = 0.10;
-
-const RECOG_MIN_EDGE_LENGTH = 5;
+/** Сколько кандидатов показывать в разборе. Живёт: customTypes.js. */
 const RECOG_MAX_CANDIDATES_TO_SHOW = 3;
-/** Не участвуют в гибридном ранжировании (legacy и SHAPE_PATTERNS сохраняются). */
-const RECOG_HYBRID_EXCLUDED_SHAPE_NAMES = new Set();
-
-// Режим распознавания: 'geometric' — старый гибрид по SHAPE_PATTERNS;
-// 'topology' — изоморфизм по каталогу-29 + валидатор ограничений углов (§4).
-// Home demo работает в режиме 'topology' (см. Созвездия-29-графов.md).
-const RECOGNITION_MODE = 'topology';
 
 // =============================================================================
 // ANIMATION PARAMETERS
@@ -254,13 +192,8 @@ const CONSTELLATION_IMAGE_OPACITY = 255;
 const CONSTELLATION_IMAGE_PADDING = 1.2;
 /** Цепочка 3★ / 2 ребра: нижняя граница extentV как доля extentU (хорда 1–3), чтобы min(scaleU,scaleV) не сжимал лайнарт. */
 const CHAIN3_LINEART_MIN_V_RATIO = 0.35;
-/** Трусы (ось вдоль «пояса»): не даём extentV просесть относительно ширины, иначе лайнарт сжимается и боковые линии визуально «тонкие». */
-const TRUSY_LINEART_MIN_V_FROM_U_RATIO = 0.44;
-const TRUSY_LINEART_MIN_V_FROM_PATH_RATIO = 0.30;
-/** Сдвиг лайнарта относительно математической оси (как у пиццы). p5: положительный — по часовой. Подбирай ±90, 180 и т.д. под конкретный PNG. */
+/** Сдвиг лайнарта относительно математической оси. p5: положительный — по часовой. Подбирай ±90, 180 и т.д. под конкретный PNG. */
 const BANANA_LINEART_ANGLE_OFFSET_DEG = 180;
-/** Кайт: PNG был ориентирован на 90° относительно PCA-оси созвездия. */
-const KITE_LINEART_ANGLE_OFFSET_DEG = -90;
 
 // =============================================================================
 // SHAPE DEFINITIONS
@@ -272,40 +205,10 @@ const KITE_LINEART_ANGLE_OFFSET_DEG = -90;
 /** Sentinel «фигура не распознана». Раньше это был литерал SHAPE_UNRECOGNIZED в 48 местах. */
 const SHAPE_UNRECOGNIZED = 'unknown';
 
+// R-02: таблица сокращена до каталога-29 + sentinel. 31 фигура геометрического
+// слоя (Треугольник, Квадрат, Усы, Сердце, Пицца и прочие) удалена вместе
+// с самим слоем — топораспознаватель их не выдавал ни разу.
 const SHAPES = {
-    // 3 stars
-    'triangle':     { color: [255, 200, 100], description: 'Замкнутый контур из 3 звёзд с близкими сторонами' },
-    'victory':          { color: [100, 255, 200], description: 'V-форма: два луча близкой длины под ~90°' },
-    'caterpillar':         { color: [190, 255, 180], description: 'Три звезды в ряд с близкими расстояниями', image: 'caterpillar-lineart-transparent.png', imageArcSign: -1, imageScale: (12.5 / 3) * 0.75 },
-    // 4 stars
-    'square':         { color: [255, 150, 150], description: 'Четырёхугольник с равными сторонами и прямыми углами' },
-    'rhombus':            { color: [255, 130, 180], description: 'Четырёхугольник с равными сторонами, но без прямых углов' },
-    'deltoid':            {
-        color: [255, 160, 200],
-        description: 'Ромбовидный силуэт воздушного змея',
-        image: 'kite-lineart-v2-classic-transparent2.png',
-        imageArcSign: 1,
-        imageScale: 1.15,
-        imageAngleOffsetDeg: KITE_LINEART_ANGLE_OFFSET_DEG
-    },
-    'quadrilateral': { color: [180, 130, 130], description: 'Замкнутый неправильный четырёхугольник' },
-    'chain-4':       { color: [150, 200, 255], description: 'Четыре звезды в ряд' },
-    'fork':           { color: [255, 255, 150], description: 'Три луча из центра' },
-    'zigzag':          { color: [200, 255, 200], description: 'Ломаная линия с резкими поворотами' },
-    'hourglass':   { color: [255, 180, 220], description: 'X-образная форма' },
-    // 5 stars
-    'pentagon':        { color: [255, 220, 100], description: 'Правильный замкнутый пятиугольник с близкими сторонами' },
-    'pentagon-irregular':    { color: [200, 180, 80],  description: 'Замкнутый неправильный пятиугольник' },
-    'star':          { color: [255, 255, 200], description: 'Лучи из центра' },
-    'chain-5':       { color: [180, 180, 255], description: 'Пять звёзд в ряд' },
-    'tree':          { color: [150, 255, 180], description: 'Ветвящаяся структура' },
-    'mustache':              {
-        color: [220, 180, 140],
-        description: '5 звёзд, 4 ребра по цепочке: плоская M (левый низ — пик — впадина — пик — правый низ), чередующиеся повороты',
-        image: 'mustache-lineart-transparent.png',
-        imageArcSign: -1,
-        imageScale: 1.75
-    },
     'banana':            {
         color: [255, 255, 100],
         description: 'Плавная дуга из 4 звёзд',
@@ -316,35 +219,6 @@ const SHAPES = {
         // В долях extentV: «ниже» по исходнику (к низу PNG после finalAngle).
         imageOffsetV: 0.07
     },
-    'briefs':            {
-        color: [200, 160, 255],
-        description: 'U-образная дуга из 4 звёзд',
-        image: 'trusy-lineart-transparent.png',
-        imageArcSign: 1,
-        imageScale: 1.55,
-        imageOffsetV: 0.02
-    },
-    'iron':             { color: [255, 180, 120], description: 'Трапециевидный корпус с острым носиком', image: 'iron-lineart-transparent.png', imageArcSign: 1 },
-    'rubber-duck': { color: [255, 220, 120], description: 'Туловище и шея утки', image: 'rubber-duck-lineart-transparent.png', imageArcSign: 1 },
-    'unicorn':         { color: [230, 180, 255], description: 'Силуэт головы с длинным рогом', image: 'unicorn-lineart-transparent.png', imageArcSign: 1 },
-    'hook':             { color: [210, 210, 230], description: 'Изогнутый крюк с плавным загибом', image: 'hook-lineart-transparent.png', imageArcSign: 1 },
-    'mouse-cursor':      { color: [220, 220, 255], description: 'Указатель-стрелка', image: 'mouse-cursor-lineart-transparent.png', imageArcSign: -1 },
-    'heart':         { color: [255, 140, 180], description: 'Симметричное сердце с острым низом', image: 'heart-lineart-transparent.png', imageArcSign: -1 },
-    'ice-cream':       { color: [255, 200, 160], description: 'Рожок с шариком', image: 'icecream-lineart-transparent.png', imageArcSign: 1 },
-    'pizza-slice':      {
-        color: [255, 190, 110],
-        description: 'Треугольный кусок с широкой корочкой',
-        image: 'pizza-slice-lineart-transparent.png',
-        imageArcSign: 1,
-        imageAngleOffsetDeg: 90,
-        imageScale: 2.1,
-        imageOffsetV: -0.14
-    },
-    'glasses':             { color: [210, 230, 255], description: 'Широкая оправа с двумя линзами', image: 'glasses-lineart-transparent.png', imageArcSign: -1 },
-    'sock':            { color: [230, 230, 255], description: 'Контур носка с выраженной пяткой', image: 'sock-lineart-transparent.png', imageArcSign: -1 },
-    'butterfly':          { color: [255, 190, 255], description: 'Силуэт крыльев с центром посередине', image: 'butterfly-lineart-transparent.png', imageArcSign: -1 },
-    'sausage':          { color: [255, 170, 150], description: 'Плавная вытянутая дуга', image: 'sausage-lineart-transparent.png', imageArcSign: 1 },
-    'jellyfish':           { color: [190, 220, 255], description: 'Купол и свисающие щупальца', image: 'jellyfish-lineart-transparent.png', imageArcSign: 1 },
     // Каталог-29 (топологический режим)
     'toothpick':       { color: [225, 225, 210], description: 'Две звезды, одна линия' },
     'checkmark':          { color: [140, 220, 255], description: 'Три звезды цепочкой (уголок)' },
@@ -384,41 +258,7 @@ const SHAPES = {
 // =============================================================================
 
 const SHAPE_BASE_POINTS = {
-    // 3 stars
-    'triangle': 15,
-    'victory': 12,
-    'caterpillar': 8,
-    // 4 stars
-    'square': 20,
-    'rhombus': 18,
-    'deltoid': 18,
-    'quadrilateral': 12,
-    'chain-4': 10,
-    'fork': 12,
-    'zigzag': 10,
-    'hourglass': 18,
-    // 5 stars
-    'pentagon': 25,
-    'pentagon-irregular': 15,
-    'star': 30,
-    'chain-5': 12,
-    'tree': 15,
-    'mustache': 20,
     'banana': 20,
-    'briefs': 20,
-    'iron': 20,
-    'rubber-duck': 20,
-    'unicorn': 24,
-    'hook': 18,
-    'mouse-cursor': 18,
-    'heart': 22,
-    'ice-cream': 18,
-    'pizza-slice': 20,
-    'glasses': 20,
-    'sock': 18,
-    'butterfly': 20,
-    'sausage': 18,
-    'jellyfish': 22,
     // Каталог-29 (топологический режим)
     'toothpick': 6,
     'checkmark': 10,
@@ -538,14 +378,7 @@ const FIELD_GOAL_XP_REWARDS = [0, 0, 0];
 // =============================================================================
 
 const SHAPE_XP = {
-    'triangle': 10, 'victory': 10, 'caterpillar': 10,
-    'square': 10, 'rhombus': 10, 'deltoid': 10, 'quadrilateral': 10,
-    'chain-4': 10, 'fork': 10, 'zigzag': 10, 'hourglass': 10,
-    'pentagon': 10, 'pentagon-irregular': 10, 'star': 10,
-    'chain-5': 10, 'tree': 10, 'mustache': 10, 'banana': 10, 'briefs': 10,
-    'iron': 10, 'rubber-duck': 10, 'unicorn': 10, 'hook': 10,
-    'mouse-cursor': 10, 'heart': 10, 'ice-cream': 10, 'pizza-slice': 10,
-    'glasses': 10, 'sock': 10, 'butterfly': 10, 'sausage': 10, 'jellyfish': 10,
+    'banana': 10,
     // Каталог-29 (топологический режим)
     'checkmark': 10, 'chip': 10, 'cookie': 10, 'chicken-foot': 10,
     'earthworm': 10, 'toothpick': 10,
@@ -565,11 +398,7 @@ const LEVEL_NAME_COUNT = LEVEL_THRESHOLDS.length;
 
 // Ordered list of all shape names (for UI checklist)
 const ALL_SHAPE_NAMES = [
-    'triangle', 'victory', 'caterpillar',
-    'square', 'rhombus', 'deltoid', 'quadrilateral', 'chain-4', 'fork', 'zigzag', 'hourglass',
-    'pentagon', 'pentagon-irregular', 'star', 'chain-5', 'tree', 'mustache', 'banana', 'briefs',
-    'iron', 'rubber-duck', 'unicorn', 'hook', 'mouse-cursor', 'heart', 'ice-cream',
-    'pizza-slice', 'glasses', 'sock', 'butterfly', 'sausage', 'jellyfish',
+    'banana',
     // Каталог-29 (топологический режим): активные демо-фигуры + Зубочистка (2★)
     'checkmark', 'chip', 'cookie', 'chicken-foot', 'earthworm', 'toothpick',
     // Каталог-29 (недемо-фигуры, страницы 2–6)
@@ -628,143 +457,12 @@ function isBuiltinShapeEnabled(shapeName) {
 // =============================================================================
 
 const SHAPE_PATTERNS = {
-    'triangle': {
-        stars: [[0.5, 0.15], [0.15, 0.85], [0.85, 0.85]],
-        lines: [[0, 1], [1, 2], [2, 0]]
-    },
-    'victory': {
-        stars: [[0.15, 0.2], [0.5, 0.8], [0.85, 0.2]],
-        lines: [[0, 1], [1, 2]]
-    },
-    'caterpillar': {
-        stars: [[0.15, 0.5], [0.5, 0.5], [0.85, 0.5]],
-        lines: [[0, 1], [1, 2]]
-    },
-    'square': {
-        stars: [[0.2, 0.2], [0.8, 0.2], [0.8, 0.8], [0.2, 0.8]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 0]]
-    },
-    'rhombus': {
-        stars: [[0.5, 0.1], [0.85, 0.5], [0.5, 0.9], [0.15, 0.5]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 0]]
-    },
-    'deltoid': {
-        stars: [[0.5, 0.06], [0.88, 0.5], [0.5, 0.94], [0.12, 0.5]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 0]]
-    },
-    'quadrilateral': {
-        stars: [[0.3, 0.15], [0.85, 0.3], [0.7, 0.85], [0.15, 0.7]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 0]]
-    },
-    'chain-4': {
-        stars: [[0.1, 0.5], [0.37, 0.45], [0.63, 0.55], [0.9, 0.5]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'fork': {
-        stars: [[0.5, 0.55], [0.5, 0.15], [0.15, 0.85], [0.85, 0.85]],
-        lines: [[0, 1], [0, 2], [0, 3]]
-    },
-    'zigzag': {
-        stars: [[0.1, 0.2], [0.4, 0.8], [0.6, 0.2], [0.9, 0.8]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'hourglass': {
-        stars: [[0.2, 0.15], [0.8, 0.15], [0.2, 0.85], [0.8, 0.85]],
-        lines: [[0, 3], [3, 1], [1, 2], [2, 0]]
-    },
-    'pentagon': {
-        stars: [[0.5, 0.1], [0.89, 0.38], [0.74, 0.88], [0.26, 0.88], [0.11, 0.38]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]]
-    },
-    'pentagon-irregular': {
-        stars: [[0.4, 0.12], [0.85, 0.3], [0.75, 0.85], [0.2, 0.78], [0.12, 0.35]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 0]]
-    },
-    'star': {
-        stars: [[0.5, 0.5], [0.5, 0.1], [0.88, 0.35], [0.73, 0.88], [0.27, 0.88], [0.12, 0.35]],
-        lines: [[0, 1], [0, 2], [0, 3], [0, 4], [0, 5]]
-    },
-    'chain-5': {
-        stars: [[0.06, 0.5], [0.28, 0.42], [0.5, 0.55], [0.72, 0.42], [0.94, 0.5]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 4]]
-    },
-    'tree': {
-        stars: [[0.5, 0.5], [0.5, 0.1], [0.15, 0.85], [0.85, 0.85], [0.5, 0.9]],
-        lines: [[0, 1], [0, 2], [0, 3], [0, 4]]
-    },
-    'mustache': {
-        stars: [[0.05, 0.55], [0.28, 0.20], [0.50, 0.60], [0.72, 0.20], [0.95, 0.55]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 4]],
-        imageAnchor: { mode: 'centroid' },
-        imageDirection: { mode: 'mustacheEndpointsChord' }
-    },
     'banana': {
         // Каталог-29: цепочка-дуга (изгиб в одну сторону, §4/§5). C-01.
         stars: [[0.08, 0.38], [0.37, 0.62], [0.63, 0.62], [0.92, 0.38]],
         lines: [[0, 1], [1, 2], [2, 3]],
         imageAnchor: { mode: 'centroid' },
         imageDirection: { mode: 'bananaChordBulge' }
-    },
-    'briefs': {
-        // Более равные длины боков и низа (~max/min ≤ TRUSY_MAX_EDGE_LEN_RATIO), углы у внутренних вершин ~100–110°.
-        stars: [[0.18, 0.22], [0.3, 0.74], [0.7, 0.74], [0.82, 0.22]],
-        lines: [[0, 1], [1, 2], [2, 3]],
-        imageAnchor: { mode: 'centroid' },
-        imageDirection: { mode: 'trusyBottomEdge' }
-    },
-    'iron': {
-        stars: [[0.15, 0.75], [0.25, 0.25], [0.72, 0.22], [0.9, 0.6]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 0]]
-    },
-    'rubber-duck': {
-        stars: [[0.45, 0.58], [0.25, 0.78], [0.78, 0.62], [0.62, 0.25]],
-        lines: [[0, 1], [0, 2], [0, 3]]
-    },
-    'unicorn': {
-        stars: [[0.45, 0.55], [0.2, 0.72], [0.7, 0.74], [0.5, 0.88], [0.62, 0.08]],
-        lines: [[0, 1], [0, 2], [0, 3], [0, 4]]
-    },
-    'hook': {
-        stars: [[0.2, 0.2], [0.45, 0.22], [0.62, 0.45], [0.58, 0.82]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'mouse-cursor': {
-        stars: [[0.2, 0.12], [0.22, 0.88], [0.82, 0.42]],
-        lines: [[0, 1], [1, 2], [2, 0]]
-    },
-    'heart': {
-        stars: [[0.18, 0.22], [0.35, 0.12], [0.5, 0.82], [0.65, 0.12], [0.82, 0.22]],
-        lines: [[0, 1], [1, 2], [2, 3], [3, 4]]
-    },
-    'ice-cream': {
-        stars: [[0.2, 0.2], [0.5, 0.9], [0.8, 0.25]],
-        lines: [[0, 1], [1, 2]]
-    },
-    'pizza-slice': {
-        stars: [[0.5, 0.12], [0.16, 0.86], [0.84, 0.86]],
-        lines: [[0, 1], [1, 2], [2, 0]],
-        imageAnchor: { mode: 'centroid' },
-        imageDirection: { mode: 'triangleSharpTip' }
-    },
-    'glasses': {
-        stars: [[0.12, 0.35], [0.38, 0.35], [0.62, 0.35], [0.88, 0.35]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'sock': {
-        stars: [[0.18, 0.78], [0.42, 0.42], [0.66, 0.56], [0.84, 0.2]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'butterfly': {
-        stars: [[0.2, 0.2], [0.8, 0.2], [0.2, 0.82], [0.8, 0.82]],
-        lines: [[0, 3], [3, 1], [1, 2], [2, 0]]
-    },
-    'sausage': {
-        stars: [[0.1, 0.66], [0.36, 0.46], [0.64, 0.46], [0.9, 0.64]],
-        lines: [[0, 1], [1, 2], [2, 3]]
-    },
-    'jellyfish': {
-        stars: [[0.52, 0.45], [0.52, 0.16], [0.24, 0.8], [0.52, 0.9], [0.8, 0.8]],
-        lines: [[0, 1], [0, 2], [0, 3], [0, 4]]
     },
     // --- Каталог-29: активные демо-фигуры (для карточек атласа / подсказок) ---
     'toothpick': {

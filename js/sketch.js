@@ -183,9 +183,6 @@ function setup() {
         // Повторное открытие: быстрый fade (уже работали с этим небом)
         skyStartTime = millis();
         skyFadeScale = 0.25;
-        if (shouldLoadMustachePracticeLevel() && typeof console !== 'undefined' && console.warn) {
-            console.warn('[mustache=1] Загружено сохранение: эталон «Усы» не применён. Открой с ?dev=1 для кнопки «Сбросить небо», или удали ключ localStorage starsReborn_v03.');
-        }
         if (shouldLoadPictureField() && typeof console !== 'undefined' && console.warn) {
             console.warn('[picture] Загружено сохранение: поле-картинка не применена. Нажми «Сбросить небо» в dev-панели, чтобы перегенерировать.');
         }
@@ -335,9 +332,6 @@ function regenerateFieldStarsAfterReset() {
         dailyTargetShapes = [];
         assignStarAppearDelays();
         generateBackgroundStars();
-    } else if (shouldLoadMustachePracticeLevel()) {
-        generateStarsMustachePractice();
-        dailyTargetShapes = [];
     } else {
         generateDailyField();
     }
@@ -377,9 +371,6 @@ function onResetSky() {
         generatePictureField();
         dailyTargetShapes = [];
         assignStarAppearDelays();
-        generateBackgroundStars();
-    } else if (shouldLoadMustachePracticeLevel()) {
-        generateStarsMustachePractice();
         generateBackgroundStars();
     } else {
         generateDailyField(); // включает штатный воскресный показ картинки

@@ -271,17 +271,6 @@ function createGeneratedFieldStar(id, x, y) {
     };
 }
 
-function shouldLoadMustachePracticeLevel() {
-    if (typeof DEBUG_MUSTACHE_PRACTICE_FORCE !== 'undefined' && DEBUG_MUSTACHE_PRACTICE_FORCE) return true;
-    try {
-        if (typeof window !== 'undefined' && window.location && window.location.search) {
-            const q = new URLSearchParams(window.location.search);
-            if (q.get('mustache') === '1') return true;
-        }
-    } catch (e) { /* ignore */ }
-    return false;
-}
-
 function isDevModeEnabled() {
     try {
         if (typeof window !== 'undefined' && window.location && window.location.search) {
@@ -407,49 +396,6 @@ function getScheduledPictureFieldId() {
     const seed = hashStringToSeed(`${ensurePlayerId()}:${getEffectiveSkyDateInt()}:picture`);
     const idx = seed % PICTURE_FIELD_IDS.length;
     return PICTURE_FIELD_IDS[idx];
-}
-
-function createMustachePracticeAnchorStar(id, x, y) {
-    return {
-        id,
-        x,
-        y,
-        locked: false,
-        suppressed: false,
-        extinguished: false,
-        sizeFactor: 1.35,
-        colorValue: pickRandomStarColorValue()
-    };
-}
-
-/** Только 5 звёзд — эталонная M из SHAPE_PATTERNS «Усы» в центре поля (режим `?mustache=1`). */
-function generateStarsMustachePractice() {
-    const pattern = SHAPE_PATTERNS && SHAPE_PATTERNS['mustache'] && Array.isArray(SHAPE_PATTERNS['mustache'].stars)
-        ? SHAPE_PATTERNS['mustache'].stars
-        : [[0.05, 0.5], [0.26, 0.38], [0.5, 0.52], [0.74, 0.38], [0.95, 0.5]];
-    const cx = FIELD_WIDTH / 2;
-    const cy = FIELD_HEIGHT / 2;
-    const scaleX = 520;
-    const scaleY = 200;
-    const yAnchor = 0.45;
-
-    fieldStars = [];
-    const nAnchor = Math.min(5, pattern.length);
-    for (let id = 0; id < nAnchor; id++) {
-        const px = pattern[id][0];
-        const py = pattern[id][1];
-        const x = cx + (px - 0.5) * scaleX;
-        const y = cy + (py - yAnchor) * scaleY;
-        fieldStars.push(createMustachePracticeAnchorStar(id, x, y));
-    }
-
-    recomputeSuppressedStars();
-
-    if (typeof console !== 'undefined' && console.log) {
-        console.log(
-            '[mustache=1] На поле только 5 звёзд в центре. Соедините по порядку слева направо: 0→1→2→3→4 (4 отрезка), затем подтвердите созвездие.'
-        );
-    }
 }
 
 function generateStars() {

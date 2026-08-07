@@ -594,105 +594,6 @@ function getOrderedChainStarsFromLines(lines) {
     return getOrderedChainStarsFromLinesN(lines, 4);
 }
 
-/**
- * Ребро «пояс / промежность» (вдоль ширины лайнарта): почти параллельно хорде между концами цепи.
- * Ножки U почти перпендикулярны хорде. «Дальше всех от хорды» ломается, если концы цепи — низ ножек.
- */
-function getTrusyHemEdgeStars(orderedFour) {
-    if (!orderedFour || orderedFour.length !== 4) return null;
-    const p0 = orderedFour[0];
-    const p3 = orderedFour[3];
-    const ax = p0.x;
-    const ay = p0.y;
-    const chordDx = p3.x - ax;
-    const chordDy = p3.y - ay;
-    const chordLen = Math.hypot(chordDx, chordDy);
-
-    let bestI = 1;
-    let bestPar = -1;
-    let bestDist = -1;
-
-    for (let i = 0; i < 3; i++) {
-        const s = orderedFour[i];
-        const e = orderedFour[i + 1];
-        const edx = e.x - s.x;
-        const edy = e.y - s.y;
-        const edgeLen = Math.hypot(edx, edy);
-        if (edgeLen < 1e-6) continue;
-
-        let par = 0;
-        if (chordLen >= 1e-6) {
-            par = Math.abs(edx * chordDx + edy * chordDy) / (edgeLen * chordLen);
-        }
-
-        const mx = (s.x + e.x) * 0.5;
-        const my = (s.y + e.y) * 0.5;
-        const dist = chordLen >= 1e-6
-            ? Math.abs(chordDy * (mx - ax) - chordDx * (my - ay)) / chordLen
-            : my;
-
-        const betterPar = par > bestPar + 1e-4;
-        const tieBreak = bestPar >= 0 && Math.abs(par - bestPar) <= 1e-4 && dist > bestDist;
-        if (betterPar || tieBreak) {
-            bestPar = par;
-            bestDist = dist;
-            bestI = i;
-        }
-    }
-
-    let B = orderedFour[bestI];
-    let C = orderedFour[bestI + 1];
-    let dxc = C.x - B.x;
-    let dyc = C.y - B.y;
-    const segLen = Math.hypot(dxc, dyc);
-    if (segLen < 1e-6) return null;
-
-    if (chordLen >= 1e-6) {
-        if (dxc * chordDx + dyc * chordDy < 0) {
-            const t = B;
-            B = C;
-            C = t;
-            dxc = -dxc;
-            dyc = -dyc;
-        }
-    } else if (Math.abs(dxc) >= Math.abs(dyc) && dxc < 0) {
-        const t = B;
-        B = C;
-        C = t;
-        dxc = -dxc;
-        dyc = -dyc;
-    }
-
-    return { B, C, dxc, dyc, segLen };
-}
-
-function getTriangleVertexAngleDeg(prev, curr, next) {
-    const abx = prev.x - curr.x;
-    const aby = prev.y - curr.y;
-    const cbx = next.x - curr.x;
-    const cby = next.y - curr.y;
-    const dot = abx * cbx + aby * cby;
-    const cross = abx * cby - aby * cbx;
-    return degrees(Math.atan2(Math.abs(cross), dot));
-}
-
-function getSharpTriangleTip(stars) {
-    if (!Array.isArray(stars) || stars.length !== 3) return null;
-    let tipIndex = -1;
-    let minAngle = Infinity;
-    for (let i = 0; i < 3; i++) {
-        const prev = stars[(i + 2) % 3];
-        const curr = stars[i];
-        const next = stars[(i + 1) % 3];
-        const angle = getTriangleVertexAngleDeg(prev, curr, next);
-        if (angle < minAngle) {
-            minAngle = angle;
-            tipIndex = i;
-        }
-    }
-    return tipIndex >= 0 ? stars[tipIndex] : null;
-}
-
 function computeExtentsByAngle(stars, cx, cy, angle) {
     const cosA = Math.cos(angle);
     const sinA = Math.sin(angle);
@@ -737,49 +638,14 @@ function computePatternDirectedImageTransform(lines, shapeName) {
         return null;
     }
 
-    // Размер лайнарта — по расстоянию между крайними звёздами цепочки (как хорда у цепочки 3★).
-    if (pattern.imageDirection.mode === 'mustacheEndpointsChord') {
-        const ordered = getOrderedChainStarsFromLinesN(lines, 5);
-        if (!ordered) return null;
-        const p0 = ordered[0];
-        const p4 = ordered[4];
-        const chordX = p4.x - p0.x;
-        const chordY = p4.y - p0.y;
-        const chordLen = Math.hypot(chordX, chordY);
-        const angle = chordLen >= 1e-6 ? Math.atan2(chordY, chordX) : 0;
-        const extentU = Math.max(chordLen * CONSTELLATION_IMAGE_PADDING, 40);
-        const perp = computeExtentsByAngle(stars, cx, cy, angle);
-        const vRatio = typeof CHAIN3_LINEART_MIN_V_RATIO === 'number' ? CHAIN3_LINEART_MIN_V_RATIO : 0.35;
-        const extentV = Math.max(perp.extentV, extentU * vRatio, 40);
-        const midX = (p0.x + p4.x) * 0.5;
-        const midY = (p0.y + p4.y) * 0.5;
-        const sinA = Math.sin(angle);
-        const cosA = Math.cos(angle);
-        const bowV = -(cx - midX) * sinA + (cy - midY) * cosA;
-        const arcSign = bowV >= 0 ? 1 : -1;
-        return { cx, cy, angle, extentU, extentV, arcSign, flipImageV: false };
-    }
-
+    // R-02: режимы mustacheEndpointsChord / triangleSharpTip / trusyBottomEdge
+    // ушли вместе с фигурами Усы, Пицца и Трусы. Из каталога-29 лайнарт
+    // направляет только Банан.
     let directionX = 0;
     let directionY = 0;
-    let hemForFlip = null;
     let bananaEndsForFlip = null;
     let bananaChainStars = null;
-    if (pattern.imageDirection.mode === 'triangleSharpTip') {
-        const tip = getSharpTriangleTip(stars);
-        if (!tip) return null;
-        directionX = tip.x - cx;
-        directionY = tip.y - cy;
-    } else if (pattern.imageDirection.mode === 'trusyBottomEdge') {
-        const ordered = getOrderedChainStarsFromLines(lines);
-        if (!ordered) return null;
-        const hem = getTrusyHemEdgeStars(ordered);
-        if (!hem) return null;
-        hemForFlip = hem;
-        // Локальная ось +X после rotate(angle) = вдоль ребра, параллельного хорде (пояс/промежность).
-        directionX = hem.dxc / hem.segLen;
-        directionY = hem.dyc / hem.segLen;
-    } else if (pattern.imageDirection.mode === 'bananaChordBulge') {
+    if (pattern.imageDirection.mode === 'bananaChordBulge') {
         const ordered = getOrderedChainStarsFromLines(lines);
         if (!ordered) return null;
         bananaChainStars = ordered;
@@ -867,43 +733,8 @@ function computePatternDirectedImageTransform(lines, shapeName) {
         extentV = Math.max(extentV, minVFromU, minVFromPath);
     }
 
-    if (hemForFlip) {
-        const orderedTr = getOrderedChainStarsFromLines(lines);
-        if (orderedTr && orderedTr.length === 4) {
-            const q0 = orderedTr[0];
-            const q1 = orderedTr[1];
-            const q2 = orderedTr[2];
-            const q3 = orderedTr[3];
-            const polyLenTr =
-                Math.hypot(q1.x - q0.x, q1.y - q0.y) +
-                Math.hypot(q2.x - q1.x, q2.y - q1.y) +
-                Math.hypot(q3.x - q2.x, q3.y - q2.y);
-            const ru = typeof TRUSY_LINEART_MIN_V_FROM_U_RATIO === 'number' ? TRUSY_LINEART_MIN_V_FROM_U_RATIO : 0.44;
-            const rp = typeof TRUSY_LINEART_MIN_V_FROM_PATH_RATIO === 'number' ? TRUSY_LINEART_MIN_V_FROM_PATH_RATIO : 0.30;
-            const minVFromU = extentU * ru;
-            const minVFromPath = polyLenTr * CONSTELLATION_IMAGE_PADDING * rp;
-            extentV = Math.max(extentV, minVFromU, minVFromPath);
-        }
-    }
-
     let flipImageV = false;
-    if (hemForFlip) {
-        const midX = (hemForFlip.B.x + hemForFlip.C.x) * 0.5;
-        const midY = (hemForFlip.B.y + hemForFlip.C.y) * 0.5;
-        const tcx = cx - midX;
-        const tcy = cy - midY;
-        const tlen = Math.hypot(tcx, tcy);
-        if (tlen >= 1e-6) {
-            const ux = tcx / tlen;
-            const uy = tcy / tlen;
-            const sinA = Math.sin(angle);
-            const cosA = Math.cos(angle);
-            const downX = -sinA;
-            const downY = cosA;
-            // Инверсия от первой версии: иначе лайнарт стабильно вверх ногами.
-            flipImageV = downX * ux + downY * uy > 0;
-        }
-    } else if (bananaEndsForFlip) {
+    if (bananaEndsForFlip) {
         const p0 = bananaEndsForFlip.p0;
         const p3 = bananaEndsForFlip.p3;
         const midX = (p0.x + p3.x) * 0.5;
