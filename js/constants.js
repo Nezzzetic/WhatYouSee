@@ -76,14 +76,12 @@ const LINEART_SKELETON_STROKE_WEIGHT = 0.65;
 /** Committed constellation lines at level reveal (no PNG on field). */
 const REVEALED_CONSTELLATION_STROKE_WEIGHT = 2.5;
 const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
-/** Собранное созвездие из атласа до финала уровня: подпись, лайнарт, вспышка. */
+/** Собранное созвездие из атласа до финала уровня: подпись простым текстом.
+ *  V-12: кольцо collect-пульса снесено вместе с `ATLAS_COLLECT_PULSE_MS`; ★-бейдж
+ *  и glow-константы, осиротевшие ещё в V-09, убраны там же. */
 const COLLECTED_ATLAS_LABEL_SIZE = 16;
-const COLLECTED_ATLAS_BADGE = '★';
 /** Иконка «из атласа» у черновика созвездия (экранные px, без названия фигуры). */
 const DRAFT_ATLAS_HINT_BOOK_PX = 10;
-const ATLAS_COLLECT_PULSE_MS = 2000;
-const COLLECTED_ATLAS_GLOW_ALPHA = 72;
-const COLLECTED_ATLAS_GLOW_STROKE_EXTRA = 3.5;
 const LOCKED_STAR_GLOW_ALPHA = 88;
 const LOCKED_STAR_HALO_WHITE_ALPHA = 34;
 const SUPPRESSED_STAR_COLOR = [95, 95, 125];
@@ -114,6 +112,21 @@ const FEEDBACK_DIM_TAU_MS = 120;     // постоянная сглаживан�
 const FEEDBACK_PULSE_MS = 220;       // длительность импульса досягаемых (мс)
 const FEEDBACK_PULSE_SCALE = 0.35;   // прибавка к размеру на пике импульса
 const FEEDBACK_PULSE_BRIGHTEN = 0.45; // прибавка к яркости гало/свечения на пике
+
+// V-12: волна создания созвездия. После коммита созвездие не появляется целиком —
+// оно прочерчивается ребро за ребром в том порядке, в котором игрок вёл жест,
+// а звезда переходит в locked-вид в момент, когда волна до неё дошла.
+// Числа визуальные, калибруются свободно — экономики не касаются.
+const COMMIT_WAVE_EDGE_MS = 130;        // волна идёт по одному ребру
+const COMMIT_WAVE_STEP_MS = 55;         // задержка старта между соседними рёбрами
+const COMMIT_WAVE_TOTAL_MAX_MS = 620;   // потолок всей волны — шаг ужимается под него
+const COMMIT_WAVE_CREST = 0.45;         // длина светлого «огонька» на острие, доля ребра
+const COMMIT_WAVE_STROKE_EXTRA = 2.2;   // прибавка к толщине огонька (экранные px)
+const COMMIT_WAVE_WHITEN = 0.55;        // подмешивание белого в цвет линии на огоньке
+const COMMIT_WAVE_STAR_FLASH_MS = 180;  // вспышка звезды на приходе волны
+const COMMIT_WAVE_STAR_SCALE = 0.55;    // прибавка к размеру звезды на пике вспышки
+const COMMIT_WAVE_STAR_BRIGHTEN = 0.6;  // прибавка к яркости гало/свечения на пике
+const COMMIT_WAVE_LABEL_FADE_MS = 220;  // проявление подписи атласной после волны
 
 // =============================================================================
 // STAR SHAPE — «Искра ✦» (визуальный концепт 4, редизайн звёзд)
