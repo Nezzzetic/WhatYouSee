@@ -154,9 +154,8 @@ const BG_STAR_MIN_SCREEN_DIAM = 1.6;
 // =============================================================================
 
 const MIN_STARS_PER_CONSTELLATION = 2;
+// M-04: лимит площади bbox снят — потолок размера созвездия только этот.
 const MAX_STARS_PER_CONSTELLATION = 100;
-/** Max share of field area (axis-aligned bbox of constellation stars) allowed before confirm is blocked. */
-const MAX_CONSTELLATION_BBOX_AREA_FRACTION = 0.5;
 
 // =============================================================================
 // GEOMETRIC THRESHOLDS (strict recognition)

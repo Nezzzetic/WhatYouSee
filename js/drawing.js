@@ -410,14 +410,11 @@ function mouseReleased() {
             uniqueStarCount <= MAX_STARS_PER_CONSTELLATION &&
             currentLines.length >= 1 &&
             isDraftConstellationValid(currentLines)) {
-            if (getConstellationLinesBboxAreaFraction(currentLines) > MAX_CONSTELLATION_BBOX_AREA_FRACTION) {
-                currentLines = [];
-            } else {
-                const payload = buildConstellationCommitPayload([...currentLines]);
-                currentLines = [];
-                if (payload) {
-                    commitConstellationFromPayload(payload);
-                }
+            // M-04: лимит площади bbox снят — валидный черновик коммитится всегда.
+            const payload = buildConstellationCommitPayload([...currentLines]);
+            currentLines = [];
+            if (payload) {
+                commitConstellationFromPayload(payload);
             }
         } else {
             currentLines = [];
@@ -587,34 +584,6 @@ function touchEnded(event) {
 // =============================================================================
 // CONSTELLATION BUILD + COMMIT
 // =============================================================================
-
-function getConstellationLinesBboxAreaFraction(lines) {
-    const starIds = new Set();
-    for (const seg of lines) {
-        starIds.add(seg.startId);
-        starIds.add(seg.endId);
-    }
-    let minX = Infinity;
-    let maxX = -Infinity;
-    let minY = Infinity;
-    let maxY = -Infinity;
-    for (const id of starIds) {
-        const s = getStarById(id);
-        if (!s) continue;
-        minX = Math.min(minX, s.x);
-        maxX = Math.max(maxX, s.x);
-        minY = Math.min(minY, s.y);
-        maxY = Math.max(maxY, s.y);
-    }
-    if (!Number.isFinite(minX) || !Number.isFinite(maxX) || !Number.isFinite(minY) || !Number.isFinite(maxY)) {
-        return 0;
-    }
-    const w = maxX - minX;
-    const h = maxY - minY;
-    const fieldArea = FIELD_WIDTH * FIELD_HEIGHT;
-    if (fieldArea <= 0) return 0;
-    return (w * h) / fieldArea;
-}
 
 /** @returns {{ lines, center, starIds, starCount, shape, recognizedClass } | null} */
 function buildConstellationCommitPayload(lines) {
