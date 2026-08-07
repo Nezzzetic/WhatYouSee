@@ -137,6 +137,8 @@ en: {
     'chain.unite_all.title': 'All-in-One',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
+    'chain.daily_entry.title': 'Arrival',
+    'chain.daily_night.title': 'Night Closed',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -188,8 +190,12 @@ en: {
         other: '{n} faceted shapes (all 5 colors each)'
     },
     'chain.ogranshchik.stepAll': 'Facet all 29 atlas shapes',
+    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
+    'chain.daily_entry.step': 'Draw your first constellation tonight',
+    'chain.daily_night.step': 'Complete the night',
 
     // --- Страницы наград ------------------------------------------------------
+    'rewardPage.daily': 'Daily',
     'rewardPage.colors': 'Colors',
     'rewardPage.sizes': 'Sizes',
     'rewardPage.specials': 'Special',
@@ -199,6 +205,7 @@ en: {
     'rewards.stepReady': '{desc} · ready',
     'rewards.stepProgress': '{desc} · {current} / {target}',
     'rewards.allDone': 'All steps completed',
+    'rewards.dailyClaimed': 'Claimed · returns with the next sky',
     'rewards.claim': 'Claim reward',
     'rewards.claimIdle': 'Reward for the current step — meet its condition',
     'rewards.lockCollectPage': 'Collect every shape on page {n}',
@@ -213,7 +220,6 @@ en: {
     'toast.atlasPageTitle': 'Atlas page unlocked',
     'toast.atlasPageSub': 'Page {n} — new shapes in the set',
     'toast.levelComplete': 'Night complete',
-    'toast.levelPoints': '+{n} for the night',
     'toast.close': 'Close',
 
     // --- Шторка ---------------------------------------------------------------
@@ -348,6 +354,8 @@ ru: {
     'chain.unite_all.title': 'Созвездие-всё',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
+    'chain.daily_entry.title': 'Приход',
+    'chain.daily_night.title': 'Ночь закрыта',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -409,8 +417,12 @@ ru: {
         many: '{n} огранённых фигур (все 5 цветов у каждой)'
     },
     'chain.ogranshchik.stepAll': 'Огранить все 29 фигур атласа',
+    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
+    'chain.daily_entry.step': 'Создать первое созвездие этой ночью',
+    'chain.daily_night.step': 'Завершить ночь',
 
     // --- Страницы наград ------------------------------------------------------
+    'rewardPage.daily': 'Сутки',
     'rewardPage.colors': 'Цвета',
     'rewardPage.sizes': 'Размеры',
     'rewardPage.specials': 'Особые',
@@ -420,6 +432,7 @@ ru: {
     'rewards.stepReady': '{desc} · готово',
     'rewards.stepProgress': '{desc} · {current} / {target}',
     'rewards.allDone': 'Все ступени пройдены',
+    'rewards.dailyClaimed': 'Забрано · вернётся со следующим небом',
     'rewards.claim': 'Забрать награду',
     'rewards.claimIdle': 'Награда за текущую ступень — выполните её условие',
     'rewards.lockCollectPage': 'Соберите все фигуры страницы {n}',
@@ -434,7 +447,6 @@ ru: {
     'toast.atlasPageTitle': 'Открыта страница атласа',
     'toast.atlasPageSub': 'Страница {n} — новые фигуры в наборе',
     'toast.levelComplete': 'Уровень завершён',
-    'toast.levelPoints': '+{n} за уровень',
     'toast.close': 'Закрыть',
 
     // --- Шторка ---------------------------------------------------------------

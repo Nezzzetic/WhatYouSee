@@ -13,7 +13,6 @@ let fieldGoalsAchieved = [false, false, false];
 let fieldGoalRewardsClaimed = [false, false, false];
 let bestScore = 0;
 let recordScoreBadgeActive = false;
-let levelCompletePointsAwarded = false;
 let claimedStarCounts = new Set();
 
 function resetStarCountBonusState() {
@@ -58,35 +57,13 @@ function registerStarCountOnCommit(starCount) {
 
 // S-01: очки за атласные фигуры ночи убраны — первое создание фигуры
 // вознаграждается шагом 1 её цепочки достижений прямо на коммите.
-function awardEndOfLevelPoints() {
-    const levelPts = awardLevelCompletePointsIfNeeded();
-    return {
-        levelPts,
-        total: levelPts
-    };
-}
+// M-05: последняя прямая выплата за небо (`awardEndOfLevelPoints` /
+// `awardLevelCompletePointsIfNeeded` и золотой флоатер «+30» в центре поля)
+// тоже убрана. Закрытая ночь теперь взводит защёлку суточного квеста
+// «Ночь закрыта», а ✦ игрок забирает кнопкой в Наградах.
 
 function getFieldScore() {
     return constellations.length;
-}
-
-function awardLevelCompletePointsIfNeeded() {
-    if (levelCompletePointsAwarded) return 0;
-    levelCompletePointsAwarded = true;
-    const amount = typeof LEVEL_COMPLETE_POINTS === 'number' ? LEVEL_COMPLETE_POINTS : 25;
-    const awarded = awardMetaScore(amount);
-    if (awarded > 0) {
-        const cx = FIELD_WIDTH / 2;
-        const cy = FIELD_HEIGHT / 2;
-        floatingScores.push({
-            x: cx,
-            y: cy,
-            text: `+${awarded}`,
-            startTime: millis(),
-            color: [255, 215, 0]
-        });
-    }
-    return awarded;
 }
 
 function updateBestScoreFromFieldScore() {

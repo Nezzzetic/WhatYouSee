@@ -31,14 +31,13 @@ function updateProgressionUI() {
     updatePeekBar();
 }
 
-function showLevelCompleteToast(levelPts) {
+// M-05: строки «+30 за уровень» здесь больше нет — ✦ за ночь ушли в суточный
+// квест «Ночь закрыта», и тост сообщает только сам факт завершения.
+function showLevelCompleteToast() {
     const toast = document.getElementById("levelCompleteToast");
     if (!toast) return;
 
-    const level = levelPts || 0;
     const lines = [`<strong>${t('toast.levelComplete')}</strong>`];
-
-    if (level > 0) lines.push(t('toast.levelPoints', { n: level }));
 
     toast.innerHTML =
         `<button class="toast-close-btn" aria-label="${t('toast.close')}">×</button>` +

@@ -498,6 +498,7 @@ function loadProgression() {
 
         if (!raw) {
             if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(null);
+            if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
             saveProgression();
             return false;
         }
@@ -541,6 +542,7 @@ function loadProgression() {
         if (typeof consumeAchievementsFullResetFlag === 'function'
             && consumeAchievementsFullResetFlag()) {
             resetProgressionForFullReset();
+            if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
             saveProgression();
             return true;
         }
@@ -552,6 +554,11 @@ function loadProgression() {
 
         playerLevel = computeLevel(totalXP);
         ensurePlayerId();
+
+        // M-05: сутки сверяем после того, как устоялся devDayOffset — от него
+        // зависит getEffectiveSkyDateInt(). Игрок, не заходивший неделю, получает
+        // свежую пару квестов; зашедший второй раз за вечер — свои забранные.
+        if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
 
         // S-01: если накопленных ✦ уже хватает — страница открывается сразу
         maybeAutoUnlockAtlasPages();

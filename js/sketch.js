@@ -318,7 +318,6 @@ function resetFieldSessionState() {
     fieldGoalRewardsClaimed = [false, false, false];
     floatingScores = [];
     bestScore = 0;
-    levelCompletePointsAwarded = false;
     resetStarCountBonusState();
     resetRecordScoreBadge();
     atlasCollectedStarColors = new Map();
@@ -342,6 +341,11 @@ function startNewDailySky(options) {
     const opts = options || {};
     closeSheet();
     resetFieldSessionState();
+    // M-05: суточные квесты обновляются вместе с небом. Здесь — потому что это
+    // единственный путь «пришло новое небо»: первая загрузка дня, dev «новый
+    // день», харнесс. `onResetSky` ниже эту функцию не зовёт намеренно —
+    // он перегенерирует поле тех же суток, и квесты обязаны остаться забранными.
+    if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
     clearSave();
 
     regenerateFieldStarsAfterReset();
@@ -508,6 +512,10 @@ function performFullReset(options) {
     fieldCameraSlot = null;
     observatoryCameraSlot = null;
     if (typeof opts.beforeFieldRegen === 'function') opts.beforeFieldRegen();
+    // M-05: вайп обнулил блок суток вместе со всем остальным (date = 0) —
+    // проставляем текущие сутки, иначе первый же коммит взвёл бы защёлку
+    // в блоке несуществующего дня.
+    if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
     saveProgression();
     // Хук beforeFieldRegen (T-01) открывает страницы бесплатно, накопитель не
     // трогая, — после вайпа обсерватория обязана быть закрытой и пустой.

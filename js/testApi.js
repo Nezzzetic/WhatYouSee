@@ -155,6 +155,24 @@
         return state();
     }
 
+    /**
+     * M-05: следующая ночь БЕЗ стирания прогресса — то, чего не умеет reset().
+     *
+     * Ставит дату неба и проходит штатным путём смены дня (`startNewDailySky`),
+     * поэтому суточные квесты обновляются ровно так же, как у живого игрока,
+     * открывшего игру назавтра. ✦, страницы атласа, огранка и созданные фигуры
+     * остаются на месте — без этого сценарий «два дня подряд» не построить.
+     *
+     * @param {number|string} date — 20260808 или '2026-08-08'
+     */
+    function newDay(date) {
+        const parsed = parseDateInput(date);
+        if (parsed === null) fail('newDay: нужна дата (20260808 или "2026-08-08")');
+        setTestSkyDateOverride(parsed);
+        startNewDailySky({ saveAfter: true });
+        return state();
+    }
+
     // =========================================================================
     // ЗВЁЗДЫ
     // =========================================================================
@@ -450,6 +468,9 @@
             shapeColors: shapeColorsDump(),
             atlasPagesOpen: [...unlockedPageIndices].sort((a, b) => a - b),
             chains: chainsDump(),
+            // M-05: защёлки и заборы суточных квестов — сценарию нужно видеть,
+            // к каким суткам они относятся, а не только claimable у цепочки.
+            daily: Object.assign({}, (achievementCounters && achievementCounters.daily) || {}),
             undoFloor,
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
@@ -693,6 +714,7 @@
     window.__test = {
         version: 'T-01',
         reset,
+        newDay,
         stars,
         connect,
         findShape,
