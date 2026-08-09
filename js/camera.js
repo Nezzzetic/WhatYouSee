@@ -125,20 +125,56 @@ function getVisibleTileWorldOffsets(viewPadPx) {
     return [{ ox: 0, oy: 0 }];
 }
 
+/**
+ * V-13: отзум финала ночи. Зовётся из draw() каждый кадр, пока идёт сцена.
+ *
+ * Цель НЕ запоминается на старте, а пересчитывается каждый кадр через штатную
+ * centerCamera() (снимок → цель → восстановление): иначе открытие шторки,
+ * поворот экрана или resize посреди сцены оставили бы камеру ехать в устаревшую
+ * точку. Резерв полосы под свёрнутой шторкой (getUsableViewHeight) приезжает
+ * сюда даром — он уже внутри centerCamera() и getMinZoomLevel().
+ */
+function updateLevelFinaleCamera() {
+    if (typeof getLevelFinaleElapsed !== 'function') return;
+    const elapsed = getLevelFinaleElapsed();
+    if (elapsed < 0) return;
+
+    const from = levelFinale.camFrom;
+    const snapX = camX;
+    const snapY = camY;
+    const snapZoom = zoomLevel;
+    centerCamera();
+    const toX = camX;
+    const toY = camY;
+    const toZoom = zoomLevel;
+    camX = snapX;
+    camY = snapY;
+    zoomLevel = snapZoom;
+
+    const t = LEVEL_FINALE_ZOOM_MS > 0 ? Math.min(1, elapsed / LEVEL_FINALE_ZOOM_MS) : 1;
+    const e = computeFinaleEase(t);
+    zoomLevel = from.zoom + (toZoom - from.zoom) * e;
+    camX = from.camX + (toX - from.camX) * e;
+    camY = from.camY + (toY - from.camY) * e;
+    clampCamera();
+}
+
 // =============================================================================
 // FIELD RENDERING
 // =============================================================================
 
-function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor) {
+/** V-13: `alpha` (0..1) — видимость созвездия в сцене финала; вне сцены всегда 1. */
+function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, alpha = 1) {
     const c = lineColor || shapeInfo.color;
+    const a = Math.max(0, Math.min(1, alpha));
     if (prominent) {
-        stroke(c[0], c[1], c[2]);
+        stroke(c[0], c[1], c[2], 255 * a);
         strokeWeight(REVEALED_CONSTELLATION_STROKE_WEIGHT / zoomLevel);
     } else if (shapeInfo.image) {
-        stroke(c[0], c[1], c[2], LINEART_SKELETON_STROKE_ALPHA);
+        stroke(c[0], c[1], c[2], LINEART_SKELETON_STROKE_ALPHA * a);
         strokeWeight(LINEART_SKELETON_STROKE_WEIGHT / zoomLevel);
     } else {
-        stroke(c[0], c[1], c[2]);
+        stroke(c[0], c[1], c[2], 255 * a);
         strokeWeight(2 / zoomLevel);
     }
 }
@@ -238,8 +274,14 @@ function drawConstellationSkeletonLinesWorld(tiles) {
                 : SHAPES[SHAPE_UNRECOGNIZED];
             // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
             const lineColor = constellation.lineColor || LINE_COLOR;
+            // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
+            // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
+            const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
+                ? getFinaleConstellationAlpha(constellation)
+                : 1;
+            if (finaleAlpha <= 0) continue;
 
-            applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor);
+            applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, finaleAlpha);
             for (let i = 0; i < constellation.lines.length; i++) {
                 const seg = constellation.lines[i];
                 const startStar = getStarById(seg.startId);
@@ -434,6 +476,11 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAl
 }
 
 function drawConstellationLabelsOnTile() {
+    // V-13: пока идёт финал ночи, подписей нет вовсе (решение заказчика: «названия
+    // не важны на этой анимации»). Волну от revealTime при этом не трогаем — она
+    // отыгрывает под нулевой альфой и к концу сцены все подписи уже на 255.
+    if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return;
+
     // V-11: множитель считается один раз за кадр, до цикла по созвездиям.
     // На дальнем зуме подписей нет вовсе — выходим сразу, не перебирая небо.
     const zoomAlpha = getLabelZoomAlphaFactor();
@@ -976,11 +1023,16 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
         // V-12: звезда закоммиченного созвездия переходит в locked-вид не разом
         // со всеми, а когда до неё дошла волна. `star.locked` (игровая логика,
         // хит-тесты, распознавание) при этом выставлен сразу — тут только вид.
+        // V-13: у сцены финала третье условие того же рода — своё рождение.
         const lockedVisual = star.locked
-            && !(typeof isCommitWavePending === 'function' && isCommitWavePending(star.id));
-        const commitFlash = typeof getCommitWaveStarFlash === 'function'
-            ? getCommitWaveStarFlash(star.id)
-            : 0;
+            && !(typeof isCommitWavePending === 'function' && isCommitWavePending(star.id))
+            && !(typeof isFinaleStarHidden === 'function' && isFinaleStarHidden(star.id));
+        // Волна создания и финал ночи пересечься не могут (раскрытие отменяет
+        // первую), поэтому max, а не сумма.
+        const commitFlash = Math.max(
+            typeof getCommitWaveStarFlash === 'function' ? getCommitWaveStarFlash(star.id) : 0,
+            typeof getFinaleStarFlash === 'function' ? getFinaleStarFlash(star.id) : 0
+        );
 
         const sizeFactor = typeof star.sizeFactor === 'number' ? star.sizeFactor : 1;
         const isSuppressed = !!star.suppressed && !star.locked;

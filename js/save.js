@@ -151,7 +151,9 @@ function loadGame() {
         recomputeAtlasCollectedStarColors();
         recomputeSuppressedStars();
 
-        tryRevealConstellationArtIfComplete();
+        // V-13: без сцены финала — она принадлежит моменту завершения ночи,
+        // а не её состоянию, и после перезагрузки играться не должна.
+        tryRevealConstellationArtIfComplete(false);
 
         return true;
     } catch (e) {

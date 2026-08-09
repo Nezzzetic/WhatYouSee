@@ -699,6 +699,68 @@
         };
     }
 
+    /**
+     * V-13: срез сцены финала ночи. Без него браузерный слой умеет только поймать
+     * скриншот посреди 2,8 с — это не утверждение. Сцена чисто визуальная: очков,
+     * огранки и undoFloor не касается, раскрытие её не ждёт.
+     *
+     * Камера отдаётся вместе с целью, чтобы сценарий утверждал не «зум уменьшился»,
+     * а «зум пришёл ровно в min, центр — в центр поля».
+     */
+    function levelFinaleState() {
+        // `levelFinale` — script-level let из drawing.js: на window его нет,
+        // но по имени из другого скрипта он виден.
+        const scene = levelFinale;
+        const elapsedMs = getLevelFinaleElapsed();
+
+        const snapX = camX;
+        const snapY = camY;
+        const snapZoom = zoomLevel;
+        centerCamera();
+        const target = { camX, camY, zoom: zoomLevel };
+        camX = snapX;
+        camY = snapY;
+        zoomLevel = snapZoom;
+
+        const camera = {
+            camX: snapX,
+            camY: snapY,
+            zoom: snapZoom,
+            target,
+            atTarget: Math.abs(snapZoom - target.zoom) < 1e-6
+                && Math.abs(snapX - target.camX) < 1e-6
+                && Math.abs(snapY - target.camY) < 1e-6
+        };
+
+        if (!scene) {
+            return {
+                active: false, elapsedMs: -1, totalMs: 0, stepMs: 0, count: 0,
+                camera, constellations: [], stars: []
+            };
+        }
+
+        return {
+            active: elapsedMs >= 0,
+            elapsedMs,
+            totalMs: scene.totalMs,
+            stepMs: scene.stepMs,
+            count: scene.count,
+            camera,
+            constellations: constellations.map((c, i) => ({
+                index: i,
+                shape: c.shape,
+                birthMs: LEVEL_FINALE_WAVE_DELAY_MS + i * scene.stepMs,
+                alpha: getFinaleConstellationAlpha(c)
+            })),
+            stars: [...scene.starBirthMs.entries()].map(([id, birthMs]) => ({
+                id,
+                birthMs,
+                hidden: isFinaleStarHidden(id),
+                flash: getFinaleStarFlash(id)
+            }))
+        };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -724,6 +786,9 @@
         ui,
         observatory,
         commitWave: commitWaveState,
+        levelFinale: levelFinaleState,
+        /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
+        finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
         errors,
         clearErrors,
         // Служебное: открыть/закрыть шторку без жеста (жесты — уровень MobAI).

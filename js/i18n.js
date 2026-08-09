@@ -219,7 +219,7 @@ en: {
     'toast.newChainSub': '{title} — page {n} collection complete',
     'toast.atlasPageTitle': 'Atlas page unlocked',
     'toast.atlasPageSub': 'Page {n} — new shapes in the set',
-    'toast.levelComplete': 'Night complete',
+    // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
     'toast.close': 'Close',
 
     // --- Шторка ---------------------------------------------------------------
@@ -446,7 +446,7 @@ ru: {
     'toast.newChainSub': '{title} — коллекция страницы {n} собрана',
     'toast.atlasPageTitle': 'Открыта страница атласа',
     'toast.atlasPageSub': 'Страница {n} — новые фигуры в наборе',
-    'toast.levelComplete': 'Уровень завершён',
+    // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
     'toast.close': 'Закрыть',
 
     // --- Шторка ---------------------------------------------------------------

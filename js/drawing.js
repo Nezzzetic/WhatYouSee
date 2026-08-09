@@ -169,6 +169,166 @@ function getCommitWaveLabelAlpha(constellation) {
     return Math.max(0, Math.min(1, (elapsed - waveEnd) / COMMIT_WAVE_LABEL_FADE_MS));
 }
 
+// =============================================================================
+// V-13 — ФИНАЛ НОЧИ: ОТЗУМ И ПОСЛЕДОВАТЕЛЬНОЕ РОЖДЕНИЕ СОЗВЕЗДИЙ
+// =============================================================================
+// Сцена из двух движений: небо гаснет и камера едет к обзору всего поля, а следом
+// созвездия рождаются заново по одному, в порядке создания игроком. Слот один,
+// состояние живёт ВНЕ сейва (как commitWave): после F5 сцена не проигрывается,
+// версия сейва не поднимается.
+//
+// Единица анимации — созвездие целиком, фейдом: на min-зуме, куда приезжает
+// камера, отдельные рёбра не читаются, и волна по рёбрам (V-12) там пропала бы
+// зря, а 30 × 300 мс в потолок не влезают.
+
+let levelFinale = null; // { startMs, camFrom, stepMs, count, totalMs, order, starBirthMs }
+
+/** Сглаживание отзума: smoothstep, без рывка на старте и на остановке. */
+function computeFinaleEase(t) {
+    const u = Math.max(0, Math.min(1, t));
+    return u * u * (3 - 2 * u);
+}
+
+/** Занавес в начале сцены: 1 → 0 за hideMs. Дальше созвездий не видно вовсе. */
+function computeFinaleHideAlpha(elapsed, hideMs) {
+    if (hideMs <= 0) return 0;
+    if (elapsed <= 0) return 1;
+    if (elapsed >= hideMs) return 0;
+    return 1 - elapsed / hideMs;
+}
+
+/**
+ * Проявление созвездия с индексом i: 0 — ещё не родилось, 1 — на полной яркости.
+ * elapsed отсчитывается от НАЧАЛА ВОЛНЫ, а не от начала сцены.
+ */
+function computeFinaleBirthProgress(elapsed, index, stepMs, fadeMs) {
+    const local = elapsed - index * stepMs;
+    if (fadeMs <= 0) return local >= 0 ? 1 : 0;
+    if (local <= 0) return 0;
+    if (local >= fadeMs) return 1;
+    return local / fadeMs;
+}
+
+/**
+ * Полная длительность сцены: дольше всех живёт та фаза, что кончается позже.
+ * minMs — пол от затемнения и отзума (на пустом небе волны нет вовсе).
+ */
+function computeFinaleTotal(count, stepMs, fadeMs, delayMs, minMs) {
+    const wave = count > 0 ? delayMs + (count - 1) * stepMs + fadeMs : 0;
+    return Math.max(minMs, wave);
+}
+
+/**
+ * Запускает финал ночи. Порядок рождения = порядок создания игроком:
+ * `constellations` уже лежит в нём, сортировать нечего.
+ */
+function startLevelFinale() {
+    const list = Array.isArray(constellations) ? constellations : [];
+    const count = list.length;
+    // Шаг ужимается под потолок той же чистой функцией, что у волны создания:
+    // «уложить count событий длиной fadeMs в отведённое время» — задача общая.
+    const stepMs = computeCommitWaveStep(
+        count, LEVEL_FINALE_FADE_MS, LEVEL_FINALE_STEP_MS,
+        LEVEL_FINALE_TOTAL_MAX_MS - LEVEL_FINALE_WAVE_DELAY_MS
+    );
+
+    const order = new Map();        // созвездие → его индекс (без indexOf на каждом кадре)
+    const starBirthMs = new Map();  // звезда → момент рождения её созвездия
+    for (let i = 0; i < count; i++) {
+        const c = list[i];
+        if (!c) continue;
+        order.set(c, i);
+        const birthMs = LEVEL_FINALE_WAVE_DELAY_MS + i * stepMs;
+        for (const id of collectStarIdsFromLines(c.lines)) {
+            const prev = starBirthMs.get(id);
+            if (prev === undefined || birthMs < prev) starBirthMs.set(id, birthMs);
+        }
+    }
+
+    levelFinale = {
+        startMs: millis(),
+        camFrom: { camX, camY, zoom: zoomLevel },
+        stepMs,
+        count,
+        order,
+        starBirthMs,
+        totalMs: computeFinaleTotal(
+            count, stepMs, LEVEL_FINALE_FADE_MS, LEVEL_FINALE_WAVE_DELAY_MS,
+            Math.max(LEVEL_FINALE_ZOOM_MS, LEVEL_FINALE_HIDE_MS)
+        )
+    };
+}
+
+/** Снять сцену без доигрывания (смена неба, откат) — камеру не трогаем. */
+function cancelLevelFinale() {
+    levelFinale = null;
+}
+
+/**
+ * Тап посреди сцены: доигрываем мгновенно. Альфы обязаны вернуться в 1 —
+ * иначе тап на 150-й мс погасил бы небо навсегда; это даёт снятие слота.
+ * Камера доезжает туда же, куда ехала.
+ */
+function finishLevelFinaleNow() {
+    if (!levelFinale) return;
+    levelFinale = null;
+    if (typeof centerCamera === 'function') centerCamera();
+}
+
+/** Прошедшее время сцены, или -1 если её нет / она уже отыграла. */
+function getLevelFinaleElapsed() {
+    if (!levelFinale) return -1;
+    const elapsed = millis() - levelFinale.startMs;
+    if (elapsed < 0 || elapsed >= levelFinale.totalMs) {
+        levelFinale = null;
+        return -1;
+    }
+    return elapsed;
+}
+
+function isLevelFinaleActive() {
+    return getLevelFinaleElapsed() >= 0;
+}
+
+/** Видимость созвездия в сцене: гаснет, потом рождается. Вне сцены — 1. */
+function getFinaleConstellationAlpha(constellation) {
+    const elapsed = getLevelFinaleElapsed();
+    if (elapsed < 0) return 1;
+    if (elapsed < LEVEL_FINALE_HIDE_MS) {
+        return computeFinaleHideAlpha(elapsed, LEVEL_FINALE_HIDE_MS);
+    }
+    const index = levelFinale.order.get(constellation);
+    if (index === undefined) return 1; // созвездия в сцене нет — не наше дело
+    return computeFinaleBirthProgress(
+        elapsed - LEVEL_FINALE_WAVE_DELAY_MS, index, levelFinale.stepMs, LEVEL_FINALE_FADE_MS
+    );
+}
+
+/**
+ * true, пока волна не дошла до звезды — locked-ВИД не применяем.
+ * Ровно тот же приём, которым V-12 развёл `lockedVisual` и `star.locked`:
+ * игровая логика (хит-тесты, распознавание, откат) сцену не ждёт ни кадра.
+ * В фазе затемнения вид ещё locked — звёзды падают в обычный ровно тогда,
+ * когда линии доходят до нуля, и весь разрыв прячется в один момент.
+ */
+function isFinaleStarHidden(starId) {
+    const elapsed = getLevelFinaleElapsed();
+    if (elapsed < 0) return false;
+    if (elapsed < LEVEL_FINALE_HIDE_MS) return false;
+    const birthMs = levelFinale.starBirthMs.get(starId);
+    if (birthMs === undefined) return false;
+    return elapsed < birthMs;
+}
+
+/** Вспышка звезды в момент рождения её созвездия: 0..1 (огибающая V-12). */
+function getFinaleStarFlash(starId) {
+    const elapsed = getLevelFinaleElapsed();
+    if (elapsed < 0) return 0;
+    const birthMs = levelFinale.starBirthMs.get(starId);
+    if (birthMs === undefined) return 0;
+    return computeCommitWaveFlash(elapsed, birthMs, LEVEL_FINALE_STAR_FLASH_MS);
+}
+
 function assignConstellationImageTransform(constellation) {
     if (!constellation || !Array.isArray(constellation.lines) || constellation.lines.length === 0) {
         constellation.imageTransform = null;
@@ -449,6 +609,14 @@ function mousePressed(event) {
     // до любых полевых проверок (переименование, locked, bbox — там ничего этого нет).
     if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
         observatoryMousePressed();
+        return;
+    }
+
+    // V-13: тап посреди финала ночи доигрывает сцену мгновенно и съедается
+    // целиком — иначе тот же тап тут же откроет переименование (U-04): оно висит
+    // на первой же проверке после constellationArtRevealed, а он уже выставлен.
+    if (isLevelFinaleActive()) {
+        finishLevelFinaleNow();
         return;
     }
 
@@ -912,6 +1080,9 @@ function undoLastConstellation() {
 
     // V-12: иначе волна продолжила бы бежать по созвездию, которого уже нет.
     cancelCommitWave();
+    // V-13: защитно. `undoFloor` поднят раскрытием, так что до сюда с активной
+    // сценой не дойти, но сцена держит ссылки на созвездия — пусть падает первой.
+    cancelLevelFinale();
 
     for (const id of collectStarIdsFromLines(last.lines)) {
         const s = getStarById(id);
@@ -952,13 +1123,20 @@ function undoLastConstellation() {
     autoSave();
 }
 
-function tryRevealConstellationArtIfComplete() {
+/**
+ * V-13: `animate = false` — раскрытие без сцены финала. Так его зовёт загрузка
+ * сохранения: сцена принадлежит МОМЕНТУ завершения ночи, а не её состоянию,
+ * и после F5 играться не должна. До V-13 на это работал только персист
+ * `constellationArtRevealed` с ранним `return` — со сценой полагаться на него
+ * нельзя, потому что путь «сейв на завершённом небе с revealed: false» существует.
+ */
+function tryRevealConstellationArtIfComplete(animate = true) {
     if (constellationArtRevealed) return;
     if (!isLevelComplete()) return;
-    revealConstellationArt();
+    revealConstellationArt(animate);
 }
 
-function revealConstellationArt() {
+function revealConstellationArt(animate = true) {
     if (constellationArtRevealed) return;
     playLevelComplete();
     // V-12: у раскрытия своя волна имён и свой стиль линий — волна создания
@@ -975,6 +1153,11 @@ function revealConstellationArt() {
     }
     recomputeAtlasCollectedStarColors();
 
+    // V-13: сцена ставится ПОСЛЕ raiseUndoFloor и пересчёта якорей — окна
+    // «сцена идёт, откат ещё жив» не возникает, а рождаться созвездия будут
+    // уже с финальными подписями (они в сцене не видны, но считаются один раз).
+    if (animate) startLevelFinale();
+
     // M-05: прямой выплаты за небо больше нет — раскрытие только взводит
     // защёлку суточного квеста, ✦ приходят обычным забором в Наградах.
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
@@ -983,7 +1166,8 @@ function revealConstellationArt() {
     updateScoreUI(0, '', 0);
     updateProgressionUI();
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
-    showLevelCompleteToast();
+    // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,
+    // куда приезжает камера, а роль сообщения забрала сама сцена.
     autoSave();
 }
 

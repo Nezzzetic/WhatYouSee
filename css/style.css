@@ -534,21 +534,8 @@ button:disabled {
     display: none !important;
 }
 
-.level-complete-toast {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2000;
-    padding: 12px 20px;
-    padding-top: 28px;
-    border-radius: 8px;
-    background: rgba(20, 24, 40, 0.95);
-    border: 1px solid #4a5a8a;
-    color: #eef;
-    text-align: center;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-}
+/* V-13: блок тоста завершения ночи снят вместе с самим тостом.
+   .toast-close-btn ниже — общий класс, его используют тосты достижений. */
 
 .toast-close-btn {
     position: absolute;

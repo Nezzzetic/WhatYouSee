@@ -84,6 +84,11 @@ function setAppMode(mode) {
     if (mode === 'observatory' && !isObservatoryUnlocked()) return false;
 
     if (appMode === 'field') {
+        // V-13: уход в обсерваторию посреди финала ночи — сцену доигрываем здесь.
+        // В обсерватории draw() до updateLevelFinaleCamera не доходит, камера
+        // сцены замирает, и по возвращении она дёрнулась бы из сохранённой точки
+        // в свою интерполяцию. Доигранная сцена кладёт в слот честный обзор поля.
+        if (typeof finishLevelFinaleNow === 'function') finishLevelFinaleNow();
         fieldCameraSlot = captureCameraSlot();
     } else {
         observatoryCameraSlot = captureCameraSlot();
@@ -245,6 +250,7 @@ function draw() {
     }
 
     updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
+    updateLevelFinaleCamera(); // V-13: отзум финала ночи — до отрисовки кадра
     drawFieldMode();
     drawDraftStarCountLabelScreen();
     drawFloatingScores();
@@ -323,6 +329,7 @@ function resetFieldSessionState() {
     atlasCollectedStarColors = new Map();
     if (typeof connectFeedbackState !== 'undefined' && connectFeedbackState instanceof Map) connectFeedbackState.clear();
     if (typeof cancelCommitWave === 'function') cancelCommitWave();
+    if (typeof cancelLevelFinale === 'function') cancelLevelFinale();
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
 }
 

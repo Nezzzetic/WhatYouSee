@@ -162,23 +162,11 @@ function updateProgressionUI() {
     updatePeekBar();
 }
 
-// M-05: строки «+30 за уровень» здесь больше нет — ✦ за ночь ушли в суточный
-// квест «Ночь закрыта», и тост сообщает только сам факт завершения.
-function showLevelCompleteToast() {
-    const toast = document.getElementById("levelCompleteToast");
-    if (!toast) return;
-
-    const lines = [`<strong>${t('toast.levelComplete')}</strong>`];
-
-    toast.innerHTML =
-        `<button class="toast-close-btn" aria-label="${t('toast.close')}">×</button>` +
-        lines.join('<br>');
-    toast.hidden = false;
-
-    toast.querySelector('.toast-close-btn').addEventListener('click', () => {
-        toast.hidden = true;
-    });
-}
+// V-13: showLevelCompleteToast() удалена вместе с узлом, стилем и ключом
+// `toast.levelComplete`. Тост висел ровно в центре кадра — там, куда приезжает
+// камера финала ночи, — а сообщать факт завершения теперь сама сцена. Если на
+// устройстве окажется, что факт всё-таки нужно проговорить, дешёвый откат —
+// вернуть вызов ПОСЛЕ конца сцены, а не в её начале.
 
 // =============================================================================
 // CONSTELLATION HINTS
