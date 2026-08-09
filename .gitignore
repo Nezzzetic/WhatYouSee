@@ -8,3 +8,22 @@ Desktop.ini
 *.swo
 *~
 .cursor/
+
+# --- P-02: нативная сборка (только ветка capacitor) ---------------------------
+# Репозиторий ПУБЛИЧНЫЙ. Игнор заведён до первого `cap add android`, а не после,
+# чтобы сгенерированное дерево не попало в индекс случайно.
+node_modules/
+www/
+
+# Android-проект: в репозитории живут только исходники, всё сгенерированное — нет
+android/.gradle/
+android/build/
+android/app/build/
+android/capacitor-cordova-android-plugins/
+# local.properties содержит абсолютный путь к SDK этой машины
+android/local.properties
+
+# ⚠️ Ключи подписи в публичный репозиторий не попадают ни при каких условиях
+*.keystore
+*.jks
+keystore.properties

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Base application theme. -->
+    <style name="AppTheme" parent="Theme.AppCompat.Light.DarkActionBar">
+        <!-- Customize your theme here. -->
+        <item name="colorPrimary">@color/colorPrimary</item>
+        <item name="colorPrimaryDark">@color/colorPrimaryDark</item>
+        <item name="colorAccent">@color/colorAccent</item>
+    </style>
+
+    <style name="AppTheme.NoActionBar" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="windowActionBar">false</item>
+        <item name="windowNoTitle">true</item>
+        <item name="android:background">@null</item>
+        <!-- P-02: на SDK 36 окно edge-to-edge, системные полосы лежат поверх неба.
+             Небо чёрное (body background в css/style.css), поэтому значки статус-бара
+             и навигации должны быть светлыми — иначе тёмное по чёрному не видно. -->
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+    </style>
+
+
+    <!-- P-02: дефолтный splash Capacitor — светлая картинка с его логотипом,
+         и при запуске ночной игры она бьёт по глазам вспышкой. Меняем на ровный
+         чёрный: экран запуска совпадает с первым кадром игры, перехода не видно. -->
+    <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
+        <item name="android:background">@android:color/black</item>
+        <item name="windowSplashScreenBackground">@android:color/black</item>
+    </style>
+</resources>
