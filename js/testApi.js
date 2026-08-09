@@ -755,7 +755,9 @@
             stars: [...scene.starBirthMs.entries()].map(([id, birthMs]) => ({
                 id,
                 birthMs,
-                hidden: isFinaleStarHidden(id),
+                // Звезда гаснет и рождается вместе со своим созвездием, поэтому
+                // отдаём её альфу, а не флаг «придержан locked-вид».
+                alpha: getFinaleStarAlpha(id),
                 flash: getFinaleStarFlash(id)
             }))
         };

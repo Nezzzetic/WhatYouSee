@@ -294,30 +294,37 @@ function isLevelFinaleActive() {
 function getFinaleConstellationAlpha(constellation) {
     const elapsed = getLevelFinaleElapsed();
     if (elapsed < 0) return 1;
+    const index = levelFinale.order.get(constellation);
+    if (index === undefined) return 1; // созвездия в сцене нет — не наше дело
     if (elapsed < LEVEL_FINALE_HIDE_MS) {
         return computeFinaleHideAlpha(elapsed, LEVEL_FINALE_HIDE_MS);
     }
-    const index = levelFinale.order.get(constellation);
-    if (index === undefined) return 1; // созвездия в сцене нет — не наше дело
     return computeFinaleBirthProgress(
         elapsed - LEVEL_FINALE_WAVE_DELAY_MS, index, levelFinale.stepMs, LEVEL_FINALE_FADE_MS
     );
 }
 
 /**
- * true, пока волна не дошла до звезды — locked-ВИД не применяем.
- * Ровно тот же приём, которым V-12 развёл `lockedVisual` и `star.locked`:
- * игровая логика (хит-тесты, распознавание, откат) сцену не ждёт ни кадра.
- * В фазе затемнения вид ещё locked — звёзды падают в обычный ровно тогда,
- * когда линии доходят до нуля, и весь разрыв прячется в один момент.
+ * Видимость ЗВЕЗДЫ в сцене — та же кривая, что у её созвездия: занавес гасит
+ * созвездие целиком, рождение возвращает его целиком (правка заказчика).
+ *
+ * Звезда вне созвездий (свободная, подавленная, погасшая) возвращает 1 на всех
+ * фазах: она не часть сцены. Гасить её вместе со всеми нельзя — вернуть её
+ * потом было бы нечем, и в конце занавеса она скакнула бы из нуля в единицу.
+ *
+ * `star.locked` при этом выставлен как обычно: игровая логика (хит-тесты,
+ * распознавание, откат) сцену не ждёт ни кадра — тот же инвариант, что в V-12.
  */
-function isFinaleStarHidden(starId) {
+function getFinaleStarAlpha(starId) {
     const elapsed = getLevelFinaleElapsed();
-    if (elapsed < 0) return false;
-    if (elapsed < LEVEL_FINALE_HIDE_MS) return false;
+    if (elapsed < 0) return 1;
     const birthMs = levelFinale.starBirthMs.get(starId);
-    if (birthMs === undefined) return false;
-    return elapsed < birthMs;
+    if (birthMs === undefined) return 1;
+    if (elapsed < LEVEL_FINALE_HIDE_MS) {
+        return computeFinaleHideAlpha(elapsed, LEVEL_FINALE_HIDE_MS);
+    }
+    // birthMs уже содержит лид-ин волны, поэтому индекс здесь нулевой.
+    return computeFinaleBirthProgress(elapsed - birthMs, 0, levelFinale.stepMs, LEVEL_FINALE_FADE_MS);
 }
 
 /** Вспышка звезды в момент рождения её созвездия: 0..1 (огибающая V-12). */

@@ -1020,13 +1020,19 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
         }
         if (fadeAlpha <= 0) continue;
 
+        // V-13: в сцене финала звезда гаснет и рождается вместе со своим
+        // созвездием. Полностью погашенную не рисуем вовсе — на завершённом
+        // небе таких сотня.
+        const finaleAlpha = typeof getFinaleStarAlpha === 'function'
+            ? getFinaleStarAlpha(star.id)
+            : 1;
+        if (finaleAlpha <= 0) continue;
+
         // V-12: звезда закоммиченного созвездия переходит в locked-вид не разом
         // со всеми, а когда до неё дошла волна. `star.locked` (игровая логика,
         // хит-тесты, распознавание) при этом выставлен сразу — тут только вид.
-        // V-13: у сцены финала третье условие того же рода — своё рождение.
         const lockedVisual = star.locked
-            && !(typeof isCommitWavePending === 'function' && isCommitWavePending(star.id))
-            && !(typeof isFinaleStarHidden === 'function' && isFinaleStarHidden(star.id));
+            && !(typeof isCommitWavePending === 'function' && isCommitWavePending(star.id));
         // Волна создания и финал ночи пересечься не могут (раскрытие отменяет
         // первую), поэтому max, а не сумма.
         const commitFlash = Math.max(
@@ -1104,7 +1110,7 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
         // импульс V-07; пересечься они не могут (V-07 — только на не-locked).
         const feedbackBrighten = 1 + FEEDBACK_PULSE_BRIGHTEN * feedbackPulse
             + COMMIT_WAVE_STAR_BRIGHTEN * commitFlash;
-        const effectiveAlpha = fadeAlpha * rangeDimFactor;
+        const effectiveAlpha = fadeAlpha * rangeDimFactor * finaleAlpha;
 
         const coreColor = getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual);
         const glowColor = getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual);
