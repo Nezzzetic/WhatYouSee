@@ -19,10 +19,12 @@
              из ночного неба. Красим в чёрный, значки — светлые.
              На SDK 35+ окно становится edge-to-edge, полосы прозрачны, и тогда
              работают безопасные зоны из css/style.css. -->
-        <item name="android:statusBarColor">@android:color/black</item>
         <item name="android:navigationBarColor">@android:color/black</item>
-        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
+        <!-- P-02: небо доходит до самого верхнего края, включая полосу с вырезом
+             под камеру. Без shortEdges там осталась бы чёрная планка вместо звёзд.
+             Отступ под вырез при этом приезжает в CSS через env(safe-area-inset-top). -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
 
@@ -32,12 +34,11 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@android:color/black</item>
         <item name="windowSplashScreenBackground">@android:color/black</item>
-        <!-- P-02: цвет и «светлость» системных полос читаются при создании окна,
-             то есть из темы запуска. Без дубля здесь статус-бар чернел, а значки
-             в нём оставались тёмными — часы и связь пропадали с экрана. -->
-        <item name="android:statusBarColor">@android:color/black</item>
+        <!-- P-02: параметры окна читаются при его создании, то есть из темы
+             запуска. Без дубля здесь первый кадр приезжает с чужими цветами
+             и без выреза, и запуск заметно моргает. -->
         <item name="android:navigationBarColor">@android:color/black</item>
-        <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 </resources>
