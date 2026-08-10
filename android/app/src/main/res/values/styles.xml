@@ -13,9 +13,14 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- P-02: на SDK 36 окно edge-to-edge, системные полосы лежат поверх неба.
-             Небо чёрное (body background в css/style.css), поэтому значки статус-бара
-             и навигации должны быть светлыми — иначе тёмное по чёрному не видно. -->
+        <!-- P-02: системные полосы под небо. На Android 13 (Redmi) окно ещё не
+             edge-to-edge, и полосы рисуются своим цветом: статус-бар брал серый
+             colorPrimaryDark из шаблона Capacitor, навигация — белый. Обе торчали
+             из ночного неба. Красим в чёрный, значки — светлые.
+             На SDK 35+ окно становится edge-to-edge, полосы прозрачны, и тогда
+             работают безопасные зоны из css/style.css. -->
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
         <item name="android:windowLightStatusBar">false</item>
         <item name="android:windowLightNavigationBar">false</item>
     </style>
@@ -27,5 +32,12 @@
     <style name="AppTheme.NoActionBarLaunch" parent="Theme.SplashScreen">
         <item name="android:background">@android:color/black</item>
         <item name="windowSplashScreenBackground">@android:color/black</item>
+        <!-- P-02: цвет и «светлость» системных полос читаются при создании окна,
+             то есть из темы запуска. Без дубля здесь статус-бар чернел, а значки
+             в нём оставались тёмными — часы и связь пропадали с экрана. -->
+        <item name="android:statusBarColor">@android:color/black</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
     </style>
 </resources>
