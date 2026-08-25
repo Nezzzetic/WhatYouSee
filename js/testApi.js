@@ -11,7 +11,7 @@
 // (`buildConstellationCommitPayload` → `commitConstellationFromPayload`),
 // поэтому проверяет игру, а не свою копию правил.
 //
-// ⚠️ `__test.reset()` — это полный сброс: он стирает локальный прогресс
+// ⚠ `__test.reset()` — это полный сброс: он стирает локальный прогресс
 // (`starsReborn_v03`, `starsReborn_progression`) и, если передан `seed`,
 // подменяет playerId. Открывать `?test=1` на профиле, где играют, не стоит.
 //

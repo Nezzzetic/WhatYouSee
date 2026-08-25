@@ -112,7 +112,7 @@ function isObservatoryUnlocked() {
 /**
  * Сколько звёзд холст ещё не получил.
  *
- * ⚠️ Выданное считается ПО САМОМУ ХОЛСТУ, а не отдельным счётчиком в сейве
+ * ⚠ Выданное считается ПО САМОМУ ХОЛСТУ, а не отдельным счётчиком в сейве
  * прогрессии. Отдельный счётчик здесь уже был и породил двойную выдачу:
  * холст и прогрессия лежат в РАЗНЫХ ключах localStorage и пишутся в разные
  * моменты (холст — дебаунсом 500 мс, прогрессия — из awardMetaScore). Стоило
@@ -139,8 +139,8 @@ function notifyObservatoryUnlockedIfNeeded() {
     if (observatoryUnlockedNotified || !isObservatoryUnlocked()) return false;
     observatoryUnlockedNotified = true;
     if (typeof showInfoToast === 'function') {
-        // Телескоп, а не 🌌: примета обсерватории во всём UI одна (см. ui.js)
-        showInfoToast('🔭', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
+        // Знак «поиск», а не свод: примета обсерватории во всём UI одна (см. ui.js)
+        showInfoToast('tel', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
     }
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
@@ -170,7 +170,7 @@ function maybeAutoUnlockAtlasPages() {
         unlockedPageIndices.add(next);
         unlockedAny = true;
         if (typeof showInfoToast === 'function') {
-            showInfoToast('📖', t('toast.atlasPageTitle'), t('toast.atlasPageSub', { n: next + 1 }));
+            showInfoToast('knife', t('toast.atlasPageTitle'), t('toast.atlasPageSub', { n: next + 1 }));
         }
         next = getNextLockedAtlasPageIndex();
     }
@@ -292,7 +292,7 @@ function isShapeCreated(shapeName) {
  * Первое создание фигуры. Возвращает false, если фигура уже создавалась, —
  * поэтому это единственная точка «ровно один раз на фигуру за всю игру».
  *
- * Награда за открытие живёт в цепочке «Первооткрыватель» (страница 💎), а не
+ * Награда за открытие живёт в цепочке «Первооткрыватель» (страница «Огранка и путь»), а не
  * начисляется здесь молча: раньше ✦ капали без следа в Наградах, и событие
  * нельзя было ни увидеть заранее, ни отследить.
  *
@@ -530,7 +530,7 @@ function loadProgression() {
             ? Math.max(0, Math.floor(Number(state.lifetimeMetaEarned)))
             : reconstructLifetimeMetaEarned();
         // Старый сейв, где порог уже взят: тост не показываем задним числом —
-        // игрок увидит ожившую кнопку 🔭 и без него.
+        // игрок увидит ожившую кнопку обсерватории и без него.
         observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
             ? !!state.observatoryUnlockedNotified
             : isObservatoryUnlocked();
