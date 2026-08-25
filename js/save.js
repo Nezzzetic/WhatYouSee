@@ -121,6 +121,12 @@ function loadGame() {
             if (typeof star.appearDelay !== 'number') {
                 star.appearDelay = Math.random() * STAR_APPEAR_DELAY_MAX;
             }
+            // K-03: то же для дыхания. Параметры считаются от места звезды,
+            // так что старое небо задышит ровно так же, как если бы его
+            // сгенерировали сегодня. Версия сейва не поднимается.
+            if (typeof star.twinklePeriodMs !== 'number') {
+                assignStarTwinkleTo(star);
+            }
         }
 
         normalizeAtlasCollectedOnField();

@@ -439,11 +439,84 @@ function generateStars() {
 // STAR FADE-IN
 // =============================================================================
 
-/** Назначить каждой звезде задержку появления (после позиционирования, до фоновых звёзд). */
+/**
+ * Пер-звёздный проход после позиционирования и до фоновых звёзд: задержка
+ * появления и параметры дыхания (K-03). Одна точка входа на все пути генерации
+ * поля — обычного, воскресной картинки и dev-сброса.
+ */
 function assignStarAppearDelays() {
     for (let i = 0; i < fieldStars.length; i++) {
         fieldStars[i].appearDelay = random(0, STAR_APPEAR_DELAY_MAX);
     }
+    assignStarTwinkle();
+}
+
+// =============================================================================
+// K-03: СПОКОЙНОЕ МЕРЦАНИЕ
+// =============================================================================
+// Дышат только крупные узлы — примерно каждый третий из играбельных; пыль
+// неподвижна, а внутри готовой фигуры дыхание гаснет: оттиск сделан, гравюра
+// не дышит. Это ещё и подсказка — где построено, там спокойно.
+
+/**
+ * Порог «крупного узла»: верхняя TWINKLE_SHARE часть разброса размеров.
+ * Считается из STAR_SIZE_VARIATION_*, а не вбит числом, — поменяется разброс,
+ * доля дышащих останется той же.
+ */
+function getTwinkleSizeThreshold() {
+    const span = STAR_SIZE_VARIATION_MAX - STAR_SIZE_VARIATION_MIN;
+    return STAR_SIZE_VARIATION_MIN + span * (1 - TWINKLE_SHARE);
+}
+
+/**
+ * Дешёвый детерминированный шум 0..1 от места звезды. Именно от места, а не
+ * через `random()`: лишний вызов сдвинул бы seeded-последовательность, и у уже
+ * сгенерированных небес поехала бы раскладка фоновых звёзд.
+ */
+function starTwinkleNoise(star, salt) {
+    const v = Math.sin(star.x * 12.9898 + star.y * 78.233 + salt) * 43758.5453;
+    return v - Math.floor(v);
+}
+
+/** Назначить одной звезде период и фазу дыхания. `twinklePeriodMs = 0` — не дышит. */
+function assignStarTwinkleTo(star) {
+    if (!star) return;
+    const sizeFactor = typeof star.sizeFactor === 'number' ? star.sizeFactor : 1;
+    if (sizeFactor < getTwinkleSizeThreshold()) {
+        star.twinklePeriodMs = 0;
+        star.twinklePhaseMs = 0;
+        return;
+    }
+    const span = TWINKLE_PERIOD_MAX_MS - TWINKLE_PERIOD_MIN_MS;
+    star.twinklePeriodMs = TWINKLE_PERIOD_MIN_MS + starTwinkleNoise(star, 0) * span;
+    // Своя фаза у каждой — иначе поле задышит в такт, одним общим пульсом.
+    star.twinklePhaseMs = starTwinkleNoise(star, 17.13) * star.twinklePeriodMs;
+}
+
+function assignStarTwinkle() {
+    for (let i = 0; i < fieldStars.length; i++) {
+        assignStarTwinkleTo(fieldStars[i]);
+    }
+}
+
+/** Дышит ли звезда прямо сейчас (крупный узел, свободна и не в фигуре). */
+function isTwinklingStar(star) {
+    return !!star
+        && typeof star.twinklePeriodMs === 'number' && star.twinklePeriodMs > 0
+        && !star.locked && !star.suppressed && !star.extinguished;
+}
+
+/**
+ * Множитель яркости звезды в кадре: 1 − TWINKLE_AMP … 1. Единица = не дышит.
+ * Косинус, а не синус, чтобы на стыке периода не было рывка.
+ *
+ * Со сценами V-12 и V-13 не спорит по построению: обе управляют альфой только
+ * тех звёзд, что входят в созвездия, — а такие уже `locked` и не дышат.
+ */
+function getStarBreathFactor(star, nowMs) {
+    if (!isTwinklingStar(star)) return 1;
+    const u = ((nowMs % star.twinklePeriodMs) + star.twinklePhaseMs) / star.twinklePeriodMs;
+    return 1 - TWINKLE_AMP * (0.5 - 0.5 * Math.cos(u * Math.PI * 2));
 }
 
 // =============================================================================

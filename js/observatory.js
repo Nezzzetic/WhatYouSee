@@ -810,8 +810,8 @@ function drawObservatoryBackgroundStars() {
     for (const s of observatoryBackgroundStars) {
         if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
             s.y < camY - 10 || s.y > camY + viewH + 10) continue;
-        const twinkle = 0.7 + 0.3 * Math.sin(frameCount * 0.02 + s.phase);
-        fill(255, 255, 255, s.alpha * twinkle);
+        // K-03: пыль неподвижна и здесь — у двух небес игры одни правила.
+        fill(255, 255, 255, s.alpha);
         circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
     }
 }
@@ -859,9 +859,9 @@ function drawObservatoryStars() {
         const scale = isHeld ? 1.25 : 1;
 
         fill(rgb[0], rgb[1], rgb[2], 46);
-        drawSparkleShape(s.x, s.y, baseDiam * 2.1 * scale, 1, 0);
+        drawSparkleShape(s.x, s.y, baseDiam * 2.1 * scale, 1);
         fill(rgb[0], rgb[1], rgb[2], 255);
-        drawSparkleShape(s.x, s.y, baseDiam * scale, 1, 0);
+        drawSparkleShape(s.x, s.y, baseDiam * scale, 1);
     }
 }
 

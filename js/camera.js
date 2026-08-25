@@ -933,8 +933,9 @@ function drawVisibleBackgroundStars(worldTileOx, worldTileOy) {
         const wy = s.y + tileOy;
         if (wx < camX - 10 || wx > camX + viewW + 10 ||
             wy < camY - 10 || wy > camY + viewH + 10) continue;
-        const twinkle = 0.7 + 0.3 * sin(frameCount * 0.02 + (s.phase || 0));
-        fill(255, 255, 255, s.alpha * bgFadeAlpha * twinkle);
+        // K-03: пыль неподвижна. Мерцание фона делало поле труднее читаемым
+        // (мелкая точка то видна, то нет) — дышат только крупные узлы.
+        fill(255, 255, 255, s.alpha * bgFadeAlpha);
         // Плотная заливная точка: не даём диаметру уйти в суб-пиксель (иначе AA
         // делает из круга «кольцо»).
         const bgDiam = Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel);
@@ -950,16 +951,18 @@ function drawVisibleBackgroundStars(worldTileOx, worldTileOy) {
  * Рисует один слой 4-лучевой искры с вогнутыми лучами.
  * @param {number} diam  Базовый диаметр слоя (world-units, эквивалент прежнего circle-диаметра).
  * @param {number} rayMult  Множитель длины лучей (1 — база, >1 у atlas-collected).
- * @param {number} pulse  Twinkle: доля прибавки/убавки длины лучей (может быть <0).
  * Вызывающий сам делает fill(...) перед вызовом.
+ *
+ * K-03: параметр `pulse` (прибавка длины лучей во вспышке) убран вместе со
+ * вспышкой — спокойное дыхание меняет только яркость, геометрия искры стоит.
  */
-function drawSparkleShape(x, y, diam, rayMult, pulse) {
+function drawSparkleShape(x, y, diam, rayMult) {
     // Фолбэк на минимальном зуме: искра нечитаема — рисуем точку.
     if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
         circle(x, y, diam);
         return;
     }
-    const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1) * (1 + (pulse || 0));
+    const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1);
     const w = R * SPARK_WAIST;      // радиус «талии» — контрольные точки у центра
     const wd = w * 0.70710678;      // проекция талии на оси (cos/sin 45°)
     beginShape();
@@ -1002,6 +1005,10 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
     const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
     const elapsed = millis() - skyStartTime;
     const fadeDuration = STAR_FADE_DURATION * skyFadeScale;
+    // K-03: дыхание — движение, и `prefers-reduced-motion` гасит его целиком.
+    // Проверка раз за вызов, а не на звезду: matchMedia в цикле по полю дорог.
+    const nowMs = millis();
+    const breathEnabled = !(typeof prefersReducedMotion === 'function' && prefersReducedMotion());
     noStroke();
     for (let star of fieldStars) {
         if (!star) continue;
@@ -1125,35 +1132,28 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
             continue;
         }
 
-        // Twinkle: редкая кратковременная вспышка. Сдвиг фазы от координат
-        // (стабилен между кадрами) десинхронизирует звёзды — сверкают единицы.
+        // K-03: спокойное дыхание вместо вспышки. Множитель яркости у всех трёх
+        // слоёв один — звезда целиком становится тише и снова разгорается.
+        // Дышат только крупные узлы; в фигуре, на подавлённой и на погасшей
+        // getStarBreathFactor вернёт 1.
         const isAtlas = !!(lockedVisual && atlasCollectedStarColors && atlasCollectedStarColors.get(star.id));
-        let pulse = 0;
-        let twBrighten = 1;
-        if (!isSuppressed) { // на подавлённых — статично
-            const phaseMs = (((star.x * 131 + star.y * 57) % SPARK_TWINKLE_PERIOD_MS)
-                + SPARK_TWINKLE_PERIOD_MS) % SPARK_TWINKLE_PERIOD_MS;
-            const u = (millis() + phaseMs) % SPARK_TWINKLE_PERIOD_MS;
-            if (u < SPARK_TWINKLE_BURST_MS) {
-                const env = Math.sin((u / SPARK_TWINKLE_BURST_MS) * Math.PI); // 0→1→0
-                pulse = env * SPARK_TWINKLE_AMP;
-                twBrighten = 1 + env * SPARK_TWINKLE_BRIGHTEN;
-            }
-        }
+        const breath = (breathEnabled && typeof getStarBreathFactor === 'function')
+            ? getStarBreathFactor(star, nowMs)
+            : 1;
+        const breathAlpha = effectiveAlpha * breath;
         const rayMult = isAtlas ? SPARK_ATLAS_RAY_MULT : 1;
 
         // Три вложенных слоя искры: белое гало → цветное свечение → ядро.
-        // Яркость гало/свечения растёт во вспышке (у ядра alpha=255 — упирается в потолок).
         const haloWhiteAlpha = lockedVisual ? LOCKED_STAR_HALO_WHITE_ALPHA : 25;
         // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
-        fill(255, 255, 255, Math.min(255, haloWhiteAlpha * effectiveAlpha * twBrighten * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 2, rayMult, pulse);
+        fill(255, 255, 255, Math.min(255, haloWhiteAlpha * breathAlpha * feedbackBrighten));
+        drawSparkleShape(star.x, star.y, starDrawSize * 2, rayMult);
 
-        fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * effectiveAlpha * twBrighten * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 1.5, rayMult, pulse);
+        fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * breathAlpha * feedbackBrighten));
+        drawSparkleShape(star.x, star.y, starDrawSize * 1.5, rayMult);
 
-        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
-        drawSparkleShape(star.x, star.y, starDrawSize, rayMult, pulse);
+        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * breathAlpha);
+        drawSparkleShape(star.x, star.y, starDrawSize, rayMult);
     }
 }
 
