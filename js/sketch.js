@@ -122,17 +122,32 @@ function getTopUIHeight() {
 }
 
 /**
- * U-09: свёрнутая шторка закрывает нижнюю полосу канваса. Камера и минимальный
- * зум считаются от «рабочей» высоты — иначе нижний край поля навсегда остаётся
- * под UI и до тех звёзд не дотянуться.
+ * K-05: полосы во всю ширину под небом больше нет — лента-закладка занимает
+ * угол, и камера освободилась. Резервируется **только инсет системной панели**:
+ * иначе на телефоне нижний край поля лежит под навигационной панелью.
+ *
+ * Меряется зазором под лентой (`innerHeight − ribbon.bottom`) — читать
+ * `--safe-bottom` из JS нельзя, вычисленное значение кастомного свойства
+ * остаётся неразвёрнутым `env(...)`. В браузере инсет нулевой, и резерв там
+ * ровно ноль.
+ *
+ * Принятая цена: на минимальном зуме звезда в нижнем правом углу может
+ * оказаться под лентой. Достаётся зумом и панорамой — на любом зуме крупнее
+ * минимального угол уводится из-под ленты.
  */
+let lastBottomInset = 0;
+
 function getBottomUIHeight() {
-    const peek = document.getElementById('peekBar');
-    if (!peek) return 0;
-    // Шторка открыта — свёрнутая полоса скрыта, но резерв оставляем прежний,
-    // чтобы камера не прыгала при открытии и закрытии.
-    const measured = peek.offsetHeight;
-    return measured > 0 ? measured : BOTTOM_UI_FALLBACK_HEIGHT;
+    const ribbon = document.getElementById('skyRibbon');
+    if (ribbon) {
+        const rect = ribbon.getBoundingClientRect();
+        // Книга открыта — лента скрыта; держим последний замер, чтобы камера
+        // не прыгала на открытии и закрытии.
+        if (rect.height > 0) {
+            lastBottomInset = Math.max(0, Math.round(window.innerHeight - rect.bottom));
+        }
+    }
+    return lastBottomInset;
 }
 
 /** Высота канваса, не перекрытая нижним UI. */
@@ -204,7 +219,7 @@ function setup() {
     initConstellationHints();
     closeSheet();
     recomputeAchievementsClaimable();
-    updatePeekBar();
+    updateRibbonSignal();
 
     updateUndoConstellationButtonState();
     updateObservatoryUI();
@@ -369,7 +384,7 @@ function startNewDailySky(options) {
     updateProgressionUI();
     refreshConstellationHints();
     recomputeAchievementsClaimable();
-    updatePeekBar();
+    updateRibbonSignal();
     updateUndoConstellationButtonState();
 
     if (opts.saveAfter !== false) {
@@ -400,7 +415,7 @@ function onResetSky() {
     updateProgressionUI();
     refreshConstellationHints();
     recomputeAchievementsClaimable();
-    updatePeekBar();
+    updateRibbonSignal();
     updateUndoConstellationButtonState();
 
     clearSave();
@@ -492,7 +507,7 @@ function onDevAddMetaScore() {
     updateUndoConstellationButtonState();
     updateObservatoryUI();
     refreshSheetIfOpen();
-    updatePeekBar();
+    updateRibbonSignal();
 
     if (typeof console !== 'undefined' && console.info) {
         console.info('[dev] +' + DEV_META_SCORE_STEP + ' ✦:', before, '→', getMetaScore(),
@@ -506,7 +521,7 @@ function onDevResetAchievements() {
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
     saveProgression();
     recomputeAchievementsClaimable();
-    updatePeekBar();
+    updateRibbonSignal();
     refreshSheetIfOpen();
     if (typeof console !== 'undefined' && console.info) console.info('[dev] Достижения сброшены');
 }
@@ -556,7 +571,7 @@ function performFullReset(options) {
     updateProgressionUI();
     refreshConstellationHints();
     recomputeAchievementsClaimable();
-    updatePeekBar();
+    updateRibbonSignal();
     updateUndoConstellationButtonState();
     updateObservatoryUI();
 

@@ -85,9 +85,23 @@
 }
 
 :root {
-    /* Высота свёрнутой шторки. Дублируется в BOTTOM_UI_FALLBACK_HEIGHT
-       (constants.js) — камера резервирует ровно эту полосу. */
-    --peek-h: 40px;
+    /* K-05 (правила P-02): в WebView окно занимает экран целиком, и низ
+       принадлежит системе. В браузере env(...) равен нулю — все расчёты ниже
+       там дают ровно прежние числа. */
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+
+    /* K-05: лента-закладка. Видимый хвост — узкий, зона касания вокруг него
+       шире (пальцу 24 px мало). Пропорции из концепта (18×64 при макете 320 px),
+       пересчитанные на 412. Камера полосу под лентой больше НЕ резервирует —
+       резерв остался только на инсет системной панели (см. getBottomUIHeight). */
+    --ribbon-w: 24px;
+    --ribbon-h: 84px;
+    --ribbon-right: 28px;
+    --ribbon-hit-w: 56px;
+    --ribbon-hit-h: 104px;
+    /* Лента — тёмный сургуч: тот же красный, уведённый в тень переплёта. */
+    --ribbon-lo: #5E2F3C;
+    --ribbon-hi: #7A3B4A;
 
     /* --- Типографика: два шрифта и ни одного гротеска --------------------- */
     --font-title: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -196,11 +210,12 @@ body {
     padding: 8px 10px;
 }
 
-/* U-09: правый верхний угол освобождён — ✦ переехал в peek-строку внизу поля */
+/* U-09: правый верхний угол освобождён — ✦ живёт в шапке шторки */
 
 .hud-bottom-right {
-    /* U-09: над свёрнутой шторкой, чтобы Undo не жался к самому краю экрана */
-    bottom: calc(var(--peek-h) + 12px);
+    /* K-05: выше ленты-закладки — она стоит в том же углу.
+       Кнопку отката снимет K-04, до тех пор они делят угол по вертикали. */
+    bottom: calc(var(--ribbon-h) + var(--safe-bottom) + 12px);
     right: 12px;
     display: flex;
     flex-direction: row;
@@ -251,8 +266,9 @@ body {
 .dev-controls {
     position: fixed;
     left: 12px;
-    /* D-01: выше зоны тройного тапа и свёрнутой шторки (U-09) */
-    bottom: calc(var(--peek-h) + 12px);
+    /* D-01: выше зоны тройного тапа; K-05: полосы шторки больше нет,
+       осталась системная панель */
+    bottom: calc(var(--safe-bottom) + 12px);
     z-index: 39;
     display: flex;
     flex-direction: column;
@@ -749,64 +765,76 @@ button:disabled {
 }
 
 /* =============================================================================
-   U-09: ШТОРКА — peek-строка, sheet, рельс, атлас и награды
+   ШТОРКА — лента-закладка (K-05), sheet, рельс, атлас и награды (U-09)
    ============================================================================= */
 
-/* --- свёрнутая шторка: голый край с ручкой, кнопок здесь нет --- */
+/* --- K-05: лента-закладка — единственный предмет на небе --------------------
+   Вход в книгу и носитель единственного сигнала. Полосы во всю ширину больше
+   нет: верх экрана нетронут, низ отдан жестам, лента занимает угол под большим
+   пальцем правой руки. Зеркалить под левшей некому и незачем (решение концепта).
+   `.ribbon` — зона касания (прозрачная), `.ribbon-tail` — сам видимый хвост. */
 
-.sheet-peek {
+.ribbon {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    right: calc(var(--ribbon-right) + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
+    bottom: var(--safe-bottom);
     z-index: 40;
-    width: min(560px, 100%);
-    height: var(--peek-h);
-    margin: 0 auto;
+    width: var(--ribbon-hit-w);
+    height: var(--ribbon-hit-h);
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     justify-content: center;
-    border-top: 1px solid var(--paper-edge);
-    border-radius: 22px 22px 0 0;
-    background: rgba(var(--paper-rgb), 0.97);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 -8px 26px rgba(var(--night-rgb), 0.45);
-    touch-action: none; /* вытягивание шторки вверх, а не прокрутка страницы */
+    background: none;
+    border: none;
+    touch-action: none; /* потягивание ленты вверх, а не прокрутка страницы */
     user-select: none;
     cursor: grab;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.sheet-peek:active {
+.ribbon:active {
     cursor: grabbing;
 }
 
-.sheet-peek:hover .sheet-grab,
-.sheet-peek:focus-visible .sheet-grab {
-    background: var(--ink-muted);
+/* Хвост закладки: уголковый вырез сверху, тень из-под переплёта. */
+.ribbon-tail {
+    position: relative;
+    display: block;
+    width: var(--ribbon-w);
+    height: var(--ribbon-h);
+    background: linear-gradient(0deg, var(--ribbon-lo), var(--ribbon-hi));
+    clip-path: polygon(0 0, 50% 16%, 100% 0, 100% 100%, 0 100%);
+    box-shadow: 0 -4px 14px -4px rgba(var(--night-rgb), 0.7);
+    transition: transform var(--t-micro) var(--ease);
 }
 
-/* Развёрнутая шторка встаёт на место свёрнутой — полосу убираем */
-.sheet-open-body .sheet-peek {
+.ribbon:hover .ribbon-tail,
+.ribbon:focus-visible .ribbon-tail {
+    transform: translateY(-3px);
+}
+
+/* Книга открыта — лента ушла вместе с небом */
+.sheet-open-body .ribbon {
     display: none;
 }
 
-.peek-score-icon {
-    font-size: 13px;
-    line-height: 1;
+/* Капля сургуча: единственный сигнал на небе. Ни числа, ни цвета тревоги —
+   «есть что прижать». Полное правило сигналов — K-15. */
+.ribbon-wax {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--ribbon-h) * 0.47);
+    transform: translateX(-50%);
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 36% 32%, var(--gold-light), var(--wax) 70%);
+    box-shadow: 0 0 12px 2px rgba(var(--wax-rgb), 0.55);
 }
 
-/* Единственный сигнал на свёрнутой шторке: в Наградах есть что забрать */
-.peek-badge {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    margin-left: 42px;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--wax);
-    box-shadow: 0 0 6px rgba(var(--wax-rgb), 0.7);
+.sheet-score-icon {
+    font-size: 13px;
+    line-height: 1;
 }
 
 /* --- сама шторка --- */
@@ -873,13 +901,6 @@ button:disabled {
     height: 4px;
     margin: 9px auto 2px;
     border-radius: 99px;
-    background: var(--ink-faint);
-}
-
-.sheet-peek .sheet-grab {
-    width: 56px;
-    height: 5px;
-    margin: 0;
     background: var(--ink-faint);
 }
 
