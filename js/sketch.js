@@ -9,8 +9,9 @@ let nebulaBuffer = null;
 function drawSkyGradient() {
     const ctx = drawingContext;
     const grad = ctx.createLinearGradient(0, 0, 0, height);
-    grad.addColorStop(0, '#0A0F28');
-    grad.addColorStop(1, '#000005');
+    // K-01: ночь книги — глубже к низу. Числа те же, что --night-soft / --night.
+    grad.addColorStop(0, `rgb(${NIGHT_SOFT_RGB.join(',')})`);
+    grad.addColorStop(1, `rgb(${NIGHT_RGB.join(',')})`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
 }
@@ -28,7 +29,7 @@ function generateNebulaBuffer() {
             const n = noise(x * 0.003, y * 0.003);
             if (n > 0.55) {
                 const a = map(n, 0.55, 1.0, 0, 18);
-                nebulaBuffer.fill(80, 60, 160, a);
+                nebulaBuffer.fill(NEBULA_TINT_RGB[0], NEBULA_TINT_RGB[1], NEBULA_TINT_RGB[2], a);
                 nebulaBuffer.rect(x, y, step, step);
             }
         }
@@ -162,7 +163,8 @@ function setup() {
     resizeGameCanvasToContainer();
     updateMaxEdgeLengthFromCanvas();
     generateNebulaBuffer();
-    textFont("system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif");
+    // K-01: канвас пишет тем же шрифтом, что и книга. Гротеска в игре нет.
+    textFont("'EB Garamond', Georgia, 'Times New Roman', serif");
 
     for (const [name, info] of Object.entries(SHAPES)) {
         if (info.image) {

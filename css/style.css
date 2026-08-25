@@ -12,16 +12,158 @@
     display: none !important;
 }
 
+/* =============================================================================
+   K-01: СИСТЕМА КНИГИ — шрифты, палитра, движение, сетка
+   =============================================================================
+   Общие величины «Альманаха ночей». Всё, что рисует игра, берёт цвет, шрифт
+   и тайминг отсюда: и CSS, и канвас (там же токены — в constants.js).
+   Концепт: dev/docs/ui-concepts/almanac-nights-ed2.html, раздел «Система коротко».
+
+   Шрифты лежат в репозитории (css/fonts/), внешних запросов у игры нет:
+   с P-02 игра живёт в нативной обёртке, где «нет сети — нет шрифта».
+   Файлы вариативные — одно начертание покрывает весь диапазон насыщенности,
+   поэтому @font-face на семейство всего два (прямое и курсив), а не шесть. */
+
+@font-face {
+    font-family: 'EB Garamond';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('fonts/eb-garamond-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+        U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'EB Garamond';
+    font-style: normal;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('fonts/eb-garamond-cyrillic.woff2') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'EB Garamond';
+    font-style: italic;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('fonts/eb-garamond-italic-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+        U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'EB Garamond';
+    font-style: italic;
+    font-weight: 400 800;
+    font-display: swap;
+    src: url('fonts/eb-garamond-italic-cyrillic.woff2') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+@font-face {
+    font-family: 'Playfair Display';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('fonts/playfair-display-latin.woff2') format('woff2');
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+        U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+        U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Playfair Display';
+    font-style: normal;
+    font-weight: 400 900;
+    font-display: swap;
+    src: url('fonts/playfair-display-cyrillic.woff2') format('woff2');
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 :root {
     /* Высота свёрнутой шторки. Дублируется в BOTTOM_UI_FALLBACK_HEIGHT
        (constants.js) — камера резервирует ровно эту полосу. */
     --peek-h: 40px;
+
+    /* --- Типографика: два шрифта и ни одного гротеска --------------------- */
+    --font-title: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    --font-text: 'EB Garamond', Georgia, 'Times New Roman', serif;
+
+    /* --- Палитра: пять сред, три смысла ----------------------------------- */
+    /* Бумага — страницы книги. Три ступени: подложка, лист, приподнятое на нём. */
+    --paper: #0F2138;
+    --paper-deep: #0B1A2C;
+    --paper-raised: #142A46;
+    --paper-edge: #1A3355;       /* линия реза: рамки, разделители */
+
+    /* Ночь — небо. Всё, что глубже бумаги. */
+    --night: #05090F;
+    --night-soft: #0A1322;
+
+    /* Чернила — текст. Бледные = «этого ещё нет». */
+    --ink: #EAF1F9;
+    --ink-muted: #A5B8CD;
+    --ink-faint: #64809D;
+
+    /* Сургуч — «готово, прижми». Единственный сигнал во всей игре. */
+    --wax: #C4553B;
+    --wax-soft: #DE8B72;
+
+    /* Золото — свет и пройденный путь: суммы наград, огранка, шкала. */
+    --gold: #D9A441;
+    --gold-light: #F0D8A6;
+    --gold-deep: #7A5A20;
+
+    /* Пять звёздных. Держатся вровень со STAR_COLOR_TIERS в constants.js:
+       это один и тот же цвет — на канвасе и в интерфейсе. */
+    --star-garnet: #F07A67;
+    --star-amber: #F2A254;
+    --star-copper: #F2C965;
+    --star-opal: #EDEFF5;
+    --star-ice: #86C8F2;
+
+    /* Те же цвета тройками — для rgba(). Иначе прозрачность мимо палитры. */
+    --paper-rgb: 15, 33, 56;
+    --paper-deep-rgb: 11, 26, 44;
+    --paper-raised-rgb: 20, 42, 70;
+    --night-rgb: 5, 9, 15;
+    --ink-rgb: 234, 241, 249;
+    --wax-rgb: 196, 85, 59;
+    --gold-rgb: 217, 164, 65;
+    --gold-light-rgb: 240, 216, 166;
+    --gold-deep-rgb: 122, 90, 32;
+    --star-garnet-rgb: 240, 122, 103;
+    --star-amber-rgb: 242, 162, 84;
+    --star-copper-rgb: 242, 201, 101;
+    --star-opal-rgb: 237, 239, 245;
+    --star-ice-rgb: 134, 200, 242;
+
+    /* --- Движение: два темпа и одна кривая -------------------------------- */
+    /* Микро-отклик — 240 мс, сцена — 700 мс (длинная 900). Свет разгорается,
+       ничто не подпрыгивает: ни отскоков, ни пружин. Те же числа для канваса —
+       MOTION_MICRO_MS / MOTION_SCENE_MS в constants.js. */
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    --t-micro: 240ms;
+    --t-scene: 700ms;
+    --t-scene-long: 900ms;
+
+    /* --- Сетка: модуль 4 pt ----------------------------------------------- */
+    --u: 4px;
+    --page-pad-left: 20px;       /* слева — за шкалой света у корешка */
+    --page-pad-right: 16px;      /* справа — за высечками */
+    --r-sm: 2px;                 /* радиусы книжные, 2–4 pt */
+    --r-md: 3px;
+    --r-lg: 4px;
 }
 
 body {
-    background: #000;
-    color: #eee;
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--night);
+    color: var(--ink);
+    font-family: var(--font-text);
     display: flex;
     justify-content: center;
     align-items: stretch;
@@ -41,9 +183,9 @@ body {
 .hud-corner {
     position: fixed;
     z-index: 40;
-    border: 1px solid #2b2e3a;
+    border: 1px solid var(--paper-edge);
     border-radius: 10px;
-    background: rgba(10, 12, 20, 0.82);
+    background: rgba(var(--paper-rgb), 0.82);
     backdrop-filter: blur(4px);
 }
 
@@ -78,8 +220,8 @@ body {
     min-width: 0;
     padding: 0;
     border-radius: 10px;
-    border: 1px solid #2b2e3a;
-    background: rgba(10, 12, 20, 0.82);
+    border: 1px solid var(--paper-edge);
+    background: rgba(var(--paper-rgb), 0.82);
     backdrop-filter: blur(4px);
     font-size: 20px;
     line-height: 1;
@@ -87,8 +229,8 @@ body {
 }
 
 .hud-icon-btn:hover:not(:disabled) {
-    border-color: #888;
-    background: rgba(28, 30, 42, 0.92);
+    border-color: var(--ink-faint);
+    background: rgba(var(--paper-raised-rgb), 0.92);
 }
 
 /* D-01: невидимая зона тройного тапа — левый нижний угол, всегда доступна */
@@ -116,9 +258,9 @@ body {
     flex-direction: column;
     gap: 8px;
     padding: 10px;
-    border: 1px solid #2b2e3a;
+    border: 1px solid var(--paper-edge);
     border-radius: 10px;
-    background: rgba(10, 12, 20, 0.78);
+    background: rgba(var(--paper-rgb), 0.78);
     backdrop-filter: blur(4px);
 }
 
@@ -167,8 +309,8 @@ body {
     bottom: 0;
     width: 0%;
     border-radius: 999px;
-    background: linear-gradient(90deg, #c90, #ffd700);
-    transition: width 0.25s ease;
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
+    transition: width var(--t-micro) var(--ease);
 }
 
 .field-goal-claim-buttons {
@@ -189,28 +331,28 @@ body {
     transform: translateX(-50%);
     padding: 4px 10px;
     border-radius: 999px;
-    border-color: #3a4653;
-    color: #8e97a6;
-    background: #111822;
+    border-color: var(--paper-edge);
+    color: var(--ink-muted);
+    background: var(--paper-deep);
     font-size: 11px;
     min-width: 74px;
 }
 
 .field-goal-claim-btn:hover {
-    border-color: #69a4cc;
-    background: #193146;
+    border-color: var(--wax);
+    background: var(--paper-raised);
 }
 
 .field-goal-claim-btn.ready {
-    border-color: #4b7998;
-    color: #cbe8ff;
-    background: #132432;
+    border-color: var(--wax);
+    color: var(--wax-soft);
+    background: var(--paper-raised);
 }
 
 .field-goal-claim-btn.claimed {
-    border-color: #2f6f4d;
-    color: #98d8b8;
-    background: #11251b;
+    border-color: var(--paper-edge);
+    color: var(--ink-faint);
+    background: var(--paper-deep);
 }
 
 .resource-item {
@@ -228,25 +370,25 @@ body {
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #777;
+    color: var(--ink-faint);
     font-weight: 600;
 }
 
 .resource-value {
     font-size: 16px;
     font-weight: 600;
-    color: #ddd;
+    color: var(--ink);
 }
 
 .score-value {
-    color: #ffd700;
+    color: var(--gold);
     font-size: 18px;
 }
 
 .bar-container {
     width: 100%;
     height: 4px;
-    background: #1a1a2a;
+    background: var(--paper-deep);
     border-radius: 2px;
     overflow: hidden;
 }
@@ -255,45 +397,45 @@ body {
     height: 100%;
     width: 0%;
     border-radius: 2px;
-    transition: width 0.3s ease;
+    transition: width var(--t-micro) var(--ease);
 }
 
 .xp-bar-fill {
-    background: linear-gradient(90deg, #4af, #6de);
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
 }
 
 .token-bar-fill {
-    background: linear-gradient(90deg, #c90, #ffd700);
+    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
 }
 
 .bar-text {
     font-size: 10px;
-    color: #666;
+    color: var(--ink-faint);
     width: 100%;
 }
 
 .btn-danger {
-    border-color: #633;
-    color: #f88;
+    border-color: var(--wax);
+    color: var(--wax-soft);
 }
 
 .btn-danger:hover {
-    border-color: #a55;
-    background: #2a1515;
+    border-color: var(--wax-soft);
+    background: var(--paper-raised);
 }
 
 #atlasBtn.atlas-btn-claimable {
-    border-color: #6de;
-    color: #c8f7ff;
-    background: linear-gradient(180deg, #132430 0%, #101b28 100%);
-    box-shadow: 0 0 10px rgba(80, 210, 255, 0.32);
+    border-color: var(--wax);
+    color: var(--wax-soft);
+    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
+    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.32);
 }
 
 #achievementsBtn.achv-btn-claimable {
-    border-color: #e8c66a;
-    color: #fff0c8;
-    background: linear-gradient(180deg, #2a2412 0%, #1d1810 100%);
-    box-shadow: 0 0 10px rgba(255, 210, 100, 0.35);
+    border-color: var(--wax);
+    color: var(--wax-soft);
+    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
+    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.35);
 }
 
 .achv-stars {
@@ -306,11 +448,11 @@ body {
 }
 
 .achv-star {
-    color: #363c4c;
+    color: var(--ink-faint);
 }
 
 .achv-star-filled {
-    color: #ffd45a;
+    color: var(--gold);
 }
 
 /* --- Achievement toasts (top-right stack) --- */
@@ -333,10 +475,10 @@ body {
     gap: 10px;
     padding: 8px 12px;
     border-radius: 10px;
-    border: 1px solid #e8c66a;
-    background: rgba(24, 20, 8, 0.95);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45), 0 0 14px rgba(255, 210, 100, 0.25);
-    animation: achvToast 4s ease forwards;
+    border: 1px solid var(--gold);
+    background: rgba(var(--paper-rgb), 0.95);
+    box-shadow: 0 6px 20px rgba(var(--night-rgb), 0.45), 0 0 14px rgba(var(--gold-rgb), 0.25);
+    animation: achvToast 4s var(--ease) forwards;
 }
 
 .achv-toast-icon {
@@ -351,14 +493,15 @@ body {
 }
 
 .achv-toast-title {
+    font-family: var(--font-title);
     font-size: 13px;
     font-weight: 700;
-    color: #fff0c8;
+    color: var(--gold-light);
 }
 
 .achv-toast-sub {
     font-size: 12px;
-    color: #e8c66a;
+    color: var(--gold);
 }
 
 @keyframes achvToast {
@@ -376,13 +519,13 @@ body {
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: #9ab;
+    color: var(--ink-muted);
     padding: 0 2px;
 }
 
 .hint-empty {
     font-size: 12px;
-    color: #778;
+    color: var(--ink-faint);
     text-align: center;
     padding: 12px 8px;
 }
@@ -393,8 +536,8 @@ body {
     align-items: stretch;
     gap: 8px;
     padding: 8px 20px;
-    background: linear-gradient(180deg, #080810 0%, #06060c 100%);
-    border-bottom: 1px solid #1a1a2a;
+    background: linear-gradient(180deg, var(--night-soft) 0%, var(--night) 100%);
+    border-bottom: 1px solid var(--paper-edge);
     flex-shrink: 0;
     z-index: 10;
 }
@@ -409,24 +552,24 @@ body {
 .hint-filter-btn {
     min-width: 56px;
     padding: 4px 10px;
-    border: 1px solid #333;
+    border: 1px solid var(--paper-edge);
     border-radius: 999px;
-    background: #101018;
-    color: #b0b0c6;
+    background: var(--paper-deep);
+    color: var(--ink-muted);
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.06em;
 }
 
 .hint-filter-btn:hover {
-    border-color: #666;
-    background: #161625;
+    border-color: var(--ink-faint);
+    background: var(--paper-raised);
 }
 
 .hint-filter-btn.active {
-    border-color: #ffd86a;
-    color: #ffe7a8;
-    background: #2a2312;
+    border-color: var(--gold);
+    color: var(--gold-light);
+    background: var(--paper-raised);
 }
 
 .hint-list {
@@ -467,13 +610,13 @@ body {
 .hint-canvas {
     display: block;
     border-radius: 6px;
-    background: #0a0a14;
-    border: 1px solid #1a1a2a;
+    background: var(--night);
+    border: 1px solid var(--paper-edge);
 }
 
 .hint-name {
     font-size: 10px;
-    color: #888;
+    color: var(--ink-faint);
     text-transform: uppercase;
     letter-spacing: 0.06em;
     font-weight: 500;
@@ -495,34 +638,41 @@ body {
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: #0d0d12;
-    border: 1px solid #6a6a7a;
+    background: var(--night);
+    border: 1px solid var(--ink-faint);
     z-index: 2;
 }
 
 .field-goal-dot.achieved {
-    background: #6de;
-    border-color: #8ff;
-    box-shadow: 0 0 8px rgba(109, 221, 238, 0.5);
+    background: var(--gold);
+    border-color: var(--gold-light);
+    box-shadow: 0 0 8px rgba(var(--gold-rgb), 0.5);
 }
 
 /* --- Buttons --- */
 
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
 button {
     padding: 6px 14px;
     border-radius: 4px;
-    border: 1px solid #444;
-    background: #151518;
-    color: #ccc;
+    border: 1px solid var(--paper-edge);
+    background: var(--paper-raised);
+    color: var(--ink);
     cursor: pointer;
     font-size: 12px;
     font-weight: 500;
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color var(--t-micro) var(--ease), background var(--t-micro) var(--ease);
 }
 
 button:hover {
-    border-color: #888;
-    background: #1c1c22;
+    border-color: var(--ink-faint);
+    background: var(--paper-edge);
 }
 
 button:disabled {
@@ -543,7 +693,7 @@ button:disabled {
     right: 8px;
     background: none;
     border: none;
-    color: #8899cc;
+    color: var(--ink-muted);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
@@ -551,11 +701,11 @@ button:disabled {
 }
 
 .toast-close-btn:hover {
-    color: #eef;
+    color: var(--ink);
 }
 
 .atlas-page-locked-progress {
-    color: #8b93a8;
+    color: var(--ink-muted);
     font-size: 12px;
     font-variant-numeric: tabular-nums;
 }
@@ -578,11 +728,11 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-top: 1px solid #232838;
+    border-top: 1px solid var(--paper-edge);
     border-radius: 22px 22px 0 0;
-    background: rgba(13, 16, 26, 0.97);
+    background: rgba(var(--paper-rgb), 0.97);
     backdrop-filter: blur(10px);
-    box-shadow: 0 -8px 26px rgba(0, 0, 0, 0.45);
+    box-shadow: 0 -8px 26px rgba(var(--night-rgb), 0.45);
     touch-action: none; /* вытягивание шторки вверх, а не прокрутка страницы */
     user-select: none;
     cursor: grab;
@@ -594,7 +744,7 @@ button:disabled {
 
 .sheet-peek:hover .sheet-grab,
 .sheet-peek:focus-visible .sheet-grab {
-    background: #6b7396;
+    background: var(--ink-muted);
 }
 
 /* Развёрнутая шторка встаёт на место свёрнутой — полосу убираем */
@@ -617,8 +767,8 @@ button:disabled {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ffd35c;
-    box-shadow: 0 0 6px rgba(255, 211, 92, 0.7);
+    background: var(--wax);
+    box-shadow: 0 0 6px rgba(var(--wax-rgb), 0.7);
 }
 
 /* --- сама шторка --- */
@@ -627,7 +777,7 @@ button:disabled {
     position: fixed;
     inset: 0;
     z-index: 1190;
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(var(--night-rgb), 0.35);
 }
 
 .sheet {
@@ -643,11 +793,11 @@ button:disabled {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border-top: 1px solid #232838;
+    border-top: 1px solid var(--paper-edge);
     border-radius: 22px 22px 0 0;
-    background: rgba(13, 16, 26, 0.97);
+    background: rgba(var(--paper-rgb), 0.97);
     backdrop-filter: blur(14px);
-    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.55);
+    box-shadow: 0 -12px 40px rgba(var(--night-rgb), 0.55);
     touch-action: none;
 }
 
@@ -675,7 +825,7 @@ button:disabled {
     gap: 5px;
     font-size: 14px;
     font-weight: 700;
-    color: #ffd35c;
+    color: var(--gold);
     font-variant-numeric: tabular-nums;
     pointer-events: none;
 }
@@ -685,14 +835,14 @@ button:disabled {
     height: 4px;
     margin: 9px auto 2px;
     border-radius: 99px;
-    background: #39405a;
+    background: var(--ink-faint);
 }
 
 .sheet-peek .sheet-grab {
     width: 56px;
     height: 5px;
     margin: 0;
-    background: #4a5270;
+    background: var(--ink-faint);
 }
 
 .sheet-title {
@@ -700,14 +850,15 @@ button:disabled {
     text-align: center;
     font-size: 11px;
     letter-spacing: 0.07em;
-    color: #878ea6;
+    color: var(--ink-muted);
 }
 
 .sheet-title b {
+    font-family: var(--font-title);
     font-size: 13px;
     font-weight: 650;
     letter-spacing: 0;
-    color: #e9ebf4;
+    color: var(--ink);
 }
 
 .sheet-content {
@@ -733,8 +884,8 @@ button:disabled {
 .sheet-footer {
     flex: none;
     padding: 8px 10px 12px;
-    border-top: 1px solid #232838;
-    background: rgba(9, 11, 18, 0.96);
+    border-top: 1px solid var(--paper-edge);
+    background: rgba(var(--paper-deep-rgb), 0.96);
 }
 
 .sheet-rail {
@@ -753,24 +904,24 @@ button:disabled {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: 1px solid #232838;
+    border: 1px solid var(--paper-edge);
     border-radius: 11px;
-    background: rgba(255, 255, 255, 0.03);
-    color: #878ea6;
+    background: rgba(var(--ink-rgb), 0.03);
+    color: var(--ink-muted);
     font-size: 14px;
     cursor: pointer;
 }
 
 .rail-btn:hover {
-    border-color: #4a5270;
-    background: rgba(255, 255, 255, 0.07);
+    border-color: var(--ink-faint);
+    background: rgba(var(--ink-rgb), 0.07);
 }
 
 .rail-btn-on,
 .rail-btn-on:hover {
-    border-color: #ffd35c;
-    background: #ffd35c;
-    box-shadow: 0 0 14px rgba(255, 211, 92, 0.28);
+    border-color: var(--gold);
+    background: var(--gold);
+    box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.28);
 }
 
 .rail-btn-on .rail-emoji {
@@ -798,8 +949,8 @@ button:disabled {
     width: 8px;
     height: 8px;
     border-radius: 50%;
-    background: #ffd35c;
-    border: 2px solid #090b12;
+    background: var(--wax);
+    border: 2px solid var(--paper-deep);
 }
 
 /* Сегмент разделов + «вниз»: обе цели под большим пальцем */
@@ -816,28 +967,28 @@ button:disabled {
     display: flex;
     gap: 3px;
     padding: 3px;
-    border: 1px solid #232838;
+    border: 1px solid var(--paper-edge);
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(var(--ink-rgb), 0.04);
 }
 
 .sheet-close-btn {
     flex: none;
     width: 44px;
     padding: 0;
-    border: 1px solid #232838;
+    border: 1px solid var(--paper-edge);
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.04);
-    color: #878ea6;
+    background: rgba(var(--ink-rgb), 0.04);
+    color: var(--ink-muted);
     font-size: 18px;
     line-height: 1;
     cursor: pointer;
 }
 
 .sheet-close-btn:hover {
-    border-color: #4a5270;
-    background: rgba(255, 255, 255, 0.08);
-    color: #eef1fa;
+    border-color: var(--ink-faint);
+    background: rgba(var(--ink-rgb), 0.08);
+    color: var(--ink);
 }
 
 .seg-btn {
@@ -846,22 +997,22 @@ button:disabled {
     border: none;
     border-radius: 99px;
     background: transparent;
-    color: #878ea6;
+    color: var(--ink-muted);
     font-size: 12.5px;
     cursor: pointer;
 }
 
 .seg-btn:hover {
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(var(--ink-rgb), 0.07);
     border-color: transparent;
-    color: #eef1fa;
+    color: var(--ink);
 }
 
 .seg-btn-on,
 .seg-btn-on:hover {
-    background: #ffd35c;
+    background: var(--gold);
     border-color: transparent;
-    color: #12131a;
+    color: var(--night);
     font-weight: 700;
 }
 
@@ -885,7 +1036,7 @@ button:disabled {
 .seg-btn-locked:hover {
     opacity: 0.5;
     background: transparent;
-    color: #878ea6;
+    color: var(--ink-muted);
     filter: grayscale(1);
 }
 
@@ -896,7 +1047,7 @@ button:disabled {
     align-self: stretch;
     width: 1px;
     margin: 4px 2px;
-    background: #2f3547;
+    background: var(--paper-edge);
 }
 
 /* Хинт запертой обсерватории — ПОПОВЕР поверх подвала, а не строка в потоке:
@@ -912,10 +1063,10 @@ button:disabled {
     z-index: 6;
     width: min(300px, 100%);
     padding: 10px 12px 11px;
-    border: 1px solid #2f3547;
+    border: 1px solid var(--paper-edge);
     border-radius: 12px;
-    background: #12141d;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+    background: var(--paper-raised);
+    box-shadow: 0 10px 28px rgba(var(--night-rgb), 0.55);
 }
 
 /* Уголок целится в центр кнопки 🔭. Считаем от правого края строки подвала:
@@ -928,28 +1079,29 @@ button:disabled {
     bottom: -6px;
     width: 10px;
     height: 10px;
-    background: #12141d;
-    border-right: 1px solid #2f3547;
-    border-bottom: 1px solid #2f3547;
+    background: var(--paper-raised);
+    border-right: 1px solid var(--paper-edge);
+    border-bottom: 1px solid var(--paper-edge);
     transform: rotate(45deg);
 }
 
 .obs-lock-title {
+    font-family: var(--font-title);
     font-size: 12.5px;
-    color: #eef1fa;
+    color: var(--ink);
 }
 
 .obs-lock-sub {
     margin-top: 2px;
     font-size: 11.5px;
-    color: #878ea6;
+    color: var(--ink-muted);
 }
 
 .obs-lock-bar {
     margin-top: 7px;
     height: 6px;
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(var(--ink-rgb), 0.07);
     overflow: hidden;
 }
 
@@ -957,13 +1109,13 @@ button:disabled {
     height: 100%;
     width: 0;
     border-radius: 99px;
-    background: #ffd35c;
+    background: var(--gold);
 }
 
 .obs-lock-progress {
     margin-top: 4px;
     font-size: 11px;
-    color: #878ea6;
+    color: var(--ink-muted);
 }
 
 /* Тумблер режима в правом нижнем углу — на месте кнопки отката (U-09).
@@ -973,7 +1125,7 @@ button:disabled {
     flex: none;
     width: 92px;
     align-items: center;
-    background: rgba(10, 12, 20, 0.82);
+    background: rgba(var(--paper-rgb), 0.82);
     backdrop-filter: blur(4px);
 }
 
@@ -999,9 +1151,9 @@ button:disabled {
     align-items: center;
     gap: 3px;
     padding: 9px 6px 8px;
-    border: 1px solid #232838;
+    border: 1px solid var(--paper-edge);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(var(--ink-rgb), 0.025);
 }
 
 .atlas-card-unknown {
@@ -1009,10 +1161,10 @@ button:disabled {
 }
 
 .atlas-card-faceted {
-    border-color: rgba(255, 211, 92, 0.55);
+    border-color: rgba(var(--gold-rgb), 0.55);  /* огранка пройдена — золото пути */
     background:
-        radial-gradient(120% 80% at 50% 0%, rgba(255, 211, 92, 0.16) 0%, rgba(255, 211, 92, 0) 70%),
-        rgba(255, 255, 255, 0.025);
+        radial-gradient(120% 80% at 50% 0%, rgba(var(--gold-rgb), 0.16) 0%, rgba(var(--gold-rgb), 0) 70%),
+        rgba(var(--ink-rgb), 0.025);
 }
 
 .atlas-card-crown {
@@ -1031,6 +1183,7 @@ button:disabled {
 }
 
 .atlas-card-title {
+    font-style: italic;
     font-size: 11px;
     font-weight: 600;
     line-height: 1.2;
@@ -1038,7 +1191,7 @@ button:disabled {
 }
 
 .atlas-card-title-unknown {
-    color: #5c6379;
+    color: var(--ink-faint);
     letter-spacing: 1px;
 }
 
@@ -1054,7 +1207,7 @@ button:disabled {
     width: 7px;
     height: 7px;
     transform: rotate(45deg);
-    border: 1px solid #2f3547;
+    border: 1px solid var(--paper-edge);
     background: transparent;
 }
 
@@ -1062,11 +1215,11 @@ button:disabled {
     border-color: transparent;
 }
 
-.atlas-facet-red.atlas-facet-lit    { background: #ff6b5a; box-shadow: 0 0 5px rgba(255, 107, 90, 0.6); }
-.atlas-facet-orange.atlas-facet-lit { background: #ffa34d; box-shadow: 0 0 5px rgba(255, 163, 77, 0.6); }
-.atlas-facet-yellow.atlas-facet-lit { background: #ffe066; box-shadow: 0 0 5px rgba(255, 224, 102, 0.6); }
-.atlas-facet-white.atlas-facet-lit  { background: #ffffff; box-shadow: 0 0 5px rgba(255, 255, 255, 0.6); }
-.atlas-facet-blue.atlas-facet-lit   { background: #9fd8ff; box-shadow: 0 0 5px rgba(159, 216, 255, 0.6); }
+.atlas-facet-red.atlas-facet-lit    { background: var(--star-garnet); box-shadow: 0 0 5px rgba(var(--star-garnet-rgb), 0.6); }
+.atlas-facet-orange.atlas-facet-lit { background: var(--star-amber);  box-shadow: 0 0 5px rgba(var(--star-amber-rgb), 0.6); }
+.atlas-facet-yellow.atlas-facet-lit { background: var(--star-copper); box-shadow: 0 0 5px rgba(var(--star-copper-rgb), 0.6); }
+.atlas-facet-white.atlas-facet-lit  { background: var(--star-opal);   box-shadow: 0 0 5px rgba(var(--star-opal-rgb), 0.6); }
+.atlas-facet-blue.atlas-facet-lit   { background: var(--star-ice);    box-shadow: 0 0 5px rgba(var(--star-ice-rgb), 0.6); }
 
 .atlas-page-locked {
     grid-column: 1 / -1;
@@ -1076,7 +1229,7 @@ button:disabled {
     gap: 10px;
     padding: 40px 16px;
     text-align: center;
-    color: #878ea6;
+    color: var(--ink-muted);
     font-size: 13px;
 }
 
@@ -1094,9 +1247,9 @@ button:disabled {
     gap: 10px;
     min-height: 84px;
     padding: 10px 12px;
-    border: 1px solid #232838;
+    border: 1px solid var(--paper-edge);
     border-radius: 14px;
-    background: rgba(255, 255, 255, 0.025);
+    background: rgba(var(--ink-rgb), 0.025);
 }
 
 .achv-row-done {
@@ -1104,8 +1257,8 @@ button:disabled {
 }
 
 .achv-row-claimable {
-    border-color: rgba(255, 211, 92, 0.5);
-    background: rgba(255, 211, 92, 0.06);
+    border-color: rgba(var(--wax-rgb), 0.5);
+    background: rgba(var(--wax-rgb), 0.06);
 }
 
 .achv-row-locked {
@@ -1137,25 +1290,25 @@ button:disabled {
 .achv-row-title {
     font-size: 14px;
     font-weight: 650;
-    color: #e9ebf4;
+    color: var(--ink);
 }
 
 .achv-row-title-hidden {
-    color: #5c6379;
+    color: var(--ink-faint);
     letter-spacing: 2px;
 }
 
 .achv-row-step {
     font-size: 11.5px;
     line-height: 1.3;
-    color: #878ea6;
+    color: var(--ink-muted);
 }
 
 .achv-row-bar {
     position: relative;
     height: 3px;
     border-radius: 99px;
-    background: rgba(255, 255, 255, 0.07);
+    background: rgba(var(--ink-rgb), 0.07);
     overflow: hidden;
 }
 
@@ -1163,7 +1316,7 @@ button:disabled {
     display: block;
     height: 100%;
     border-radius: 99px;
-    background: #ffd35c;
+    background: var(--gold);
 }
 
 .achv-row-tail {
@@ -1174,10 +1327,10 @@ button:disabled {
 
 .achv-claim-btn {
     padding: 7px 12px;
-    border: 1px solid #b08a2e;
+    border: 1px solid var(--wax);
     border-radius: 99px;
-    background: rgba(44, 33, 12, 0.85);
-    color: #ffe9b0;
+    background: rgba(var(--paper-raised-rgb), 0.85);
+    color: var(--gold-light);
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
@@ -1186,24 +1339,24 @@ button:disabled {
 }
 
 .achv-claim-btn:hover {
-    background: rgba(64, 48, 18, 0.95);
-    color: #fff0c8;
+    background: var(--paper-edge);
+    color: var(--gold-light);
 }
 
 /* Награда видна всегда, но пока условие не выполнено — кнопка неактивна:
    та же форма и место, приглушённый цвет, без наведения и курсора. */
 .achv-claim-btn-idle,
 .achv-claim-btn-idle:hover {
-    border-color: rgba(176, 138, 46, 0.35);
-    background: rgba(44, 33, 12, 0.35);
-    color: rgba(255, 233, 176, 0.45);
+    border-color: rgba(var(--wax-rgb), 0.3);
+    background: rgba(var(--paper-raised-rgb), 0.35);
+    color: rgba(var(--gold-light-rgb), 0.45);
     cursor: default;
 }
 
 /* --- A-03: перелёт награды от кнопки забора к счётчику ✦ --- */
 
 /* Три вложенных узла — это не украшательство, а способ получить дугу без
-   покадровки на JS: внешний едет по X линейно, средний по Y с ease-out,
+   покадровки на JS: внешний едет по X линейно, средний по Y по кривой книги,
    сумма двух независимых осей и даёт кривую. Длительности приезжают
    из JS (--claim-ms ← CLAIM_COIN_MS), чтобы уборка узла и конец анимации
    не разъезжались. Слой между шторкой (1200) и тостами (1500). */
@@ -1213,11 +1366,11 @@ button:disabled {
     width: 0;
     height: 0;
     pointer-events: none;
-    animation: claimCoinX var(--claim-ms, 520ms) linear forwards;
+    animation: claimCoinX var(--claim-ms, 700ms) linear forwards;
 }
 
 .claim-coin-y {
-    animation: claimCoinY var(--claim-ms, 520ms) cubic-bezier(0.2, 0.9, 0.3, 1) forwards;
+    animation: claimCoinY var(--claim-ms, 700ms) var(--ease) forwards;
 }
 
 /* Форма и цвет — те же, что у кнопки забора: подпись словно отрывается от неё */
@@ -1227,16 +1380,16 @@ button:disabled {
     top: 0;
     transform: translate(-50%, -50%);
     padding: 6px 11px;
-    border: 1px solid #b08a2e;
+    border: 1px solid var(--wax);
     border-radius: 99px;
-    background: rgba(44, 33, 12, 0.95);
-    color: #ffe9b0;
+    background: rgba(var(--paper-raised-rgb), 0.95);
+    color: var(--gold-light);
     font-size: 12px;
     font-weight: 700;
     white-space: nowrap;
     font-variant-numeric: tabular-nums;
-    box-shadow: 0 0 14px rgba(255, 211, 92, 0.35);
-    animation: claimCoinPop var(--claim-ms, 520ms) ease-out forwards;
+    box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.35);
+    animation: claimCoinPop var(--claim-ms, 700ms) var(--ease) forwards;
 }
 
 @keyframes claimCoinX {
@@ -1256,23 +1409,39 @@ button:disabled {
 
 /* Прилёт: счётчик вздрагивает — награда доехала именно сюда */
 .sheet-score.score-pulse {
-    animation: scorePulse var(--score-pulse-ms, 320ms) ease-out;
+    animation: scorePulse var(--score-pulse-ms, 240ms) var(--ease);
 }
 
 @keyframes scorePulse {
     0%   { transform: scale(1); }
-    35%  { transform: scale(1.28); color: #fff3c4; }
+    35%  { transform: scale(1.28); color: var(--gold-light); }
     100% { transform: scale(1); }
 }
 
-/* Перелёт — украшение поверх честного числа: без анимаций счётчик просто
-   обновляется сразу (flyClaimReward отказывается лететь и зажим не ставится). */
+/* K-01: движение гасится целиком, состояния остаются. Перелёт награды —
+   украшение поверх честного числа: без анимаций счётчик просто обновляется
+   сразу (flyClaimReward отказывается лететь и зажим не ставится). Тост без
+   анимации снимает страховочный таймер showInfoToast, а не animationend. */
 @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 1ms !important;
+        animation-delay: 0ms !important;
+        transition-duration: 1ms !important;
+        transition-delay: 0ms !important;
+    }
+
     .claim-coin,
     .claim-coin-y,
     .claim-coin-pill,
     .sheet-score.score-pulse {
         animation: none;
+    }
+
+    .achv-toast {
+        animation: none;
+        opacity: 1;
     }
 }
 

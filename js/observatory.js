@@ -828,8 +828,9 @@ function drawObservatoryLines() {
         if (!trimmed) continue;
 
         if (doomed.has(l)) {
-            // Обречённая связь: красный пунктир, исчезнет на отпускании
-            stroke(255, 90, 90, 210);
+            // Обречённая связь: пунктир сургучом, исчезнет на отпускании
+            // (K-01: системного красного в палитре книги нет).
+            stroke(WAX_RGB[0], WAX_RGB[1], WAX_RGB[2], 210);
             strokeWeight(2 / zoomLevel);
             drawingContext.setLineDash([8 / zoomLevel, 6 / zoomLevel]);
             line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);
