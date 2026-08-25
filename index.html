@@ -12,19 +12,69 @@
     <script src="js/vendor/p5.min.js"></script>
 </head>
 <body>
+    <!-- =====================================================================
+         K-02: КАССА ЗНАКОВ — восемнадцать гравюр
+         =====================================================================
+         Спрайт лежит в разметке, а не отдельным файлом: с P-02 у игры нет
+         внешних запросов, и знак обязан быть на экране в первом же кадре.
+         Контуры взяты из концепта «Альманах ночей» (раздел «Касса знаков»),
+         а не нарисованы заново. Своего цвета у знака нет: `stroke: currentColor`
+         в css/style.css — он берёт цвет строки, в которой стоит.
+         Вставка — glyphSign(name) в js/ui.js, вручную <use> не пишем. -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <!-- отмена -->
+        <symbol id="i-undo" viewBox="0 0 24 24"><path d="M19 8.4H9.2C6.2 8.4 4.2 10.4 4.2 13.1 4.2 15.8 6.2 17.8 9.2 17.8H12.6"/><path d="M15.4 4.6 19.4 8.4 15.4 12.2"/></symbol>
+        <!-- нож · разрез -->
+        <symbol id="i-knife" viewBox="0 0 24 24"><path d="M3.6 20.4 11 13"/><path d="M11.4 12.6 20.4 3.6 21 8.4 13.2 16.2 Z"/><path d="M3.6 20.4 6.4 20.4"/></symbol>
+        <!-- прижать -->
+        <symbol id="i-press" viewBox="0 0 24 24"><path d="M8.4 12V6.4a1.5 1.5 0 0 1 3 0v4.2"/><path d="M11.4 10.6V5a1.5 1.5 0 0 1 3 0v5.6"/><path d="M14.4 10.6V6.6a1.5 1.5 0 0 1 3 0V13c0 4-2.4 6.4-6 6.4-2.8 0-4.3-1.2-5.6-3.6l-1.4-2.4a1.5 1.5 0 0 1 2.6-1.5l1.4 2.1"/></symbol>
+        <!-- закладка -->
+        <symbol id="i-ribbon" viewBox="0 0 24 24"><path d="M7 3.4h10v15.4l-5-3.4-5 3.4Z"/><path d="M7 8.6h10"/></symbol>
+        <!-- поиск -->
+        <symbol id="i-tel" viewBox="0 0 24 24"><path d="M3.4 9.8 13.6 3.6 16.4 8.2 6.2 14.4Z"/><path d="M14.8 5.6 17.6 4 19.2 6.6 16.4 8.2"/><path d="M9.5 13.2 6 21"/><path d="M11.5 13.9 14.6 21"/><path d="M10.6 15.7v-3.1"/></symbol>
+        <!-- ночь -->
+        <symbol id="i-crescent" viewBox="0 0 24 24"><path d="M14.5 3.2A9.2 9.2 0 1 0 14.5 20.8 7.1 7.1 0 1 1 14.5 3.2Z"/></symbol>
+        <!-- ночь закрыта -->
+        <symbol id="i-nightstar" viewBox="0 0 24 24"><path d="M12.5 4A8 8 0 1 0 12.5 20 6.2 6.2 0 1 1 12.5 4Z"/><path d="M17.5 6.5l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7Z"/></symbol>
+        <!-- приход -->
+        <symbol id="i-spark" viewBox="0 0 24 24"><path d="M11 4c.6 4 1.8 5.2 5.8 5.8-4 .6-5.2 1.8-5.8 5.8-.6-4-1.8-5.2-5.8-5.8C9.2 9.2 10.4 8 11 4Z"/><path d="M17.6 14.4c.3 1.9.9 2.5 2.8 2.8-1.9.3-2.5.9-2.8 2.8-.3-1.9-.9-2.5-2.8-2.8 1.9-.3 2.5-.9 2.8-2.8Z"/></symbol>
+        <!-- огранка -->
+        <symbol id="i-gem" viewBox="0 0 24 24"><path d="M12 3 19.5 9.5 12 21 4.5 9.5Z"/><path d="M4.5 9.5H19.5"/><path d="M12 3 9.2 9.5 12 21"/><path d="M12 3 14.8 9.5 12 21"/></symbol>
+        <!-- зодчий -->
+        <symbol id="i-pillar" viewBox="0 0 24 24"><path d="M4 6.6 12 3l8 3.6"/><path d="M5 8.4H19"/><path d="M5 19.6H19"/><path d="M7.6 8.4v11.2M12 8.4v11.2M16.4 8.4v11.2"/><path d="M4 21.4H20"/></symbol>
+        <!-- вызов -->
+        <symbol id="i-comet" viewBox="0 0 24 24"><circle cx="8.6" cy="15.4" r="3.2"/><path d="M11.2 12.8 20 4"/><path d="M12.6 15.4 19 12.4"/><path d="M8.6 11.2 12.4 5.6"/></symbol>
+        <!-- малое -->
+        <symbol id="i-loz" viewBox="0 0 24 24"><path d="M12 4.5 18.5 12 12 19.5 5.5 12Z"/></symbol>
+        <!-- соединять -->
+        <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+        <!-- двигать -->
+        <symbol id="i-hand" viewBox="0 0 24 24"><path d="M12 3.2v17.6M3.2 12h17.6"/><path d="M12 3.2 9.6 5.8M12 3.2l2.4 2.6M12 20.8l-2.4-2.6M12 20.8l2.4-2.6M3.2 12l2.6-2.4M3.2 12l2.6 2.4M20.8 12l-2.6-2.4M20.8 12l-2.6 2.4"/></symbol>
+        <!-- переписать -->
+        <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20.2 8.4 19l10.4-10.4a2.2 2.2 0 0 0-3.1-3.1L5.3 15.9Z"/><path d="M14.6 6.9 17.1 9.4"/></symbol>
+        <!-- экслибрис -->
+        <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5.6 4.4h9.2l4.6 4.6v10.6H5.6Z"/><path d="M14.8 4.4V9h4.6"/></symbol>
+        <!-- полная огранка -->
+        <symbol id="i-corona" viewBox="0 0 26 16"><path d="M3 14A10.5 10.5 0 0 1 23 14"/><path d="M13 8.6V2"/><path d="M7.4 9.8 5.6 4.6"/><path d="M18.6 9.8 20.4 4.6"/></symbol>
+        <!-- свод · итог -->
+        <symbol id="i-arc" viewBox="0 0 24 24"><path d="M3.5 17.5a8.5 8.5 0 0 1 17 0"/><path d="M7 17.5a5 5 0 0 1 10 0"/></symbol>
+      </defs>
+    </svg>
+
     <div id="app">
         <div id="gameActions" class="hud-corner hud-bottom-right">
             <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn"
                     data-i18n-title="field.undoLast" data-i18n-aria="field.undoLast"
-                    disabled>↩</button>
-            <!-- B-02: в обсерватории ↩ прячется, на её месте тумблер режима -->
+                    disabled><svg class="ic" width="20" height="20" aria-hidden="true" focusable="false"><use href="#i-undo"/></svg></button>
+            <!-- B-02: в обсерватории откат прячется, на его месте тумблер режима -->
             <div id="observatoryModeSeg" class="sheet-seg obs-mode-seg" hidden>
                 <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
                         data-i18n-title="observatory.modeConnect"
-                        data-i18n-aria="observatory.modeConnect">🔗</button>
+                        data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
                 <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
                         data-i18n-title="observatory.modeMove"
-                        data-i18n-aria="observatory.modeMove">✋</button>
+                        data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
             </div>
         </div>
 
@@ -83,7 +133,7 @@
                          Прогресс-бар свой, «за всё время», а не ✦ из шапки —
                          тот обнуляется автосписанием страницы атласа. -->
                     <div id="observatoryLockHint" class="obs-lock-hint" role="dialog" hidden>
-                        <div class="obs-lock-title"><span aria-hidden="true">🔒</span> <span id="obsLockTitleText"></span></div>
+                        <div class="obs-lock-title"><svg class="ic ic-sm" width="15" height="15" aria-hidden="true" focusable="false"><use href="#i-tel"/></svg> <span id="obsLockTitleText"></span></div>
                         <div class="obs-lock-sub" id="obsLockSubText"></div>
                         <div class="obs-lock-bar"><div id="obsLockBarFill" class="obs-lock-bar-fill"></div></div>
                         <div class="obs-lock-progress" id="obsLockProgressText"></div>
@@ -94,10 +144,10 @@
                         <!-- B-02: разделитель — кнопка обсерватории другого рода,
                              без него невыделенные кнопки сливаются в одну полосу -->
                         <span class="seg-divider" aria-hidden="true"></span>
-                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon">🔭</button>
+                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon"></button>
                     </div>
                     <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
-                            data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse">↓</button>
+                            data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-ribbon"/></svg></button>
                 </div>
             </div>
         </div>

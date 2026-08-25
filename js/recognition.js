@@ -174,7 +174,7 @@ function makeFallbackRecognition(legacyLabel) {
  * иначе fallback. Принимает от 2 звёзд (Зубочистка). 6+ звёзд → fallback
  * (каталог до 5).
  *
- * ⚠️ Поле `legacyLabel` в результате осталось после вывода legacy-слоя (R-02):
+ * ⚠ Поле `legacyLabel` в результате осталось после вывода legacy-слоя (R-02):
  * распознаватель один, и `legacyLabel` теперь всегда равен `label` либо
  * несёт имя выключенной фигуры. Формат не менялся — его читают
  * `drawing.js` и `testApi.js`.

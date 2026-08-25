@@ -22,7 +22,7 @@ function updateScoreUI() {
 // изнутри самого `awardMetaScore` (открытие страницы атласа, progression.js).
 // Вторая: монет в воздухе бывает несколько, и число должно приехать после последней.
 //
-// ⚠️ Главный риск всей задачи — застрявший зажим: несостоявшийся прилёт заморозил бы
+// ⚠ Главный риск всей задачи — застрявший зажим: несостоявшийся прилёт заморозил бы
 // счётчик навсегда. Страховок три: release идемпотентен, таймер снимает зажим
 // безусловно, и `visibilitychange` сбрасывает его в ноль при уходе вкладки в фон.
 
@@ -482,11 +482,67 @@ function onConstellationCreated(shapeName) {
     refreshSheetIfOpen();
 }
 
-function drawHintPattern(canvas, pattern, color) {
+// =============================================================================
+// K-02: ДВА РЕГИСТРА — гравёрные знаки и созвездные глифы
+// =============================================================================
+//
+// Регистр первый — знак: действие, раздел, тема штампа. Восемнадцать штук,
+// спрайт лежит в index.html, своего цвета у знака нет.
+// Регистр второй — глиф: форма конкретной фигуры, точки и линии из
+// SHAPE_PATTERNS. Глиф — это чертёж, только маленький, поэтому он всегда честен.
+//
+// Правило двух регистров: знак и глиф НЕ встречаются в одной строке, и знак
+// НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
+// либо про фигуру.
+
+/** Все восемнадцать имён кассы — чтобы опечатка в имени падала, а не молчала. */
+const GLYPH_SIGNS = [
+    'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
+    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc'
+];
+
+/**
+ * Знак из кассы как DOM-узел. `size` — сторона в px; ниже 17 штрих тоньше
+ * (1.1 против 1.4 — правило концепта). Корона шире прочих: у неё свой viewBox.
+ */
+function glyphSign(name, size = 24, className = '') {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    if (!GLYPH_SIGNS.includes(name)) {
+        console.error('K-02: знака «' + name + '» в кассе нет');
+        name = 'arc';
+    }
+    const wide = name === 'corona';
+    svg.setAttribute('class', 'ic' + (size <= 16 ? ' ic-sm' : '') + (className ? ' ' + className : ''));
+    svg.setAttribute('width', wide ? Math.round(size * 26 / 16) : size);
+    svg.setAttribute('height', wide ? Math.round(size * 16 / 16) : size);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    use.setAttribute('href', '#i-' + name);
+    svg.appendChild(use);
+    return svg;
+}
+
+/**
+ * Книжные кегли глифа. Ниже строки не опускаемся: на 12 px точки сливаются
+ * с линиями и фигура перестаёт быть узнаваемой (риск 3 в доке K-02).
+ */
+const GLYPH_SIZES = { row: 16, card: 30, spread: 76 };
+
+/**
+ * Глиф фигуры на канвасе. Размер канваса задаёт вызывающий; отступ, толщина
+ * штриха и радиус точки едут за ним, но не ужимаются ниже читаемого предела —
+ * иначе разворот и строка расходятся не масштабом, а видом.
+ */
+function drawShapeGlyph(canvas, pattern, color) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
-    const pad = 8;
+    const side = Math.min(w, h);
+    // Всё, что ниже — доли от стороны с полом: на строке (16 px) пол и работает.
+    const pad = Math.max(2, side * 0.105);
+    const dot = Math.max(1.4, side * 0.033);
+    const halo = Math.max(2.6, side * 0.066);
     const iw = w - pad * 2;
     const ih = h - pad * 2;
 
@@ -495,7 +551,7 @@ function drawHintPattern(canvas, pattern, color) {
     const pts = pattern.stars.map(([nx, ny]) => [pad + nx * iw, pad + ny * ih]);
 
     ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},0.7)`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(1, side * 0.02);
     ctx.lineCap = 'round';
     for (const [a, b] of pattern.lines) {
         ctx.beginPath();
@@ -506,15 +562,35 @@ function drawHintPattern(canvas, pattern, color) {
 
     for (const [px, py] of pts) {
         ctx.beginPath();
-        ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+        ctx.arc(px, py, dot, 0, Math.PI * 2);
         ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
         ctx.fill();
 
         ctx.beginPath();
-        ctx.arc(px, py, 5, 0, Math.PI * 2);
+        ctx.arc(px, py, halo, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.15)`;
         ctx.fill();
     }
+}
+
+/**
+ * Глиф фигуры готовым узлом: канвас нужного кегля с уже нарисованной формой.
+ * `size` — имя книжного кегля ('row' | 'card' | 'spread') или число px.
+ */
+function shapeGlyphNode(shapeId, size = 'row', color = INK_MUTED_RGB) {
+    const px = typeof size === 'number' ? size : (GLYPH_SIZES[size] || GLYPH_SIZES.row);
+    const canvas = document.createElement('canvas');
+    canvas.className = 'shape-glyph';
+    canvas.width = px;
+    canvas.height = px;
+    const pattern = (typeof SHAPE_PATTERNS !== 'undefined' && SHAPE_PATTERNS[shapeId]) || null;
+    if (pattern) drawShapeGlyph(canvas, pattern, color);
+    return canvas;
+}
+
+/** Совместимость: прежнее имя рисовалки подсказок. */
+function drawHintPattern(canvas, pattern, color) {
+    drawShapeGlyph(canvas, pattern, color);
 }
 
 // =============================================================================
@@ -592,9 +668,7 @@ function createAtlasEntryCard(entry) {
         + (faceted ? ' atlas-card-faceted' : '');
 
     if (faceted) {
-        const crown = document.createElement('span');
-        crown.className = 'atlas-card-crown';
-        crown.textContent = '👑';
+        const crown = glyphSign('corona', 16, 'atlas-card-crown');
         card.appendChild(crown);
     }
 
@@ -711,22 +785,19 @@ function renderSheetTitle() {
     }
 }
 
-/** Эмблема страницы атласа — её первое созвездие; запертая — замок. */
-function createAtlasRailIcon(pageIndex) {
+/**
+ * Эмблема страницы атласа — её первое созвездие (второй регистр). Запертая —
+ * приглушённый нож: глава ещё не разрезана, а не заперта. Замка в кассе нет.
+ * `active` меняет цвет глифа: на золотой плашке чернила не читаются.
+ */
+function createAtlasRailIcon(pageIndex, active) {
     if (!isAtlasPageUnlocked(pageIndex)) {
-        const lock = document.createElement('span');
-        lock.className = 'rail-lock';
-        lock.textContent = '🔒';
-        return lock;
+        const uncut = glyphSign('knife', 16, 'rail-uncut');
+        return uncut;
     }
     const firstShape = ATLAS_PAGES[pageIndex] && ATLAS_PAGES[pageIndex][0];
-    const pattern = firstShape ? SHAPE_PATTERNS[firstShape] : null;
-    const canvas = document.createElement('canvas');
-    canvas.className = 'rail-canvas';
-    canvas.width = 30;
-    canvas.height = 30;
-    if (pattern) drawHintPattern(canvas, pattern, [200, 208, 228]);
-    return canvas;
+    const color = active ? NIGHT_RGB : INK_MUTED_RGB;
+    return shapeGlyphNode(firstShape, 'card', color);
 }
 
 function renderSheetRail() {
@@ -743,14 +814,11 @@ function renderSheetRail() {
         btn.className = 'rail-btn' + (i === active ? ' rail-btn-on' : '');
 
         if (sheetSection === 'atlas') {
-            btn.appendChild(createAtlasRailIcon(i));
+            btn.appendChild(createAtlasRailIcon(i, i === active));
             btn.setAttribute('aria-label', t('sheet.page', { n: i + 1 }));
         } else {
             const page = REWARD_PAGES[i];
-            const icon = document.createElement('span');
-            icon.className = 'rail-emoji';
-            icon.textContent = page.icon;
-            btn.appendChild(icon);
+            btn.appendChild(glyphSign(page.sign, 18));
             btn.setAttribute('aria-label', page.title);
             // Бейдж — единственный указатель, куда идти за ✦
             if (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(i)) {
@@ -787,9 +855,9 @@ let observatoryHintOpen = false;
 /**
  * Третья кнопка сегмента. Она обещание, а не сюрприз: видна с первой ночи.
  *
- * Иконка ОДНА во всех состояниях — 🔭. Обсерватория опознаётся по телескопу
- * ещё запертой, и менять символ при открытии значило бы подменить примету, по
- * которой игрок эту кнопку уже запомнил. Замок живёт внутри хинта, где
+ * Знак ОДИН во всех состояниях — «поиск» (телескоп). Обсерватория опознаётся
+ * по нему ещё запертой, и менять знак при открытии значило бы подменить примету,
+ * по которой игрок эту кнопку уже запомнил. Замок живёт внутри хинта, где
  * объясняет условие, а не просто говорит «нельзя».
  *
  * Отличается только приглушённость запертой. Жёлтой подсветки (seg-btn-on)
@@ -797,7 +865,7 @@ let observatoryHintOpen = false;
  * шторкой, и «включённой» не бывает. Куда ведёт тап, говорит подсказка, а
  * какой мир сейчас — сам экран под шторкой (она при переходе не закрывается).
  */
-const OBSERVATORY_SEG_ICON = '🔭';
+const OBSERVATORY_SEG_SIGN = 'tel';
 
 function renderObservatorySegButton() {
     const btn = document.getElementById('segObservatoryBtn');
@@ -807,7 +875,7 @@ function renderObservatorySegButton() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 
     btn.classList.toggle('seg-btn-locked', !unlocked);
-    btn.textContent = OBSERVATORY_SEG_ICON;
+    btn.replaceChildren(glyphSign(OBSERVATORY_SEG_SIGN, 18));
 
     let key;
     if (!unlocked) {
@@ -888,7 +956,7 @@ function onObservatorySegClick() {
     setAppMode(next);
 }
 
-/** Тумблер 🔗/✋ вместо ↩ и обратно; вызывается при смене режима приложения. */
+/** Тумблер «соединять»/«двигать» вместо отката и обратно; при смене режима приложения. */
 function updateObservatoryUI() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 

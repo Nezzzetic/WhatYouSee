@@ -27,7 +27,7 @@ let observatoryLines = [];
 let observatoryNames = [];
 /** Фоновая россыпь: своя, детерминированная по playerId (в сейв не пишется). */
 let observatoryBackgroundStars = [];
-/** 'connect' — соединять 🔗 (по умолчанию), 'move' — перемещать ✋. */
+/** 'connect' — соединять (по умолчанию), 'move' — перемещать. */
 let observatoryMode = 'connect';
 
 let observatoryNextStarId = 0;
@@ -676,7 +676,7 @@ function observatoryMousePressed() {
     observatoryPressMovedOut = false;
     observatoryDragLabel = null;
 
-    // U-12: подпись перехватывает нажатие только в ✋ и только если под пальцем
+    // U-12: подпись перехватывает нажатие только в режиме «двигать» и только если под пальцем
     // нет звезды вплотную. Иначе подпись, накрывшая звезду, отнимала бы у неё
     // перекраску — а красят здесь куда чаще, чем переименовывают.
     if (observatoryMode === 'move' &&
