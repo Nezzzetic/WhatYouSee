@@ -1,6 +1,68 @@
 // constants.js — Shared constants and configuration
 
 // =============================================================================
+// K-01: СИСТЕМА КНИГИ — палитра и движение канваса
+// =============================================================================
+// Те же величины, что в css/style.css (:root). Дублируются намеренно: канвас
+// не читает CSS-переменные, а расходиться небу и книге нельзя. Правишь здесь —
+// правь и там; концепт — dev/docs/ui-concepts/almanac-nights-ed2.html.
+
+/** Ночь: небо и его глубина. Верх градиента и низ. */
+const NIGHT_SOFT_RGB = [10, 19, 34];
+const NIGHT_RGB = [5, 9, 15];
+/** Чернила: всё, что игра пишет. Бледные = «этого ещё нет». */
+const INK_RGB = [234, 241, 249];
+const INK_MUTED_RGB = [165, 184, 205];
+const INK_FAINT_RGB = [100, 128, 157];
+/** Сургуч: «готово, прижми». Единственный сигнал. */
+const WAX_RGB = [196, 85, 59];
+/** Золото: свет и пройденный путь. */
+const GOLD_RGB = [217, 164, 65];
+const GOLD_LIGHT_RGB = [240, 216, 166];
+
+/** Туманность на небе: подмешивается к ночи, из палитры не выходит. */
+const NEBULA_TINT_RGB = [30, 58, 104];
+
+// --- Движение: два темпа и одна кривая ---------------------------------------
+// Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900). Темп назначается
+// движению, которое игрок видит ОТДЕЛЬНЫМ событием: отклику на его касание
+// или сцене целиком. Внутренние шаги сцены (шаг волны, задержка между
+// созвездиями, вспышка одной звезды внутри общей волны) темпом не управляются —
+// они калиброваны так, чтобы сцена уложилась в свой темп (V-12, V-13).
+
+const MOTION_MICRO_MS = 240;
+const MOTION_SCENE_MS = 700;
+const MOTION_SCENE_LONG_MS = 900;
+
+/**
+ * Кривая книги — cubic-bezier(.22, 1, .36, 1), та же, что в CSS (--ease).
+ * Свет разгорается и мягко встаёт: ни отскока, ни пружины. Решается Ньютоном
+ * по x (кривая монотонна, трёх итераций хватает на пиксельную точность).
+ */
+function easeBook(t) {
+    const x = Math.max(0, Math.min(1, t));
+    if (x === 0 || x === 1) return x;
+    const X1 = 0.22, Y1 = 1, X2 = 0.36, Y2 = 1;
+    const bez = (a, b, u) => {
+        const v = 1 - u;
+        return 3 * v * v * u * a + 3 * v * u * u * b + u * u * u;
+    };
+    const slope = (a, b, u) => {
+        const v = 1 - u;
+        return 3 * v * v * a + 6 * v * u * (b - a) + 3 * u * u * (1 - b);
+    };
+    let u = x;
+    for (let i = 0; i < 5; i++) {
+        const d = bez(X1, X2, u) - x;
+        const k = slope(X1, X2, u);
+        if (Math.abs(d) < 1e-6 || k === 0) break;
+        u -= d / k;
+        u = Math.max(0, Math.min(1, u));
+    }
+    return bez(Y1, Y2, u);
+}
+
+// =============================================================================
 // FIELD DIMENSIONS (portrait orientation)
 // =============================================================================
 
@@ -61,9 +123,9 @@ const LABEL_ZOOM_FADE_HI = 0.35;
 // =============================================================================
 
 const STAR_SIZE = 8;
-const STAR_COLOR = [255, 255, 255];
+const STAR_COLOR = [237, 239, 245];
 /** Stars locked into a constellation (constellation vertices). */
-const USED_STAR_COLOR = [255, 200, 40];
+const USED_STAR_COLOR = [217, 164, 65];
 const LOCKED_STAR_SIZE_MULTIPLIER = 1.38;
 /** V-10: зазор между концом линии и звездой — доля от диаметра отрисовки звезды
  *  (baseStarDrawSize). Задаётся долей, а не world-числом, чтобы ехать за размером
@@ -84,32 +146,35 @@ const COLLECTED_ATLAS_LABEL_SIZE = 16;
 const DRAFT_ATLAS_HINT_BOOK_PX = 10;
 const LOCKED_STAR_GLOW_ALPHA = 88;
 const LOCKED_STAR_HALO_WHITE_ALPHA = 34;
-const SUPPRESSED_STAR_COLOR = [95, 95, 125];
+const SUPPRESSED_STAR_COLOR = [100, 128, 157];
 const SUPPRESSED_STAR_SCALE = 0.6;
 const STAR_SIZE_VARIATION_MIN = 0.88;
 const STAR_SIZE_VARIATION_MAX = 1.15;
-/** Discrete star temperature tiers (colorValue → RGB). */
+/** Discrete star temperature tiers (colorValue → RGB).
+ *  K-01: пять звёздных книги — Гранат, Янтарь, Медь, Опал, Лёд. Значения
+ *  `value` (−100…100) НЕ меняются: по ним считаются бакеты цвета, огранка
+ *  и цветовые цепочки, и правка палитры их не должна касаться. */
 const STAR_COLOR_TIERS = [
-    { value: -100, rgb: [255, 90, 90] },
-    { value: -50, rgb: [255, 160, 70] },
-    { value: 0, rgb: [255, 230, 100] },
-    { value: 50, rgb: [255, 255, 255] },
-    { value: 100, rgb: [120, 210, 255] }
+    { value: -100, rgb: [240, 122, 103] },  // Гранат #F07A67
+    { value: -50, rgb: [242, 162, 84] },    // Янтарь #F2A254
+    { value: 0, rgb: [242, 201, 101] },     // Медь   #F2C965
+    { value: 50, rgb: [237, 239, 245] },    // Опал   #EDEFF5
+    { value: 100, rgb: [134, 200, 242] }    // Лёд    #86C8F2
 ];
 const STAR_COLOR_VALUES = STAR_COLOR_TIERS.map((t) => t.value);
 const EXTINGUISHED_STAR_CHANCE = 0.16;
-const EXTINGUISHED_STAR_COLOR = [100, 98, 118];
+const EXTINGUISHED_STAR_COLOR = [78, 100, 124];
 const EXTINGUISHED_STAR_SCALE = 0.58;
 const STAR_SUPPRESSION_LINE_RADIUS = 104;
 const STAR_SUPPRESSION_LOCKED_RADIUS = 144;
-const LINE_COLOR = [255, 255, 140];
+const LINE_COLOR = [217, 164, 65];
 
 // V-07: фидбэк-анимация соединения. Досягаемые от якоря звёзды коротко
 // вспыхивают при каждом новом ребре; недосягаемые плавно гаснут (заменяет
 // статичный дим U-03).
 const FEEDBACK_DIM_MIN = 0.3;        // до какого alpha гаснут недосягаемые
 const FEEDBACK_DIM_TAU_MS = 120;     // постоянная сглаживания дима (мс)
-const FEEDBACK_PULSE_MS = 220;       // длительность импульса досягаемых (мс)
+const FEEDBACK_PULSE_MS = MOTION_MICRO_MS;  // импульс досягаемых: отклик на касание
 const FEEDBACK_PULSE_SCALE = 0.35;   // прибавка к размеру на пике импульса
 const FEEDBACK_PULSE_BRIGHTEN = 0.45; // прибавка к яркости гало/свечения на пике
 
@@ -119,14 +184,14 @@ const FEEDBACK_PULSE_BRIGHTEN = 0.45; // прибавка к яркости га
 // Числа визуальные, калибруются свободно — экономики не касаются.
 const COMMIT_WAVE_EDGE_MS = 130;        // волна идёт по одному ребру
 const COMMIT_WAVE_STEP_MS = 55;         // задержка старта между соседними рёбрами
-const COMMIT_WAVE_TOTAL_MAX_MS = 620;   // потолок всей волны — шаг ужимается под него
+const COMMIT_WAVE_TOTAL_MAX_MS = MOTION_SCENE_MS; // потолок всей волны = темп сцены
 const COMMIT_WAVE_CREST = 0.45;         // длина светлого «огонька» на острие, доля ребра
 const COMMIT_WAVE_STROKE_EXTRA = 2.2;   // прибавка к толщине огонька (экранные px)
 const COMMIT_WAVE_WHITEN = 0.55;        // подмешивание белого в цвет линии на огоньке
 const COMMIT_WAVE_STAR_FLASH_MS = 180;  // вспышка звезды на приходе волны
 const COMMIT_WAVE_STAR_SCALE = 0.55;    // прибавка к размеру звезды на пике вспышки
 const COMMIT_WAVE_STAR_BRIGHTEN = 0.6;  // прибавка к яркости гало/свечения на пике
-const COMMIT_WAVE_LABEL_FADE_MS = 220;  // проявление подписи атласной после волны
+const COMMIT_WAVE_LABEL_FADE_MS = MOTION_MICRO_MS; // подпись после волны — отдельное появление
 
 // V-13: финал ночи. Небо не раскрывается одним кадром: созвездия сначала гаснут,
 // камера едет к обзору всего поля, и следом созвездия рождаются заново по одному
@@ -135,8 +200,8 @@ const COMMIT_WAVE_LABEL_FADE_MS = 220;  // проявление подписи �
 // Занавес гасит созвездие ЦЕЛИКОМ — и линии, и его звёзды (правка заказчика
 // 2026-08-09). Звёзды вне созвездий (свободные, подавленные, погасшие) сцену
 // не замечают: они не часть созвездия, и гасить их не за что.
-const LEVEL_FINALE_HIDE_MS = 250;        // затемнение в начале: созвездия уходят в ноль
-const LEVEL_FINALE_ZOOM_MS = 800;        // отзум камеры к обзору поля
+const LEVEL_FINALE_HIDE_MS = MOTION_MICRO_MS; // занавес в начале: созвездия уходят в ноль
+const LEVEL_FINALE_ZOOM_MS = 800;        // отзум камеры: сцена, в коридоре 600–900
 const LEVEL_FINALE_WAVE_DELAY_MS = 350;  // лид-ин: волна рождения стартует позже затемнения
 // ⚠️ Шаг и потолок ходят парой. На реальном небе (40+ созвездий) потолок всегда
 // срабатывает и НАЗНАЧАЕТ шаг сам: поднимать STEP_MS, не подняв TOTAL_MAX,
@@ -144,7 +209,7 @@ const LEVEL_FINALE_WAVE_DELAY_MS = 350;  // лид-ин: волна рожден
 // Числа 2026-08-09 подобраны под 40 созвездий: шаг там ровно 220 мс, то есть
 // в воздухе одновременно ~4 созвездия вместо прежних 6.
 const LEVEL_FINALE_STEP_MS = 220;        // задержка между соседними созвездиями
-const LEVEL_FINALE_FADE_MS = 840;        // проявление одного созвездия
+const LEVEL_FINALE_FADE_MS = 840;        // проявление одного созвездия: сцена, в коридоре 600–900
 const LEVEL_FINALE_TOTAL_MAX_MS = 9800;  // потолок ВСЕЙ сцены — шаг ужимается под него
 // Вспышка масштабируется вместе с проявлением: на пике она приходится на ещё
 // разгорающуюся звезду, и короткая вспышка при длинном фейде просто не видна.
@@ -158,9 +223,9 @@ const LEVEL_FINALE_STAR_FLASH_MS = 440;  // вспышка звезды в мо�
 // самым беззвучным жестом в игре. Числа визуальные и калибруются свободно:
 // экономики не касаются, награды считает `getAchievementChainStepReward`.
 
-const CLAIM_COIN_MS = 520;          // длительность перелёта «монеты» к счётчику
+const CLAIM_COIN_MS = MOTION_SCENE_MS; // перелёт «монеты» к счётчику: «выпуск света», сцена
 const CLAIM_COIN_MAX = 5;           // потолок монет в воздухе (серия заборов)
-const CLAIM_SCORE_PULSE_MS = 320;   // пульс счётчика ✦ на прилёте
+const CLAIM_SCORE_PULSE_MS = MOTION_MICRO_MS; // пульс счётчика ✦ на прилёте: микро-отклик
 /** Запас поверх длительности: страховка на случай, если `animationend`
  *  не придёт вовсе (вкладка ушла в фон, узел снесли). Зажатый счётчик
  *  обязан оттаять при любом исходе — см. `releaseScoreDisplay`. */
@@ -236,7 +301,7 @@ const STAR_APPEAR_DELAY_MAX = 1200;  // мс, макс задержка пере
 const LABEL_FADE_DELAY    = 400;     // мс, задержка после reveal до начала волны подписей
 const LABEL_FADE_DURATION = 500;     // мс, длительность fade одной подписи
 
-const ATTACH_FLASH_DURATION_MS = 250;
+const ATTACH_FLASH_DURATION_MS = MOTION_MICRO_MS; // отклик на присоединение звезды
 const FLOATING_SCORE_DURATION_MS = 1500;
 const FLOATING_SCORE_RISE = 40;
 

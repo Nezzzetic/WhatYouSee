@@ -307,17 +307,17 @@ function drawDraftAtlasBookIconScreen(x, y, canCollect) {
 
     noStroke();
     if (canCollect) {
-        fill(255, 215, 95, 235);
+        fill(GOLD_RGB[0], GOLD_RGB[1], GOLD_RGB[2], 235);
     } else {
-        fill(195, 205, 245, 235);
+        fill(INK_MUTED_RGB[0], INK_MUTED_RGB[1], INK_MUTED_RGB[2], 235);
     }
     rect(x, y, pageW, h);
     rect(x + w - pageW, y, pageW, h);
 
     if (canCollect) {
-        stroke(255, 235, 150, 210);
+        stroke(GOLD_LIGHT_RGB[0], GOLD_LIGHT_RGB[1], GOLD_LIGHT_RGB[2], 210);
     } else {
-        stroke(140, 155, 210, 210);
+        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 210);
     }
     strokeWeight(1);
     line(x + w * 0.5, y + 1, x + w * 0.5, y + h - 1);
@@ -348,11 +348,11 @@ function drawDraftStarCountLabelScreen() {
     const offsetPx = 14;
 
     if (n <= 1) {
-        fill(220, 220, 235, 235);
+        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 235);
     } else if (claimedStarCounts.has(n)) {
-        fill(130, 135, 155, 215);
+        fill(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 215);
     } else {
-        fill(255, 230, 150, 250);
+        fill(GOLD_LIGHT_RGB[0], GOLD_LIGHT_RGB[1], GOLD_LIGHT_RGB[2], 250);
     }
 
     const labelX = screenX + offsetPx;
@@ -509,7 +509,7 @@ function drawConstellationLabelsOnTile() {
             // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
             // волна отыгрывает своё независимо, и при обратном зуме после ночи
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
-            fill(235, 235, 255, alpha * zoomAlpha);
+            fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], alpha * zoomAlpha);
             textSize(REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel);
             text(getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y);
             continue;

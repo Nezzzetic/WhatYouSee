@@ -183,10 +183,11 @@ function getCommitWaveLabelAlpha(constellation) {
 
 let levelFinale = null; // { startMs, camFrom, stepMs, count, totalMs, order, starBirthMs }
 
-/** Сглаживание отзума: smoothstep, без рывка на старте и на остановке. */
+/** Сглаживание отзума: кривая книги (K-01) — камера трогается сразу и мягко
+ *  встаёт, без рывка на старте и на остановке. Кривая в игре одна: та же
+ *  `--ease` в CSS и тот же `easeBook` во всех сценах канваса. */
 function computeFinaleEase(t) {
-    const u = Math.max(0, Math.min(1, t));
-    return u * u * (3 - 2 * u);
+    return easeBook(t);
 }
 
 /** Занавес в начале сцены: 1 → 0 за hideMs. Дальше созвездий не видно вовсе. */

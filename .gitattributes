@@ -10,3 +10,6 @@
 # `-diff` держит его вне вывода `git diff` (иначе замена версии выплюнет
 # 977 КБ), `linguist-vendored` — вне языковой статистики GitHub.
 js/vendor/* -diff linguist-vendored
+
+# K-01: вендоренные шрифты — бинарники, диффом не показывать.
+*.woff2 binary -diff
