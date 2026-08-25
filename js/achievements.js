@@ -926,7 +926,7 @@ function recomputeAchievementsClaimable(notify) {
     }
 }
 
-/** Есть ли где-нибудь в Наградах забираемый шаг (бейдж на peek-строке). */
+/** Есть ли где-нибудь в Наградах забираемый шаг (капля сургуча на ленте, K-05). */
 function hasClaimableAchievements() {
     return ACHIEVEMENT_CHAINS.some(chain => {
         const p = achievementProgress[chain.id];
@@ -1056,7 +1056,7 @@ function afterAchievementStateChanged() {
     recomputeAchievementsClaimable(true);
     saveProgression();
     // U-09: обе половины живут в шторке — перерисовываем её, если открыта
-    if (typeof updatePeekBar === 'function') updatePeekBar();
+    if (typeof updateRibbonSignal === 'function') updateRibbonSignal();
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
 }
 

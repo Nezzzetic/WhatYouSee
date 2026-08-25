@@ -494,13 +494,21 @@
     }
 
     function ui() {
-        const badge = document.getElementById('peekRewardsBadge');
+        // K-05: сигнал переехал с бейджа свёрнутой шторки на каплю сургуча.
+        // `rewardsBadge` оставлен псевдонимом на время серии K (договорённость
+        // K-07: сценарии падают по одному, а не все сразу).
+        const wax = document.getElementById('ribbonWax');
+        const ribbon = document.getElementById('skyRibbon');
+        const waxOn = !!(wax && !wax.hidden);
         return {
             sheetOpen,
             section: sheetSection,
             page: getSheetPageIndex(),
             pageCount: getSheetPageCount(sheetSection),
-            rewardsBadge: !!(badge && !badge.hidden),
+            wax: waxOn,
+            ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
+            bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
+            rewardsBadge: waxOn,
             hasClaimable: hasClaimableAchievements()
         };
     }

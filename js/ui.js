@@ -159,7 +159,7 @@ function renderFieldGoalClaimButtons() {
 
 function updateProgressionUI() {
     updateScoreUI();
-    updatePeekBar();
+    updateRibbonSignal();
 }
 
 // V-13: showLevelCompleteToast() удалена вместе с узлом, стилем и ключом
@@ -478,7 +478,7 @@ function refreshConstellationHintsIfLevelComplete() {
 
 function onConstellationCreated(shapeName) {
     if (!shapeName) return;
-    updatePeekBar();
+    updateRibbonSignal();
     refreshSheetIfOpen();
 }
 
@@ -1002,7 +1002,7 @@ function renderSheet() {
     renderSheetRail();
     renderSheetSegment();
     updateScoreUI();
-    updatePeekBar();
+    updateRibbonSignal();
 }
 
 function refreshSheetIfOpen() {
@@ -1051,13 +1051,19 @@ function stepSheetPage(delta) {
     return true;
 }
 
-/** Peek-строка: ✦ и бейдж «в Наградах есть что забрать». */
-function updatePeekBar() {
-    const badge = document.getElementById('peekRewardsBadge');
-    if (badge) {
-        const claimable = typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
-        badge.hidden = !claimable;
-    }
+/**
+ * K-05: единственный сигнал на небе. Один предикат на всю игру — сюда
+ * [K-15](wax-signals) добавит события мира; сегодня событий, случающихся без
+ * игрока, у неё нет, и условие равно прежнему условию бейджа.
+ */
+function hasSkyWaxSignal() {
+    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
+}
+
+/** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
+function updateRibbonSignal() {
+    const wax = document.getElementById('ribbonWax');
+    if (wax) wax.hidden = !hasSkyWaxSignal();
 }
 
 // =============================================================================
@@ -1094,7 +1100,7 @@ function setupSheetGestures() {
     const sheet = document.getElementById('sheet');
     const content = document.getElementById('sheetContent');
     const handle = document.getElementById('sheetHandle');
-    const peek = document.getElementById('peekBar');
+    const ribbon = document.getElementById('skyRibbon');
     if (!sheet || !content || !handle) return;
 
     let startX = 0, startY = 0;
@@ -1166,8 +1172,8 @@ function setupSheetGestures() {
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
 
-    // Вытягивание шторки вверх за peek-строку — обратный жест к закрытию
-    if (peek) setupPeekPullGesture(peek);
+    // K-05: потягивание ленты вверх — обратный жест к закрытию книги
+    if (ribbon) setupRibbonPullGesture(ribbon);
 
     // Десктоп: колесо вбок листает страницы
     sheet.addEventListener('wheel', (event) => {
@@ -1179,8 +1185,8 @@ function setupSheetGestures() {
     sheetHandlersBound = true;
 }
 
-/** Тянем peek-строку вверх — шторка открывается на последнем разделе. */
-function setupPeekPullGesture(peek) {
+/** K-05: тянем ленту-закладку вверх — книга открывается на последнем разделе. */
+function setupRibbonPullGesture(ribbon) {
     let startY = 0;
     let startX = 0;
     let tracking = false;
@@ -1212,33 +1218,33 @@ function setupPeekPullGesture(peek) {
 
     const end = () => { tracking = false; };
 
-    peek.addEventListener('touchstart', start, { passive: true });
-    peek.addEventListener('touchmove', move, { passive: true });
-    peek.addEventListener('touchend', end);
-    peek.addEventListener('touchcancel', end);
-    peek.addEventListener('mousedown', start);
+    ribbon.addEventListener('touchstart', start, { passive: true });
+    ribbon.addEventListener('touchmove', move, { passive: true });
+    ribbon.addEventListener('touchend', end);
+    ribbon.addEventListener('touchcancel', end);
+    ribbon.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
 
     // Потянули вверх — click по кнопке под пальцем не должен переключать раздел
-    peek.addEventListener('click', (event) => {
+    ribbon.addEventListener('click', (event) => {
         if (!pulled) return;
         pulled = false;
         event.stopPropagation();
         event.preventDefault();
     }, true);
 
-    // Тап по свёрнутой шторке разворачивает её
-    peek.addEventListener('click', () => {
+    // Тап по ленте открывает книгу
+    ribbon.addEventListener('click', () => {
         if (sheetOpen) return;
         openSheet(sheetSection);
     });
 }
 
 function setupSheetControls() {
-    // Свёрнутая шторка — единая цель: тап или потягивание вверх открывают её
-    // на том разделе, где игрок был в прошлый раз.
-    document.getElementById('peekBar')?.addEventListener('keydown', (event) => {
+    // K-05: лента — единая цель: тап, потягивание вверх или Enter открывают
+    // книгу на том разделе, где игрок был в прошлый раз.
+    document.getElementById('skyRibbon')?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
         openSheet(sheetSection);
