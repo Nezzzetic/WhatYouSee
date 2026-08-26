@@ -109,7 +109,6 @@ function setAppMode(mode) {
     // Подсказки созвездий в обсерватории не нужны — фигур здесь нет
     setConstellationHintsPanelVisible(false);
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
-    updateUndoConstellationButtonState();
     return true;
 }
 
@@ -220,8 +219,6 @@ function setup() {
     closeSheet();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
-
-    updateUndoConstellationButtonState();
     updateObservatoryUI();
 
     setupSheetControls();
@@ -246,8 +243,6 @@ function setup() {
     document.getElementById("zoomInButton")?.addEventListener("click", () => zoomByStep(1));
     document.getElementById("zoomOutButton")?.addEventListener("click", () => zoomByStep(-1));
 
-    document.getElementById("undoLastConstellationBtn")?.addEventListener("click", undoLastConstellation);
-
     window.addEventListener("keydown", onGlobalPopupKeydown);
 }
 
@@ -271,6 +266,7 @@ function draw() {
     drawFieldMode();
     drawDraftStarCountLabelScreen();
     drawFloatingScores();
+    drawUndoMarkScreen(); // K-04: пометка корректора — поверх всего, что на небе
 }
 
 // =============================================================================
@@ -340,6 +336,7 @@ function resetFieldSessionState() {
     fieldGoalsAchieved = [false, false, false];
     fieldGoalRewardsClaimed = [false, false, false];
     floatingScores = [];
+    if (typeof cancelUndoMark === 'function') cancelUndoMark(); // K-04: окна отмены у нового неба нет
     bestScore = 0;
     resetStarCountBonusState();
     resetRecordScoreBadge();
@@ -385,7 +382,6 @@ function startNewDailySky(options) {
     refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
-    updateUndoConstellationButtonState();
 
     if (opts.saveAfter !== false) {
         autoSave();
@@ -416,7 +412,6 @@ function onResetSky() {
     refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
-    updateUndoConstellationButtonState();
 
     clearSave();
     autoSave();
@@ -504,7 +499,6 @@ function onDevAddMetaScore() {
     saveProgression();
 
     updateProgressionUI();
-    updateUndoConstellationButtonState();
     updateObservatoryUI();
     refreshSheetIfOpen();
     updateRibbonSignal();
@@ -572,7 +566,6 @@ function performFullReset(options) {
     refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
-    updateUndoConstellationButtonState();
     updateObservatoryUI();
 
     clearSave();

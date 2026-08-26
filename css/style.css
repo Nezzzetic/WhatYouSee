@@ -192,61 +192,11 @@ body {
     overflow: hidden;
 }
 
-/* --- Corner HUD overlays --- */
-
-.hud-corner {
-    position: fixed;
-    z-index: 40;
-    border: 1px solid var(--paper-edge);
-    border-radius: 10px;
-    background: rgba(var(--paper-rgb), 0.82);
-    backdrop-filter: blur(4px);
-}
-
-.hud-top-left {
-    top: 12px;
-    left: 12px;
-    max-width: min(40vw, 280px);
-    padding: 8px 10px;
-}
-
-/* U-09: правый верхний угол освобождён — ✦ живёт в шапке шторки */
-
-.hud-bottom-right {
-    /* K-05: выше ленты-закладки — она стоит в том же углу.
-       Кнопку отката снимет K-04, до тех пор они делят угол по вертикали. */
-    bottom: calc(var(--ribbon-h) + var(--safe-bottom) + 12px);
-    right: 12px;
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    padding: 8px;
-    border: none;
-    background: transparent;
-    backdrop-filter: none;
-}
-
-.hud-icon-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 44px;
-    height: 44px;
-    min-width: 0;
-    padding: 0;
-    border-radius: 10px;
-    border: 1px solid var(--paper-edge);
-    background: rgba(var(--paper-rgb), 0.82);
-    backdrop-filter: blur(4px);
-    font-size: 20px;
-    line-height: 1;
-    text-align: center;
-}
-
-.hud-icon-btn:hover:not(:disabled) {
-    border-color: var(--ink-faint);
-    background: rgba(var(--paper-raised-rgb), 0.92);
-}
+/* K-04: угловых панелей на небе больше нет. `.hud-corner`, `.hud-top-left`,
+   `.hud-bottom-right` и `.hud-icon-btn` сняты вместе с кнопкой отката: ✦ уехал
+   в шапку шторки ещё в U-09, вход в книгу стал лентой в K-05, а отмена —
+   корректорской пометкой на канвасе. Единственный постоянный предмет неба —
+   лента-закладка; всё прочее приходит и тает. */
 
 /* D-01: невидимая зона тройного тапа — левый нижний угол, всегда доступна */
 .dev-toggle-btn {
@@ -1166,7 +1116,14 @@ button:disabled {
 /* Тумблер режима в правом нижнем углу — на месте кнопки отката (U-09).
    getBottomUIHeight() не меняется: панель и так лежит поверх полосы,
    зарезервированной под свёрнутую шторку. */
+/* B-02: тумблер «соединять»/«двигать» — единственный, кто остался в углу после
+   K-04, и только в обсерватории. Фиксацию, которую раньше давал `#gameActions`,
+   несёт теперь сам: над лентой-закладкой, она стоит в том же углу. До K-13. */
 .obs-mode-seg {
+    position: fixed;
+    z-index: 40;
+    right: 20px;
+    bottom: calc(var(--ribbon-h) + var(--safe-bottom) + 20px);
     flex: none;
     width: 92px;
     align-items: center;

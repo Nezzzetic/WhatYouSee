@@ -323,6 +323,64 @@ function drawDraftAtlasBookIconScreen(x, y, canCollect) {
     line(x + w * 0.5, y + 1, x + w * 0.5, y + h - 1);
 }
 
+/**
+ * K-04: знак отмены из кассы K-02 (`#i-undo`) на канвасе. Касса нарисована
+ * в боксе 24×24 одной линией без заливок — здесь тот же контур теми же
+ * координатами, чтобы небо и книга показывали один и тот же знак.
+ */
+function drawUndoSignScreen(cx, cy, size, rgb, alpha) {
+    const k = size / 24;
+    const strokePx = size <= 16 ? 1.1 : 1.4;   // штрих кассы: 1.4 при 24, 1.1 мельче
+
+    push();
+    translate(cx - size / 2, cy - size / 2);
+    scale(k);
+    noFill();
+    stroke(rgb[0], rgb[1], rgb[2], alpha);
+    strokeWeight(strokePx / k);
+    strokeCap(ROUND);
+    line(19, 8.4, 9.2, 8.4);
+    arc(9.2, 13.1, 9.4, 9.4, HALF_PI, PI + HALF_PI);
+    line(9.2, 17.8, 12.6, 17.8);
+    line(15.4, 4.6, 19.4, 8.4);
+    line(19.4, 8.4, 15.4, 12.2);
+    pop();
+}
+
+/**
+ * K-04: корректорская пометка — «↺ Heron» под подписью только что созданной
+ * фигуры. Единственное, что игра говорит поверх неба, и единственный вход
+ * в отмену. Плашки под ней нет намеренно: концепт снял с неба кнопки, а не
+ * перекрасил их. Геометрию (включая разворот от края) считает
+ * `computeUndoMarkLayout` — она же отвечает за попадание пальцем.
+ */
+function drawUndoMarkScreen() {
+    const m = typeof computeUndoMarkLayout === 'function' ? computeUndoMarkLayout() : null;
+    if (!m) return;
+
+    const a = m.alpha;
+    push();
+    try {
+        // Волосок-выноска: от подписи к пометке. Разворачивается вместе с ней.
+        const fromY = m.anchorY + (m.below ? UNDO_MARK_LEADER_GAP_PX : -UNDO_MARK_LEADER_GAP_PX);
+        const toY = m.below ? m.top : m.top + m.h;
+        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 150 * a);
+        strokeWeight(1);
+        line(m.anchorX, fromY, m.cx, toY);
+
+        const signCx = m.left + UNDO_MARK_SIGN_PX / 2;
+        drawUndoSignScreen(signCx, m.cy, UNDO_MARK_SIGN_PX, INK_MUTED_RGB, 235 * a);
+
+        noStroke();
+        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 240 * a);
+        textAlign(LEFT, CENTER);
+        textSize(UNDO_MARK_TEXT_PX);
+        text(m.label, m.left + UNDO_MARK_SIGN_PX + UNDO_MARK_SIGN_GAP_PX, m.cy);
+    } finally {
+        pop();
+    }
+}
+
 /** Счётчик звёзд у последней точки цепочки — в экранных px (зум и wrap). */
 function drawDraftStarCountLabelScreen() {
     if (!currentLines || currentLines.length === 0) return;
