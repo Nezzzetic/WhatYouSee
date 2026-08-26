@@ -128,6 +128,15 @@ function getCommitWaveElapsed() {
     return elapsed;
 }
 
+/** Полная длительность текущей волны: пометка K-04 ждёт, пока доедет имя. */
+function getCommitWaveTotalMs() {
+    if (!commitWave) return 0;
+    const tailMs = Math.max(COMMIT_WAVE_STAR_FLASH_MS, COMMIT_WAVE_LABEL_FADE_MS);
+    return computeCommitWaveTotal(
+        commitWave.edgeCount, commitWave.stepMs, COMMIT_WAVE_EDGE_MS, tailMs
+    );
+}
+
 /** Прогресс ребра волнового созвездия; для всех прочих созвездий — 1. */
 function getCommitWaveEdgeProgress(constellation, edgeIndex) {
     if (!commitWave || commitWave.constellation !== constellation) return 1;
@@ -167,6 +176,170 @@ function getCommitWaveLabelAlpha(constellation) {
     const waveEnd = (commitWave.edgeCount - 1) * commitWave.stepMs + COMMIT_WAVE_EDGE_MS;
     if (COMMIT_WAVE_LABEL_FADE_MS <= 0) return elapsed >= waveEnd ? 1 : 0;
     return Math.max(0, Math.min(1, (elapsed - waveEnd) / COMMIT_WAVE_LABEL_FADE_MS));
+}
+
+// =============================================================================
+// K-04 — КОРРЕКТОРСКАЯ ПОМЕТКА
+// =============================================================================
+// Единственный вход в отмену: постоянной кнопки на небе нет. Слот один — пометка
+// всегда про последнее созвездие. Состояние живёт ВНЕ сейва (как волна V-12):
+// после перезагрузки окна отмены нет, версия сейва не поднимается.
+//
+// Живость проверяется КАЖДЫМ КАДРОМ, а не событиями: пометка есть, пока её
+// созвездие последнее и `constellations.length > undoFloor`. Поэтому мгновенный
+// клейм шага 1 (S-01), забор награды и открытие страницы атласа гасят её сами —
+// поднимать `undoFloor` и помнить про пометку не нужно.
+
+let undoMark = null;  // { constellation, startMs }
+
+/**
+ * Ставит пометку на только что закоммиченное созвездие. Отсчёт начинается не
+ * сразу: сперва волна V-12 дочерчивает фигуру и проявляет имя, и только под
+ * готовым именем всплывает пометка.
+ */
+function startUndoMark(constellation) {
+    if (!constellation) {
+        undoMark = null;
+        return;
+    }
+    undoMark = {
+        constellation,
+        startMs: millis() + (typeof getCommitWaveTotalMs === 'function' ? getCommitWaveTotalMs() : 0)
+    };
+}
+
+function cancelUndoMark() {
+    undoMark = null;
+}
+
+/** Откат возможен: есть что снимать выше пола необратимости. */
+function canUndoLastConstellation() {
+    return Array.isArray(constellations) && constellations.length > undoFloor;
+}
+
+/**
+ * Пометка, если она сейчас имеет право быть: её созвездие ещё последнее,
+ * откат ещё возможен и небу не мешает сцена финала. Протухшую снимает тут же.
+ */
+function getLiveUndoMark() {
+    if (!undoMark) return null;
+    const last = constellations[constellations.length - 1];
+    if (last !== undoMark.constellation || !canUndoLastConstellation()) {
+        undoMark = null;
+        return null;
+    }
+    if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return null;
+    return undoMark;
+}
+
+/**
+ * Прозрачность пометки: всплытие → покой → таяние. Отдельная чистая функция —
+ * тайминги проверяются статикой, без p5 и глобалов.
+ */
+function computeUndoMarkAlpha(elapsed, inMs, holdMs, outMs) {
+    if (elapsed < 0 || elapsed >= inMs + holdMs + outMs) return 0;
+    if (elapsed < inMs) return inMs > 0 ? elapsed / inMs : 1;
+    const held = elapsed - inMs;
+    if (held < holdMs) return 1;
+    return outMs > 0 ? 1 - (held - holdMs) / outMs : 0;
+}
+
+/**
+ * Экранная геометрия пометки — одна на отрисовку и на попадание пальцем.
+ * Разъехались бы они, и тап уезжал бы от того, что видно.
+ *
+ * Якорь мировой (подпись фигуры), пересчёт в экран каждый кадр: пометка ходит
+ * за фигурой при зуме и панораме и остаётся одного кегля. У края экрана
+ * разворачивается внутрь — и вбок, и, если внизу не помещается, вверх.
+ */
+function computeUndoMarkLayout() {
+    const mark = getLiveUndoMark();
+    if (!mark) return null;
+
+    const elapsed = millis() - mark.startMs;
+    if (elapsed < 0) return null;   // ещё идёт волна V-12
+    const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+    const inMs = reduced ? 0 : UNDO_MARK_IN_MS;
+    const outMs = reduced ? 0 : UNDO_MARK_OUT_MS;
+    const alpha = computeUndoMarkAlpha(elapsed, inMs, UNDO_MARK_HOLD_MS, outMs);
+    if (alpha <= 0) {
+        if (elapsed >= inMs + UNDO_MARK_HOLD_MS + outMs) undoMark = null;
+        return null;
+    }
+
+    const c = mark.constellation;
+    const anchor = c.labelAnchor || c.center;
+    if (!anchor) return null;
+
+    // Ближайшая по горизонтали копия — то же, что у флоатеров: поле заворачивается.
+    const viewW = width / zoomLevel;
+    const viewH = height / zoomLevel;
+    const fw = nearestHorizontalCopy(anchor.x, anchor.y, camX + viewW / 2, camY + viewH / 2);
+    const ax = (fw.x - camX) * zoomLevel;
+    const ay = (fw.y - camY) * zoomLevel;
+
+    const label = getUndoMarkLabel(c);
+    push();
+    textSize(UNDO_MARK_TEXT_PX);
+    const textW = textWidth(label);
+    pop();
+
+    const w = UNDO_MARK_SIGN_PX + UNDO_MARK_SIGN_GAP_PX + textW;
+    const h = Math.max(UNDO_MARK_SIGN_PX, UNDO_MARK_TEXT_PX) + 4;
+    const rise = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_RISE_PX;
+
+    // Внизу не помещается — уходит над подписью; волосок разворачивается вместе с ней.
+    let below = true;
+    let cy = ay + UNDO_MARK_DROP_PX + rise;
+    if (cy + h / 2 > height - UNDO_MARK_EDGE_PAD_PX) {
+        below = false;
+        cy = ay - UNDO_MARK_DROP_PX - rise;
+    }
+    cy = Math.max(UNDO_MARK_EDGE_PAD_PX + h / 2,
+                  Math.min(height - UNDO_MARK_EDGE_PAD_PX - h / 2, cy));
+
+    let left = ax - w / 2;
+    left = Math.max(UNDO_MARK_EDGE_PAD_PX,
+                    Math.min(width - UNDO_MARK_EDGE_PAD_PX - w, left));
+
+    return {
+        label, alpha, below, w, h,
+        left,
+        top: cy - h / 2,
+        cx: left + w / 2,
+        cy,
+        anchorX: ax,
+        anchorY: ay
+    };
+}
+
+/**
+ * Что именно сотрёт пометка. Имя — только если игра его уже показала: fallback-имя
+ * принадлежит раскрытию ночи, и выдавать его заранее нельзя. Безымянная фигура
+ * называется размером — тем же «5★», что улетело флоатером на коммите.
+ */
+function getUndoMarkLabel(constellation) {
+    if (isUndoMarkNameVisible(constellation)) {
+        return getConstellationDisplayName(constellation);
+    }
+    const n = typeof constellation.starCount === 'number' ? constellation.starCount : 0;
+    return `${n}★`;
+}
+
+function isUndoMarkNameVisible(constellation) {
+    if (constellationArtRevealed) return true;
+    if (constellation.atlasCollected) return true;
+    return typeof isShapeRecognizedOnUnlockedAtlas === 'function'
+        && isShapeRecognizedOnUnlockedAtlas(constellation);
+}
+
+/** Попал ли тап в пометку. Зона касания шире надписи — как у ленты K-05. */
+function hitUndoMark(screenX, screenY) {
+    const m = computeUndoMarkLayout();
+    if (!m) return false;
+    const pad = UNDO_MARK_HIT_PAD_PX;
+    return screenX >= m.left - pad && screenX <= m.left + m.w + pad
+        && screenY >= m.top - pad && screenY <= m.top + m.h + pad;
 }
 
 // =============================================================================
@@ -628,6 +801,14 @@ function mousePressed(event) {
         return;
     }
 
+    // K-04: пометка корректора — единственный вход в отмену. Проверяется РАНЬШЕ
+    // переименования (U-04) и раньше звёзд: она висит поверх неба четыре секунды,
+    // и тап по ней ничей больше. Порядок ветвей здесь и есть приоритет.
+    if (hitUndoMark(mouseX, mouseY)) {
+        undoLastConstellation();
+        return;
+    }
+
     const fieldMouseX = mouseX / zoomLevel + camX;
     const fieldMouseY = mouseY / zoomLevel + camY;
 
@@ -1029,6 +1210,9 @@ function commitConstellationFromPayload(payload) {
     // V-12: волна создания. Ставится до пересчётов и раскрытия — если этот же
     // коммит завершает уровень, revealConstellationArt её ниже отменит.
     startCommitWave(constellation);
+    // K-04: окно отмены. Стартует после волны и гаснет само, если откат окажется
+    // невозможен (мгновенный клейм шага 1, финал ночи) — проверка живая, покадровая.
+    startUndoMark(constellation);
 
     const floaterAnchor = labelAnchor || center;
     if (floaterAnchor) {
@@ -1045,8 +1229,6 @@ function commitConstellationFromPayload(payload) {
     updateScoreUI(0, finalShape, starCount);
     updateProgressionUI();
     onConstellationCreated(finalShape);
-
-    updateUndoConstellationButtonState();
 
     if (typeof recordAchievementCommit === 'function') recordAchievementCommit(constellation);
 
@@ -1079,7 +1261,6 @@ function rebuildFieldShapeRewardsFromConstellations() {
 
 function raiseUndoFloor() {
     undoFloor = Math.max(undoFloor, constellations.length);
-    updateUndoConstellationButtonState();
 }
 
 function undoLastConstellation() {
@@ -1088,6 +1269,8 @@ function undoLastConstellation() {
 
     // V-12: иначе волна продолжила бы бежать по созвездию, которого уже нет.
     cancelCommitWave();
+    // K-04: окно отмены закрылось вместе с созвездием, которое оно называло.
+    cancelUndoMark();
     // V-13: защитно. `undoFloor` поднят раскрытием, так что до сюда с активной
     // сценой не дойти, но сцена держит ссылки на созвездия — пусть падает первой.
     cancelLevelFinale();
@@ -1125,7 +1308,6 @@ function undoLastConstellation() {
     updateBestScoreFromFieldScore();
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    updateUndoConstellationButtonState();
     refreshConstellationHintsIfLevelComplete();
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     autoSave();

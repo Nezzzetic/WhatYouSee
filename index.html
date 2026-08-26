@@ -66,19 +66,17 @@
     </svg>
 
     <div id="app">
-        <div id="gameActions" class="hud-corner hud-bottom-right">
-            <button type="button" id="undoLastConstellationBtn" class="hud-icon-btn"
-                    data-i18n-title="field.undoLast" data-i18n-aria="field.undoLast"
-                    disabled><svg class="ic" width="20" height="20" aria-hidden="true" focusable="false"><use href="#i-undo"/></svg></button>
-            <!-- B-02: в обсерватории откат прячется, на его месте тумблер режима -->
-            <div id="observatoryModeSeg" class="sheet-seg obs-mode-seg" hidden>
-                <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
-                        data-i18n-title="observatory.modeConnect"
-                        data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
-                <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
-                        data-i18n-title="observatory.modeMove"
-                        data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
-            </div>
+        <!-- K-04: постоянного интерфейса на небе не осталось — отмена стала
+             корректорской пометкой на канвасе. Тумблер режимов обсерватории
+             живёт здесь до K-13: без него холст остался бы без управления,
+             а на поле он скрыт и неба не занимает. -->
+        <div id="observatoryModeSeg" class="sheet-seg obs-mode-seg" hidden>
+            <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
+                    data-i18n-title="observatory.modeConnect"
+                    data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
+            <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
+                    data-i18n-title="observatory.modeMove"
+                    data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
         </div>
 
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>

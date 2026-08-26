@@ -1118,7 +1118,6 @@ function claimAchievementStep(chainId) {
     saveProgression();
 
     updateProgressionUI();
-    if (typeof updateUndoConstellationButtonState === 'function') updateUndoConstellationButtonState();
     if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
     return true;
 }

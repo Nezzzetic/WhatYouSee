@@ -718,6 +718,42 @@
      * Камера отдаётся вместе с целью, чтобы сценарий утверждал не «зум уменьшился»,
      * а «зум пришёл ровно в min, центр — в центр поля».
      */
+    /**
+     * K-04: корректорская пометка. Отдаёт ровно ту геометрию, по которой она
+     * нарисована, — сценарий тапает по настоящему месту, а не по догадке.
+     * `undoMark` — script-level let из drawing.js: на window его нет,
+     * но по имени из другого скрипта он виден.
+     */
+    function undoMarkState() {
+        const layout = computeUndoMarkLayout();
+        const pending = !!undoMark && !layout && millis() < undoMark.startMs;
+        if (!layout) {
+            return {
+                visible: false,
+                pending,
+                canUndo: canUndoLastConstellation(),
+                startsInMs: undoMark ? Math.round(undoMark.startMs - millis()) : null
+            };
+        }
+        return {
+            visible: true,
+            pending: false,
+            canUndo: canUndoLastConstellation(),
+            startsInMs: Math.round(undoMark.startMs - millis()),
+            label: layout.label,
+            alpha: layout.alpha,
+            below: layout.below,
+            rect: {
+                left: layout.left,
+                top: layout.top,
+                width: layout.w,
+                height: layout.h
+            },
+            center: { x: layout.cx, y: layout.cy },
+            anchor: { x: layout.anchorX, y: layout.anchorY }
+        };
+    }
+
     function levelFinaleState() {
         // `levelFinale` — script-level let из drawing.js: на window его нет,
         // но по имени из другого скрипта он виден.
@@ -800,6 +836,7 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
+        undoMark: undoMarkState,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
         errors,

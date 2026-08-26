@@ -250,7 +250,6 @@ en: {
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Rename constellation:',
     'field.constellation': 'Constellation',
-    'field.undoLast': 'Undo last constellation',
 
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.toObservatory': 'Go to the observatory',
@@ -477,7 +476,6 @@ ru: {
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Переименовать созвездие:',
     'field.constellation': 'Созвездие',
-    'field.undoLast': 'Отменить последнее созвездие',
 
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.toObservatory': 'Перейти в обсерваторию',

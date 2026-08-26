@@ -69,7 +69,28 @@ function prefersReducedMotion() {
 }
 
 /**
- * «Монета» с наградой летит от кнопки забора к счётчику ✦ в шапке шторки.
+ * K-04: последний замер ленты-закладки. Пока книга открыта, ленты в разметке нет
+ * (`display: none` — правило `.sheet-open-body .ribbon`), а лететь всё равно есть
+ * куда: угол, в котором она лежит, никуда не делся. Тот же приём, которым K-05
+ * держит резерв камеры, — последний ненулевой замер.
+ */
+let lastRibbonFlightRect = null;
+
+/** Цель полёта награды: лента-закладка, а не счётчик в шапке. */
+function getClaimFlightTargetRect() {
+    const ribbon = document.getElementById('skyRibbon');
+    if (ribbon) {
+        const rect = ribbon.getBoundingClientRect();
+        if (rect.width || rect.height) lastRibbonFlightRect = rect;
+    }
+    return lastRibbonFlightRect;
+}
+
+/**
+ * «Монета» с наградой летит от кнопки забора к ленте-закладке — в книгу, на
+ * корешок (K-04). Раньше целью был счётчик ✦ в шапке шторки; счётчика на небе
+ * нет, и единственная цифра, которую небо показывает, уходит туда же, куда
+ * ведёт единственный вход в книгу.
  *
  * @param {DOMRect|null} fromRect — прямоугольник кнопки, снятый ДО начисления:
  *        хвост забора зовёт `refreshSheetIfOpen()`, и к моменту полёта самого
@@ -80,16 +101,13 @@ function prefersReducedMotion() {
  * @returns {boolean} — взят ли зажим счётчика (false → число обновляется сразу).
  */
 function flyClaimReward(fromRect, amount) {
-    const target = document.querySelector('.sheet-score') || document.getElementById('sheetScoreValue');
-    if (!fromRect || !target || prefersReducedMotion()) return false;
+    const toRect = getClaimFlightTargetRect();
+    if (!fromRect || !toRect || prefersReducedMotion()) return false;
     if (document.querySelectorAll('.claim-coin').length >= CLAIM_COIN_MAX) return false;
 
     // Нулевой прямоугольник даёт скрытый элемент (свёрнутая dev-панель, строка
     // цепочки с другой страницы Наград). Лететь из угла экрана хуже, чем не лететь.
     if (!fromRect.width && !fromRect.height) return false;
-
-    const toRect = target.getBoundingClientRect();
-    if (!toRect.width && !toRect.height) return false; // шторка закрыта — лететь некуда
 
     const fromX = fromRect.left + fromRect.width / 2;
     const fromY = fromRect.top + fromRect.height / 2;
@@ -176,12 +194,6 @@ function setConstellationHintsPanelVisible(visible) {
     const el = document.getElementById('constellation-hints');
     if (!el) return;
     el.classList.toggle('hints-panel-hidden', !visible);
-}
-
-function updateUndoConstellationButtonState() {
-    const btn = document.getElementById('undoLastConstellationBtn');
-    if (!btn) return;
-    btn.disabled = !(Array.isArray(constellations) && constellations.length > undoFloor);
 }
 
 let hintEntriesByStarCount = new Map();
@@ -960,9 +972,8 @@ function onObservatorySegClick() {
 function updateObservatoryUI() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 
-    const undoBtn = document.getElementById('undoLastConstellationBtn');
-    if (undoBtn) undoBtn.hidden = inObservatory;
-
+    // K-04: кнопки отката, с которой тумблер делил угол, больше нет. Сам тумблер
+    // живёт до K-13 — иначе обсерватория осталась бы без управления.
     const seg = document.getElementById('observatoryModeSeg');
     if (seg) seg.hidden = !inObservatory;
 
@@ -1062,6 +1073,9 @@ function hasSkyWaxSignal() {
 
 /** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
 function updateRibbonSignal() {
+    // K-04: заодно освежаем замер ленты — пока небо на экране, она измерима,
+    // а к моменту полёта награды книга уже открыта и прячет её.
+    getClaimFlightTargetRect();
     const wax = document.getElementById('ribbonWax');
     if (wax) wax.hidden = !hasSkyWaxSignal();
 }
