@@ -795,6 +795,23 @@ button:disabled {
     font-variant-numeric: tabular-nums;
 }
 
+/* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
+
+.book-news-list {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    margin-top: 6px;
+}
+
+.book-news-row {
+    font-family: var(--font-text);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink-muted);
+}
+
 /* --- «вернуться на небо»: то же жест, что и потягивание вниз, но строкой --- */
 
 .book-return {

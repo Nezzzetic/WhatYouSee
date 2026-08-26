@@ -172,6 +172,10 @@ function maybeAutoUnlockAtlasPages() {
         if (typeof showInfoToast === 'function') {
             showInfoToast('knife', t('toast.atlasPageTitle'), t('toast.atlasPageSub', { n: next + 1 }));
         }
+        // K-09: разрезанная глава — обязательное событие ленты «Сегодня».
+        if (typeof addDailyNewsEvent === 'function') {
+            addDailyNewsEvent('book.newsAtlasCut', { n: next + 1 });
+        }
         next = getNextLockedAtlasPageIndex();
     }
     if (unlockedAny) {
