@@ -498,23 +498,25 @@
     }
 
     /**
-     * K-07: «прижать марку» — про UI, а не про модель. В отличие от `claim()`,
-     * требует настоящую кнопку в DOM (значит, книга открыта на верной странице)
-     * и, если передан `stepIndex`, что показан именно этот шаг цепочки —
-     * тестирует то, что видит и жмёт игрок, а не копию правил.
+     * K-07/K-08: «прижать марку» — про UI, а не про модель. В отличие от
+     * `claim()`, требует настоящую готовую к забору марку в DOM (значит, книга
+     * открыта на верной странице и цепочка claimable) и, если передан
+     * `stepIndex`, что показан именно этот шаг цепочки — тестирует то, что
+     * видит и жмёт игрок, а не копию правил. Кнопки забора в игре больше нет —
+     * прижимается сама марка (`.achv-tile-ready`).
      */
     function press(chainId, stepIndex) {
-        const btn = document.querySelector('.achv-claim-btn[data-chain-id="' + chainId + '"]');
-        if (!btn) fail('press: кнопки цепочки «' + chainId + '» нет в DOM (книга не на той странице?)');
         const progress = achievementProgress[chainId];
         if (stepIndex !== undefined && stepIndex !== null && progress
             && progress.stepIndex !== Number(stepIndex)) {
             fail('press: цепочка «' + chainId + '» сейчас на шаге ' + progress.stepIndex
                 + ', а не ' + stepIndex);
         }
-        if (btn.disabled) fail('press: кнопка «' + chainId + '» задизейблена — нечего забирать');
+        const tile = document.querySelector('.achv-tile-ready[data-chain-id="' + chainId + '"]');
+        if (!tile) fail('press: готовой марки цепочки «' + chainId + '» нет в DOM '
+            + '(книга не на той странице или нечего забирать?)');
         const before = getMetaScore();
-        btn.click();
+        tile.click();
         return { pressed: true, scoreBefore: before, scoreAfter: getMetaScore() };
     }
 

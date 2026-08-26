@@ -75,6 +75,8 @@ function buildColorChain(color) {
         title: t(`chain.color_${color}.title`),
         sign: ACHIEVEMENT_COLOR_SIGN,
         signColor: ACHIEVEMENT_COLOR_STAR_RGB[color],
+        // K-08: описание сцепки — что именно считается, без числа ступени.
+        desc: t('chain.color.desc', { color: achievementColorLabel(color) }),
         steps: tiers.map(n => ({
             id: `color_${color}_${n}`,
             desc: tp('chain.color.step', n, { color: achievementColorLabel(color) }),
@@ -90,6 +92,7 @@ function buildExactSizeChain(size) {
         // Заголовок — «4★»: цифра со звездой одинакова во всех локалях.
         title: `${size}★`,
         sign: ACHIEVEMENT_SIZE_SIGN,
+        desc: t('chain.size.desc', { size }),
         steps: tiers.map(n => ({
             id: `size_${size}_${n}`,
             desc: tp('chain.size.step', n, { size }),
@@ -125,6 +128,9 @@ function buildPageSpecialChain(spec) {
         sign: spec.sign,
         requiresPageComplete: spec.page,
         pageSpecial: spec,
+        // K-08: у страничных особых desc уже был на спеке (использовался внутри
+        // текста шага) — здесь он же становится описанием сцепки.
+        desc: spec.desc,
         steps: ATLAS_PAGE_SPECIAL_TIERS.map(n => ({
             id: `${spec.id}_${n}`,
             desc: tp('chain.pageSpecial.step', n, { desc: spec.desc }),
@@ -147,6 +153,8 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.daily_entry.title'),
         sign: 'spark',
         daily: true,
+        // K-08: у суточных шаг ровно один — его же desc и есть описание сцепки.
+        desc: t('chain.daily_entry.step'),
         stepRewards: [DAILY_QUEST_ENTRY_REWARD],
         steps: [{ id: 'daily_entry_1', desc: t('chain.daily_entry.step'), check: { type: 'dailyEntry' } }]
     },
@@ -155,6 +163,7 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.daily_night.title'),
         sign: 'nightstar',
         daily: true,
+        desc: t('chain.daily_night.step'),
         stepRewards: [DAILY_QUEST_NIGHT_REWARD],
         steps: [{ id: 'daily_night_1', desc: t('chain.daily_night.step'), check: { type: 'dailyNight' } }]
     },
@@ -164,6 +173,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'size_8plus',
         title: '8★+',
         sign: ACHIEVEMENT_SIZE_SIGN,
+        desc: t('chain.size8plus.desc'),
         // Тоже объёмная цепочка, но со своей шкалой (не ACHIEVEMENT_VOLUME_TIERS):
         // 8★+ созвездия редки сами по себе. Тот же принцип: первые две ступени —
         // исходные [1,3], остальные три — вдвое мягче расчётных ×8 [64,120,200].
@@ -177,6 +187,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'rainbow',
         title: t('chain.rainbow.title'),
         sign: ACHIEVEMENT_COLOR_SIGN,
+        desc: t('chain.rainbow.desc'),
         requiresPageComplete: 0, // S-01: особенное достижение страницы 0
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `rainbow_${n}`,
@@ -188,6 +199,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'nights',
         title: t('chain.nights.title'),
         sign: 'crescent',
+        desc: t('chain.nights.desc'),
         steps: [1, 5, 25, 100, 250].map(n => ({
             id: `nights_${n}`,
             desc: tp('chain.nights.step', n),
@@ -198,6 +210,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'constellations',
         title: t('chain.constellations.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
+        desc: t('chain.constellations.desc'),
         steps: [10, 50, 250, 1000, 5000].map(n => ({
             id: `constellations_${n}`,
             desc: tp('chain.constellations.step', n),
@@ -208,6 +221,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'mosaic',
         title: t('chain.mosaic.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
+        desc: t('chain.mosaic.desc'),
         requiresPageComplete: 1, // S-01: особенное достижение страницы 1
         steps: [1, 3, 7, 15, 30].map(n => ({
             id: `mosaic_${n}`,
@@ -221,12 +235,16 @@ const ACHIEVEMENT_CHAINS = [
         id: 'minimalism',
         title: t('chain.minimalism.title'),
         sign: 'loz',
+        // K-08: единственный шаг цепочки уже сформулирован без числа — он же
+        // и есть описание сцепки.
+        desc: t('chain.minimalism.step'),
         steps: [{ id: 'minimalism_1', desc: t('chain.minimalism.step'), check: { type: 'singleConstellation' } }]
     },
     {
         id: 'unite_all',
         title: t('chain.unite_all.title'),
         sign: 'arc',
+        desc: t('chain.unite_all.desc'),
         steps: [{ id: 'unite_all_1', desc: t('chain.unite_all.step'), check: { type: 'uniteAll' } }]
     },
     // Разведка атласа: награда за первое создание фигуры переехала сюда из разового
@@ -236,6 +254,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'razvedka',
         title: t('chain.razvedka.title'),
         sign: 'tel',
+        desc: t('chain.razvedka.desc'),
         // Своя шкала вместо общей: та же сумма, что раньше капала по 35 ✦ за
         // каждое открытие, распределена по ступеням пропорционально их «весу».
         // Приросты порогов 1·5·6·8·9 фигур × 35 ✦ = 35·175·210·280·315,
@@ -265,6 +284,7 @@ const ACHIEVEMENT_CHAINS = [
         id: 'ogranshchik',
         title: t('chain.ogranshchik.title'),
         sign: 'gem',
+        desc: t('chain.ogranshchik.desc'),
         steps: [1, 3, 7, 15, 29].map(n => ({
             id: `ogranshchik_${n}`,
             desc: n === 29
@@ -1065,14 +1085,15 @@ function afterAchievementStateChanged() {
 // =============================================================================
 
 /**
- * A-03: где сейчас стоит кнопка забора этой цепочки.
+ * A-03/K-08: где сейчас стоит готовая к забору марка этой цепочки.
  *
  * Ищем по `data-chain-id`, а не через обработчик клика, — тогда точку старта
  * знает сам `claimAchievementStep`, и `__test.claim()` гоняет ровно ту же
- * анимацию, что палец: проверяется игра, а не копия правил.
+ * анимацию, что палец: проверяется игра, а не копия правил. Кнопки забора
+ * в игре больше нет — прижимается сама марка (`.achv-tile-ready`).
  */
 function getClaimButtonRect(chainId) {
-    const btn = document.querySelector(`.achv-claim-btn[data-chain-id="${chainId}"]`);
+    const btn = document.querySelector(`.achv-tile-ready[data-chain-id="${chainId}"]`);
     return btn ? btn.getBoundingClientRect() : null;
 }
 
@@ -1237,37 +1258,94 @@ function rewardPageHasClaimable(pageIndex) {
     });
 }
 
-/** Текст текущего шага: описание + «12 / 15» или «готово». */
-function buildAchievementStepText(chain, p) {
-    const step = chain.steps[p.stepIndex];
-    // M-05: у суточного квеста три состояния и ни одного числа — условие
-    // бинарное, считать нечего.
+/**
+ * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
+ * цепочка пройдена целиком. У суточного квеста прогресса нет (условие
+ * бинарное) — вместо числа тире, пока не готово и не забрано сегодня.
+ */
+function buildAchievementHeadCount(chain, p, done) {
     if (chain.daily) {
-        if (p.claimable) return t('rewards.stepReady', { desc: step.desc });
-        if (isDailyQuestClaimed(chain.id)) return t('rewards.dailyClaimed');
-        return step.desc;
+        if (p.claimable) return { text: t('rewards.headReady'), ready: true };
+        if (isDailyQuestClaimed(chain.id)) return { text: t('rewards.headDone'), ready: false };
+        return { text: '—', ready: false };
     }
-    const prog = getAchievementStepProgress(step.check);
-    if (p.claimable) return t('rewards.stepReady', { desc: step.desc });
-    if (!prog) return step.desc;
-    return t('rewards.stepProgress', {
-        desc: step.desc,
-        current: Math.min(prog.current, prog.target),
-        target: prog.target
-    });
+    if (done) return { text: t('rewards.headDone'), ready: false };
+    if (p.claimable) return { text: t('rewards.headReady'), ready: true };
+    const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
+    if (!prog) return { text: '—', ready: false };
+    return { text: t('rewards.headProgress', { current: Math.min(prog.current, prog.target), target: prog.target }), ready: false };
 }
 
-function createAchievementStarsRow(chain, p) {
-    const stars = document.createElement('div');
-    stars.className = 'achv-stars';
-    for (let i = 0; i < chain.steps.length; i++) {
-        const s = document.createElement('span');
-        const filled = i < p.stepIndex;
-        s.className = 'achv-star' + (filled ? ' achv-star-filled' : '');
-        s.textContent = filled ? '★' : '☆';
-        stars.appendChild(s);
+/**
+ * Одна марка сцепки. Три состояния и ни одного больше:
+ * свет ждёт (число) → готово прижать (сургучная рамка, марка сама кликабельна)
+ * → оттиск (число вылетело к корешку, на его месте знак цепочки).
+ *
+ * Прижимается сама марка — кнопки нет нигде. Зона касания шире марки на 6 pt
+ * с каждой стороны (`.achv-tile-hit`): марка мелкая, палец крупный.
+ */
+function createAchievementTile(chain, stepIndex, p) {
+    const tile = document.createElement('div');
+    tile.className = 'achv-tile';
+
+    const pressed = chain.daily ? isDailyQuestClaimed(chain.id) : stepIndex < p.stepIndex;
+    const isCurrent = chain.daily ? true : stepIndex === p.stepIndex;
+    const ready = isCurrent && !pressed && p.claimable;
+
+    if (pressed) {
+        tile.classList.add('achv-tile-lit');
+        const ic = glyphSign(chain.sign || 'arc', 14);
+        if (chain.signColor) ic.style.color = `rgb(${chain.signColor.join(',')})`;
+        tile.appendChild(ic);
+        return tile;
     }
-    return stars;
+
+    const amt = document.createElement('span');
+    amt.className = 'achv-tile-amt';
+    amt.textContent = `${getAchievementChainStepReward(chain, stepIndex)} ✦`;
+    tile.appendChild(amt);
+
+    if (ready) {
+        tile.classList.add('achv-tile-ready');
+        tile.dataset.chainId = chain.id;
+        tile.setAttribute('role', 'button');
+        tile.tabIndex = 0;
+        tile.title = t('rewards.claim');
+        const hit = document.createElement('span');
+        hit.className = 'achv-tile-hit';
+        hit.setAttribute('aria-hidden', 'true');
+        tile.appendChild(hit);
+        // A-03: по data-chain-id `claimAchievementStep` находит точку старта перелёта ✦
+        tile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            claimAchievementStep(chain.id);
+        });
+        tile.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            claimAchievementStep(chain.id);
+        });
+    } else {
+        tile.title = t('rewards.claimIdle');
+    }
+    return tile;
+}
+
+/** Сетка на пять клеток всегда — столько же, сколько граней у фигуры атласа. */
+function createAchievementTiles(chain, p) {
+    const tiles = document.createElement('div');
+    tiles.className = 'achv-row-tiles';
+    const total = chain.daily ? 1 : chain.steps.length;
+    for (let i = 0; i < 5; i++) {
+        if (i < total) {
+            tiles.appendChild(createAchievementTile(chain, i, p));
+        } else {
+            const empty = document.createElement('div');
+            empty.className = 'achv-tile achv-tile-empty';
+            tiles.appendChild(empty);
+        }
+    }
+    return tiles;
 }
 
 /** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
@@ -1297,6 +1375,13 @@ function createAchievementLockedRow(reason) {
     return row;
 }
 
+/**
+ * K-08: достижение — сцепка марок, как в альбоме филателиста. Одна строка:
+ * имя с линейкой из точек и счётом текущей ступени, курсивное описание того,
+ * что именно считается, и полоска из пяти клеток — по ней сразу видно,
+ * сколько света уже в книге и сколько ещё ждёт (getAchievementChainStepReward
+ * на каждой клетке, суммы нигде не пересчитываются заново).
+ */
 function createAchievementRow(chain) {
     const lockReason = getChainLockReason(chain);
     if (lockReason) return createAchievementLockedRow(lockReason);
@@ -1309,76 +1394,34 @@ function createAchievementRow(chain) {
     row.className = 'achv-row'
         + (done ? ' achv-row-done' : '')
         + (p.claimable ? ' achv-row-claimable' : '');
-
-    const icon = document.createElement('div');
-    icon.className = 'achv-row-icon';
-    icon.appendChild(glyphSign(chain.sign || 'arc', 22));
-    // Своего цвета у знака нет — цвет назначает строка. У цветовых цепочек
-    // строка и есть про цвет, поэтому знак берёт звёздный тир своей темы.
-    if (chain.signColor) icon.style.color = `rgb(${chain.signColor.join(',')})`;
-    row.appendChild(icon);
-
-    const body = document.createElement('div');
-    body.className = 'achv-row-body';
+    row.dataset.chainId = chain.id;
 
     const head = document.createElement('div');
     head.className = 'achv-row-head';
+
     const title = document.createElement('span');
     title.className = 'achv-row-title';
     title.textContent = chain.title;
     head.appendChild(title);
-    // M-05: ряд ☆ означает «пройдено ступеней из пяти» — у бесконечного квеста
-    // это единственная одинокая звёздочка ни о чём.
-    if (!chain.daily) head.appendChild(createAchievementStarsRow(chain, p));
-    body.appendChild(head);
 
-    const step = document.createElement('div');
-    step.className = 'achv-row-step';
-    step.textContent = done ? t('rewards.allDone') : buildAchievementStepText(chain, p);
-    body.appendChild(step);
+    const dots = document.createElement('span');
+    dots.className = 'achv-row-dots';
+    head.appendChild(dots);
 
-    // M-05: у суточного квеста нет прогресс-бара — условие бинарное, полоса
-    // между 0 % и 100 % ничего не показывает.
-    if (!done && !chain.daily) {
-        const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
-        const bar = document.createElement('div');
-        bar.className = 'achv-row-bar';
-        const fill = document.createElement('i');
-        const ratio = p.claimable ? 1
-            : (prog && prog.target > 0 ? Math.min(1, prog.current / prog.target) : 0);
-        fill.style.width = `${Math.round(ratio * 100)}%`;
-        bar.appendChild(fill);
-        body.appendChild(bar);
-    }
+    const countInfo = buildAchievementHeadCount(chain, p, done);
+    const count = document.createElement('span');
+    count.className = 'achv-row-count' + (countInfo.ready ? ' achv-row-count-ready' : '');
+    count.textContent = countInfo.text;
+    head.appendChild(count);
 
-    row.appendChild(body);
+    row.appendChild(head);
 
-    const tail = document.createElement('div');
-    tail.className = 'achv-row-tail';
-    if (!done) {
-        // Кнопка стоит всегда, пока цепочка не пройдена: игрок видит цену шага
-        // заранее, а не узнаёт её в момент, когда забирать уже можно.
-        // Забирать нечего — та же кнопка, но неактивная.
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'achv-claim-btn' + (p.claimable ? '' : ' achv-claim-btn-idle');
-        // A-03: по нему `claimAchievementStep` находит точку старта перелёта ✦
-        btn.dataset.chainId = chain.id;
-        // B-01: подпись должна совпадать с тем, что реально начислится за этот шаг
-        btn.textContent = `+${getAchievementChainStepReward(chain, p.stepIndex)} ✦`;
-        if (p.claimable) {
-            btn.title = t('rewards.claim');
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                claimAchievementStep(chain.id);
-            });
-        } else {
-            btn.disabled = true;
-            btn.title = t('rewards.claimIdle');
-        }
-        tail.appendChild(btn);
-    }
-    row.appendChild(tail);
+    const desc = document.createElement('div');
+    desc.className = 'achv-row-desc';
+    desc.textContent = chain.desc || '';
+    row.appendChild(desc);
+
+    row.appendChild(createAchievementTiles(chain, p));
 
     return row;
 }

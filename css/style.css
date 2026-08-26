@@ -406,23 +406,6 @@ body {
     box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.35);
 }
 
-.achv-stars {
-    display: flex;
-    gap: 2px;
-    flex-wrap: wrap;
-    justify-content: center;
-    font-size: 12px;
-    line-height: 1;
-}
-
-.achv-star {
-    color: var(--ink-faint);
-}
-
-.achv-star-filled {
-    color: var(--gold);
-}
-
 /* --- Achievement toasts (top-right stack) --- */
 
 .achv-toast-stack {
@@ -1245,7 +1228,10 @@ button:disabled {
     font-size: 13px;
 }
 
-/* --- награды: страницы строк --- */
+/* --- K-08: награды — сцепка марок, как в альбоме филателиста ---------------
+   Достижение — одна строка: имя с линейкой из точек и счётом ступени, курсив
+   описания под ним, ниже полоска из пяти клеток. Кнопки забора нет нигде —
+   прижимается сама марка (см. `.achv-tile-ready`). */
 
 .achv-list {
     display: flex;
@@ -1254,11 +1240,7 @@ button:disabled {
 }
 
 .achv-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 84px;
-    padding: 10px 12px;
+    padding: 9px 12px 10px;
     border: 1px solid var(--paper-edge);
     border-radius: 14px;
     background: rgba(var(--ink-rgb), 0.025);
@@ -1275,6 +1257,9 @@ button:disabled {
 
 .achv-row-locked {
     opacity: 0.6;
+    display: flex;
+    align-items: center;
+    gap: 10px;
 }
 
 .achv-row-icon {
@@ -1294,12 +1279,6 @@ button:disabled {
     gap: 4px;
 }
 
-.achv-row-head {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-}
-
 .achv-row-title {
     font-size: 14px;
     font-weight: 650;
@@ -1311,59 +1290,138 @@ button:disabled {
     letter-spacing: 2px;
 }
 
+/* Строка-замок держит текст причины в том же классе, что раньше — прогресса
+   у неё нет, полосу и марки заменяет одна фраза. */
 .achv-row-step {
     font-size: 11.5px;
     line-height: 1.3;
     color: var(--ink-muted);
 }
 
-.achv-row-bar {
-    position: relative;
-    height: 3px;
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.07);
-    overflow: hidden;
-}
+/* --- сцепка: шапка (имя · точки · счёт) ------------------------------------ */
 
-.achv-row-bar i {
-    display: block;
-    height: 100%;
-    border-radius: 99px;
-    background: var(--gold);
-}
-
-.achv-row-tail {
-    flex: none;
+.achv-row-head {
     display: flex;
-    align-items: center;
+    align-items: baseline;
+    gap: 7px;
 }
 
-.achv-claim-btn {
-    padding: 7px 12px;
-    border: 1px solid var(--wax);
-    border-radius: 99px;
-    background: rgba(var(--paper-raised-rgb), 0.85);
-    color: var(--gold-light);
-    font-size: 12px;
-    font-weight: 700;
+.achv-row-head .achv-row-title {
     white-space: nowrap;
-    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.achv-row-dots {
+    flex: 1;
+    min-width: 10px;
+    border-bottom: 1px dotted rgba(var(--ink-rgb), 0.28);
+    transform: translateY(-4px);
+}
+
+.achv-row-count {
+    flex: none;
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    white-space: nowrap;
     font-variant-numeric: tabular-nums;
 }
 
-.achv-claim-btn:hover {
-    background: var(--paper-edge);
+.achv-row-count-ready {
+    color: var(--wax-soft);
+    font-weight: 600;
+}
+
+/* --- сцепка: описание — курсив под именем ---------------------------------- */
+
+.achv-row-desc {
+    margin-top: 2px;
+    font-style: italic;
+    font-size: 11.5px;
+    line-height: 1.35;
+    color: var(--ink-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- сцепка: полоска из пяти клеток ----------------------------------------- */
+
+.achv-row-tiles {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin-top: 7px;
+}
+
+.achv-tile {
+    position: relative;
+    height: 32px;
+    border-radius: var(--r-lg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 0 1px var(--paper-edge);
+    font-variant-numeric: tabular-nums;
+}
+
+.achv-tile::before {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    border: 1px dashed rgba(var(--ink-rgb), 0.14);
+    border-radius: var(--r-sm);
+    pointer-events: none;
+}
+
+.achv-tile-amt {
+    font-size: 11px;
+    color: var(--gold-deep);
+    letter-spacing: 0.01em;
+}
+
+.achv-tile-empty {
+    opacity: 0.3;
+}
+
+/* Оттиск: число вылетело к корешку, на его месте — знак цепочки. Свой цвет
+   знаку не идёт (K-02) — цепочки цвета красят его через inline style сами. */
+.achv-tile-lit {
+    background: rgba(var(--ink-rgb), 0.06);
+    box-shadow: inset 0 0 0 1px var(--paper-edge);
+}
+
+.achv-tile-lit .ic {
+    color: var(--ink-faint);
+}
+
+/* Готова прижать: сургучная рамка, тот же жест, что у ежедневной марки. */
+.achv-tile-ready {
+    box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.achv-tile-ready::before {
+    border-color: rgba(var(--wax-rgb), 0.45);
+}
+
+.achv-tile-ready .achv-tile-amt {
     color: var(--gold-light);
 }
 
-/* Награда видна всегда, но пока условие не выполнено — кнопка неактивна:
-   та же форма и место, приглушённый цвет, без наведения и курсора. */
-.achv-claim-btn-idle,
-.achv-claim-btn-idle:hover {
-    border-color: rgba(var(--wax-rgb), 0.3);
-    background: rgba(var(--paper-raised-rgb), 0.35);
-    color: rgba(var(--gold-light-rgb), 0.45);
-    cursor: default;
+.achv-tile-ready:hover,
+.achv-tile-ready:focus-visible {
+    box-shadow: inset 0 0 0 2px rgba(var(--wax-rgb), 0.95);
+    outline: none;
+}
+
+/* Зона касания шире марки на 6 pt с каждой стороны — марка мелкая, палец
+   крупный. Реальный узел (не псевдоэлемент): надёжнее ловит тап в WebView. */
+.achv-tile-hit {
+    position: absolute;
+    inset: -6px;
+    z-index: 1;
 }
 
 /* --- A-03: перелёт награды от кнопки забора к счётчику ✦ --- */

@@ -145,22 +145,28 @@ en: {
         one: '{n} {color} constellation',
         other: '{n} {color} constellations'
     },
+    // K-08: описание сцепки — одна строка без числа, что именно считается.
+    'chain.color.desc': 'Constellations finished in {color}',
     'chain.size.step': {
         one: '{n} constellation of {size}★',
         other: '{n} constellations of {size}★'
     },
+    'chain.size.desc': 'Constellations of exactly {size} stars',
     'chain.size8plus.step': {
         one: '{n} constellation of 8★+',
         other: '{n} constellations of 8★+'
     },
+    'chain.size8plus.desc': 'Constellations of 8 stars or more',
     'chain.rainbow.step': {
         one: '{n} night with a full rainbow (all 5 colors in one night)',
         other: '{n} nights with a full rainbow (all 5 colors in one night)'
     },
+    'chain.rainbow.desc': 'Nights finished using all five colors',
     'chain.mosaic.step': {
         one: '{n} night with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
         other: '{n} nights with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
     },
+    'chain.mosaic.desc': 'Nights with every size on the field',
     'chain.pageSpecial.step': {
         one: '{n} night: {desc}',
         other: '{n} nights: {desc}'
@@ -174,22 +180,27 @@ en: {
         one: '{n} completed night',
         other: '{n} completed nights'
     },
+    'chain.nights.desc': 'Nights completed to the end',
     'chain.constellations.step': {
         one: '{n} constellation created in total',
         other: '{n} constellations created in total'
     },
+    'chain.constellations.desc': 'Constellations drawn, across all nights',
     'chain.minimalism.step': 'Finish a night with a single constellation',
     'chain.unite_all.step': 'Join every star on the field into one constellation',
+    'chain.unite_all.desc': 'All field stars in one constellation',
     'chain.razvedka.step': {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
     },
     'chain.razvedka.stepAll': 'Discover all 29 atlas shapes',
+    'chain.razvedka.desc': 'New atlas shapes discovered',
     'chain.ogranshchik.step': {
         one: '{n} faceted shape (all 5 colors each)',
         other: '{n} faceted shapes (all 5 colors each)'
     },
     'chain.ogranshchik.stepAll': 'Facet all 29 atlas shapes',
+    'chain.ogranshchik.desc': 'Atlas shapes faceted in all colors',
     // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
     'chain.daily_entry.step': 'Draw your first constellation tonight',
     'chain.daily_night.step': 'Complete the night',
@@ -202,10 +213,10 @@ en: {
     'rewardPage.path': 'Facets & Path',
 
     // --- Награды: строки и замки ---------------------------------------------
-    'rewards.stepReady': '{desc} · ready',
-    'rewards.stepProgress': '{desc} · {current} / {target}',
-    'rewards.allDone': 'All steps completed',
-    'rewards.dailyClaimed': 'Claimed · returns with the next sky',
+    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
+    'rewards.headReady': 'ready',
+    'rewards.headDone': 'done',
+    'rewards.headProgress': '{current} / {target}',
     'rewards.claim': 'Claim reward',
     'rewards.claimIdle': 'Reward for the current step — meet its condition',
     'rewards.lockCollectPage': 'Collect every shape on page {n}',
@@ -362,26 +373,32 @@ ru: {
         few: '{n} созвездия цвета «{color}»',
         many: '{n} созвездий цвета «{color}»'
     },
+    // K-08: описание сцепки — одна строка без числа, что именно считается.
+    'chain.color.desc': 'Созвездия цвета «{color}»',
     'chain.size.step': {
         one: '{n} созвездие по {size}★',
         few: '{n} созвездия по {size}★',
         many: '{n} созвездий по {size}★'
     },
+    'chain.size.desc': 'Созвездия ровно из {size} звёзд',
     'chain.size8plus.step': {
         one: '{n} созвездие от 8★',
         few: '{n} созвездия от 8★',
         many: '{n} созвездий от 8★'
     },
+    'chain.size8plus.desc': 'Созвездия от 8 звёзд и больше',
     'chain.rainbow.step': {
         one: '{n} ночь с полной радугой (все 5 цветов за ночь)',
         few: '{n} ночи с полной радугой (все 5 цветов за ночь)',
         many: '{n} ночей с полной радугой (все 5 цветов за ночь)'
     },
+    'chain.rainbow.desc': 'Ночи, где были все пять цветов',
     'chain.mosaic.step': {
         one: '{n} ночь с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
         few: '{n} ночи с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
         many: '{n} ночей с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)'
     },
+    'chain.mosaic.desc': 'Ночи со всеми размерами на поле',
     'chain.pageSpecial.step': {
         one: '{n} ночь: {desc}',
         few: '{n} ночи: {desc}',
@@ -397,25 +414,30 @@ ru: {
         few: '{n} завершённые ночи',
         many: '{n} завершённых ночей'
     },
+    'chain.nights.desc': 'Ночи, доведённые до конца',
     'chain.constellations.step': {
         one: '{n} созвездие создано всего',
         few: '{n} созвездия создано всего',
         many: '{n} созвездий создано всего'
     },
+    'chain.constellations.desc': 'Созвездия за все ночи вместе',
     'chain.minimalism.step': 'Заверши ночь одним созвездием',
     'chain.unite_all.step': 'Объедини все звёзды поля в одно созвездие',
+    'chain.unite_all.desc': 'Все звёзды поля — одно созвездие',
     'chain.razvedka.step': {
         one: '{n} открытая фигура атласа',
         few: '{n} открытые фигуры атласа',
         many: '{n} открытых фигур атласа'
     },
     'chain.razvedka.stepAll': 'Открыть все 29 фигур атласа',
+    'chain.razvedka.desc': 'Открытые новые фигуры атласа',
     'chain.ogranshchik.step': {
         one: '{n} огранённая фигура (все 5 цветов у каждой)',
         few: '{n} огранённые фигуры (все 5 цветов у каждой)',
         many: '{n} огранённых фигур (все 5 цветов у каждой)'
     },
     'chain.ogranshchik.stepAll': 'Огранить все 29 фигур атласа',
+    'chain.ogranshchik.desc': 'Фигуры, огранённые во всех цветах',
     // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
     'chain.daily_entry.step': 'Создать первое созвездие этой ночью',
     'chain.daily_night.step': 'Завершить ночь',
@@ -428,10 +450,10 @@ ru: {
     'rewardPage.path': 'Огранка и путь',
 
     // --- Награды --------------------------------------------------------------
-    'rewards.stepReady': '{desc} · готово',
-    'rewards.stepProgress': '{desc} · {current} / {target}',
-    'rewards.allDone': 'Все ступени пройдены',
-    'rewards.dailyClaimed': 'Забрано · вернётся со следующим небом',
+    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
+    'rewards.headReady': 'готово',
+    'rewards.headDone': 'пройдено',
+    'rewards.headProgress': '{current} / {target}',
     'rewards.claim': 'Забрать награду',
     'rewards.claimIdle': 'Награда за текущую ступень — выполните её условие',
     'rewards.lockCollectPage': 'Соберите все фигуры страницы {n}',
