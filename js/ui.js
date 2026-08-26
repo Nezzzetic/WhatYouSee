@@ -1,16 +1,18 @@
-// ui.js — UI rendering for score, progression, hints and atlas
+// ui.js — UI rendering for the book (K-06), progression and atlas
 
 // =============================================================================
 // SCORE UI
 // =============================================================================
 
-/** U-09: ✦ живёт только в шапке шторки — на поле счётчика нет. */
+/**
+ * K-06: числового ✦-счётчика в игре больше нет — его роль забрала шкала света
+ * у корешка книги (renderBookGauge, за lifetimeMetaEarned, а не за metaScore).
+ * Саму отрисовку убирать некуда, но вызовы остаются: это по-прежнему точка,
+ * которую держит зажим A-03 (`_scoreHoldCount`), пока летит монета награды.
+ */
 function updateScoreUI() {
-    // A-03: пока к счётчику летит награда, число ждёт прилёта. Иначе перелёт
-    // превращается в декорацию к уже случившемуся.
+    // A-03: пока к счётчику летит награда, зажим не даёт снять его раньше приезда.
     if (_scoreHoldCount > 0) return;
-    const sheetScoreEl = document.getElementById("sheetScoreValue");
-    if (sheetScoreEl) sheetScoreEl.textContent = String(getMetaScore());
 }
 
 // =============================================================================
@@ -49,9 +51,9 @@ function releaseScoreDisplay(all) {
     pulseScoreDisplay();
 }
 
-/** Счётчик коротко вздрагивает: награда доехала именно сюда. */
+/** K-06: лента коротко вздрагивает — награда доехала именно сюда. */
 function pulseScoreDisplay() {
-    const el = document.querySelector('.sheet-score');
+    const el = document.querySelector('.ribbon-tail');
     if (!el) return;
     el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
     el.classList.remove('score-pulse');
@@ -70,7 +72,7 @@ function prefersReducedMotion() {
 
 /**
  * K-04: последний замер ленты-закладки. Пока книга открыта, ленты в разметке нет
- * (`display: none` — правило `.sheet-open-body .ribbon`), а лететь всё равно есть
+ * (`display: none` — правило `.book-open-body .ribbon`), а лететь всё равно есть
  * куда: угол, в котором она лежит, никуда не делся. Тот же приём, которым K-05
  * держит резерв камеры, — последний ненулевой замер.
  */
@@ -93,7 +95,7 @@ function getClaimFlightTargetRect() {
  * ведёт единственный вход в книгу.
  *
  * @param {DOMRect|null} fromRect — прямоугольник кнопки, снятый ДО начисления:
- *        хвост забора зовёт `refreshSheetIfOpen()`, и к моменту полёта самого
+ *        хвост забора зовёт `refreshBookIfOpen()`, и к моменту полёта самого
  *        узла кнопки уже не существует.
  * @param {number} amount — размер награды. Летит именно она; счётчик на прилёте
  *        покажет реальный `getMetaScore()`, который после списания за страницу
@@ -187,30 +189,17 @@ function updateProgressionUI() {
 // вернуть вызов ПОСЛЕ конца сцены, а не в её начале.
 
 // =============================================================================
-// CONSTELLATION HINTS
+// НАЗВАНИЯ И ЦВЕТА ФИГУР
 // =============================================================================
-
-function setConstellationHintsPanelVisible(visible) {
-    const el = document.getElementById('constellation-hints');
-    if (!el) return;
-    el.classList.toggle('hints-panel-hidden', !visible);
-}
-
-let hintEntriesByStarCount = new Map();
-let hintFilterMode = { type: 'known', value: null };
-let isHintListDragging = false;
-let hintListDragStartX = 0;
-let hintListScrollStartLeft = 0;
-let hintListDragHandlersBound = false;
 
 /**
  * L-01: на вход идёт ID фигуры или fallback-имени, на выход — локализованное имя.
  * Пользовательские виды (их вводит игрок) shapeLabel возвращает как есть.
  */
 function getDisplayShapeName(shapeName) {
-    if (typeof shapeName !== 'string') return t('hints.unknownConstellation');
+    if (typeof shapeName !== 'string') return t('atlas.unknownConstellation');
     const trimmed = shapeName.trim();
-    if (trimmed.length === 0) return t('hints.unknownConstellation');
+    if (trimmed.length === 0) return t('atlas.unknownConstellation');
     return shapeLabel(trimmed);
 }
 
@@ -219,279 +208,10 @@ function getShapeColor(shapeName) {
     return shapeInfo && Array.isArray(shapeInfo.color) ? shapeInfo.color : SHAPES[SHAPE_UNRECOGNIZED].color;
 }
 
-function getHintEntriesByStarCount() {
-    const groups = new Map();
-
-    for (const name of getUnlockedAtlasShapeNames()) {
-        const pattern = SHAPE_PATTERNS[name];
-        if (!pattern || !Array.isArray(pattern.stars)) continue;
-        const starCount = pattern.stars.length;
-        if (!groups.has(starCount)) groups.set(starCount, []);
-        groups.get(starCount).push({
-            name,
-            color: getShapeColor(name),
-            pattern,
-            isCustom: false
-        });
-    }
-
-    for (const customType of customTypes) {
-        const pattern = getCustomPattern(customType);
-        if (!pattern || !Array.isArray(pattern.stars)) continue;
-        const starCount = pattern.stars.length;
-        if (!groups.has(starCount)) groups.set(starCount, []);
-        groups.get(starCount).push({
-            name: getDisplayShapeName(customType.name),
-            color: Array.isArray(customType.color) ? customType.color : getShapeColor(SHAPE_UNRECOGNIZED),
-            pattern,
-            isCustom: true
-        });
-    }
-
-    // L-01: сортируем по тому, что игрок видит, и в его локали — не по ID.
-    for (const entries of groups.values()) {
-        entries.sort((a, b) => getDisplayShapeName(a.name)
-            .localeCompare(getDisplayShapeName(b.name), getLocale()));
-    }
-
-    return groups;
-}
-
-function getAllHintEntries() {
-    const all = [];
-    for (const group of hintEntriesByStarCount.values()) {
-        for (const entry of group) all.push(entry);
-    }
-    return all;
-}
-
-function getFilteredHintEntries() {
-    const all = getAllHintEntries();
-
-    if (hintFilterMode.type === 'undiscovered') {
-        return all.filter(entry => !isShapeCreated(entry.name));
-    }
-    if (hintFilterMode.type === 'star' && hintFilterMode.value !== null) {
-        return hintEntriesByStarCount.get(hintFilterMode.value) || [];
-    }
-    if (hintFilterMode.type === 'favorite') {
-        return all.filter(entry => isFavoriteShape(entry.name));
-    }
-
-    // known (default): собранные с открытых страниц атласа
-    return all.filter(entry => isShapeCreated(entry.name));
-}
-
-function getSortedHintStarCounts() {
-    return [...hintEntriesByStarCount.keys()].sort((a, b) => a - b);
-}
-
-function createHintItem(entry) {
-    const item = document.createElement('div');
-    item.className = 'hint-item';
-
-    const canvas = document.createElement('canvas');
-    canvas.className = 'hint-canvas';
-    canvas.width = 60;
-    canvas.height = 60;
-
-    item.appendChild(canvas);
-
-    if (isShapeCreated(entry.name)) {
-        const label = document.createElement('span');
-        label.className = 'hint-name';
-        label.textContent = getDisplayShapeName(entry.name);
-        label.style.color = `rgb(${entry.color[0]},${entry.color[1]},${entry.color[2]})`;
-        item.appendChild(label);
-    }
-
-    if (canvas && entry.pattern) {
-        drawHintPattern(canvas, entry.pattern, entry.color);
-    }
-
-    return item;
-}
-
-function renderHintFilterButtons() {
-    const filterBar = document.getElementById('hintStarFilterBar');
-    if (!filterBar) return;
-
-    filterBar.innerHTML = '';
-    const starCounts = getSortedHintStarCounts();
-
-    const knownBtn = document.createElement('button');
-    knownBtn.type = 'button';
-    knownBtn.className = 'hint-filter-btn';
-    if (hintFilterMode.type === 'known') knownBtn.classList.add('active');
-    knownBtn.textContent = '✓';
-    knownBtn.title = t('hints.filterKnown');
-    knownBtn.addEventListener('click', () => {
-        hintFilterMode = { type: 'known', value: null };
-        renderHintFilterButtons();
-        renderHintList();
-    });
-    filterBar.appendChild(knownBtn);
-
-    for (const count of starCounts) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'hint-filter-btn';
-        if (hintFilterMode.type === 'star' && hintFilterMode.value === count) btn.classList.add('active');
-        btn.textContent = `${count}★`;
-        btn.title = tp('hints.filterStars', count);
-        btn.addEventListener('click', () => {
-            hintFilterMode = { type: 'star', value: count };
-            renderHintFilterButtons();
-            renderHintList();
-        });
-        filterBar.appendChild(btn);
-    }
-
-    const unknownBtn = document.createElement('button');
-    unknownBtn.type = 'button';
-    unknownBtn.className = 'hint-filter-btn';
-    if (hintFilterMode.type === 'undiscovered') unknownBtn.classList.add('active');
-    unknownBtn.textContent = '???';
-    unknownBtn.title = t('hints.filterUndiscovered');
-    unknownBtn.addEventListener('click', () => {
-        hintFilterMode = { type: 'undiscovered', value: null };
-        renderHintFilterButtons();
-        renderHintList();
-    });
-    filterBar.appendChild(unknownBtn);
-
-    const favoritesBtn = document.createElement('button');
-    favoritesBtn.type = 'button';
-    favoritesBtn.className = 'hint-filter-btn';
-    if (hintFilterMode.type === 'favorite') favoritesBtn.classList.add('active');
-    favoritesBtn.textContent = '★';
-    favoritesBtn.title = t('hints.filterFavorite');
-    favoritesBtn.addEventListener('click', () => {
-        hintFilterMode = { type: 'favorite', value: null };
-        renderHintFilterButtons();
-        renderHintList();
-    });
-    filterBar.appendChild(favoritesBtn);
-}
-
-function renderHintList() {
-    const listEl = document.getElementById('hintList');
-    if (!listEl) return;
-
-    listEl.innerHTML = '';
-    const entries = getFilteredHintEntries();
-
-    if (entries.length === 0) {
-        const empty = document.createElement('div');
-        empty.className = 'hint-empty';
-        empty.textContent = hintFilterMode.type === 'undiscovered'
-            ? t('hints.emptyUndiscovered')
-            : t('hints.emptyKnown');
-        listEl.appendChild(empty);
-        return;
-    }
-
-    entries.sort((a, b) => {
-        const ca = a.pattern?.stars?.length || 0;
-        const cb = b.pattern?.stars?.length || 0;
-        if (ca !== cb) return ca - cb;
-        return getDisplayShapeName(a.name)
-            .localeCompare(getDisplayShapeName(b.name), getLocale());
-    });
-
-    for (const entry of entries) {
-        listEl.appendChild(createHintItem(entry));
-    }
-}
-
-function setupHintListDragScroll() {
-    if (hintListDragHandlersBound) return;
-
-    const listEl = document.getElementById('hintList');
-    if (!listEl) return;
-
-    const startDrag = (clientX) => {
-        isHintListDragging = true;
-        hintListDragStartX = clientX;
-        hintListScrollStartLeft = listEl.scrollLeft;
-        listEl.classList.add('dragging');
-    };
-
-    const moveDrag = (clientX) => {
-        if (!isHintListDragging) return;
-        const dx = clientX - hintListDragStartX;
-        listEl.scrollLeft = hintListScrollStartLeft - dx;
-    };
-
-    const endDrag = () => {
-        if (!isHintListDragging) return;
-        isHintListDragging = false;
-        listEl.classList.remove('dragging');
-    };
-
-    listEl.addEventListener('mousedown', (event) => {
-        if (event.button !== 0) return;
-        startDrag(event.clientX);
-        event.preventDefault();
-    });
-    listEl.addEventListener('mousemove', (event) => {
-        moveDrag(event.clientX);
-        if (isHintListDragging) event.preventDefault();
-    });
-    listEl.addEventListener('mouseleave', endDrag);
-    window.addEventListener('mouseup', endDrag);
-
-    listEl.addEventListener('touchstart', (event) => {
-        if (!event.touches || event.touches.length !== 1) return;
-        startDrag(event.touches[0].clientX);
-    }, { passive: true });
-    listEl.addEventListener('touchmove', (event) => {
-        if (!event.touches || event.touches.length !== 1) return;
-        moveDrag(event.touches[0].clientX);
-    }, { passive: true });
-    listEl.addEventListener('touchend', endDrag);
-    listEl.addEventListener('touchcancel', endDrag);
-
-    hintListDragHandlersBound = true;
-}
-
-function initConstellationHints() {
-    const filterBar = document.getElementById('hintStarFilterBar');
-    if (filterBar) filterBar.style.display = '';
-
-    hintEntriesByStarCount = getHintEntriesByStarCount();
-    if (hintFilterMode.type === 'star') {
-        const starCounts = getSortedHintStarCounts();
-        if (hintFilterMode.value === null || !starCounts.includes(hintFilterMode.value)) {
-            hintFilterMode = { type: 'known', value: null };
-        }
-    }
-
-    renderHintFilterButtons();
-    renderHintList();
-    setupHintListDragScroll();
-}
-
-function refreshConstellationHints() {
-    hintEntriesByStarCount = getHintEntriesByStarCount();
-    if (hintFilterMode.type === 'star' && hintFilterMode.value !== null
-        && !hintEntriesByStarCount.has(hintFilterMode.value)) {
-        hintFilterMode = { type: 'known', value: null };
-    }
-    renderHintFilterButtons();
-    renderHintList();
-}
-
-/** Левая панель обновляется только после завершения уровня. */
-function refreshConstellationHintsIfLevelComplete() {
-    if (!constellationArtRevealed) return;
-    refreshConstellationHints();
-}
-
 function onConstellationCreated(shapeName) {
     if (!shapeName) return;
     updateRibbonSignal();
-    refreshSheetIfOpen();
+    refreshBookIfOpen();
 }
 
 // =============================================================================
@@ -657,7 +377,6 @@ function getAtlasEntryForShape(name) {
         starCount: pattern?.stars?.length || 0,
         isCustom: false,
         isCreated: created,
-        isFavorite: isFavoriteShape(name),
         atlasState: created ? 'known' : 'unknown'
     };
 }
@@ -726,7 +445,7 @@ function renderAtlasList() {
     if (!list) return;
     list.innerHTML = '';
 
-    const pageIndex = getSheetPageIndex('atlas');
+    const pageIndex = getBookPageIndex('atlas');
 
     if (!isAtlasPageUnlocked(pageIndex)) {
         // Страницы открываются автоматически при накоплении ✦
@@ -756,216 +475,327 @@ function renderAtlasList() {
 }
 
 // =============================================================================
-// U-09: ШТОРКА — общий каркас обеих половин
+// K-06: КНИГА — общий каркас (пять высечек, шкала света у корешка)
 // =============================================================================
+//
+// Шторка U-09 (85vh, рельс страниц, сегмент Atlas/Rewards/Observatory) стала
+// полноэкранной книгой. Навигация плоская: любая высечка из любой, без
+// промежуточных разделов. Под-страницы атласа (7 глав) и наград (4 главы —
+// «Сутки» переехали на «Сегодня», см. ниже) листаются пейджер-кнопками, а не
+// свайпом: горизонтальных свайпов страниц (SHEET_SWIPE_MIN_PX и компания)
+// K-06 убрал совсем.
 
-let sheetSection = 'atlas';          // 'atlas' | 'rewards'
-let sheetOpen = false;
-let sheetPageIndices = { atlas: 0, rewards: 0 };
-let sheetHandlersBound = false;
+const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'exlibris'];
 
-function getSheetPageCount(section) {
-    return section === 'rewards' ? REWARD_PAGE_COUNT : ATLAS_PAGE_COUNT;
+let bookCut = 'today';
+let bookOpen = false;
+// U-10/M-05: «Сутки» (REWARD_PAGES[0]) — на «Сегодня», а не в Штампах, поэтому
+// bookPageIndices.rewards ходит по [1, REWARD_PAGE_COUNT - 1].
+let bookPageIndices = { atlas: 0, rewards: 1 };
+let bookHandlersBound = false;
+
+function getBookPageCount(section) {
+    if (section === 'rewards') return REWARD_PAGE_COUNT - 1;
+    return ATLAS_PAGE_COUNT;
 }
 
-function getSheetPageIndex(section) {
-    const key = section || sheetSection;
-    const max = getSheetPageCount(key) - 1;
-    return Math.max(0, Math.min(max, sheetPageIndices[key] || 0));
-}
-
-function setSheetPageIndex(section, index) {
-    const key = section || sheetSection;
-    const count = getSheetPageCount(key);
-    sheetPageIndices[key] = Math.max(0, Math.min(count - 1, index));
-}
-
-function isSheetOpen() {
-    return sheetOpen;
-}
-
-/** Заголовок шторки: раздел и текущая страница. */
-function renderSheetTitle() {
-    const el = document.getElementById('sheetTitle');
-    if (!el) return;
-    const pageIndex = getSheetPageIndex();
-    if (sheetSection === 'atlas') {
-        el.innerHTML = t('sheet.atlasTitle', { n: pageIndex + 1 });
-    } else {
-        const page = REWARD_PAGES[pageIndex];
-        el.innerHTML = t('sheet.rewardsTitle', { title: page ? page.title : '' });
+function getBookPageIndex(section) {
+    if (section === 'rewards') {
+        return Math.max(1, Math.min(REWARD_PAGE_COUNT - 1, bookPageIndices.rewards || 1));
     }
+    return Math.max(0, Math.min(ATLAS_PAGE_COUNT - 1, bookPageIndices.atlas || 0));
 }
 
-/**
- * Эмблема страницы атласа — её первое созвездие (второй регистр). Запертая —
- * приглушённый нож: глава ещё не разрезана, а не заперта. Замка в кассе нет.
- * `active` меняет цвет глифа: на золотой плашке чернила не читаются.
- */
-function createAtlasRailIcon(pageIndex, active) {
-    if (!isAtlasPageUnlocked(pageIndex)) {
-        const uncut = glyphSign('knife', 16, 'rail-uncut');
-        return uncut;
-    }
-    const firstShape = ATLAS_PAGES[pageIndex] && ATLAS_PAGES[pageIndex][0];
-    const color = active ? NIGHT_RGB : INK_MUTED_RGB;
-    return shapeGlyphNode(firstShape, 'card', color);
-}
-
-function renderSheetRail() {
-    const rail = document.getElementById('sheetRail');
-    if (!rail) return;
-    rail.innerHTML = '';
-
-    const count = getSheetPageCount(sheetSection);
-    const active = getSheetPageIndex();
-
-    for (let i = 0; i < count; i++) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'rail-btn' + (i === active ? ' rail-btn-on' : '');
-
-        if (sheetSection === 'atlas') {
-            btn.appendChild(createAtlasRailIcon(i, i === active));
-            btn.setAttribute('aria-label', t('sheet.page', { n: i + 1 }));
-        } else {
-            const page = REWARD_PAGES[i];
-            btn.appendChild(glyphSign(page.sign, 18));
-            btn.setAttribute('aria-label', page.title);
-            // Бейдж — единственный указатель, куда идти за ✦
-            if (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(i)) {
-                const badge = document.createElement('span');
-                badge.className = 'rail-badge';
-                btn.appendChild(badge);
-            }
-        }
-
-        btn.addEventListener('click', () => {
-            setSheetPageIndex(sheetSection, i);
-            renderSheet();
-        });
-        rail.appendChild(btn);
-    }
-}
-
-function renderSheetSegment() {
-    const atlasBtn = document.getElementById('segAtlasBtn');
-    const rewardsBtn = document.getElementById('segRewardsBtn');
-    if (atlasBtn) atlasBtn.classList.toggle('seg-btn-on', sheetSection === 'atlas');
-    if (rewardsBtn) rewardsBtn.classList.toggle('seg-btn-on', sheetSection === 'rewards');
-    renderObservatorySegButton();
-    renderObservatoryLockHint();
-}
-
-// =============================================================================
-// B-02: ОБСЕРВАТОРИЯ В UI
-// =============================================================================
-
-/** Развёрнут ли хинт запертой обсерватории (сворачивается сменой раздела). */
-let observatoryHintOpen = false;
-
-/**
- * Третья кнопка сегмента. Она обещание, а не сюрприз: видна с первой ночи.
- *
- * Знак ОДИН во всех состояниях — «поиск» (телескоп). Обсерватория опознаётся
- * по нему ещё запертой, и менять знак при открытии значило бы подменить примету,
- * по которой игрок эту кнопку уже запомнил. Замок живёт внутри хинта, где
- * объясняет условие, а не просто говорит «нельзя».
- *
- * Отличается только приглушённость запертой. Жёлтой подсветки (seg-btn-on)
- * нет ни в одном состоянии: кнопка не показывает раздел, а меняет мир за
- * шторкой, и «включённой» не бывает. Куда ведёт тап, говорит подсказка, а
- * какой мир сейчас — сам экран под шторкой (она при переходе не закрывается).
- */
-const OBSERVATORY_SEG_SIGN = 'tel';
-
-function renderObservatorySegButton() {
-    const btn = document.getElementById('segObservatoryBtn');
-    if (!btn) return;
-
-    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-
-    btn.classList.toggle('seg-btn-locked', !unlocked);
-    btn.replaceChildren(glyphSign(OBSERVATORY_SEG_SIGN, 18));
-
-    let key;
-    if (!unlocked) {
-        key = 'observatory.lockedTitle';
-    } else if (inObservatory) {
-        key = 'observatory.toField';
-    } else {
-        key = 'observatory.toObservatory';
-    }
-    btn.setAttribute('title', t(key));
-    btn.setAttribute('aria-label', t(key));
-}
-
-function renderObservatoryLockHint() {
-    const hint = document.getElementById('observatoryLockHint');
-    if (!hint) return;
-
-    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    if (unlocked) observatoryHintOpen = false;
-    hint.hidden = !observatoryHintOpen || unlocked;
-    if (hint.hidden) return;
-
-    const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
-    const target = OBSERVATORY_UNLOCK_COST;
-
-    const titleEl = document.getElementById('obsLockTitleText');
-    const subEl = document.getElementById('obsLockSubText');
-    const fillEl = document.getElementById('obsLockBarFill');
-    const progressEl = document.getElementById('obsLockProgressText');
-
-    if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
-    if (subEl) subEl.textContent = t('observatory.lockedSub');
-    if (fillEl) {
-        const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
-        fillEl.style.width = (ratio * 100).toFixed(1) + '%';
-    }
-    // Бар свой, не ✦ из шапки: тот — баланс, он обнуляется автосписанием
-    // страницы атласа и до порога не доберётся никогда.
-    if (progressEl) {
-        progressEl.textContent = t('observatory.lockedProgress', { current, target });
-    }
-}
-
-/**
- * Поповер закрывается тапом по нему самому и тапом мимо. Слушатель один на
- * документ и вешается лениво: пока хинт свёрнут, он выходит первой строкой.
- * Кнопка исключена — она сама переключает, иначе тап по ней открыл бы и тут же
- * закрыл хинт.
- */
-let observatoryHintDismissBound = false;
-
-function bindObservatoryHintDismiss() {
-    if (observatoryHintDismissBound) return;
-    observatoryHintDismissBound = true;
-    document.addEventListener('click', (event) => {
-        if (!observatoryHintOpen) return;
-        const btn = document.getElementById('segObservatoryBtn');
-        if (btn && btn.contains(event.target)) return;
-        observatoryHintOpen = false;
-        renderObservatoryLockHint();
-    });
-}
-
-/** Тап по кнопке: заперта — разворачиваем хинт, открыта — меняем мир. */
-function onObservatorySegClick() {
-    if (typeof isObservatoryUnlocked !== 'function' || !isObservatoryUnlocked()) {
-        observatoryHintOpen = !observatoryHintOpen;
-        if (observatoryHintOpen) bindObservatoryHintDismiss();
-        renderObservatoryLockHint();
+function setBookPageIndex(section, index) {
+    if (section === 'rewards') {
+        bookPageIndices.rewards = Math.max(1, Math.min(REWARD_PAGE_COUNT - 1, index));
         return;
     }
-    // Шторку НЕ закрываем: игрок может сходить туда-обратно, не поднимая её
-    // каждый раз заново. Что мир сменился, видно по иконке кнопки — она
-    // перерисовывается тут же, из setAppMode → updateObservatoryUI.
-    const next = (typeof isObservatoryMode === 'function' && isObservatoryMode())
-        ? 'field'
-        : 'observatory';
-    setAppMode(next);
+    bookPageIndices.atlas = Math.max(0, Math.min(ATLAS_PAGE_COUNT - 1, index));
+}
+
+function isBookOpen() {
+    return bookOpen;
+}
+
+/** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
+function renderBookHead() {
+    const eyebrowEl = document.getElementById('bookEyebrow');
+    const titleEl = document.getElementById('bookTitle');
+    const folioEl = document.getElementById('bookFolio');
+    if (!eyebrowEl || !titleEl || !folioEl) return;
+
+    let eyebrow = '';
+    let title = '';
+    let folioN = 1;
+
+    if (bookCut === 'today') {
+        title = t('book.headToday');
+        folioN = 1;
+    } else if (bookCut === 'index') {
+        title = t('book.headIndex');
+        folioN = 2;
+    } else if (bookCut === 'atlas') {
+        const idx = getBookPageIndex('atlas');
+        eyebrow = t('book.eyebrowAtlas');
+        title = t('book.headAtlas', { n: idx + 1, count: ATLAS_PAGE_COUNT });
+        folioN = 3 + idx;
+    } else if (bookCut === 'stamps') {
+        const idx = getBookPageIndex('rewards');
+        const page = REWARD_PAGES[idx];
+        eyebrow = t('book.eyebrowStamps');
+        title = page ? page.title : '';
+        folioN = 3 + ATLAS_PAGE_COUNT + (idx - 1);
+    } else if (bookCut === 'exlibris') {
+        title = t('book.headExLibris');
+        folioN = 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
+    }
+
+    eyebrowEl.textContent = eyebrow;
+    titleEl.textContent = title;
+    folioEl.textContent = t('book.folio', { n: folioN });
+}
+
+/**
+ * Шкала света у корешка (риск 3 дока K-06): окно из двух засечек-сотен вокруг
+ * `lifetimeMetaEarned` — пройденная сотня и ближайшая, а не вся дорога.
+ * Нож у засечки (глава режется здесь) в шкалу пока не идёт: порог такой главы
+ * в игре не существует (страницы атласа открываются по своим неровным ценам,
+ * не по сотням) — решение остаётся за K-10/K-15, когда появится сама механика.
+ */
+function renderBookGauge() {
+    const el = document.getElementById('bookGauge');
+    if (!el) return;
+    el.innerHTML = '';
+
+    const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
+    const floor = Math.floor(earned / BOOK_GAUGE_WINDOW) * BOOK_GAUGE_WINDOW;
+    const ceil = floor + BOOK_GAUGE_WINDOW;
+    const ratio = (earned - floor) / BOOK_GAUGE_WINDOW;
+
+    const fill = document.createElement('div');
+    fill.className = 'book-gauge-fill';
+    fill.style.height = `${Math.round(ratio * 100)}%`;
+    el.appendChild(fill);
+
+    const topTick = document.createElement('div');
+    topTick.className = 'book-gauge-tick book-gauge-tick-top';
+    topTick.textContent = String(ceil);
+    el.appendChild(topTick);
+
+    const bottomTick = document.createElement('div');
+    bottomTick.className = 'book-gauge-tick book-gauge-tick-bottom';
+    bottomTick.textContent = String(floor);
+    el.appendChild(bottomTick);
+
+    const flag = document.createElement('div');
+    flag.className = 'book-gauge-flag';
+    flag.style.bottom = `${Math.round(ratio * 100)}%`;
+    flag.textContent = String(earned);
+    el.appendChild(flag);
+}
+
+/** Штампы, кроме суточных — те живут на «Сегодня» и точку высечки не зажигают. */
+function stampsHaveClaimable() {
+    if (typeof rewardPageHasClaimable !== 'function') return false;
+    for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
+        if (rewardPageHasClaimable(i)) return true;
+    }
+    return false;
+}
+
+/** Пять высечек: подсветка активной и капля сургуча на Штампах (концепт, Табл. III-VI). */
+function renderBookTabs() {
+    document.querySelectorAll('.book-tab').forEach(btn => {
+        btn.classList.toggle('book-tab-on', btn.dataset.cut === bookCut);
+    });
+    const wax = document.getElementById('bookTabStampsWax');
+    if (wax) wax.hidden = !stampsHaveClaimable();
+}
+
+/** «Сегодня»: ежедневка — то же достижение на две ступени, что и штампы (REWARD_PAGES[0]). */
+function renderBookToday() {
+    const list = document.getElementById('bookTodayList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (const chain of getRewardPageChains(0)) {
+        list.appendChild(createAchievementRow(chain));
+    }
+}
+
+/**
+ * «Оглавление»: временный плоский список вместо разворота-определителя (K-10).
+ * Строка тапабельна — прыгает сразу на нужную главу, это и есть «объём решают
+ * главы, а не длина свитка» из концепта.
+ */
+function renderBookIndex() {
+    const el = document.getElementById('bookIndex');
+    if (!el) return;
+    el.innerHTML = '';
+
+    const atlasSec = document.createElement('div');
+    atlasSec.className = 'book-index-sec';
+    const atlasTitle = document.createElement('div');
+    atlasTitle.className = 'book-index-sec-title';
+    atlasTitle.textContent = t('book.cutAtlas');
+    atlasSec.appendChild(atlasTitle);
+    for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'book-index-row';
+        const label = document.createElement('span');
+        label.textContent = t('book.headAtlas', { n: i + 1, count: ATLAS_PAGE_COUNT });
+        row.appendChild(label);
+        const status = document.createElement('span');
+        status.className = 'book-index-row-status';
+        status.textContent = isAtlasPageUnlocked(i)
+            ? `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
+            : t('book.indexUncut');
+        row.appendChild(status);
+        row.addEventListener('click', () => {
+            setBookPageIndex('atlas', i);
+            switchBookCut('atlas');
+        });
+        atlasSec.appendChild(row);
+    }
+    el.appendChild(atlasSec);
+
+    const stampsSec = document.createElement('div');
+    stampsSec.className = 'book-index-sec';
+    const stampsTitle = document.createElement('div');
+    stampsTitle.className = 'book-index-sec-title';
+    stampsTitle.textContent = t('book.cutStamps');
+    stampsSec.appendChild(stampsTitle);
+    for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
+        const page = REWARD_PAGES[i];
+        const chains = getRewardPageChains(i);
+        const done = chains.filter(chain => {
+            const p = achievementProgress[chain.id];
+            return p && p.stepIndex >= chain.steps.length;
+        }).length;
+
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'book-index-row';
+        const label = document.createElement('span');
+        label.textContent = page.title;
+        row.appendChild(label);
+        const status = document.createElement('span');
+        status.className = 'book-index-row-status';
+        status.textContent = `${done} / ${chains.length}`;
+        row.appendChild(status);
+        row.addEventListener('click', () => {
+            setBookPageIndex('rewards', i);
+            switchBookCut('stamps');
+        });
+        stampsSec.appendChild(row);
+    }
+    el.appendChild(stampsSec);
+
+    const exSec = document.createElement('div');
+    exSec.className = 'book-index-sec';
+    const exRow = document.createElement('button');
+    exRow.type = 'button';
+    exRow.className = 'book-index-row';
+    const exLabel = document.createElement('span');
+    exLabel.textContent = t('book.cutExLibris');
+    exRow.appendChild(exLabel);
+    const exStatus = document.createElement('span');
+    exStatus.className = 'book-index-row-status';
+    exStatus.textContent = (typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked())
+        ? '☾' : t('book.indexUncut');
+    exRow.appendChild(exStatus);
+    exRow.addEventListener('click', () => switchBookCut('exlibris'));
+    exSec.appendChild(exRow);
+    el.appendChild(exSec);
+}
+
+/** Пейджер атласа: пока без свайпа — рельс страниц U-09 убран целиком. */
+function renderBookAtlasPager() {
+    const idx = getBookPageIndex('atlas');
+    const label = document.getElementById('atlasPagerLabel');
+    if (label) label.textContent = `${idx + 1} / ${ATLAS_PAGE_COUNT}`;
+    const prevBtn = document.querySelector('#atlasPager .book-pager-btn[data-dir="-1"]');
+    const nextBtn = document.querySelector('#atlasPager .book-pager-btn[data-dir="1"]');
+    if (prevBtn) prevBtn.disabled = idx <= 0;
+    if (nextBtn) nextBtn.disabled = idx >= ATLAS_PAGE_COUNT - 1;
+}
+
+function renderBookStampsPager() {
+    const idx = getBookPageIndex('rewards');
+    const label = document.getElementById('stampsPagerLabel');
+    if (label) label.textContent = `${idx} / ${REWARD_PAGE_COUNT - 1}`;
+    const prevBtn = document.querySelector('#stampsPager .book-pager-btn[data-dir="-1"]');
+    const nextBtn = document.querySelector('#stampsPager .book-pager-btn[data-dir="1"]');
+    if (prevBtn) prevBtn.disabled = idx <= 1;
+    if (nextBtn) nextBtn.disabled = idx >= REWARD_PAGE_COUNT - 1;
+}
+
+function stepBookPage(delta) {
+    if (bookCut === 'atlas') {
+        const idx = getBookPageIndex('atlas') + delta;
+        if (idx < 0 || idx >= ATLAS_PAGE_COUNT) return false;
+        setBookPageIndex('atlas', idx);
+        renderBook();
+        return true;
+    }
+    if (bookCut === 'stamps') {
+        const idx = getBookPageIndex('rewards') + delta;
+        if (idx < 1 || idx >= REWARD_PAGE_COUNT) return false;
+        setBookPageIndex('rewards', idx);
+        renderBook();
+        return true;
+    }
+    return false;
+}
+
+// =============================================================================
+// B-02: ОБСЕРВАТОРИЯ В КНИГЕ — страница «Ex Libris»
+// =============================================================================
+//
+// Сегмент-кнопка U-09 (третья в подвале шторки) стала пятой высечкой. Хинт
+// запертой обсерватории был поповером над подвалом — теперь это просто строка
+// на самой странице, ей незачем ни всплывать, ни закрываться тапом мимо.
+
+function renderBookExLibris() {
+    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const lockedEl = document.getElementById('exLibrisLocked');
+    const enterBtn = document.getElementById('exLibrisEnterBtn');
+    if (lockedEl) lockedEl.hidden = unlocked;
+    if (enterBtn) enterBtn.hidden = !unlocked;
+
+    if (!unlocked) {
+        const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
+        const target = OBSERVATORY_UNLOCK_COST;
+        const titleEl = document.getElementById('exLibrisLockTitle');
+        const subEl = document.getElementById('exLibrisLockSub');
+        const fillEl = document.getElementById('exLibrisLockBarFill');
+        const progressEl = document.getElementById('exLibrisLockProgress');
+        if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
+        if (subEl) subEl.textContent = t('observatory.lockedSub');
+        if (fillEl) {
+            const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
+            fillEl.style.width = (ratio * 100).toFixed(1) + '%';
+        }
+        if (progressEl) progressEl.textContent = t('observatory.lockedProgress', { current, target });
+        return;
+    }
+
+    if (enterBtn) {
+        const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+        enterBtn.textContent = t(inObservatory ? 'observatory.toField' : 'observatory.toObservatory');
+    }
+}
+
+/**
+ * Книга — полноэкранная: держать её открытой поверх обсерватории, как умела
+ * шторка (U-09 «не закрываем»), больше нельзя — она закрыла бы собой весь
+ * холст. Решение исполнителя K-06: переход закрывает книгу; лента остаётся
+ * входом назад с любой стороны (K-13 встроит холст прямо в разворот страницы).
+ */
+function onExLibrisEnterClick() {
+    const next = (typeof isObservatoryMode === 'function' && isObservatoryMode()) ? 'field' : 'observatory';
+    if (setAppMode(next)) closeBook();
 }
 
 /** Тумблер «соединять»/«двигать» вместо отката и обратно; при смене режима приложения. */
@@ -987,79 +817,79 @@ function updateObservatoryUI() {
         if (moveBtn) moveBtn.classList.toggle('seg-btn-on', mode === 'move');
     }
 
-    renderObservatorySegButton();
+    if (bookOpen && bookCut === 'exlibris') renderBookExLibris();
 }
 
-function renderSheet() {
-    const atlasList = document.getElementById('atlasList');
-    const achvList = document.getElementById('achievementsList');
-    const content = document.getElementById('sheetContent');
-    const isAtlas = sheetSection === 'atlas';
+// =============================================================================
+// K-06: РЕНДЕР И ОТКРЫТИЕ/ЗАКРЫТИЕ КНИГИ
+// =============================================================================
 
-    if (atlasList) atlasList.hidden = !isAtlas;
-    if (achvList) achvList.hidden = isAtlas;
-    // Прокрутка — только в Наградах; атлас всегда влезает целиком
-    if (content) content.classList.toggle('sheet-content-scroll', !isAtlas);
-
-    if (isAtlas) {
-        renderAtlasList();
-    } else {
-        recomputeAchievementsClaimable();
-        renderAchievementsList();
-        if (content) content.scrollTop = 0;
+function renderBook() {
+    const sections = {
+        today: document.getElementById('bookToday'),
+        index: document.getElementById('bookIndex'),
+        atlas: document.getElementById('bookAtlasSection'),
+        stamps: document.getElementById('bookStampsSection'),
+        exlibris: document.getElementById('bookExLibris')
+    };
+    for (const cut in sections) {
+        if (sections[cut]) sections[cut].hidden = cut !== bookCut;
     }
 
-    renderSheetTitle();
-    renderSheetRail();
-    renderSheetSegment();
+    recomputeAchievementsClaimable();
+
+    if (bookCut === 'today') {
+        renderBookToday();
+    } else if (bookCut === 'index') {
+        renderBookIndex();
+    } else if (bookCut === 'atlas') {
+        renderAtlasList();
+        renderBookAtlasPager();
+    } else if (bookCut === 'stamps') {
+        renderAchievementsList();
+        renderBookStampsPager();
+    } else if (bookCut === 'exlibris') {
+        renderBookExLibris();
+    }
+
+    renderBookHead();
+    renderBookGauge();
+    renderBookTabs();
     updateScoreUI();
     updateRibbonSignal();
+
+    const body = document.getElementById('bookBody');
+    if (body) body.scrollTop = 0;
 }
 
-function refreshSheetIfOpen() {
-    if (sheetOpen) renderSheet();
+function refreshBookIfOpen() {
+    if (bookOpen) renderBook();
 }
 
-function openSheet(section) {
-    if (section === 'atlas' || section === 'rewards') sheetSection = section;
-    sheetOpen = true;
-    const sheet = document.getElementById('sheet');
-    const scrim = document.getElementById('sheetScrim');
-    if (sheet) { sheet.hidden = false; sheet.classList.add('sheet-open'); }
-    if (scrim) scrim.hidden = false;
-    if (document.body) document.body.classList.add('sheet-open-body');
-    renderSheet();
+function openBook(cut) {
+    if (BOOK_CUT_LIST.includes(cut)) bookCut = cut;
+    bookOpen = true;
+    const book = document.getElementById('book');
+    if (book) book.hidden = false;
+    if (document.body) document.body.classList.add('book-open-body');
+    renderBook();
 }
 
-function closeSheet() {
-    if (!sheetOpen) return;
-    sheetOpen = false;
-    observatoryHintOpen = false; // B-02: поповер не переживает закрытие шторки
-    const sheet = document.getElementById('sheet');
-    const scrim = document.getElementById('sheetScrim');
-    if (sheet) {
-        sheet.classList.remove('sheet-open');
-        sheet.style.transform = '';
-        sheet.hidden = true;
+function closeBook() {
+    if (!bookOpen) return;
+    bookOpen = false;
+    const book = document.getElementById('book');
+    if (book) {
+        book.style.transform = '';
+        book.hidden = true;
     }
-    if (scrim) scrim.hidden = true;
-    if (document.body) document.body.classList.remove('sheet-open-body');
+    if (document.body) document.body.classList.remove('book-open-body');
 }
 
-function switchSheetSection(section) {
-    if (sheetSection === section) return;
-    sheetSection = section;
-    observatoryHintOpen = false; // B-02: открытие другого раздела сворачивает хинт
-    renderSheet();
-}
-
-function stepSheetPage(delta) {
-    const count = getSheetPageCount(sheetSection);
-    const next = getSheetPageIndex() + delta;
-    if (next < 0 || next >= count) return false;
-    setSheetPageIndex(sheetSection, next);
-    renderSheet();
-    return true;
+function switchBookCut(cut) {
+    if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
+    bookCut = cut;
+    renderBook();
 }
 
 /**
@@ -1081,13 +911,8 @@ function updateRibbonSignal() {
 }
 
 // =============================================================================
-// U-09: ЖЕСТЫ ШТОРКИ
+// K-06: ЖЕСТЫ КНИГИ
 // =============================================================================
-
-const SHEET_SWIPE_MIN_PX = 48;       // порог смены страницы
-const SHEET_CLOSE_MIN_PX = 70;       // порог закрытия потягиванием вниз
-const SHEET_OPEN_MIN_PX = 40;        // порог открытия вытягиванием вверх
-const SHEET_AXIS_DECIDE_PX = 10;     // после стольких px решаем, чей это жест
 
 /** Единая точка координат: работает и для мыши, и для пальца. */
 function getGesturePoint(event) {
@@ -1102,24 +927,22 @@ function isMultiTouch(event) {
 }
 
 /**
- * Правило bottom sheet: тянут вниз в самом верху списка (или за ручку) —
- * закрытие; тянут вниз в середине — прокрутка (только Награды); ведут вбок
- * под углом < 30° — листание страниц.
- *
- * Слушаем и touch, и mouse: на десктопе шторка тянется мышью так же, как
- * пальцем на телефоне.
+ * Единственный жест книги — потягивание вниз закрывает её с любой страницы
+ * (риск 4 дока K-06: возврат на небо обязан быть таким же дешёвым, как вход).
+ * Тянут вниз в самом верху прокрутки страницы — закрытие; тянут в середине
+ * списка — обычная прокрутка. Горизонтальных свайпов страниц (SHEET_SWIPE_MIN_PX
+ * и компания) в книге больше нет — под-страницы листает пейджер-кнопка.
  */
-function setupSheetGestures() {
-    if (sheetHandlersBound) return;
-    const sheet = document.getElementById('sheet');
-    const content = document.getElementById('sheetContent');
-    const handle = document.getElementById('sheetHandle');
+function setupBookCloseGesture() {
+    if (bookHandlersBound) return;
+    const book = document.getElementById('book');
+    const body = document.getElementById('bookBody');
     const ribbon = document.getElementById('skyRibbon');
-    if (!sheet || !content || !handle) return;
+    if (!book || !body) return;
 
-    let startX = 0, startY = 0;
-    let axis = null;                 // null | 'x' | 'closing' | 'scroll'
-    let fromHandle = false;
+    let startY = 0;
+    let decided = false;
+    let closing = false;
     let tracking = false;
 
     const onStart = (event) => {
@@ -1127,79 +950,55 @@ function setupSheetGestures() {
         if (event.type === 'mousedown' && event.button !== 0) return;
         const p = getGesturePoint(event);
         if (!p) return;
-        startX = p.clientX;
         startY = p.clientY;
-        axis = null;
+        decided = false;
+        closing = false;
         tracking = true;
-        fromHandle = handle.contains(event.target);
     };
 
     const onMove = (event) => {
         if (!tracking || isMultiTouch(event)) return;
         const p = getGesturePoint(event);
         if (!p) return;
-        const dx = p.clientX - startX;
         const dy = p.clientY - startY;
 
-        if (axis === null) {
-            if (Math.abs(dx) < SHEET_AXIS_DECIDE_PX && Math.abs(dy) < SHEET_AXIS_DECIDE_PX) return;
-            // Ближе к горизонтали (< 30°) — листаем страницы
-            if (Math.abs(dx) > Math.abs(dy) * 1.73) {
-                axis = 'x';
-            } else if (dy > 0 && (fromHandle || content.scrollTop <= 0)) {
-                axis = 'closing';
-            } else {
-                axis = 'scroll';   // отдаём браузеру: вертикальная прокрутка Наград
-            }
+        if (!decided) {
+            if (Math.abs(dy) < BOOK_AXIS_DECIDE_PX) return;
+            decided = true;
+            closing = dy > 0 && body.scrollTop <= 0;
         }
 
-        if (axis === 'scroll') return;
-
+        if (!closing) return;
         if (event.cancelable) event.preventDefault();
-        if (axis === 'closing') {
-            sheet.style.transform = `translateY(${Math.max(0, dy)}px)`;
-        }
+        book.style.transform = `translateY(${Math.max(0, dy)}px)`;
     };
 
     const onEnd = (event) => {
         if (!tracking) return;
         tracking = false;
         const p = getGesturePoint(event);
-        const dx = p ? p.clientX - startX : 0;
         const dy = p ? p.clientY - startY : 0;
 
-        sheet.style.transform = '';
-
-        if (axis === 'x' && Math.abs(dx) >= SHEET_SWIPE_MIN_PX) {
-            stepSheetPage(dx < 0 ? 1 : -1);
-        } else if (axis === 'closing' && dy >= SHEET_CLOSE_MIN_PX) {
-            closeSheet();
-        }
-        axis = null;
+        book.style.transform = '';
+        if (closing && dy >= BOOK_CLOSE_SWIPE_MIN_PX) closeBook();
+        closing = false;
     };
 
-    sheet.addEventListener('touchstart', onStart, { passive: true });
-    sheet.addEventListener('touchmove', onMove, { passive: false });
-    sheet.addEventListener('touchend', onEnd);
-    sheet.addEventListener('touchcancel', onEnd);
-    sheet.addEventListener('mousedown', onStart);
+    book.addEventListener('touchstart', onStart, { passive: true });
+    book.addEventListener('touchmove', onMove, { passive: false });
+    book.addEventListener('touchend', onEnd);
+    book.addEventListener('touchcancel', onEnd);
+    book.addEventListener('mousedown', onStart);
     window.addEventListener('mousemove', onMove);
     window.addEventListener('mouseup', onEnd);
 
-    // K-05: потягивание ленты вверх — обратный жест к закрытию книги
+    // K-05: потягивание ленты вверх — обратный жест к открытию книги
     if (ribbon) setupRibbonPullGesture(ribbon);
 
-    // Десктоп: колесо вбок листает страницы
-    sheet.addEventListener('wheel', (event) => {
-        if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
-        event.preventDefault();
-        stepSheetPage(event.deltaX > 0 ? 1 : -1);
-    }, { passive: false });
-
-    sheetHandlersBound = true;
+    bookHandlersBound = true;
 }
 
-/** K-05: тянем ленту-закладку вверх — книга открывается на последнем разделе. */
+/** K-05: тянем ленту-закладку вверх — книга открывается на последней высечке. */
 function setupRibbonPullGesture(ribbon) {
     let startY = 0;
     let startX = 0;
@@ -1218,15 +1017,15 @@ function setupRibbonPullGesture(ribbon) {
     };
 
     const move = (event) => {
-        if (!tracking || sheetOpen || isMultiTouch(event)) return;
+        if (!tracking || bookOpen || isMultiTouch(event)) return;
         const p = getGesturePoint(event);
         if (!p) return;
         const dy = startY - p.clientY;
         const dx = Math.abs(p.clientX - startX);
-        if (dy >= SHEET_OPEN_MIN_PX && dy > dx) {
+        if (dy >= BOOK_OPEN_SWIPE_MIN_PX && dy > dx) {
             pulled = true;
             tracking = false;
-            openSheet(sheetSection);
+            openBook();
         }
     };
 
@@ -1240,7 +1039,7 @@ function setupRibbonPullGesture(ribbon) {
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
 
-    // Потянули вверх — click по кнопке под пальцем не должен переключать раздел
+    // Потянули вверх — click по ленте под пальцем не должен переоткрыть книгу
     ribbon.addEventListener('click', (event) => {
         if (!pulled) return;
         pulled = false;
@@ -1250,37 +1049,50 @@ function setupRibbonPullGesture(ribbon) {
 
     // Тап по ленте открывает книгу
     ribbon.addEventListener('click', () => {
-        if (sheetOpen) return;
-        openSheet(sheetSection);
+        if (bookOpen) return;
+        openBook();
     });
 }
 
-function setupSheetControls() {
+function setupBookControls() {
     // K-05: лента — единая цель: тап, потягивание вверх или Enter открывают
-    // книгу на том разделе, где игрок был в прошлый раз.
+    // книгу на той высечке, где игрок был в прошлый раз.
     document.getElementById('skyRibbon')?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        openSheet(sheetSection);
+        openBook();
     });
-    document.getElementById('segAtlasBtn')?.addEventListener('click', () => switchSheetSection('atlas'));
-    document.getElementById('segRewardsBtn')?.addEventListener('click', () => switchSheetSection('rewards'));
-    // B-02: третья кнопка сегмента и тумблер режима холста
-    document.getElementById('segObservatoryBtn')?.addEventListener('click', onObservatorySegClick);
+
+    document.querySelectorAll('.book-tab').forEach(btn => {
+        btn.addEventListener('click', () => switchBookCut(btn.dataset.cut));
+    });
+
+    const onPagerClick = (event) => {
+        const btn = event.target.closest('.book-pager-btn');
+        if (!btn) return;
+        stepBookPage(Number(btn.dataset.dir));
+    };
+    document.getElementById('atlasPager')?.addEventListener('click', onPagerClick);
+    document.getElementById('stampsPager')?.addEventListener('click', onPagerClick);
+
+    // K-06 риск 4: строка на «Сегодня» — второй, равноценный вход в тот же жест закрытия
+    document.getElementById('bookReturnBtn')?.addEventListener('click', closeBook);
+    document.getElementById('exLibrisEnterBtn')?.addEventListener('click', onExLibrisEnterClick);
+
+    // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
     document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));
     document.getElementById('obsModeMoveBtn')?.addEventListener('click', () => setObservatoryMode('move'));
-    document.getElementById('sheetCloseBtn')?.addEventListener('click', closeSheet);
-    document.getElementById('sheetScrim')?.addEventListener('click', closeSheet);
-    setupSheetGestures();
+
+    setupBookCloseGesture();
 }
 
 function onGlobalPopupKeydown(event) {
     if (event.key === 'Escape') {
-        closeSheet();
+        closeBook();
         return;
     }
-    if (!sheetOpen) return;
-    if (event.key === 'ArrowLeft') stepSheetPage(-1);
-    if (event.key === 'ArrowRight') stepSheetPage(1);
+    if (!bookOpen) return;
+    if (event.key === 'ArrowLeft') stepBookPage(-1);
+    if (event.key === 'ArrowRight') stepBookPage(1);
 }
 

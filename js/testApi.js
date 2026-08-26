@@ -494,17 +494,18 @@
     }
 
     function ui() {
-        // K-05: сигнал переехал с бейджа свёрнутой шторки на каплю сургуча.
-        // `rewardsBadge` оставлен псевдонимом на время серии K (договорённость
-        // K-07: сценарии падают по одному, а не все сразу).
+        // K-06: шторка стала книгой — поля переименованы вслед за ui.js
+        // (sheetOpen→bookOpen, section→cut). `rewardsBadge` оставлен псевдонимом
+        // capacityBadge/wax на время серии K — полная переработка харнесса под
+        // пять высечек это уже K-07, здесь только минимально живой мост.
         const wax = document.getElementById('ribbonWax');
         const ribbon = document.getElementById('skyRibbon');
         const waxOn = !!(wax && !wax.hidden);
         return {
-            sheetOpen,
-            section: sheetSection,
-            page: getSheetPageIndex(),
-            pageCount: getSheetPageCount(sheetSection),
+            bookOpen,
+            cut: bookCut,
+            page: bookCut === 'stamps' ? getBookPageIndex('rewards') : getBookPageIndex('atlas'),
+            pageCount: bookCut === 'stamps' ? getBookPageCount('rewards') : getBookPageCount('atlas'),
             wax: waxOn,
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
@@ -841,9 +842,9 @@
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
         errors,
         clearErrors,
-        // Служебное: открыть/закрыть шторку без жеста (жесты — уровень MobAI).
-        openSheet: section => { openSheet(section); return ui(); },
-        closeSheet: () => { closeSheet(); return ui(); }
+        // Служебное: открыть/закрыть книгу без жеста (жесты — уровень MobAI).
+        openBook: cut => { openBook(cut); return ui(); },
+        closeBook: () => { closeBook(); return ui(); }
     };
 
     console.info('[test] Харнесс активен: window.__test. reset() стирает локальный прогресс.');
