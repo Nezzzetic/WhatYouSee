@@ -487,31 +487,82 @@
         };
     }
 
+    /**
+     * K-07: `claim()` остаётся — забор штатным путём, минуя DOM. Для проверки
+     * самой кнопки (найдена ли она, тот ли шаг показан) — `press()`.
+     */
     function claim(chainId) {
         const before = getMetaScore();
         const ok = claimAchievementStep(chainId);
         return { claimed: !!ok, scoreBefore: before, scoreAfter: getMetaScore() };
     }
 
-    function ui() {
-        // K-06: шторка стала книгой — поля переименованы вслед за ui.js
-        // (sheetOpen→bookOpen, section→cut). `rewardsBadge` оставлен псевдонимом
-        // capacityBadge/wax на время серии K — полная переработка харнесса под
-        // пять высечек это уже K-07, здесь только минимально живой мост.
+    /**
+     * K-07: «прижать марку» — про UI, а не про модель. В отличие от `claim()`,
+     * требует настоящую кнопку в DOM (значит, книга открыта на верной странице)
+     * и, если передан `stepIndex`, что показан именно этот шаг цепочки —
+     * тестирует то, что видит и жмёт игрок, а не копию правил.
+     */
+    function press(chainId, stepIndex) {
+        const btn = document.querySelector('.achv-claim-btn[data-chain-id="' + chainId + '"]');
+        if (!btn) fail('press: кнопки цепочки «' + chainId + '» нет в DOM (книга не на той странице?)');
+        const progress = achievementProgress[chainId];
+        if (stepIndex !== undefined && stepIndex !== null && progress
+            && progress.stepIndex !== Number(stepIndex)) {
+            fail('press: цепочка «' + chainId + '» сейчас на шаге ' + progress.stepIndex
+                + ', а не ' + stepIndex);
+        }
+        if (btn.disabled) fail('press: кнопка «' + chainId + '» задизейблена — нечего забирать');
+        const before = getMetaScore();
+        btn.click();
+        return { pressed: true, scoreBefore: before, scoreAfter: getMetaScore() };
+    }
+
+    /**
+     * K-07: состояние книги — открыта ли, какая высечка, номер страницы, окно
+     * шкалы света у корешка (renderBookGauge — за lifetimeMetaEarned, а не за
+     * тратящимся metaScore). `ui()` — псевдоним на время серии K.
+     */
+    function book() {
         const wax = document.getElementById('ribbonWax');
         const ribbon = document.getElementById('skyRibbon');
         const waxOn = !!(wax && !wax.hidden);
+        const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
+        const floor = Math.floor(earned / BOOK_GAUGE_WINDOW) * BOOK_GAUGE_WINDOW;
         return {
-            bookOpen,
+            open: bookOpen,
             cut: bookCut,
             page: bookCut === 'stamps' ? getBookPageIndex('rewards') : getBookPageIndex('atlas'),
             pageCount: bookCut === 'stamps' ? getBookPageCount('rewards') : getBookPageCount('atlas'),
+            gauge: { earned, floor, ceil: floor + BOOK_GAUGE_WINDOW, ratio: (earned - floor) / BOOK_GAUGE_WINDOW },
             wax: waxOn,
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
             rewardsBadge: waxOn,
             hasClaimable: hasClaimableAchievements()
         };
+    }
+
+    /**
+     * K-07: старое имя шторки — псевдоним на время серии K, чтобы сценарии
+     * за пределами этой задачи падали по одному, а не все сразу на первом же
+     * вызове. Поля прежней формы (`sheetOpen`, `section`) не восстанавливаем —
+     * они описывали шторку, которой больше нет; актуальная форма — `book()`.
+     */
+    function ui() {
+        return book();
+    }
+
+    /** K-07: старое имя — псевдоним. 'rewards' была секцией шторки, теперь это высечка 'stamps'. */
+    function openSheet(section) {
+        openBook(section === 'rewards' ? 'stamps' : section);
+        return book();
+    }
+
+    /** K-07: старое имя — псевдоним closeBook(). */
+    function closeSheet() {
+        closeBook();
+        return book();
     }
 
     // =========================================================================
@@ -720,12 +771,14 @@
      * а «зум пришёл ровно в min, центр — в центр поля».
      */
     /**
-     * K-04: корректорская пометка. Отдаёт ровно ту геометрию, по которой она
-     * нарисована, — сценарий тапает по настоящему месту, а не по догадке.
-     * `undoMark` — script-level let из drawing.js: на window его нет,
-     * но по имени из другого скрипта он виден.
+     * K-04/K-07: корректорская пометка книги. Названа `proof()` вслед за книжным
+     * API (K-07: «либо переименовать, либо вычеркнуть» — переименовано, `undoMark`
+     * остаётся псевдонимом). Отдаёт ровно ту геометрию, по которой она нарисована, —
+     * сценарий тапает по настоящему месту, а не по догадке. `undoMark` —
+     * script-level let из drawing.js: на window его нет, но по имени из другого
+     * скрипта он виден.
      */
-    function undoMarkState() {
+    function proofState() {
         const layout = computeUndoMarkLayout();
         const pending = !!undoMark && !layout && millis() < undoMark.startMs;
         if (!layout) {
@@ -833,18 +886,26 @@
         undo,
         state,
         claim,
-        ui,
+        press,
+        book,
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
-        undoMark: undoMarkState,
+        proof: proofState,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
         errors,
         clearErrors,
         // Служебное: открыть/закрыть книгу без жеста (жесты — уровень MobAI).
-        openBook: cut => { openBook(cut); return ui(); },
-        closeBook: () => { closeBook(); return ui(); }
+        openBook: cut => { openBook(cut); return book(); },
+        closeBook: () => { closeBook(); return book(); },
+        // K-07: старые имена шторки — псевдонимы на время серии K (см. комментарии
+        // у функций выше), чтобы сценарии за пределами этой задачи падали
+        // по одному, а не крашились на первом же вызове.
+        ui,
+        openSheet,
+        closeSheet,
+        undoMark: proofState
     };
 
     console.info('[test] Харнесс активен: window.__test. reset() стирает локальный прогресс.');
