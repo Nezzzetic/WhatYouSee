@@ -1055,9 +1055,9 @@ function recordAchievementReveal() {
 function afterAchievementStateChanged() {
     recomputeAchievementsClaimable(true);
     saveProgression();
-    // U-09: обе половины живут в шторке — перерисовываем её, если открыта
+    // K-06: атлас и награды живут в книге — перерисовываем её, если открыта
     if (typeof updateRibbonSignal === 'function') updateRibbonSignal();
-    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
 }
 
 // =============================================================================
@@ -1086,7 +1086,7 @@ function claimAchievementStep(chainId) {
     const reward = getAchievementChainStepReward(chain, p.stepIndex);
 
     // A-03: отклик снимается и запускается ДО начисления. Прямоугольник кнопки —
-    // потому что хвост ниже зовёт `refreshSheetIfOpen()` и узла кнопки не станет;
+    // потому что хвост ниже зовёт `refreshBookIfOpen()` и узла кнопки не станет;
     // зажим счётчика — потому что `awardMetaScore` сам добирается до `updateScoreUI`,
     // если забор открыл страницу атласа.
     const fromRect = getClaimButtonRect(chainId);
@@ -1118,7 +1118,7 @@ function claimAchievementStep(chainId) {
     saveProgression();
 
     updateProgressionUI();
-    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     return true;
 }
 
@@ -1184,18 +1184,20 @@ function showShapeRevealToast(shapeId) {
 // =============================================================================
 
 // =============================================================================
-// U-09: НАГРАДЫ — 4 СТРАНИЦЫ СТРОК В ШТОРКЕ
+// U-09/K-06: НАГРАДЫ — 5 СТРАНИЦ СТРОК; «Сутки» живут на «Сегодня», не в Штампах
 // =============================================================================
 
 /**
  * Порядок фиксирован и не зависит от наличия забора: игрок ищет готовое
- * по бейджу на иконке рельса, а не по перескакивающим строкам.
+ * по капле сургуча на высечке «Stamps», а не по перескакивающим строкам.
+ * REWARD_PAGES[0] («Сутки») сама книга (ui.js, renderBookToday) рендерит на
+ * странице «Сегодня» отдельно — getBookPageIndex('rewards') по страницам
+ * Штампов ходит с индекса 1, а не 0.
  */
 const REWARD_PAGES = [
     {
-        // M-05: суточные квесты стоят первой страницей, потому что
-        // `sheetPageIndices` (ui.js) в сейве не живёт и на каждой загрузке равен
-        // нулю — игрок попадает прямо на сегодняшнее.
+        // M-05: суточные квесты стоят первым элементом массива — так исторически
+        // сложилось (page 0 самой шторки U-09), K-06 забрал их себе для «Сегодня».
         id: 'daily', sign: 'crescent', title: t('rewardPage.daily'),
         chainIds: ['daily_entry', 'daily_night']
     },
@@ -1385,7 +1387,7 @@ function renderAchievementsList() {
     const list = document.getElementById('achievementsList');
     if (!list) return;
     list.innerHTML = '';
-    for (const chain of getRewardPageChains(getSheetPageIndex('rewards'))) {
+    for (const chain of getRewardPageChains(getBookPageIndex('rewards'))) {
         list.appendChild(createAchievementRow(chain));
     }
 }

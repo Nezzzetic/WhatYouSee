@@ -87,8 +87,10 @@
 :root {
     /* K-05 (правила P-02): в WebView окно занимает экран целиком, и низ
        принадлежит системе. В браузере env(...) равен нулю — все расчёты ниже
-       там дают ровно прежние числа. */
+       там дают ровно прежние числа. K-06: книга занимает экран целиком и
+       упирается в верх — там тот же приём нужен и сверху. */
     --safe-bottom: env(safe-area-inset-bottom, 0px);
+    --safe-top: env(safe-area-inset-top, 0px);
 
     /* K-05: лента-закладка. Видимый хвост — узкий, зона касания вокруг него
        шире (пальцу 24 px мало). Пропорции из концепта (18×64 при макете 320 px),
@@ -480,116 +482,6 @@ body {
     100% { opacity: 0; transform: scale(1); }
 }
 
-/* --- Constellation hints (level left panel) --- */
-
-.level-patterns-title {
-    font-size: 11px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--ink-muted);
-    padding: 0 2px;
-}
-
-.hint-empty {
-    font-size: 12px;
-    color: var(--ink-faint);
-    text-align: center;
-    padding: 12px 8px;
-}
-
-#constellation-hints {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-    padding: 8px 20px;
-    background: linear-gradient(180deg, var(--night-soft) 0%, var(--night) 100%);
-    border-bottom: 1px solid var(--paper-edge);
-    flex-shrink: 0;
-    z-index: 10;
-}
-
-.hint-filter-bar {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.hint-filter-btn {
-    min-width: 56px;
-    padding: 4px 10px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 999px;
-    background: var(--paper-deep);
-    color: var(--ink-muted);
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-}
-
-.hint-filter-btn:hover {
-    border-color: var(--ink-faint);
-    background: var(--paper-raised);
-}
-
-.hint-filter-btn.active {
-    border-color: var(--gold);
-    color: var(--gold-light);
-    background: var(--paper-raised);
-}
-
-.hint-list {
-    --hint-item-width: 70px;
-    --hint-gap: 16px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: var(--hint-gap);
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding-bottom: 2px;
-    width: min(100%, calc(var(--hint-item-width) * 7 + var(--hint-gap) * 6));
-    margin: 0 auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    cursor: grab;
-    user-select: none;
-}
-
-.hint-list::-webkit-scrollbar {
-    display: none;
-}
-
-.hint-list.dragging {
-    cursor: grabbing;
-}
-
-.hint-item {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-    flex: 0 0 auto;
-    width: var(--hint-item-width);
-}
-
-.hint-canvas {
-    display: block;
-    border-radius: 6px;
-    background: var(--night);
-    border: 1px solid var(--paper-edge);
-}
-
-.hint-name {
-    font-size: 10px;
-    color: var(--ink-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    font-weight: 500;
-}
-
 /* --- Canvas --- */
 
 #canvas-container {
@@ -646,10 +538,6 @@ button:hover {
 button:disabled {
     opacity: 0.4;
     cursor: default;
-}
-
-#constellation-hints.hints-panel-hidden {
-    display: none !important;
 }
 
 /* V-13: блок тоста завершения ночи снят вместе с самим тостом.
@@ -715,7 +603,7 @@ button:disabled {
 }
 
 /* =============================================================================
-   ШТОРКА — лента-закладка (K-05), sheet, рельс, атлас и награды (U-09)
+   ЛЕНТА-ЗАКЛАДКА (K-05) И КНИГА (K-06) — страница, пять высечек, атлас и награды
    ============================================================================= */
 
 /* --- K-05: лента-закладка — единственный предмет на небе --------------------
@@ -764,7 +652,7 @@ button:disabled {
 }
 
 /* Книга открыта — лента ушла вместе с небом */
-.sheet-open-body .ribbon {
+.book-open-body .ribbon {
     display: none;
 }
 
@@ -782,208 +670,372 @@ button:disabled {
     box-shadow: 0 0 12px 2px rgba(var(--wax-rgb), 0.55);
 }
 
-.sheet-score-icon {
-    font-size: 13px;
-    line-height: 1;
-}
+/* --- K-06: книга — полноэкранная страница, пять высечек, шкала света ------ */
 
-/* --- сама шторка --- */
-
-.sheet-scrim {
+.book {
     position: fixed;
     inset: 0;
-    z-index: 1190;
-    background: rgba(var(--night-rgb), 0.35);
+    z-index: 1200;
+    background: var(--night);
 }
 
-.sheet {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1200;
-    width: min(560px, 100%);
-    margin: 0 auto;
-    height: min(85vh, 680px);
-    height: min(85dvh, 680px);
+/* Гауge и высечки лежат в собственных полях страницы (--page-pad-left/-right,
+   K-01) абсолютным наложением — как в концепте: страница читается на всю
+   ширину, поля просто заняты линейкой и стопкой высечек. */
+.book-page {
+    position: absolute;
+    inset: 0;
     display: flex;
     flex-direction: column;
-    overflow: hidden;
-    border-top: 1px solid var(--paper-edge);
-    border-radius: 22px 22px 0 0;
-    background: rgba(var(--paper-rgb), 0.97);
-    backdrop-filter: blur(14px);
-    box-shadow: 0 -12px 40px rgba(var(--night-rgb), 0.55);
-    touch-action: none;
+    padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px) 10px
+        max(var(--page-pad-left), 24px);
+    background:
+        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%);
+    touch-action: pan-y;
 }
 
-/* Ручка — единственная зона, где потягивание вниз закрывает всегда */
-.sheet-handle {
-    position: relative;
+.book-head {
     flex: none;
-    padding-bottom: 8px;
-    cursor: grab;
-    touch-action: none;
-    user-select: none;
-}
-
-.sheet-handle:active {
-    cursor: grabbing;
-}
-
-/* ✦ остаётся на виду, пока шторка открыта */
-.sheet-score {
-    position: absolute;
-    right: 14px;
-    bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--gold);
-    font-variant-numeric: tabular-nums;
-    pointer-events: none;
-}
-
-.sheet-grab {
-    width: 38px;
-    height: 4px;
-    margin: 9px auto 2px;
-    border-radius: 99px;
-    background: var(--ink-faint);
-}
-
-.sheet-title {
-    padding: 8px 16px 0;
     text-align: center;
+    margin-bottom: 6px;
+}
+
+.book-eyebrow {
     font-size: 11px;
-    letter-spacing: 0.07em;
-    color: var(--ink-muted);
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    min-height: 1em;
 }
 
-.sheet-title b {
+.book-title {
     font-family: var(--font-title);
-    font-size: 13px;
-    font-weight: 650;
-    letter-spacing: 0;
+    font-weight: 500;
+    font-size: 21px;
     color: var(--ink);
+    margin-top: 3px;
+    letter-spacing: 0.01em;
 }
 
-.sheet-content {
+.book-rule {
+    width: 56px;
+    height: 1px;
+    background: var(--paper-edge);
+    margin: 9px auto 0;
+    position: relative;
+}
+
+.book-rule::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -2.5px;
+    width: 5px;
+    height: 5px;
+    transform: translateX(-50%) rotate(45deg);
+    background: var(--gold-deep);
+}
+
+.book-body {
     flex: 1;
     min-height: 0;
-    overflow: hidden;
-    padding: 4px 14px 8px;
-}
-
-/* Прокрутка — только в Наградах */
-.sheet-content-scroll {
     overflow-y: auto;
-    touch-action: pan-y;
+    padding: 10px 2px 8px;
     scrollbar-width: none;
 }
 
-.sheet-content-scroll::-webkit-scrollbar {
+.book-body::-webkit-scrollbar {
     display: none;
 }
 
-/* --- подвал: рельс + сегмент, обе строки в нижних ~104 px --- */
-
-.sheet-footer {
-    flex: none;
-    padding: 8px 10px 12px;
-    border-top: 1px solid var(--paper-edge);
-    background: rgba(var(--paper-deep-rgb), 0.96);
-}
-
-.sheet-rail {
+.book-section {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 5px;
-}
-
-.rail-btn {
-    position: relative;
-    flex: none;
-    width: 33px;
-    height: 33px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--paper-edge);
-    border-radius: 11px;
-    background: rgba(var(--ink-rgb), 0.03);
-    color: var(--ink-muted);
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.rail-btn:hover {
-    border-color: var(--ink-faint);
-    background: rgba(var(--ink-rgb), 0.07);
-}
-
-.rail-btn-on,
-.rail-btn-on:hover {
-    border-color: var(--gold);
-    background: var(--gold);
-    box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.28);
-}
-
-.rail-btn-on {
-    color: var(--night);
-}
-
-.rail-badge {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--wax);
-    border: 2px solid var(--paper-deep);
-}
-
-/* Сегмент разделов + «вниз»: обе цели под большим пальцем */
-.sheet-bottom-row {
-    display: flex;
-    align-items: stretch;
+    flex-direction: column;
     gap: 8px;
-    margin-top: 8px;
 }
 
-.sheet-seg {
-    flex: 1;
-    min-width: 0;
-    display: flex;
-    gap: 3px;
-    padding: 3px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.04);
-}
-
-.sheet-close-btn {
+.book-foot {
     flex: none;
-    width: 44px;
+    margin-top: auto;
+    padding-top: 8px;
+    text-align: center;
+    font-size: 11.5px;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+/* --- пейджер под-страниц атласа/наград (временная навигация K-06; полноценный
+   разворот-определитель и главы штампов — K-11/K-12) --- */
+
+.book-pager {
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding-bottom: 4px;
+}
+
+.book-pager-btn {
+    flex: none;
+    width: 30px;
+    height: 30px;
     padding: 0;
     border: 1px solid var(--paper-edge);
     border-radius: 99px;
     background: rgba(var(--ink-rgb), 0.04);
     color: var(--ink-muted);
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1;
     cursor: pointer;
 }
 
-.sheet-close-btn:hover {
+.book-pager-btn:hover {
     border-color: var(--ink-faint);
     background: rgba(var(--ink-rgb), 0.08);
     color: var(--ink);
+}
+
+.book-pager-btn:disabled {
+    opacity: 0.35;
+    cursor: default;
+}
+
+.book-pager-label {
+    min-width: 64px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--ink-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- «вернуться на небо»: то же жест, что и потягивание вниз, но строкой --- */
+
+.book-return {
+    flex: none;
+    margin-top: 10px;
+    padding: 6px;
+    border: none;
+    background: none;
+    color: var(--ink-faint);
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 12.5px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    cursor: pointer;
+}
+
+.book-return:hover {
+    color: var(--ink-muted);
+}
+
+/* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
+
+.book-btn {
+    align-self: center;
+    margin-top: 12px;
+    padding: 9px 18px;
+    border: 1px solid var(--paper-edge);
+    border-radius: 99px;
+    background: rgba(var(--ink-rgb), 0.05);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: 13.5px;
+    cursor: pointer;
+}
+
+.book-btn:hover {
+    border-color: var(--ink-faint);
+    background: rgba(var(--ink-rgb), 0.09);
+}
+
+.book-index-sec {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.book-index-sec-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--gold-deep);
+    margin: 10px 2px 2px;
+}
+
+.book-index-sec:first-child .book-index-sec-title {
+    margin-top: 0;
+}
+
+.book-index-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 10px;
+    border: 1px solid var(--paper-edge);
+    border-radius: 10px;
+    background: rgba(var(--ink-rgb), 0.025);
+    color: var(--ink);
+    font-family: var(--font-text);
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+}
+
+.book-index-row:hover {
+    border-color: var(--ink-faint);
+}
+
+.book-index-row-status {
+    color: var(--ink-muted);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* --- шкала света у корешка: окно из двух засечек-сотен, K-06 -------------- */
+
+.book-gauge {
+    position: absolute;
+    left: 4px;
+    top: calc(var(--safe-top) + 60px);
+    bottom: 42px;
+    width: 16px;
+}
+
+.book-gauge::before {
+    content: '';
+    position: absolute;
+    left: 2px;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--paper-edge);
+}
+
+.book-gauge-fill {
+    position: absolute;
+    left: 2px;
+    bottom: 0;
+    width: 1px;
+    background: var(--gold);
+    box-shadow: 0 0 6px rgba(var(--gold-rgb), 0.5);
+}
+
+.book-gauge-tick {
+    position: absolute;
+    left: 8px;
+    font-size: 10px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.book-gauge-tick-top {
+    top: 0;
+    transform: translateY(-50%);
+}
+
+.book-gauge-tick-bottom {
+    bottom: 0;
+    transform: translateY(50%);
+}
+
+.book-gauge-flag {
+    position: absolute;
+    left: 6px;
+    transform: translateY(50%);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--gold-light);
+    font-variant-numeric: tabular-nums;
+}
+
+.book-gauge-flag::before {
+    content: '';
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold-light);
+    box-shadow: 0 0 6px rgba(var(--gold-rgb), 0.7);
+}
+
+/* --- пять высечек: сквозные, стопкой у правого края снизу, под большим
+   пальцем правой руки. Подписаны словами — решение концепта (спорный вопрос 4):
+   на маленьком экране знак читался бы быстрее, но вкладка со знаком перестаёт
+   быть книжной высечкой и становится панелью приложения. --- */
+
+.book-tabs {
+    position: absolute;
+    right: 0;
+    bottom: calc(var(--safe-bottom) + 90px);
+    width: 30px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+}
+
+.book-tab {
+    position: relative;
+    flex: none;
+    width: 26px;
+    height: 58px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--paper-edge);
+    border-radius: 5px 0 0 5px;
+    border-right: none;
+    background: var(--paper-deep);
+    color: var(--ink-faint);
+    font-family: var(--font-text);
+    font-size: 9.5px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    cursor: pointer;
+}
+
+.book-tab-on {
+    width: 30px;
+    background: var(--paper-raised);
+    color: var(--ink);
+}
+
+.book-tab-wax {
+    position: absolute;
+    /* Высечка развёрнута (writing-mode: vertical-rl + rotate(180deg)) — «левый
+       верхний» в экранных координатах читается как «правый нижний» в системе
+       координат до поворота. */
+    left: 3px;
+    bottom: 6px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--wax);
+    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+}
+
+/* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
+   не поповером над подвалом шторки (той больше нет). --- */
+
+.obs-lock-hint {
+    padding: 10px 12px 11px;
+    border: 1px solid var(--paper-edge);
+    border-radius: 12px;
+    background: var(--paper-raised);
 }
 
 .seg-btn {
@@ -1021,63 +1073,6 @@ button:disabled {
     width: 44px;
     font-size: 16px;
     line-height: 1;
-}
-
-/* Заперта — приглушённый телескоп: обещание, а не запрет. Замок остаётся
-   внутри хинта, где он объясняет условие, а не просто «нельзя».
-   Открытая кнопка выглядит как обычная кнопка сегмента — жёлтой
-   подсветки у неё нет ни в одном состоянии. */
-.seg-btn-locked,
-.seg-btn-locked:hover {
-    opacity: 0.5;
-    background: transparent;
-    color: var(--ink-muted);
-    filter: grayscale(1);
-}
-
-/* Разделитель перед кнопкой обсерватории: без выделения Rewards и знака поиска
-   читались как одна кнопка. */
-.seg-divider {
-    flex: none;
-    align-self: stretch;
-    width: 1px;
-    margin: 4px 2px;
-    background: var(--paper-edge);
-}
-
-/* Хинт запертой обсерватории — ПОПОВЕР поверх подвала, а не строка в потоке:
-   разворачивание не должно двигать сегмент и рельс под пальцем. */
-.sheet-bottom-row {
-    position: relative;
-}
-
-.obs-lock-hint {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 10px);
-    z-index: 6;
-    width: min(300px, 100%);
-    padding: 10px 12px 11px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 12px;
-    background: var(--paper-raised);
-    box-shadow: 0 10px 28px rgba(var(--night-rgb), 0.55);
-}
-
-/* Уголок целится в центр кнопки обсерватории. Считаем от правого края строки подвала:
-   44 px кнопки «↓» + 8 px зазора + половина 44-пиксельной кнопки = 74 px,
-   минус половина уголка = 69 px. */
-.obs-lock-hint::after {
-    content: '';
-    position: absolute;
-    right: 69px;
-    bottom: -6px;
-    width: 10px;
-    height: 10px;
-    background: var(--paper-raised);
-    border-right: 1px solid var(--paper-edge);
-    border-bottom: 1px solid var(--paper-edge);
-    transform: rotate(45deg);
 }
 
 .obs-lock-title {
@@ -1119,6 +1114,16 @@ button:disabled {
 /* B-02: тумблер «соединять»/«двигать» — единственный, кто остался в углу после
    K-04, и только в обсерватории. Фиксацию, которую раньше давал `#gameActions`,
    несёт теперь сам: над лентой-закладкой, она стоит в том же углу. До K-13. */
+/* K-06: пилюля-контейнер раньше была общей `.sheet-seg` шторки; та ушла вместе
+   с шторкой, и тумблер получил собственный класс с той же самой геометрией. */
+.obs-mode-toggle {
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    border: 1px solid var(--paper-edge);
+    border-radius: 99px;
+}
+
 .obs-mode-seg {
     position: fixed;
     z-index: 40;
@@ -1169,8 +1174,8 @@ button:disabled {
         rgba(var(--ink-rgb), 0.025);
 }
 
-/* Корона сидит верхом на грани карточки и НЕ свешивается наружу: у .sheet-content
-   `overflow: hidden`, и всё, что выше карточки больше чем на 4 px (её padding),
+/* Корона сидит верхом на грани карточки и НЕ свешивается наружу: у .book-body
+   `overflow-y: auto` (клипует и по X), и всё, что выше карточки больше чем на 4 px (её padding),
    срезается контейнером. Прежнюю корону-эмодзи срезало ровно так же — просто
    у эмодзи срезалась макушка, и это было незаметно. Рисунок знака занимает
    14 из 16 единиц viewBox: при кегле 16 он ложится в −3…+11. */
@@ -1415,8 +1420,10 @@ button:disabled {
     100% { transform: translate(-50%, -50%) scale(0.55); opacity: 0; }
 }
 
-/* Прилёт: счётчик вздрагивает — награда доехала именно сюда */
-.sheet-score.score-pulse {
+/* Прилёт: лента вздрагивает — награда доехала именно сюда. Раньше пульс жил
+   на счётчике ✦ в шапке шторки (U-09); счётчика на небе больше нет, роль —
+   у ленты, туда же летит и сама монета (getClaimFlightTargetRect). */
+.ribbon-tail.score-pulse {
     animation: scorePulse var(--score-pulse-ms, 240ms) var(--ease);
 }
 
@@ -1443,7 +1450,7 @@ button:disabled {
     .claim-coin,
     .claim-coin-y,
     .claim-coin-pill,
-    .sheet-score.score-pulse {
+    .ribbon-tail.score-pulse {
         animation: none;
     }
 
@@ -1464,11 +1471,5 @@ button:disabled {
 
     .achv-toast {
         justify-content: flex-start;
-    }
-}
-
-@media (max-height: 640px) {
-    .sheet {
-        height: 88dvh;
     }
 }

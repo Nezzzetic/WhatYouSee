@@ -222,30 +222,30 @@ en: {
     // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
     'toast.close': 'Close',
 
-    // --- Шторка ---------------------------------------------------------------
-    'sheet.atlasTitle': 'ATLAS · <b>Page {n}</b>',
-    'sheet.rewardsTitle': 'REWARDS · <b>{title}</b>',
-    'sheet.page': 'Page {n}',
-    'sheet.segAtlas': 'Atlas',
-    'sheet.segRewards': 'Rewards',
-    'sheet.collapse': 'Collapse',
-    'sheet.score': 'Score',
-    'sheet.open': 'Open atlas and rewards',
+    // --- Книга (K-06): каркас — пять высечек, шкала света у корешка -----------
+    'book.cutToday': 'Today',
+    'book.cutIndex': 'Index',
+    'book.cutAtlas': 'Atlas',
+    'book.cutStamps': 'Stamps',
+    'book.cutExLibris': 'Ex Libris',
+    'book.brand': 'ALMANAC',
+    'book.folio': 'p. {n}',
+    'book.openRibbon': 'Open the almanac',
+    'book.returnToSky': '— return to the sky —',
+    'book.headToday': 'Tonight',
+    'book.headIndex': 'Contents',
+    'book.headExLibris': 'A sky of your own',
+    'book.eyebrowAtlas': 'ATLAS',
+    'book.headAtlas': 'Chapter {n} of {count}',
+    'book.eyebrowStamps': 'STAMPS',
+    'book.indexUncut': 'uncut',
+    'book.indexOpen': 'Open the observatory',
 
     // --- Атлас ----------------------------------------------------------------
     'atlas.unknownCard': '? ? ?',
+    'atlas.unknownConstellation': 'Unknown constellation',
     'atlas.pageLocked': 'This page opens on its own once you have {n} ✦.',
     'atlas.pageLockedProgress': 'Now: {current} / {target} ✦',
-
-    // --- Подсказки (левая панель) --------------------------------------------
-    'hints.title': 'Patterns',
-    'hints.unknownConstellation': 'Unknown constellation',
-    'hints.filterKnown': 'Collected constellations',
-    'hints.filterStars': { one: '{n} star', other: '{n} stars' },
-    'hints.filterUndiscovered': 'Not collected yet (unlocked atlas pages)',
-    'hints.filterFavorite': 'Favorites only',
-    'hints.emptyUndiscovered': 'All shapes on unlocked pages are collected',
-    'hints.emptyKnown': 'No collected constellations yet',
 
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Rename constellation:',
@@ -448,30 +448,30 @@ ru: {
     // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
     'toast.close': 'Закрыть',
 
-    // --- Шторка ---------------------------------------------------------------
-    'sheet.atlasTitle': 'АТЛАС · <b>Страница {n}</b>',
-    'sheet.rewardsTitle': 'НАГРАДЫ · <b>{title}</b>',
-    'sheet.page': 'Страница {n}',
-    'sheet.segAtlas': 'Атлас',
-    'sheet.segRewards': 'Награды',
-    'sheet.collapse': 'Свернуть',
-    'sheet.score': 'Очки',
-    'sheet.open': 'Открыть атлас и награды',
+    // --- Книга (K-06) -----------------------------------------------------------
+    'book.cutToday': 'Сегодня',
+    'book.cutIndex': 'Оглавление',
+    'book.cutAtlas': 'Атлас',
+    'book.cutStamps': 'Штампы',
+    'book.cutExLibris': 'Экслибрис',
+    'book.brand': 'АЛЬМАНАХ',
+    'book.folio': 'стр. {n}',
+    'book.openRibbon': 'Открыть альманах',
+    'book.returnToSky': '— вернуться на небо —',
+    'book.headToday': 'Сегодня ночью',
+    'book.headIndex': 'Оглавление',
+    'book.headExLibris': 'Своё небо',
+    'book.eyebrowAtlas': 'АТЛАС',
+    'book.headAtlas': 'Глава {n} из {count}',
+    'book.eyebrowStamps': 'ШТАМПЫ',
+    'book.indexUncut': 'не разрезано',
+    'book.indexOpen': 'Открыть обсерваторию',
 
     // --- Атлас ----------------------------------------------------------------
     'atlas.unknownCard': '? ? ?',
+    'atlas.unknownConstellation': 'Неизвестное созвездие',
     'atlas.pageLocked': 'Страница откроется сама, когда накопится {n} ✦.',
     'atlas.pageLockedProgress': 'Сейчас: {current} / {target} ✦',
-
-    // --- Подсказки ------------------------------------------------------------
-    'hints.title': 'Паттерны',
-    'hints.unknownConstellation': 'Неизвестное созвездие',
-    'hints.filterKnown': 'Собранные созвездия',
-    'hints.filterStars': { one: '{n} звезда', few: '{n} звезды', many: '{n} звёзд' },
-    'hints.filterUndiscovered': 'Ещё не собранные (открытые страницы атласа)',
-    'hints.filterFavorite': 'Только избранные',
-    'hints.emptyUndiscovered': 'Все формы на открытых страницах собраны',
-    'hints.emptyKnown': 'Пока нет собранных созвездий',
 
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Переименовать созвездие:',

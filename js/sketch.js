@@ -106,8 +106,6 @@ function setAppMode(mode) {
     appMode = mode;
     restoreCameraSlot(appMode === 'field' ? fieldCameraSlot : observatoryCameraSlot);
 
-    // Подсказки созвездий в обсерватории не нужны — фигур здесь нет
-    setConstellationHintsPanelVisible(false);
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
     return true;
 }
@@ -211,17 +209,14 @@ function setup() {
 
     centerCamera();
 
-    setConstellationHintsPanelVisible(false);
-
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    initConstellationHints();
-    closeSheet();
+    closeBook();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
     updateObservatoryUI();
 
-    setupSheetControls();
+    setupBookControls();
     const devControls = document.getElementById("devControls");
     const resetBtn = document.getElementById("resetButton");
     const fullResetBtn = document.getElementById("fullResetButton");
@@ -360,7 +355,7 @@ function regenerateFieldStarsAfterReset() {
 
 function startNewDailySky(options) {
     const opts = options || {};
-    closeSheet();
+    closeBook();
     resetFieldSessionState();
     // M-05: суточные квесты обновляются вместе с небом. Здесь — потому что это
     // единственный путь «пришло новое небо»: первая загрузка дня, dev «новый
@@ -379,7 +374,6 @@ function startNewDailySky(options) {
 
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
 
@@ -389,7 +383,7 @@ function startNewDailySky(options) {
 }
 
 function onResetSky() {
-    closeSheet();
+    closeBook();
     resetFieldSessionState();
 
     if (shouldLoadPictureField()) {
@@ -409,7 +403,6 @@ function onResetSky() {
 
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
 
@@ -500,7 +493,7 @@ function onDevAddMetaScore() {
 
     updateProgressionUI();
     updateObservatoryUI();
-    refreshSheetIfOpen();
+    refreshBookIfOpen();
     updateRibbonSignal();
 
     if (typeof console !== 'undefined' && console.info) {
@@ -516,7 +509,7 @@ function onDevResetAchievements() {
     saveProgression();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
-    refreshSheetIfOpen();
+    refreshBookIfOpen();
     if (typeof console !== 'undefined' && console.info) console.info('[dev] Достижения сброшены');
 }
 
@@ -531,7 +524,7 @@ function onDevResetAchievements() {
 function performFullReset(options) {
     const opts = options || {};
 
-    closeSheet();
+    closeBook();
     resetFieldSessionState();
     customTypes = [];
 
@@ -563,7 +556,6 @@ function performFullReset(options) {
 
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    refreshConstellationHints();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
     updateObservatoryUI();

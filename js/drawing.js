@@ -770,9 +770,9 @@ function isDraftConstellationValid(lines) {
 // =============================================================================
 
 /** Открыт ли поверх канваса модальный оверлей (атлас/достижения) — тогда игнорируем ввод по полю. */
-/** U-09: пока шторка открыта, поле не рисует и не панорамируется. */
+/** K-06: пока книга открыта, поле не рисует и не панорамируется. */
 function isBlockingOverlayOpen() {
-    return typeof isSheetOpen === 'function' && isSheetOpen();
+    return typeof isBookOpen === 'function' && isBookOpen();
 }
 
 /** D-01: событие пришло с канваса, а не с DOM-кнопки/панели поверх него. */
@@ -1308,8 +1308,7 @@ function undoLastConstellation() {
     updateBestScoreFromFieldScore();
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    refreshConstellationHintsIfLevelComplete();
-    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     autoSave();
 }
 
@@ -1352,10 +1351,9 @@ function revealConstellationArt(animate = true) {
     // защёлку суточного квеста, ✦ приходят обычным забором в Наградах.
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
 
-    refreshConstellationHints();
     updateScoreUI(0, '', 0);
     updateProgressionUI();
-    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,
     // куда приезжает камера, а роль сообщения забрала сама сцена.
     autoSave();

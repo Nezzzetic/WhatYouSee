@@ -69,8 +69,9 @@
         <!-- K-04: постоянного интерфейса на небе не осталось — отмена стала
              корректорской пометкой на канвасе. Тумблер режимов обсерватории
              живёт здесь до K-13: без него холст остался бы без управления,
-             а на поле он скрыт и неба не занимает. -->
-        <div id="observatoryModeSeg" class="sheet-seg obs-mode-seg" hidden>
+             а на поле он скрыт и неба не занимает. K-06: собственный класс
+             вместо переиспользованного `.sheet-seg` — тот ушёл вместе со шторкой. -->
+        <div id="observatoryModeSeg" class="obs-mode-toggle obs-mode-seg" hidden>
             <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
                     data-i18n-title="observatory.modeConnect"
                     data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
@@ -96,63 +97,79 @@
             <button id="fullResetButton" class="btn-danger">Полный сброс</button>
         </div>
 
-        <div id="constellation-hints" class="hints-panel-hidden" hidden>
-            <div class="level-patterns-title" data-i18n="hints.title">Patterns</div>
-            <div id="hintStarFilterBar" class="hint-filter-bar"></div>
-            <div id="hintList" class="hint-list"></div>
-        </div>
-
         <div id="canvas-container"></div>
 
         <!-- K-05: лента-закладка вместо свёрнутой полосы U-09. Нижний правый
              угол — под большой палец правой руки; тап или потягивание вверх
              открывают книгу. Видимый хвост узкий, зона касания шире его. -->
         <div id="skyRibbon" class="ribbon" role="button" tabindex="0"
-             data-i18n-aria="sheet.open">
+             data-i18n-aria="book.openRibbon">
             <span class="ribbon-tail" aria-hidden="true">
                 <span id="ribbonWax" class="ribbon-wax" hidden></span>
             </span>
         </div>
 
-        <!-- U-09: шторка — Атлас и Награды, управление в подвале -->
-        <div id="sheetScrim" class="sheet-scrim" hidden></div>
-        <div id="sheet" class="sheet" hidden>
-            <div id="sheetHandle" class="sheet-handle">
-                <div class="sheet-grab" aria-hidden="true"></div>
-                <div id="sheetTitle" class="sheet-title"></div>
-                <div class="sheet-score" data-i18n-aria="sheet.score">
-                    <span class="sheet-score-icon" aria-hidden="true">✦</span>
-                    <span id="sheetScoreValue">0</span>
+        <!-- K-06: книга — полноэкранная замена шторки U-09. Пять высечек
+             сквозные (видны на каждой странице), навигация плоская — любой
+             раздел из любого в одно касание. Шкала света у корешка держит
+             lifetimeMetaEarned (B-02), а не тратящийся metaScore. -->
+        <div id="book" class="book" hidden>
+            <div id="bookGauge" class="book-gauge" aria-hidden="true"></div>
+            <div id="bookPage" class="book-page">
+                <div class="book-head">
+                    <div id="bookEyebrow" class="book-eyebrow"></div>
+                    <h2 id="bookTitle" class="book-title"></h2>
+                    <div class="book-rule" aria-hidden="true"></div>
+                </div>
+                <div id="bookBody" class="book-body">
+                    <div id="bookToday" class="book-section" hidden>
+                        <div id="bookTodayList" class="achv-list"></div>
+                        <button type="button" id="bookReturnBtn" class="book-return" data-i18n="book.returnToSky">— return to the sky —</button>
+                    </div>
+                    <div id="bookIndex" class="book-section book-index" hidden></div>
+                    <div id="bookAtlasSection" class="book-section" hidden>
+                        <div class="book-pager" id="atlasPager">
+                            <button type="button" class="book-pager-btn" data-pager="atlas" data-dir="-1" aria-label="Previous chapter">‹</button>
+                            <span class="book-pager-label" id="atlasPagerLabel"></span>
+                            <button type="button" class="book-pager-btn" data-pager="atlas" data-dir="1" aria-label="Next chapter">›</button>
+                        </div>
+                        <div id="atlasList" class="atlas-grid"></div>
+                    </div>
+                    <div id="bookStampsSection" class="book-section" hidden>
+                        <div class="book-pager" id="stampsPager">
+                            <button type="button" class="book-pager-btn" data-pager="rewards" data-dir="-1" aria-label="Previous chapter">‹</button>
+                            <span class="book-pager-label" id="stampsPagerLabel"></span>
+                            <button type="button" class="book-pager-btn" data-pager="rewards" data-dir="1" aria-label="Next chapter">›</button>
+                        </div>
+                        <div id="achievementsList" class="achv-list"></div>
+                    </div>
+                    <div id="bookExLibris" class="book-section" hidden>
+                        <!-- B-02: те же величины, что были в поповере шторки —
+                             прогресс-бар свой, «за всё время», не ✦ из шапки. -->
+                        <div id="exLibrisLocked" class="obs-lock-hint" hidden>
+                            <div class="obs-lock-title"><svg class="ic ic-sm" width="15" height="15" aria-hidden="true" focusable="false"><use href="#i-tel"/></svg> <span id="exLibrisLockTitle"></span></div>
+                            <div class="obs-lock-sub" id="exLibrisLockSub"></div>
+                            <div class="obs-lock-bar"><div id="exLibrisLockBarFill" class="obs-lock-bar-fill"></div></div>
+                            <div class="obs-lock-progress" id="exLibrisLockProgress"></div>
+                        </div>
+                        <button type="button" id="exLibrisEnterBtn" class="book-btn" hidden></button>
+                    </div>
+                </div>
+                <div class="book-foot">
+                    <span data-i18n="book.brand">ALMANAC</span>
+                    <span id="bookFolio"></span>
                 </div>
             </div>
-            <div id="sheetContent" class="sheet-content">
-                <div id="atlasList" class="atlas-grid" hidden></div>
-                <div id="achievementsList" class="achv-list" hidden></div>
-            </div>
-            <div class="sheet-footer">
-                <div id="sheetRail" class="sheet-rail"></div>
-                <div class="sheet-bottom-row">
-                    <!-- B-02: хинт запертой обсерватории — поповер поверх подвала.
-                         Он НЕ в потоке: вёрстка шторки от него не съезжает.
-                         Прогресс-бар свой, «за всё время», а не ✦ из шапки —
-                         тот обнуляется автосписанием страницы атласа. -->
-                    <div id="observatoryLockHint" class="obs-lock-hint" role="dialog" hidden>
-                        <div class="obs-lock-title"><svg class="ic ic-sm" width="15" height="15" aria-hidden="true" focusable="false"><use href="#i-tel"/></svg> <span id="obsLockTitleText"></span></div>
-                        <div class="obs-lock-sub" id="obsLockSubText"></div>
-                        <div class="obs-lock-bar"><div id="obsLockBarFill" class="obs-lock-bar-fill"></div></div>
-                        <div class="obs-lock-progress" id="obsLockProgressText"></div>
-                    </div>
-                    <div class="sheet-seg">
-                        <button type="button" id="segAtlasBtn" class="seg-btn" data-i18n="sheet.segAtlas">Atlas</button>
-                        <button type="button" id="segRewardsBtn" class="seg-btn" data-i18n="sheet.segRewards">Rewards</button>
-                        <!-- B-02: разделитель — кнопка обсерватории другого рода,
-                             без него невыделенные кнопки сливаются в одну полосу -->
-                        <span class="seg-divider" aria-hidden="true"></span>
-                        <button type="button" id="segObservatoryBtn" class="seg-btn seg-btn-icon"></button>
-                    </div>
-                    <button type="button" id="sheetCloseBtn" class="sheet-close-btn"
-                            data-i18n-title="sheet.collapse" data-i18n-aria="sheet.collapse"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-ribbon"/></svg></button>
-                </div>
+            <div id="bookTabs" class="book-tabs" role="tablist">
+                <button type="button" class="book-tab" data-cut="today" role="tab" data-i18n="book.cutToday">Today</button>
+                <button type="button" class="book-tab" data-cut="index" role="tab" data-i18n="book.cutIndex">Index</button>
+                <button type="button" class="book-tab" data-cut="atlas" role="tab" data-i18n="book.cutAtlas">Atlas</button>
+                <button type="button" class="book-tab" data-cut="stamps" role="tab">
+                    <!-- applyHtmlI18n перезаписывает textContent целиком — капля
+                         сургуча живёт своим span'ом, а не внутри локализуемого -->
+                    <span data-i18n="book.cutStamps">Stamps</span><span id="bookTabStampsWax" class="book-tab-wax" hidden></span>
+                </button>
+                <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
             </div>
         </div>
 

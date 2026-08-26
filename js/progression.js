@@ -132,8 +132,8 @@ function getObservatoryStarsDue() {
 }
 
 /**
- * Тост показывается ровно один раз — в момент, когда порог взят. Кнопка сегмента
- * при этом уже перерисована (renderSheetSegment вызывается из renderSheet).
+ * Тост показывается ровно один раз — в момент, когда порог взят. Высечка Ex Libris
+ * при этом уже перерисована (renderBookTabs вызывается из renderBook).
  */
 function notifyObservatoryUnlockedIfNeeded() {
     if (observatoryUnlockedNotified || !isObservatoryUnlocked()) return false;
@@ -142,7 +142,7 @@ function notifyObservatoryUnlockedIfNeeded() {
         // Знак «поиск», а не свод: примета обсерватории во всём UI одна (см. ui.js)
         showInfoToast('tel', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
     }
-    if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+    if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
     return true;
 }
@@ -177,9 +177,8 @@ function maybeAutoUnlockAtlasPages() {
     if (unlockedAny) {
         if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
         if (typeof updateProgressionUI === 'function') updateProgressionUI();
-        if (typeof refreshConstellationHintsIfLevelComplete === 'function') refreshConstellationHintsIfLevelComplete();
-        // Открытие страницы меняет и сетку атласа, и эмблемы рельса
-        if (typeof refreshSheetIfOpen === 'function') refreshSheetIfOpen();
+        // Открытие страницы меняет и сетку атласа, и её строку в оглавлении
+        if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
         saveProgression();
     }
     return unlockedAny;
