@@ -251,6 +251,11 @@ en: {
     'book.eyebrowStamps': 'STAMPS',
     'book.indexUncut': 'uncut',
     'book.indexOpen': 'Open the observatory',
+    // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
+    'book.eyebrowToday': 'Night {n} · {date}',
+    'book.newsAtlasCut': 'Chapter {n} was cut open tonight.',
+    'book.newsFacetLit': '{name} — a new facet caught the light.',
+    'book.newsChainOpen': '{title} — a new achievement is open tonight.',
 
     // --- Атлас ----------------------------------------------------------------
     'atlas.unknownCard': '? ? ?',
@@ -488,6 +493,10 @@ ru: {
     'book.eyebrowStamps': 'ШТАМПЫ',
     'book.indexUncut': 'не разрезано',
     'book.indexOpen': 'Открыть обсерваторию',
+    'book.eyebrowToday': 'Ночь {n} · {date}',
+    'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
+    'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
+    'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
 
     // --- Атлас ----------------------------------------------------------------
     'atlas.unknownCard': '? ? ?',
@@ -611,6 +620,23 @@ function getConstellationDisplayName(constellation) {
     if (!constellation) return '';
     if (constellation.customName) return constellation.customName;
     return shapeLabel(constellation.name || constellation.shape || '');
+}
+
+/**
+ * K-09: `getEffectiveSkyDateInt()` (YYYYMMDD) → «August 23» / «23 августа» для
+ * шапки «Сегодня». `Intl.DateTimeFormat` — тот же native API, что и `Intl.PluralRules`
+ * у `tp()`, своего словаря месяцев заводить незачем.
+ */
+function formatSkyDateLong(dateInt) {
+    const y = Math.floor(dateInt / 10000);
+    const m = Math.floor((dateInt % 10000) / 100);
+    const d = dateInt % 100;
+    const date = new Date(y, m - 1, d);
+    try {
+        return new Intl.DateTimeFormat(getLocale() === 'ru' ? 'ru' : 'en-US', { month: 'long', day: 'numeric' }).format(date);
+    } catch (e) {
+        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    }
 }
 
 // =============================================================================

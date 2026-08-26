@@ -530,6 +530,13 @@ function renderBookHead() {
     let folioN = 1;
 
     if (bookCut === 'today') {
+        // K-09: «Night 213 · August 23» — номер ночи (текущая, ещё не завершённая)
+        // и дата эффективных суток; титул страницы остаётся «Tonight».
+        const nightNo = (achievementCounters ? achievementCounters.levelsCompleted : 0) + 1;
+        const dateStr = typeof getEffectiveSkyDateInt === 'function' && typeof formatSkyDateLong === 'function'
+            ? formatSkyDateLong(getEffectiveSkyDateInt())
+            : '';
+        eyebrow = t('book.eyebrowToday', { n: nightNo, date: dateStr });
         title = t('book.headToday');
         folioN = 1;
     } else if (bookCut === 'index') {
@@ -616,10 +623,32 @@ function renderBookTabs() {
 /** «Сегодня»: ежедневка — то же достижение на две ступени, что и штампы (REWARD_PAGES[0]). */
 function renderBookToday() {
     const list = document.getElementById('bookTodayList');
-    if (!list) return;
-    list.innerHTML = '';
-    for (const chain of getRewardPageChains(0)) {
-        list.appendChild(createAchievementRow(chain));
+    if (list) {
+        list.innerHTML = '';
+        for (const chain of getRewardPageChains(0)) {
+            list.appendChild(createAchievementRow(chain));
+        }
+    }
+    renderBookTodayNews();
+}
+
+/**
+ * K-09: события мира обычной строкой — единственное место, где игра рассказывает
+ * новости. Список ведётся за текущую ночь (`achievementCounters.daily.newsLog`)
+ * и переписывается наутро вместе с сутками; до первого события список пуст —
+ * это нормальная пустая ночь, не сломанная вёрстка (риск 3 дока).
+ */
+function renderBookTodayNews() {
+    const el = document.getElementById('bookTodayNews');
+    if (!el) return;
+    el.innerHTML = '';
+    const daily = (achievementCounters && achievementCounters.daily) || null;
+    const log = daily && Array.isArray(daily.newsLog) ? daily.newsLog : [];
+    for (const entry of log) {
+        const row = document.createElement('div');
+        row.className = 'book-news-row';
+        row.textContent = t(entry.key, entry.params);
+        el.appendChild(row);
     }
 }
 

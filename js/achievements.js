@@ -41,6 +41,10 @@ const ACHIEVEMENT_VOLUME_TIERS = [1, 5, 60, 120, 240];
 const DAILY_QUEST_ENTRY_REWARD = 10;
 const DAILY_QUEST_NIGHT_REWARD = 20;
 
+// K-09: лента новостей мира на «Сегодня» — сколько строк держим за ночь про запас
+// (реальных источников за ночь единицы, потолок только страхует от разрастания).
+const DAILY_NEWS_LOG_MAX = 20;
+
 // colorValue тира → внутреннее имя цвета
 const ACHIEVEMENT_BUCKET_BY_VALUE = { '-100': 'red', '-50': 'orange', '0': 'yellow', '50': 'white', '100': 'blue' };
 const ACHIEVEMENT_COLOR_KEYS = ['red', 'orange', 'yellow', 'white', 'blue'];
@@ -418,7 +422,10 @@ function makeDefaultDailyQuestState() {
         entryDone: false,
         entryClaimed: false,
         nightDone: false,
-        nightClaimed: false
+        nightClaimed: false,
+        // K-09: новости мира за текущую ночь — тот же терпимый блок, что и
+        // защёлки квестов, обнуляется вместе с ним на смене суток.
+        newsLog: []
     };
 }
 
@@ -431,8 +438,29 @@ function sanitizeDailyQuestState(raw) {
         entryDone: !!raw.entryDone,
         entryClaimed: !!raw.entryClaimed,
         nightDone: !!raw.nightDone,
-        nightClaimed: !!raw.nightClaimed
+        nightClaimed: !!raw.nightClaimed,
+        // K-09: старый сейв блока не знает — пустая лента, версия не поднята.
+        newsLog: Array.isArray(raw.newsLog)
+            ? raw.newsLog
+                .filter(e => e && typeof e.key === 'string')
+                .slice(-DAILY_NEWS_LOG_MAX)
+                .map(e => ({ key: e.key, params: (e.params && typeof e.params === 'object') ? e.params : {} }))
+            : def.newsLog
     };
+}
+
+/**
+ * K-09: единственное место, где в игре появляется новость. Строка на «Сегодня»,
+ * переписывается наутро вместе с сутками (та же `daily`, что и квесты M-05).
+ * `params` уже содержит готовые к показу значения (имя фигуры через `shapeLabel`,
+ * заголовок цепочки) — как и у тостов, локаль бакается в момент события, не рендера.
+ */
+function addDailyNewsEvent(key, params) {
+    const daily = getDailyQuestState();
+    if (!daily) return;
+    if (!Array.isArray(daily.newsLog)) daily.newsLog = [];
+    daily.newsLog.push({ key, params: params || {} });
+    if (daily.newsLog.length > DAILY_NEWS_LOG_MAX) daily.newsLog.shift();
 }
 
 // =============================================================================
@@ -1008,11 +1036,16 @@ function recordShapeCommitForFacets(constellation) {
         achievementCounters.shapeColors[name] = { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 };
     }
     const counts = achievementCounters.shapeColors[name];
+    const facetWasLit = (counts[bucket] || 0) > 0;
     counts[bucket] = (counts[bucket] || 0) + 1;
 
     // Сюрприз-момент: самое первое создание фигуры (в любом цвете) — имя раскрыто.
     if (shapeTotalCreations(counts) === 1) {
         showShapeRevealToast(name);
+    }
+    // K-09: первая огранка этой грани — новость дня, а не только тихая позолота в атласе.
+    if (!facetWasLit) {
+        addDailyNewsEvent('book.newsFacetLit', { name: shapeLabel(name) });
     }
 
     // U-09: тоста огранки в этой задаче нет — фигура молча золотится в атласе.
@@ -1028,6 +1061,8 @@ function announceNewlyAvailableSpecialChains() {
         announcedSpecialChains.add(chain.id);
         showInfoToast(chain.sign, t('toast.newChainTitle'),
             t('toast.newChainSub', { title: chain.title, n: chain.requiresPageComplete + 1 }));
+        // K-09: та же открывшаяся ступень — строкой в новостях «Сегодня».
+        addDailyNewsEvent('book.newsChainOpen', { title: chain.title });
     }
 }
 
