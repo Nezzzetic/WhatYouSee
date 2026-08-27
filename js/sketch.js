@@ -557,7 +557,7 @@ function onDevAddMetaScore() {
 
     awardMetaScore(DEV_META_SCORE_STEP);
     if (typeof raiseUndoFloor === 'function') raiseUndoFloor();
-    recomputeAchievementsClaimable(true);
+    recomputeAchievementsClaimable();
     saveProgression();
 
     updateProgressionUI();

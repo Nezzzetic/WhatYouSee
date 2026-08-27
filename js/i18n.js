@@ -225,16 +225,7 @@ en: {
     'rewards.lockCollectPage': 'Collect every shape on page {n}',
     'rewards.lockPageLocked': 'Page {n} is not unlocked yet',
 
-    // --- Тосты ----------------------------------------------------------------
-    'toast.achievement': 'Achievement unlocked',
-    'toast.newShapeTitle': 'New atlas shape!',
-    'toast.newShapeSub': '«{name}»',
-    'toast.newChainTitle': 'New achievement available',
-    'toast.newChainSub': '{title} — page {n} collection complete',
-    'toast.atlasPageTitle': 'Atlas page unlocked',
-    'toast.atlasPageSub': 'Page {n} — new shapes in the set',
-    // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
-    'toast.close': 'Close',
+    // K-15: тостов в игре больше нет — все ключи toast.* сняты вместе с ними.
 
     // --- Книга (K-06): каркас — пять высечек, шкала света у корешка -----------
     'book.cutToday': 'Today',
@@ -263,8 +254,11 @@ en: {
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
     'book.newsAtlasCut': 'Chapter {n} was cut open tonight.',
+    'book.newsShapeOpened': '{name} — a new shape in the atlas tonight.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open tonight.',
+    // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
+    'book.newsObservatoryOpen': 'Ex Libris opened tonight — {n} stars are waiting.',
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Unknown constellation',
@@ -306,8 +300,6 @@ en: {
     'observatory.lockedTitle': 'Observatory — a sky of your own',
     'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
-    'observatory.unlockedTitle': 'Observatory unlocked',
-    'observatory.unlockedSub': '7 stars are waiting for you',
     'observatory.renamePrompt': 'Name this constellation:',
     // --- K-13: подпись под оттиском ---------------------------------------
     'observatory.exLibris': 'Ex libris',
@@ -503,16 +495,7 @@ ru: {
     'rewards.lockCollectPage': 'Соберите все фигуры страницы {n}',
     'rewards.lockPageLocked': 'Страница {n} ещё не открыта',
 
-    // --- Тосты ----------------------------------------------------------------
-    'toast.achievement': 'Достижение выполнено',
-    'toast.newShapeTitle': 'Новая фигура атласа!',
-    'toast.newShapeSub': '«{name}»',
-    'toast.newChainTitle': 'Новое достижение доступно',
-    'toast.newChainSub': '{title} — коллекция страницы {n} собрана',
-    'toast.atlasPageTitle': 'Открыта страница атласа',
-    'toast.atlasPageSub': 'Страница {n} — новые фигуры в наборе',
-    // V-13: ключ toast.levelComplete снят вместе с тостом завершения ночи.
-    'toast.close': 'Закрыть',
+    // K-15: тостов в игре больше нет — все ключи toast.* сняты вместе с ними.
 
     // --- Книга (K-06) -----------------------------------------------------------
     'book.cutToday': 'Сегодня',
@@ -537,8 +520,11 @@ ru: {
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
     'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
+    'book.newsShapeOpened': '«{name}» — новая фигура в атласе этой ночью.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
     'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
+    // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
+    'book.newsObservatoryOpen': 'Сегодня ночью открылся Экслибрис — {n} звёзд ждут.',
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',
@@ -580,8 +566,6 @@ ru: {
     'observatory.lockedTitle': 'Обсерватория — своё небо, которое можно переставлять',
     'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
-    'observatory.unlockedTitle': 'Обсерватория открыта',
-    'observatory.unlockedSub': '7 звёзд ждут',
     'observatory.renamePrompt': 'Назвать созвездие:',
     // --- K-13: подпись под оттиском ---------------------------------------
     'observatory.exLibris': 'Ex libris',
