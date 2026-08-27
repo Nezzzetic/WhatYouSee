@@ -100,7 +100,7 @@ function awardMetaScore(amount) {
 // OBSERVATORY ACCUMULATOR (B-02)
 // =============================================================================
 
-/** Одноразовый флаг тоста «Обсерватория открыта» (живёт в сейве прогрессии). */
+/** Одноразовый флаг события «Обсерватория открыта» (живёт в сейве прогрессии). */
 let observatoryUnlockedNotified = false;
 
 function getLifetimeMetaEarned() {
@@ -135,15 +135,16 @@ function getObservatoryStarsDue() {
 }
 
 /**
- * Тост показывается ровно один раз — в момент, когда порог взят. Высечка Ex Libris
- * при этом уже перерисована (renderBookTabs вызывается из renderBook).
+ * Событие мира показывается ровно один раз — в момент, когда порог взят. Высечка
+ * Ex Libris при этом уже перерисована (renderBookTabs вызывается из renderBook).
+ * K-15: тоста нет — строка уходит в новости «Сегодня», как открытие главы атласа.
  */
 function notifyObservatoryUnlockedIfNeeded() {
     if (observatoryUnlockedNotified || !isObservatoryUnlocked()) return false;
     observatoryUnlockedNotified = true;
-    if (typeof showInfoToast === 'function') {
-        // Знак «поиск», а не свод: примета обсерватории во всём UI одна (см. ui.js)
-        showInfoToast('tel', t('observatory.unlockedTitle'), t('observatory.unlockedSub'));
+    if (typeof addDailyNewsEvent === 'function') {
+        addDailyNewsEvent('book.newsObservatoryOpen',
+            { n: Math.floor(OBSERVATORY_UNLOCK_COST / OBSERVATORY_STAR_COST) });
     }
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
@@ -175,10 +176,7 @@ function maybeAutoUnlockAtlasPages() {
         metaScore -= getAtlasPageUnlockCost(next);
         unlockedPageIndices.add(next);
         unlockedAny = true;
-        if (typeof showInfoToast === 'function') {
-            showInfoToast('knife', t('toast.atlasPageTitle'), t('toast.atlasPageSub', { n: next + 1 }));
-        }
-        // K-09: разрезанная глава — обязательное событие ленты «Сегодня».
+        // K-09/K-15: разрезанная глава — обязательное событие ленты «Сегодня», без тоста.
         if (typeof addDailyNewsEvent === 'function') {
             addDailyNewsEvent('book.newsAtlasCut', { n: next + 1 });
         }
@@ -572,8 +570,8 @@ function loadProgression() {
         lifetimeMetaEarned = Number.isFinite(Number(state.lifetimeMetaEarned))
             ? Math.max(0, Math.floor(Number(state.lifetimeMetaEarned)))
             : reconstructLifetimeMetaEarned();
-        // Старый сейв, где порог уже взят: тост не показываем задним числом —
-        // игрок увидит ожившую кнопку обсерватории и без него.
+        // Старый сейв, где порог уже взят: новость не пишем задним числом —
+        // игрок увидит ожившую страницу обсерватории и без неё.
         observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
             ? !!state.observatoryUnlockedNotified
             : isObservatoryUnlocked();

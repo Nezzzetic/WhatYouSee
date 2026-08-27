@@ -71,33 +71,10 @@ function playCommit() {
     } catch (e) {}
 }
 
-// Яркий перезвон: получено достижение
-function playAchievementGet() {
-    if (!_audioCtx) return;
-    try {
-        const t = _audioCtx.currentTime;
-        [784, 1047, 1319].forEach((freq, i) => {
-            const osc = _audioCtx.createOscillator();
-            const gain = _audioCtx.createGain();
-            osc.connect(gain);
-            gain.connect(_audioCtx.destination);
-            osc.type = 'triangle';
-            const start = t + i * 0.07;
-            osc.frequency.setValueAtTime(freq, start);
-            gain.gain.setValueAtTime(0.16, start);
-            gain.gain.exponentialRampToValueAtTime(0.001, start + 0.28);
-            osc.start(start);
-            osc.stop(start + 0.28);
-        });
-    } catch (e) {}
-}
-
 // A-03: ЗАБОР НАГРАДЫ
 //
-// Отличать этот звук от `playAchievementGet` нотами бессмысленно: тот уже восходящее
-// арпеджио. Разводим их РЕГИСТРОМ И ТЕЛОМ — тост «шаг выполнен» остаётся ярким
-// колокольчиком без низа (triangle, 784…1319 Гц), а забор получает тёплую синусоиду
-// с суб-слоем на октаву ниже корня. В руке это два разных события, а не два оттенка одного.
+// Тёплая синусоида с суб-слоем на октаву ниже корня — звук именно жеста забора,
+// не оповещения (K-15 сняла тост «шаг выполнен» вместе с его отдельным перезвоном).
 //
 // Корень — E4 (`CHAIN_BASE_FREQ`), тональность общая с лестницей цепочки A-02.
 const CLAIM_ROOT_FREQ = CHAIN_BASE_FREQ;      // E4, 330 Гц

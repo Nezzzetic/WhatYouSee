@@ -425,7 +425,11 @@ function makeDefaultDailyQuestState() {
         nightClaimed: false,
         // K-09: новости мира за текущую ночь — тот же терпимый блок, что и
         // защёлки квестов, обнуляется вместе с ним на смене суток.
-        newsLog: []
+        newsLog: [],
+        // K-15: непрочитанное событие мира — второе условие капли сургуча на
+        // ленте (`hasSkyWaxSignal`), не только готовая награда. Флаг, а не счёт
+        // длины лога, — лог капается `DAILY_NEWS_LOG_MAX` и не годится в мерило.
+        newsUnseen: false
     };
 }
 
@@ -445,7 +449,10 @@ function sanitizeDailyQuestState(raw) {
                 .filter(e => e && typeof e.key === 'string')
                 .slice(-DAILY_NEWS_LOG_MAX)
                 .map(e => ({ key: e.key, params: (e.params && typeof e.params === 'object') ? e.params : {} }))
-            : def.newsLog
+            : def.newsLog,
+        // K-15: аддитивное поле, старый сейв его не знает — читается как «нет
+        // непрочитанного», версия не поднята.
+        newsUnseen: !!raw.newsUnseen
     };
 }
 
@@ -461,6 +468,14 @@ function addDailyNewsEvent(key, params) {
     if (!Array.isArray(daily.newsLog)) daily.newsLog = [];
     daily.newsLog.push({ key, params: params || {} });
     if (daily.newsLog.length > DAILY_NEWS_LOG_MAX) daily.newsLog.shift();
+    // K-15: капля на ленте зовёт открыть книгу — гасится чтением «Сегодня».
+    daily.newsUnseen = true;
+}
+
+/** K-15: второе условие капли сургуча — есть непрочитанное событие мира. */
+function hasUnseenDailyNews() {
+    const daily = achievementCounters && achievementCounters.daily;
+    return !!(daily && daily.newsUnseen);
 }
 
 // =============================================================================
@@ -938,11 +953,8 @@ function getAchievementStepProgress(check) {
 // ПЕРЕСЧЁТ CLAIMABLE
 // =============================================================================
 
-/**
- * @param {boolean} [notify] — если true, при переходе шага в «выполнен» (false→true)
- *        показывается тост. Пассивные пересчёты (загрузка, рендер) вызывают без notify.
- */
-function recomputeAchievementsClaimable(notify) {
+/** K-15: тостов больше нет — переход в claimable виден маркой и каплей на ленте. */
+function recomputeAchievementsClaimable() {
     const snap = getFieldAchievementSnapshot();
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
@@ -950,27 +962,21 @@ function recomputeAchievementsClaimable(notify) {
         // M-05: у суточного квеста нет ступеней и нет «пройдено» — только
         // «выполнен сегодня» и «уже забран сегодня».
         if (chain.daily) {
-            const wasDailyClaimable = p.claimable;
             p.claimable = evaluateAchievementCheck(chain.steps[0].check, snap)
                 && !isDailyQuestClaimed(chain.id);
-            if (notify && p.claimable && !wasDailyClaimable) showAchievementToast(chain);
             continue;
         }
         if (p.stepIndex >= chain.steps.length) {
             p.claimable = false; // цепочка завершена
             continue;
         }
-        // S-01: скрытые цепочки не набирают claimable и не тостятся
+        // S-01: скрытые цепочки не набирают claimable
         if (!isAchievementChainVisible(chain)) {
             p.claimable = false;
             continue;
         }
         const step = chain.steps[p.stepIndex];
-        const wasClaimable = p.claimable;
         p.claimable = evaluateAchievementCheck(step.check, snap);
-        if (notify && p.claimable && !wasClaimable) {
-            showAchievementToast(chain);
-        }
     }
 }
 
@@ -1039,12 +1045,12 @@ function recordShapeCommitForFacets(constellation) {
     const facetWasLit = (counts[bucket] || 0) > 0;
     counts[bucket] = (counts[bucket] || 0) + 1;
 
-    // Сюрприз-момент: самое первое создание фигуры (в любом цвете) — имя раскрыто.
+    // K-15: сюрприз-момент (самое первое создание фигуры, имя раскрыто) и первая
+    // огранка последующей грани — разные новости; на первом создании они совпали
+    // бы дословно, поэтому огранка молчит, если фигура открылась только что.
     if (shapeTotalCreations(counts) === 1) {
-        showShapeRevealToast(name);
-    }
-    // K-09: первая огранка этой грани — новость дня, а не только тихая позолота в атласе.
-    if (!facetWasLit) {
+        addDailyNewsEvent('book.newsShapeOpened', { name: shapeLabel(name) });
+    } else if (!facetWasLit) {
         addDailyNewsEvent('book.newsFacetLit', { name: shapeLabel(name) });
     }
 
@@ -1059,9 +1065,7 @@ function announceNewlyAvailableSpecialChains() {
         if (announcedSpecialChains.has(chain.id)) continue;
         if (!isAchievementChainVisible(chain)) continue;
         announcedSpecialChains.add(chain.id);
-        showInfoToast(chain.sign, t('toast.newChainTitle'),
-            t('toast.newChainSub', { title: chain.title, n: chain.requiresPageComplete + 1 }));
-        // K-09: та же открывшаяся ступень — строкой в новостях «Сегодня».
+        // K-09/K-15: та же открывшаяся ступень — строкой в новостях «Сегодня», без тоста.
         addDailyNewsEvent('book.newsChainOpen', { title: chain.title });
     }
 }
@@ -1108,7 +1112,7 @@ function recordAchievementReveal() {
 }
 
 function afterAchievementStateChanged() {
-    recomputeAchievementsClaimable(true);
+    recomputeAchievementsClaimable();
     saveProgression();
     // K-06: атлас и награды живут в книге — перерисовываем её, если открыта
     if (typeof updateRibbonSignal === 'function') updateRibbonSignal();
@@ -1169,70 +1173,13 @@ function claimAchievementStep(chainId) {
     // каждую ночь, и всё нарисованное до забора замерзало бы навсегда.
     if (!chain.daily && typeof raiseUndoFloor === 'function') raiseUndoFloor();
 
-    // Следующий шаг может оказаться сразу выполнен → тост об этом (notify=true)
-    recomputeAchievementsClaimable(true);
+    // Следующий шаг может оказаться сразу выполнен — марка сама покажет рамку.
+    recomputeAchievementsClaimable();
     saveProgression();
 
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     return true;
-}
-
-// =============================================================================
-// ТОСТ «ДОСТИЖЕНИЕ ПОЛУЧЕНО» (правый верхний угол, стек)
-// =============================================================================
-
-/**
- * Общий инфо-тост в стеке достижений (правый верхний угол).
- *
- * K-02: `iconSpec` — имя знака из кассы ('tel', 'knife'…) либо `{ shape: id }`,
- * когда строка про фигуру: там стоит глиф, а не знак. Узел строится ВНУТРИ и
- * только после проверки стека — sim-balance.js грузит achievements.js без ui.js
- * и без DOM, и вызов рисовалки из вызывающей стороны ронял прогон экономики.
- */
-function showInfoToast(iconSpec, title, sub) {
-    const stack = document.getElementById('achvToastStack');
-    if (!stack) return;
-
-    const el = document.createElement('div');
-    el.className = 'achv-toast';
-
-    const icon = document.createElement('span');
-    icon.className = 'achv-toast-icon';
-    icon.appendChild(iconSpec && iconSpec.shape
-        ? shapeGlyphNode(iconSpec.shape, 'card', GOLD_LIGHT_RGB)
-        : glyphSign(typeof iconSpec === 'string' ? iconSpec : 'arc', 22));
-
-    const body = document.createElement('span');
-    body.className = 'achv-toast-body';
-    const t1 = document.createElement('span');
-    t1.className = 'achv-toast-title';
-    t1.textContent = title;
-    const t2 = document.createElement('span');
-    t2.className = 'achv-toast-sub';
-    t2.textContent = sub;
-    body.appendChild(t1);
-    body.appendChild(t2);
-
-    el.appendChild(icon);
-    el.appendChild(body);
-    stack.appendChild(el);
-
-    if (typeof playAchievementGet === 'function') playAchievementGet();
-
-    const remove = () => { if (el.parentNode) el.parentNode.removeChild(el); };
-    el.addEventListener('animationend', remove);
-    setTimeout(remove, 4200);
-}
-
-function showAchievementToast(chain) {
-    showInfoToast(chain.sign || 'arc', t('toast.achievement'), chain.title);
-}
-
-/** S-01: сюрприз-момент — первое создание фигуры атласа (раскрытие имени). */
-function showShapeRevealToast(shapeId) {
-    showInfoToast({ shape: shapeId }, t('toast.newShapeTitle'),
-        t('toast.newShapeSub', { name: shapeLabel(shapeId) }));
 }
 
 // =============================================================================

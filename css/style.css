@@ -407,65 +407,6 @@ body {
     box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.35);
 }
 
-/* --- Achievement toasts (top-right stack) --- */
-
-.achv-toast-stack {
-    position: fixed;
-    top: 12px;
-    right: 12px;
-    z-index: 1500;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-    pointer-events: none;
-}
-
-.achv-toast {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--gold);
-    background: rgba(var(--paper-rgb), 0.95);
-    box-shadow: 0 6px 20px rgba(var(--night-rgb), 0.45), 0 0 14px rgba(var(--gold-rgb), 0.25);
-    animation: achvToast 4s var(--ease) forwards;
-}
-
-.achv-toast-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--gold-light);
-}
-
-.achv-toast-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-}
-
-.achv-toast-title {
-    font-family: var(--font-title);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--gold-light);
-}
-
-.achv-toast-sub {
-    font-size: 12px;
-    color: var(--gold);
-}
-
-@keyframes achvToast {
-    0% { opacity: 0; transform: translateX(24px) scale(0.85); }
-    5% { opacity: 1; transform: translateX(0) scale(1.06); }
-    9% { transform: scale(1); }
-    75% { opacity: 1; transform: scale(1); }
-    100% { opacity: 0; transform: scale(1); }
-}
-
 /* --- Canvas --- */
 
 #canvas-container {
@@ -1720,8 +1661,7 @@ button:disabled {
 
 /* K-01: движение гасится целиком, состояния остаются. Перелёт награды —
    украшение поверх честного числа: без анимаций счётчик просто обновляется
-   сразу (flyClaimReward отказывается лететь и зажим не ставится). Тост без
-   анимации снимает страховочный таймер showInfoToast, а не animationend. */
+   сразу (flyClaimReward отказывается лететь и зажим не ставится). */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -1737,24 +1677,5 @@ button:disabled {
     .claim-coin-pill,
     .ribbon-tail.score-pulse {
         animation: none;
-    }
-
-    .achv-toast {
-        animation: none;
-        opacity: 1;
-    }
-}
-
-/* --- P-01: узкие портретные вьюпорты --- */
-
-@media (max-width: 480px) {
-    .achv-toast-stack {
-        left: 12px;
-        right: 12px;
-        align-items: stretch;
-    }
-
-    .achv-toast {
-        justify-content: flex-start;
     }
 }

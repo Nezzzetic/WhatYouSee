@@ -146,8 +146,8 @@ function flyClaimReward(fromRect, amount) {
         if (coin.parentNode) coin.parentNode.removeChild(coin);
         releaseScoreDisplay();
     };
-    // Как в `showInfoToast`: событие плюс страховочный таймер — `animationend`
-    // не приходит, если узел снесли или вкладка ушла в фон.
+    // Событие плюс страховочный таймер — `animationend` не приходит, если
+    // узел снесли или вкладка ушла в фон.
     coin.addEventListener('animationend', (e) => { if (e.target === coin) land(); });
     setTimeout(land, CLAIM_COIN_MS + CLAIM_COIN_SAFETY_MS);
     return true;
@@ -704,6 +704,8 @@ function renderBookTodayNews() {
         row.textContent = t(entry.key, entry.params);
         el.appendChild(row);
     }
+    // K-15: страница прочитана — капля сургуча на ленте гаснет по этой причине.
+    if (daily) daily.newsUnseen = false;
 }
 
 /**
@@ -1063,12 +1065,12 @@ function switchBookCut(cut) {
 }
 
 /**
- * K-05: единственный сигнал на небе. Один предикат на всю игру — сюда
- * [K-15](wax-signals) добавит события мира; сегодня событий, случающихся без
- * игрока, у неё нет, и условие равно прежнему условию бейджа.
+ * K-05/K-15: единственный сигнал на небе. «В книге что-то есть» — готовая
+ * награда ИЛИ непрочитанное событие мира (запись в новостях «Сегодня»).
  */
 function hasSkyWaxSignal() {
-    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
+    return (typeof hasClaimableAchievements === 'function' && hasClaimableAchievements())
+        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
 }
 
 /** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
