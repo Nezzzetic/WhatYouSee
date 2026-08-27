@@ -205,12 +205,15 @@ en: {
     'chain.daily_entry.step': 'Draw your first constellation tonight',
     'chain.daily_night.step': 'Complete the night',
 
-    // --- Страницы наград ------------------------------------------------------
+    // --- Страницы наград --------------------------------------------------------
+    // K-12: главы штампов вместо рубрик — рабочие литературные названия из
+    // концепта (решение заказчика 2026-08-25: настоящие придут с C-01, как и у
+    // атласа).
     'rewardPage.daily': 'Daily',
-    'rewardPage.colors': 'Colors',
-    'rewardPage.sizes': 'Sizes',
-    'rewardPage.specials': 'Special',
-    'rewardPage.path': 'Facets & Path',
+    'rewardPage.firstLight': 'First Light',
+    'rewardPage.longWalk': 'The Long Walk',
+    'rewardPage.cuttersHand': "The Cutter's Hand",
+    'rewardPage.oddNights': 'Odd Nights',
 
     // --- Награды: строки и замки ---------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -252,7 +255,8 @@ en: {
     // прежний «Chapter N of M» уехал в надзаголовок (рабочие названия,
     // решение заказчика 2026-08-25: настоящие придут с C-01).
     'book.eyebrowAtlasChapter': 'Atlas · Chapter {n} of {count}',
-    'book.eyebrowStamps': 'STAMPS',
+    // K-12: главы штампов пронумерованы так же, как главы атласа.
+    'book.eyebrowStampsChapter': 'Stamps · Chapter {n} of {count}',
     'book.indexUncut': 'uncut',
     'book.indexLocked': '{n} ✦',
     'book.indexOpen': 'Open the observatory',
@@ -284,6 +288,10 @@ en: {
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',
+
+    // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
+    'stamps.chapterLocked': 'This chapter opens on its own once you have {n} ✦.',
+    'stamps.chapterLockedProgress': 'Now: {current} / {target} ✦',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'bookmarked',
@@ -477,11 +485,13 @@ ru: {
     'chain.daily_night.step': 'Завершить ночь',
 
     // --- Страницы наград ------------------------------------------------------
+    // K-12: главы штампов вместо рубрик — рабочие названия (решение заказчика
+    // 2026-08-25: настоящие придут с C-01, как и у атласа).
     'rewardPage.daily': 'Сутки',
-    'rewardPage.colors': 'Цвета',
-    'rewardPage.sizes': 'Размеры',
-    'rewardPage.specials': 'Особые',
-    'rewardPage.path': 'Огранка и путь',
+    'rewardPage.firstLight': 'Первый свет',
+    'rewardPage.longWalk': 'Долгий путь',
+    'rewardPage.cuttersHand': 'Рука гранильщика',
+    'rewardPage.oddNights': 'Странные ночи',
 
     // --- Награды --------------------------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -520,7 +530,8 @@ ru: {
     'book.eyebrowAtlas': 'АТЛАС',
     'book.headAtlas': 'Глава {n} из {count}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n} из {count}',
-    'book.eyebrowStamps': 'ШТАМПЫ',
+    // K-12: главы штампов пронумерованы так же, как главы атласа.
+    'book.eyebrowStampsChapter': 'Штампы · глава {n} из {count}',
     'book.indexUncut': 'не разрезано',
     'book.indexLocked': '{n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
@@ -551,6 +562,10 @@ ru: {
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',
+
+    // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
+    'stamps.chapterLocked': 'Глава откроется сама, когда накопится {n} ✦.',
+    'stamps.chapterLockedProgress': 'Сейчас: {current} / {target} ✦',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',

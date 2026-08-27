@@ -595,9 +595,11 @@ function renderBookHead() {
         title = t('atlas.chapterTitle' + idx);
         folioN = getAtlasChapterFolio(idx);
     } else if (bookCut === 'stamps') {
+        // K-12: то же «Chapter N of M», что у атласа — главы штампов теперь
+        // такая же нумерованная последовательность, а не плоский список тем.
         const idx = getBookPageIndex('rewards');
         const page = REWARD_PAGES[idx];
-        eyebrow = t('book.eyebrowStamps');
+        eyebrow = t('book.eyebrowStampsChapter', { n: idx, count: REWARD_PAGE_COUNT - 1 });
         title = page ? page.title : '';
         folioN = getStampsChapterFolio(idx);
     } else if (bookCut === 'exlibris') {
@@ -649,10 +651,15 @@ function renderBookGauge() {
     el.appendChild(flag);
 }
 
-/** Штампы, кроме суточных — те живут на «Сегодня» и точку высечки не зажигают. */
+/**
+ * Штампы, кроме суточных — те живут на «Сегодня» и точку высечки не зажигают.
+ * K-12: неразрезанная глава в счёт не идёт — до неё нельзя долистать и нечего
+ * прижать, капля сургуча звала бы туда, куда сама книга ещё не пускает.
+ */
 function stampsHaveClaimable() {
     if (typeof rewardPageHasClaimable !== 'function') return false;
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
+        if (!isRewardPageUnlocked(i)) continue;
         if (rewardPageHasClaimable(i)) return true;
     }
     return false;
@@ -802,18 +809,29 @@ function renderBookIndex() {
     stampsSec.appendChild(stampsTitle);
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
         const page = REWARD_PAGES[i];
-        const chains = getRewardPageChains(i);
-        const done = chains.filter(chain => {
-            const p = achievementProgress[chain.id];
-            return p && p.stepIndex >= chain.steps.length;
-        }).length;
+        const unlocked = isRewardPageUnlocked(i);
 
-        const row = createBookIndexRow(
-            page.title,
-            getStampsChapterFolio(i),
-            `${done} / ${chains.length}`,
-            { wax: rewardPageHasClaimable(i) }
-        );
+        let row;
+        if (unlocked) {
+            const chains = getRewardPageChains(i);
+            const done = chains.filter(chain => {
+                const p = achievementProgress[chain.id];
+                return p && p.stepIndex >= chain.steps.length;
+            }).length;
+            row = createBookIndexRow(
+                page.title,
+                getStampsChapterFolio(i),
+                `${done} / ${chains.length}`,
+                { wax: rewardPageHasClaimable(i) }
+            );
+        } else {
+            row = createBookIndexRow(
+                page.title,
+                null,
+                t('book.indexLocked', { n: getRewardPageUnlockCost(i) }),
+                { locked: true }
+            );
+        }
         row.addEventListener('click', () => {
             setBookPageIndex('rewards', i);
             switchBookCut('stamps');

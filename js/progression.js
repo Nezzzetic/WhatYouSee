@@ -207,6 +207,18 @@ function getAtlasPageUnlockCost(pageIndex) {
     return ATLAS_PAGE_COSTS[pageIndex];
 }
 
+/**
+ * K-12: кумулятивная сумма ATLAS_PAGE_COSTS[0..index] — те же засечки, на
+ * которых режутся страницы атласа (см. reconstructLifetimeMetaEarned выше:
+ * lifetimeMetaEarned проходит их в те же моменты). Главы штампов режутся на
+ * подмножестве этого ряда — общего числового ряда, а не своего собственного.
+ */
+function getAtlasCumulativeCost(index) {
+    let sum = 0;
+    for (let i = 0; i <= index && i < ATLAS_PAGE_COSTS.length; i++) sum += ATLAS_PAGE_COSTS[i];
+    return sum;
+}
+
 function getNextLockedAtlasPageIndex() {
     for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
         if (!isAtlasPageUnlocked(i)) return i;
