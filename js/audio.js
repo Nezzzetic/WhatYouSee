@@ -4,6 +4,40 @@
 let _audioCtx = null;
 let _lastEdgeSnapTime = 0;
 
+// K-14: первая настоящая настройка — звук вкл/выкл. Свой ключ, отдельный от
+// SAVE_KEY и от прогрессии: настройка переживает и сброс прогресса, и смену
+// неба (риск 1 дока). Объект, а не голый булев — U-14 добавит сюда `haptic`
+// вторым полем на готовое место, не заводя второй ключ.
+const SETTINGS_SAVE_KEY = 'starsReborn_settings_v01';
+
+let _soundEnabled = true;
+
+function loadSoundSetting() {
+    try {
+        const raw = localStorage.getItem(SETTINGS_SAVE_KEY);
+        if (!raw) return;
+        const data = JSON.parse(raw);
+        if (typeof data.sound === 'boolean') _soundEnabled = data.sound;
+    } catch (e) { /* ignore */ }
+}
+
+function saveSoundSetting() {
+    try {
+        localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({ sound: _soundEnabled }));
+    } catch (e) { /* ignore */ }
+}
+
+loadSoundSetting();
+
+function isSoundEnabled() {
+    return _soundEnabled;
+}
+
+function setSoundEnabled(on) {
+    _soundEnabled = !!on;
+    saveSoundSetting();
+}
+
 function initAudio() {
     if (_audioCtx) return;
     try {
@@ -29,7 +63,7 @@ function chainStepFreq(n) {
 // Короткий щелчок: соединение звезды в черновик.
 // chainStarCount — число звёзд в цепочке (visitedStars) с учётом присоединяемой.
 function playEdgeSnap(chainStarCount) {
-    if (!_audioCtx) return;
+    if (!_audioCtx || !_soundEnabled) return;
     const now = Date.now();
     if (now - _lastEdgeSnapTime < 50) return; // debounce
     _lastEdgeSnapTime = now;
@@ -53,7 +87,7 @@ function playEdgeSnap(chainStarCount) {
 
 // Мягкий аккорд: коммит созвездия
 function playCommit() {
-    if (!_audioCtx) return;
+    if (!_audioCtx || !_soundEnabled) return;
     try {
         const t = _audioCtx.currentTime;
         [[400, 0.14], [600, 0.10]].forEach(([freq, vol]) => {
@@ -107,7 +141,7 @@ function claimNoteCount(reward) {
  * пробегом, а не кашей из пяти одинаковых арпеджио.
  */
 function playClaim(reward) {
-    if (!_audioCtx) return;
+    if (!_audioCtx || !_soundEnabled) return;
     const now = Date.now();
     if (now - _lastClaimTime < CLAIM_DEBOUNCE_MS) return;
     _claimSeriesShift = (now - _lastClaimTime < CLAIM_SERIES_WINDOW_MS)
@@ -153,7 +187,7 @@ function playClaim(reward) {
 
 // Восходящий арпеджио: конец уровня
 function playLevelComplete() {
-    if (!_audioCtx) return;
+    if (!_audioCtx || !_soundEnabled) return;
     try {
         const t = _audioCtx.currentTime;
         [523, 659, 784].forEach((freq, i) => {
