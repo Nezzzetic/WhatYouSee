@@ -260,6 +260,15 @@ en: {
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Ex Libris opened tonight — {n} stars are waiting.',
 
+    // K-14: страница настроек — строка из оглавления, не шестая высечка.
+    'book.cutSettings': 'Settings',
+    'book.headSettings': 'Settings',
+
+    // --- Настройки (K-14) --------------------------------------------------------
+    'settings.sound': 'Sound',
+    'settings.toggleOn': 'on',
+    'settings.toggleOff': 'off',
+
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Unknown constellation',
     'atlas.pageLocked': 'This page opens on its own once you have {n} ✦.',
@@ -525,6 +534,15 @@ ru: {
     'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Сегодня ночью открылся Экслибрис — {n} звёзд ждут.',
+
+    // K-14: страница настроек — строка из оглавления, не шестая высечка.
+    'book.cutSettings': 'Настройки',
+    'book.headSettings': 'Настройки',
+
+    // --- Настройки (K-14) --------------------------------------------------------
+    'settings.sound': 'Звук',
+    'settings.toggleOn': 'вкл',
+    'settings.toggleOff': 'выкл',
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',

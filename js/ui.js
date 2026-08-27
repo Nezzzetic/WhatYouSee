@@ -514,7 +514,10 @@ function renderAtlasList() {
 // свайпом: горизонтальных свайпов страниц (SHEET_SWIPE_MIN_PX и компания)
 // K-06 убрал совсем.
 
-const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'exlibris'];
+// K-14: 'settings' — валидная цель openBook/switchBookCut, но не шестая
+// высечка — вход только строкой из «Index» (решение заказчика 2026-08-25:
+// высечек пять, см. K-06). Своей кнопки в #bookTabs у неё нет и не будет.
+const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'exlibris', 'settings'];
 
 let bookCut = 'today';
 let bookOpen = false;
@@ -563,6 +566,11 @@ function getExLibrisFolio() {
     return 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
 }
 
+/** K-14: настройки — последняя колонцифра книги, строкой после Ex Libris. */
+function getSettingsFolio() {
+    return getExLibrisFolio() + 1;
+}
+
 /** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
 function renderBookHead() {
     const eyebrowEl = document.getElementById('bookEyebrow');
@@ -605,6 +613,9 @@ function renderBookHead() {
     } else if (bookCut === 'exlibris') {
         title = t('book.headExLibris');
         folioN = getExLibrisFolio();
+    } else if (bookCut === 'settings') {
+        title = t('book.headSettings');
+        folioN = getSettingsFolio();
     }
 
     eyebrowEl.textContent = eyebrow;
@@ -853,6 +864,16 @@ function renderBookIndex() {
     exRow.addEventListener('click', () => switchBookCut('exlibris'));
     exSec.appendChild(exRow);
     el.appendChild(exSec);
+
+    // K-14: настройки — строкой в конце оглавления, единственный вход
+    // (страница не висит на своей высечке). Ни счёта, ни замка — доступна
+    // всегда, у неё нет условия открытия.
+    const settingsSec = document.createElement('div');
+    settingsSec.className = 'book-index-sec';
+    const settingsRow = createBookIndexRow(t('book.cutSettings'), getSettingsFolio(), '');
+    settingsRow.addEventListener('click', () => switchBookCut('settings'));
+    settingsSec.appendChild(settingsRow);
+    el.appendChild(settingsSec);
 }
 
 /** Пейджер атласа: пока без свайпа — рельс страниц U-09 убран целиком. */
@@ -990,6 +1011,58 @@ function updateObservatoryUI() {
 }
 
 // =============================================================================
+// K-14: НАСТРОЙКИ — страница книги, первый тумблер (звук)
+// =============================================================================
+//
+// Вход только строкой из «Index» (BOOK_CUT_LIST выше) — своей высечки нет.
+// Тумблер книжный: пустая клетка / оттиск, как марка K-08 (`.achv-tile`),
+// а не системный чекбокс (риск 2 дока). Список рассчитан на второй тумблер —
+// вибро приедет с A-05/U-14 такой же строкой, без переверстки страницы.
+
+function createSettingsToggleRow(labelKey, getOn, onToggle) {
+    const row = document.createElement('div');
+    row.className = 'settings-row';
+
+    const label = document.createElement('span');
+    label.className = 'settings-row-label';
+    label.textContent = t(labelKey);
+    row.appendChild(label);
+
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'settings-toggle achv-tile';
+
+    // «press» (K-02, до сих пор нигде не занят) — оттиск в буквальном смысле:
+    // прижатая марка. Пустая клетка обходится вовсе без знака, как и у
+    // неиспользованных клеток сцепки K-08 (achv-tile-empty).
+    const sync = () => {
+        const on = getOn();
+        tile.classList.toggle('achv-tile-lit', on);
+        tile.classList.toggle('achv-tile-empty', !on);
+        tile.innerHTML = '';
+        if (on) tile.appendChild(glyphSign('press', 16));
+        tile.setAttribute('aria-pressed', String(on));
+        tile.setAttribute('aria-label', `${t(labelKey)}: ${t(on ? 'settings.toggleOn' : 'settings.toggleOff')}`);
+    };
+    sync();
+
+    tile.addEventListener('click', () => {
+        onToggle(!getOn());
+        sync();
+    });
+
+    row.appendChild(tile);
+    return row;
+}
+
+function renderBookSettings() {
+    const el = document.getElementById('bookSettingsList');
+    if (!el) return;
+    el.innerHTML = '';
+    el.appendChild(createSettingsToggleRow('settings.sound', isSoundEnabled, setSoundEnabled));
+}
+
+// =============================================================================
 // K-06: РЕНДЕР И ОТКРЫТИЕ/ЗАКРЫТИЕ КНИГИ
 // =============================================================================
 
@@ -999,7 +1072,8 @@ function renderBook() {
         index: document.getElementById('bookIndex'),
         atlas: document.getElementById('bookAtlasSection'),
         stamps: document.getElementById('bookStampsSection'),
-        exlibris: document.getElementById('bookExLibris')
+        exlibris: document.getElementById('bookExLibris'),
+        settings: document.getElementById('bookSettingsSection')
     };
     for (const cut in sections) {
         if (sections[cut]) sections[cut].hidden = cut !== bookCut;
@@ -1019,6 +1093,8 @@ function renderBook() {
         renderBookStampsPager();
     } else if (bookCut === 'exlibris') {
         renderBookExLibris();
+    } else if (bookCut === 'settings') {
+        renderBookSettings();
     }
 
     renderBookHead();

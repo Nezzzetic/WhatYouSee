@@ -1592,6 +1592,47 @@ button:disabled {
     z-index: 1;
 }
 
+/* --- K-14: настройки — тумблер книжный: пустая клетка / оттиск (`.achv-tile`
+   выше), а не системный чекбокс. Своей иконки в тумблере нет — состоянию
+   нечего означать темой, это бинарный переключатель, а не оттиск цепочки. */
+
+.settings-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--paper-edge);
+    border-radius: 14px;
+    background: rgba(var(--ink-rgb), 0.025);
+}
+
+.settings-row-label {
+    font-size: 14px;
+    font-weight: 650;
+    color: var(--ink);
+}
+
+.settings-toggle.achv-tile {
+    flex: none;
+    width: 48px;
+    height: 36px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.settings-toggle.achv-tile:hover,
+.settings-toggle.achv-tile:focus-visible {
+    box-shadow: inset 0 0 0 1.5px rgba(var(--ink-rgb), 0.3);
+    outline: none;
+}
+
 /* --- A-03: перелёт награды от кнопки забора к счётчику ✦ --- */
 
 /* Три вложенных узла — это не украшательство, а способ получить дугу без
