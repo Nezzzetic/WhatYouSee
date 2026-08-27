@@ -1205,38 +1205,106 @@ button:disabled {
     color: var(--ink-muted);
 }
 
-/* Тумблер режима в правом нижнем углу — на месте кнопки отката (U-09).
-   getBottomUIHeight() не меняется: панель и так лежит поверх полосы,
-   зарезервированной под свёрнутую шторку. */
-/* B-02: тумблер «соединять»/«двигать» — единственный, кто остался в углу после
-   K-04, и только в обсерватории. Фиксацию, которую раньше давал `#gameActions`,
-   несёт теперь сам: над лентой-закладкой, она стоит в том же углу. До K-13. */
-/* K-06: пилюля-контейнер раньше была общей `.sheet-seg` шторки; та ушла вместе
-   с шторкой, и тумблер получил собственный класс с той же самой геометрией. */
+/* =============================================================================
+   K-13: ЭКСЛИБРИС — ГРАВЮРА ВКЛЕЕНА В ЛИСТ
+   =============================================================================
+   Холст живёт внутри рамки на бумаге страницы, а не во весь экран. Разметка
+   страницы (`.exlibris-plate`) резервирует место и рисует подпись/инструменты;
+   сам канвас репозиционируется поверх `.exlibris-canvas-slot` кодом
+   updateExLibrisEmbedding() (sketch.js) — см. комментарий у #canvas-container. */
+
+.exlibris-plate {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+}
+
+.exlibris-canvas-slot {
+    width: 100%;
+    height: min(48vh, 420px);
+}
+
+.exlibris-caption {
+    text-align: center;
+}
+
+.exlibris-caption-el {
+    font-family: var(--font-text);
+    font-size: 12.5px;
+    letter-spacing: 0.34em;
+    text-transform: uppercase;
+    color: var(--gold);
+}
+
+.exlibris-caption-flourish {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    margin-top: 6px;
+    color: var(--gold-deep);
+}
+
+.exlibris-caption-ln {
+    width: 38px;
+    height: 1px;
+    background: var(--paper-edge);
+}
+
+.exlibris-caption-sub {
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 12.5px;
+    color: var(--ink-muted);
+    margin-top: 7px;
+}
+
+/* Канвас встроен: репозиционируется fixed поверх .exlibris-canvas-slot, но
+   z-index обязан перебить полноэкранную `.book` (1200) — иначе живой холст
+   останется под непрозрачной страницей. Рамка гравюры (см. ниже) стоит ещё
+   выше собственным узлом: всё внутри `.book` капается на 1200 её локальным
+   стек-контекстом, псевдоэлемент слота не смог бы лечь поверх канваса. */
+#canvas-container.canvas-embedded {
+    position: fixed;
+    inset: auto;
+    z-index: 1205;
+    box-shadow: 0 12px 26px -16px rgba(var(--night-rgb), 0.9);
+}
+
+/* Двойная рамка гравюры — тот же приём, что у концепта (Табл. VII):
+   внешняя линия по краю, внутренняя с отступом 5px. pointer-events: none —
+   рамка ничего не ловит, жесты идут прямо в канвас под ней. */
+#exLibrisFrameOverlay {
+    position: fixed;
+    z-index: 1210;
+    pointer-events: none;
+    display: none;
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.35);
+}
+
+#exLibrisFrameOverlay::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border: 1px solid rgba(var(--ink-rgb), 0.15);
+}
+
+#exLibrisFrameOverlay.exlibris-frame-on {
+    display: block;
+}
+
+/* K-13: тумблер «соединять»/«двигать» переехал с плавающего угла (K-04→до
+   K-13) на бумагу — под гравюру, вместе с остальными инструментами страницы
+   Ex Libris. Пилюля-контейнер: K-06 завёл под неё собственный класс вместо
+   переиспользованной `.sheet-seg` шторки; геометрия та же, позиционирование
+   больше не fixed — тумблер лежит в обычном потоке `.exlibris-plate`. */
 .obs-mode-toggle {
     display: flex;
     gap: 3px;
     padding: 3px;
     border: 1px solid var(--paper-edge);
     border-radius: 99px;
-}
-
-.obs-mode-seg {
-    position: fixed;
-    z-index: 40;
-    right: 20px;
-    bottom: calc(var(--ribbon-h) + var(--safe-bottom) + 20px);
-    flex: none;
-    width: 92px;
-    align-items: center;
-    background: rgba(var(--paper-rgb), 0.82);
-    backdrop-filter: blur(4px);
-}
-
-.obs-mode-seg .seg-btn-icon {
-    width: 43px;
-    padding: 8px 0;
-    font-size: 17px;
 }
 
 /* --- K-11: разворот-определитель — 2 колонки, ни одна фигура не спрятана --- */

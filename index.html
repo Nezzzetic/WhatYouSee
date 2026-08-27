@@ -67,19 +67,7 @@
 
     <div id="app">
         <!-- K-04: постоянного интерфейса на небе не осталось — отмена стала
-             корректорской пометкой на канвасе. Тумблер режимов обсерватории
-             живёт здесь до K-13: без него холст остался бы без управления,
-             а на поле он скрыт и неба не занимает. K-06: собственный класс
-             вместо переиспользованного `.sheet-seg` — тот ушёл вместе со шторкой. -->
-        <div id="observatoryModeSeg" class="obs-mode-toggle obs-mode-seg" hidden>
-            <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
-                    data-i18n-title="observatory.modeConnect"
-                    data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
-            <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
-                    data-i18n-title="observatory.modeMove"
-                    data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
-        </div>
-
+             корректорской пометкой на канвасе. -->
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>
         <div id="devControls" class="dev-controls">
             <div class="dev-zoom-row">
@@ -98,6 +86,13 @@
         </div>
 
         <div id="canvas-container"></div>
+
+        <!-- K-13: рамка гравюры поверх встроенного канваса — рисуется отдельным
+             узлом (не псевдоэлементом дочернего слота книги), потому что канвас
+             при встраивании поднимается над `.book` z-индексом; рамка обязана
+             стоять ещё выше, вне стека книги. Позицию и размер держит
+             updateExLibrisEmbedding() в sketch.js — те же числа, что у канваса. -->
+        <div id="exLibrisFrameOverlay" aria-hidden="true"></div>
 
         <!-- K-05: лента-закладка вместо свёрнутой полосы U-09. Нижний правый
              угол — под большой палец правой руки; тап или потягивание вверх
@@ -162,7 +157,35 @@
                             <div class="obs-lock-bar"><div id="exLibrisLockBarFill" class="obs-lock-bar-fill"></div></div>
                             <div class="obs-lock-progress" id="exLibrisLockProgress"></div>
                         </div>
-                        <button type="button" id="exLibrisEnterBtn" class="book-btn" hidden></button>
+
+                        <!-- K-13: гравюра вклеена в лист — холст живёт внутри рамки,
+                             а не во весь экран. #exLibrisCanvasSlot только резервирует
+                             место в вёрстке страницы; сам канвас переносится сюда
+                             поверх (updateExLibrisEmbedding, sketch.js) — координаты,
+                             клампы и хит-тесты обсерватории не меняются вовсе, они
+                             считают от фактического размера канваса. -->
+                        <div id="exLibrisPlate" class="exlibris-plate" hidden>
+                            <div id="exLibrisCanvasSlot" class="exlibris-canvas-slot"></div>
+                            <div class="exlibris-caption">
+                                <div class="exlibris-caption-el" data-i18n="observatory.exLibris">Ex libris</div>
+                                <div class="exlibris-caption-flourish" aria-hidden="true">
+                                    <span class="exlibris-caption-ln"></span>
+                                    <svg class="ic ic-sm" width="11" height="11" focusable="false"><use href="#i-loz"/></svg>
+                                    <span class="exlibris-caption-ln"></span>
+                                </div>
+                                <div class="exlibris-caption-sub" id="exLibrisCaptionSub"></div>
+                            </div>
+                            <!-- B-02: тумблер «соединять»/«двигать»; красить — тапом
+                                 в режиме «двигать» (тот же жест, что и раньше). -->
+                            <div id="observatoryModeSeg" class="obs-mode-toggle">
+                                <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
+                                        data-i18n-title="observatory.modeConnect"
+                                        data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
+                                <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
+                                        data-i18n-title="observatory.modeMove"
+                                        data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 <div class="book-foot">

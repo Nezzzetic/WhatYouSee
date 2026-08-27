@@ -564,6 +564,12 @@
                 const el = document.getElementById('skyBookmark');
                 return { shape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
                     visible: !!(el && el.getBoundingClientRect().width > 0) };
+            })(),
+            // K-13: холст встроен в разворот страницы — канвас репозиционирован
+            // поверх #exLibrisCanvasSlot, а не рисует во весь экран.
+            exLibrisEmbedded: (() => {
+                const c = document.getElementById('canvas-container');
+                return !!(c && c.classList.contains('canvas-embedded'));
             })()
         };
     }
@@ -627,7 +633,9 @@
             starCount: observatoryStars.length,
             lineCount: observatoryLines.length,
             // U-12: сколько созвездий (компонент из ≥2 звёзд) названо
-            nameCount: observatoryNames.length
+            nameCount: observatoryNames.length,
+            // K-13: ночь первой звезды холста — подпись под оттиском на странице
+            beganNight: typeof getObservatoryBeganNight === 'function' ? getObservatoryBeganNight() : null
         };
     }
 

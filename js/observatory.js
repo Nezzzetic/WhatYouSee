@@ -29,6 +29,12 @@ let observatoryNames = [];
 let observatoryBackgroundStars = [];
 /** 'connect' — соединять (по умолчанию), 'move' — перемещать. */
 let observatoryMode = 'connect';
+/**
+ * K-13: «когда лист начат» — подпись под оттиском. Ночь первой звезды, а не
+ * текущая: лист подписывают один раз. null — ещё не начат либо старый сейв,
+ * доберётся при загрузке (см. loadObservatory).
+ */
+let observatoryBeganNight = null;
 
 let observatoryNextStarId = 0;
 
@@ -86,7 +92,9 @@ function saveObservatoryNow() {
                 custom: e.custom || null,
                 dnx: (e.dx || 0) / FIELD_WIDTH,
                 dny: (e.dy || 0) / FIELD_HEIGHT
-            }))
+            })),
+            // K-13: поле аддитивное, как names — старый сейв читается без него.
+            beganNight: observatoryBeganNight || null
         };
         localStorage.setItem(OBSERVATORY_SAVE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -108,6 +116,7 @@ function loadObservatory() {
     observatoryLines = [];
     observatoryNames = [];
     observatoryNextStarId = 0;
+    observatoryBeganNight = null;
     try {
         const raw = localStorage.getItem(OBSERVATORY_SAVE_KEY);
         if (!raw) return false;
@@ -157,6 +166,16 @@ function loadObservatory() {
         }
 
         if (state.mode === 'move' || state.mode === 'connect') observatoryMode = state.mode;
+
+        const beganNight = Math.floor(Number(state.beganNight));
+        observatoryBeganNight = Number.isFinite(beganNight) && beganNight > 0 ? beganNight : null;
+        // K-13: сейв без поля (до этой задачи) — лист уже начат, но ночь потеряна.
+        // Лучшее доступное приближение: текущая ночь на первой загрузке после
+        // обновления. Точный номер не восстановить, а пустая подпись хуже.
+        if (observatoryBeganNight === null && observatoryStars.length > 0) {
+            observatoryBeganNight = getObservatoryCurrentNightNumber();
+        }
+
         syncObservatoryNames();
         return true;
     } catch (e) {
@@ -182,6 +201,7 @@ function resetObservatoryForFullReset() {
     observatoryNames = [];
     observatoryNextStarId = 0;
     observatoryMode = 'connect';
+    observatoryBeganNight = null;
     resetObservatoryDragState();
     clearObservatorySave();
 }
@@ -259,8 +279,21 @@ function pickObservatoryStarPosition() {
     return best || { x: FIELD_WIDTH / 2, y: FIELD_HEIGHT / 2 };
 }
 
+/**
+ * «Ночь», которую увидит подпись под оттиском (K-13). Та же нумерация,
+ * что в шапке книги на «Сегодня» (K-09) — текущая, ещё не завершённая.
+ */
+function getObservatoryCurrentNightNumber() {
+    return (typeof achievementCounters !== 'undefined' && achievementCounters
+        ? achievementCounters.levelsCompleted : 0) + 1;
+}
+
 /** Новая звезда приходит жёлтой (colorValue = 0) — цвет дальше задаёт игрок. */
 function addObservatoryStar() {
+    // K-13: лист подписывают один раз — в ночь самой первой звезды холста.
+    if (observatoryBeganNight === null && observatoryStars.length === 0) {
+        observatoryBeganNight = getObservatoryCurrentNightNumber();
+    }
     const pos = pickObservatoryStarPosition();
     const star = {
         id: observatoryNextStarId++,
@@ -270,6 +303,10 @@ function addObservatoryStar() {
     };
     observatoryStars.push(star);
     return star;
+}
+
+function getObservatoryBeganNight() {
+    return observatoryBeganNight;
 }
 
 /**

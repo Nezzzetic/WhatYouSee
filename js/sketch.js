@@ -135,6 +135,11 @@ function getTopUIHeight() {
 let lastBottomInset = 0;
 
 function getBottomUIHeight() {
+    // K-13: холст встроенный в разворот страницы Ex Libris не делит экран
+    // с лентой вообще — резервировать под неё нечего, вся высота канваса
+    // и так уже ровно интерьер рамки (см. updateExLibrisEmbedding).
+    if (typeof isExLibrisEmbedActive === 'function' && isExLibrisEmbedActive()) return 0;
+
     const ribbon = document.getElementById('skyRibbon');
     if (ribbon) {
         const rect = ribbon.getBoundingClientRect();
@@ -160,10 +165,68 @@ function resizeGameCanvasToContainer() {
     const h = Math.max(1, Math.floor(container.clientHeight));
     if (w !== width || h !== height) {
         resizeCanvas(w, h);
+        generateNebulaBuffer();
     }
     updateMaxEdgeLengthFromCanvas();
     clampZoomToField();
     clampCamera();
+}
+
+// =============================================================================
+// K-13: ЭКСЛИБРИС ВСТРОЕН В СТРАНИЦУ
+// =============================================================================
+//
+// Обсерватория переросла полноэкранный режим (B-02→K-06): вместо отдельного
+// мира на весь канвас она теперь гравюра, вклеенная в разворот книги. Приём —
+// НЕ отдельная система клампов для уменьшенной области (о которой говорил
+// risk 1 дока), а физический ресайз/репозиция самого #canvas-container поверх
+// плейсхолдера страницы: p5 меняет width/height канваса по-настоящему, и вся
+// существующая арифметика camera.js (клампы, getMinZoomLevel, мировые
+// координаты мыши) продолжает работать без единой правки — она и так считает
+// от фактического размера канваса, а не от размера окна.
+
+/** Встроенный вид активен, когда страница «Ex Libris» открыта и небо — второе. */
+function isExLibrisEmbedActive() {
+    return typeof bookOpen !== 'undefined' && bookOpen && bookCut === 'exlibris'
+        && appMode === 'observatory';
+}
+
+/**
+ * Переносит #canvas-container (и, следом, сам p5-канвас) поверх
+ * #exLibrisCanvasSlot — плейсхолдера, который только резервирует место в
+ * вёрстке страницы. Зовётся из updateObservatoryUI() при каждой смене режима
+ * и высечки книги, а также при повороте/ресайзе экрана.
+ */
+function updateExLibrisEmbedding() {
+    const container = document.getElementById('canvas-container');
+    const overlay = document.getElementById('exLibrisFrameOverlay');
+    const slot = document.getElementById('exLibrisCanvasSlot');
+    if (!container) return;
+
+    const embed = isExLibrisEmbedActive() && slot && slot.offsetParent !== null;
+    if (embed) {
+        const rect = slot.getBoundingClientRect();
+        container.classList.add('canvas-embedded');
+        container.style.left = Math.round(rect.left) + 'px';
+        container.style.top = Math.round(rect.top) + 'px';
+        container.style.width = Math.round(rect.width) + 'px';
+        container.style.height = Math.round(rect.height) + 'px';
+        if (overlay) {
+            overlay.classList.add('exlibris-frame-on');
+            overlay.style.left = container.style.left;
+            overlay.style.top = container.style.top;
+            overlay.style.width = container.style.width;
+            overlay.style.height = container.style.height;
+        }
+    } else {
+        container.classList.remove('canvas-embedded');
+        container.style.left = '';
+        container.style.top = '';
+        container.style.width = '';
+        container.style.height = '';
+        if (overlay) overlay.classList.remove('exlibris-frame-on');
+    }
+    resizeGameCanvasToContainer();
 }
 
 function setup() {
@@ -269,8 +332,14 @@ function draw() {
 // =============================================================================
 
 function windowResized() {
+    if (typeof isExLibrisEmbedActive === 'function' && isExLibrisEmbedActive()) {
+        // K-13: слот страницы мог сместиться/изменить размер вместе с окном —
+        // пересчитываем прямоугольник заново, а не просто ресайзим канвас
+        // на его прежнем месте.
+        updateExLibrisEmbedding();
+        return;
+    }
     resizeGameCanvasToContainer();
-    generateNebulaBuffer();
 }
 
 // =============================================================================
