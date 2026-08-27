@@ -1249,6 +1249,14 @@ function showShapeRevealToast(shapeId) {
  * REWARD_PAGES[0] («Сутки») сама книга (ui.js, renderBookToday) рендерит на
  * странице «Сегодня» отдельно — getBookPageIndex('rewards') по страницам
  * Штампов ходит с индекса 1, а не 0.
+ *
+ * K-12: главы 1..4 — те же четыре рубрики («Цвета»/«Размеры»/«Особые»/
+ * «Огранка и путь»), но с литературными именами и рабочими названиями из
+ * концепта; состав `chainIds` внутри каждой не менялся. `unlockAtIndex` —
+ * индекс в ATLAS_PAGE_COSTS: глава разрезана, когда `lifetimeMetaEarned`
+ * проходит кумулятивную сумму до этого индекса включительно
+ * (getAtlasCumulativeCost) — тот же нож, что и у атласа, на том же ряду
+ * чисел. `null` — глава открыта всегда, порог не существует.
  */
 const REWARD_PAGES = [
     {
@@ -1258,22 +1266,28 @@ const REWARD_PAGES = [
         chainIds: ['daily_entry', 'daily_night']
     },
     {
-        id: 'colors', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.colors'),
-        chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue']
+        id: 'first_light', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.firstLight'),
+        chainIds: ['size_3', 'size_4', 'size_5', 'size_6', 'size_7', 'size_8plus'],
+        unlockAtIndex: null
     },
     {
-        id: 'sizes', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.sizes'),
-        chainIds: ['size_3', 'size_4', 'size_5', 'size_6', 'size_7', 'size_8plus']
+        // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
+        id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
+        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all'],
+        unlockAtIndex: 1 // Σ 320 ✦ — тот же нож, что режет атлас-главу II
     },
     {
-        id: 'specials', sign: 'comet', title: t('rewardPage.specials'),
-        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony']
+        id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
+        chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
+        unlockAtIndex: 3 // Σ 1810 ✦ — атлас-глава IV
     },
     {
-        // U-10: «Огранщик» на странице огранки, страница переименована.
-        // «Первооткрыватель» встаёт перед ним: открыть фигуру — шаг до её огранки.
-        id: 'path', sign: 'gem', title: t('rewardPage.path'),
-        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all']
+        // Особые достижения страниц атласа: у каждой уже есть свой замок
+        // (requiresPageComplete/getChainLockReason) — этот порог лишь решает,
+        // видна ли сама глава на оглавлении и в пейджере, замка не дублирует.
+        id: 'odd_nights', sign: 'comet', title: t('rewardPage.oddNights'),
+        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony'],
+        unlockAtIndex: 5 // Σ 3750 ✦ — атлас-глава VI
     }
 ];
 
@@ -1283,6 +1297,20 @@ function getRewardPageChains(pageIndex) {
     const page = REWARD_PAGES[pageIndex];
     if (!page) return [];
     return page.chainIds.map(getAchievementChainById).filter(Boolean);
+}
+
+/** K-12: глава штампов разрезана — как и у атласа, необратимо (порог не растёт). */
+function isRewardPageUnlocked(pageIndex) {
+    const page = REWARD_PAGES[pageIndex];
+    if (!page || typeof page.unlockAtIndex !== 'number') return true;
+    const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
+    return earned >= getAtlasCumulativeCost(page.unlockAtIndex);
+}
+
+function getRewardPageUnlockCost(pageIndex) {
+    const page = REWARD_PAGES[pageIndex];
+    if (!page || typeof page.unlockAtIndex !== 'number') return 0;
+    return getAtlasCumulativeCost(page.unlockAtIndex);
 }
 
 /** U-09: бейдж на иконке рельса — на этой странице есть что забрать. */
@@ -1461,11 +1489,37 @@ function createAchievementRow(chain) {
     return row;
 }
 
+/** K-12: неразрезанная глава штампов — тот же нож и та же заглушка, что у атласа. */
+function createRewardPageLockedNotice(pageIndex) {
+    const locked = document.createElement('div');
+    locked.className = 'atlas-page-locked';
+    const cost = getRewardPageUnlockCost(pageIndex);
+
+    const lockedText = document.createElement('p');
+    lockedText.textContent = t('stamps.chapterLocked', { n: cost });
+    locked.appendChild(lockedText);
+
+    const progressText = document.createElement('p');
+    progressText.className = 'atlas-page-locked-progress';
+    progressText.textContent = t('stamps.chapterLockedProgress', {
+        current: Math.min(getLifetimeMetaEarned(), cost),
+        target: cost
+    });
+    locked.appendChild(progressText);
+
+    return locked;
+}
+
 function renderAchievementsList() {
     const list = document.getElementById('achievementsList');
     if (!list) return;
     list.innerHTML = '';
-    for (const chain of getRewardPageChains(getBookPageIndex('rewards'))) {
+    const pageIndex = getBookPageIndex('rewards');
+    if (!isRewardPageUnlocked(pageIndex)) {
+        list.appendChild(createRewardPageLockedNotice(pageIndex));
+        return;
+    }
+    for (const chain of getRewardPageChains(pageIndex)) {
         list.appendChild(createAchievementRow(chain));
     }
 }
