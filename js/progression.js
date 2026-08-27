@@ -147,6 +147,9 @@ function notifyObservatoryUnlockedIfNeeded() {
     }
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+    // K-13: порог мог взяться, пока игрок уже сидит на запертой странице
+    // Ex Libris — холст обязан ожить в ту же секунду, без повторного тапа.
+    if (typeof syncExLibrisAppMode === 'function') syncExLibrisAppMode();
     return true;
 }
 

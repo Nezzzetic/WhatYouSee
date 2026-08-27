@@ -875,19 +875,20 @@ function stepBookPage(delta) {
 }
 
 // =============================================================================
-// B-02: ОБСЕРВАТОРИЯ В КНИГЕ — страница «Ex Libris»
+// B-02/K-13: ОБСЕРВАТОРИЯ В КНИГЕ — страница «Ex Libris»
 // =============================================================================
 //
-// Сегмент-кнопка U-09 (третья в подвале шторки) стала пятой высечкой. Хинт
-// запертой обсерватории был поповером над подвалом — теперь это просто строка
-// на самой странице, ей незачем ни всплывать, ни закрываться тапом мимо.
+// K-13: страница и обсерватория — одно состояние, отдельного входа/выхода
+// больше нет. Открыл высечку «Ex Libris» (и обсерватория уже разряжена) —
+// холст ожил прямо в рамке страницы; ушёл на другую высечку или закрыл книгу —
+// вернулся на поле. Синхронизирует это syncExLibrisAppMode().
 
 function renderBookExLibris() {
     const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
     const lockedEl = document.getElementById('exLibrisLocked');
-    const enterBtn = document.getElementById('exLibrisEnterBtn');
+    const plateEl = document.getElementById('exLibrisPlate');
     if (lockedEl) lockedEl.hidden = unlocked;
-    if (enterBtn) enterBtn.hidden = !unlocked;
+    if (plateEl) plateEl.hidden = !unlocked;
 
     if (!unlocked) {
         const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
@@ -906,29 +907,47 @@ function renderBookExLibris() {
         return;
     }
 
-    if (enterBtn) {
-        const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-        enterBtn.textContent = t(inObservatory ? 'observatory.toField' : 'observatory.toObservatory');
-    }
+    renderExLibrisCaption();
 }
 
 /**
- * Книга — полноэкранная: держать её открытой поверх обсерватории, как умела
- * шторка (U-09 «не закрываем»), больше нельзя — она закрыла бы собой весь
- * холст. Решение исполнителя K-06: переход закрывает книгу; лента остаётся
- * входом назад с любой стороны (K-13 встроит холст прямо в разворот страницы).
+ * K-13: «когда лист начат и сколько на нём групп», курсивом под оттиском —
+ * ровно так подписывали таблицы в старых атласах. Ночь — та, в которую холст
+ * получил первую звезду (getObservatoryBeganNight, observatory.js); групп —
+ * столько, сколько подписанных созвездий держит сам холст (U-12).
  */
-function onExLibrisEnterClick() {
-    const next = (typeof isObservatoryMode === 'function' && isObservatoryMode()) ? 'field' : 'observatory';
-    if (setAppMode(next)) closeBook();
+function renderExLibrisCaption() {
+    const el = document.getElementById('exLibrisCaptionSub');
+    if (!el) return;
+    const night = (typeof getObservatoryBeganNight === 'function' && getObservatoryBeganNight())
+        || (achievementCounters ? achievementCounters.levelsCompleted : 0) + 1;
+    const groups = typeof observatoryNames !== 'undefined' ? observatoryNames.length : 0;
+    el.textContent = tp('observatory.beganCaption', groups, { night });
 }
 
-/** Тумблер «соединять»/«двигать» вместо отката и обратно; при смене режима приложения. */
+/**
+ * K-13: держит appMode в паре с высечкой «Ex Libris» — единственное место,
+ * где что-то решает, быть ли сейчас обсерватории. Вызывается после каждого
+ * изменения состояния книги (открыть/закрыть/переключить высечку).
+ */
+function syncExLibrisAppMode() {
+    const shouldBeObservatory = bookOpen && bookCut === 'exlibris'
+        && typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+    if (shouldBeObservatory !== inObservatory) {
+        // setAppMode() сам зовёт updateObservatoryUI() → updateExLibrisEmbedding()
+        setAppMode(shouldBeObservatory ? 'observatory' : 'field');
+    } else if (typeof updateExLibrisEmbedding === 'function') {
+        // Режим не поменялся, но резервированный прямоугольник мог протухнуть
+        // (resize, смена высечки туда-обратно) — освежаем его на всякий случай.
+        updateExLibrisEmbedding();
+    }
+}
+
+/** Тумблер «соединять»/«двигать»; красить — тапом в «двигать» (без смены). */
 function updateObservatoryUI() {
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
 
-    // K-04: кнопки отката, с которой тумблер делил угол, больше нет. Сам тумблер
-    // живёт до K-13 — иначе обсерватория осталась бы без управления.
     const seg = document.getElementById('observatoryModeSeg');
     if (seg) seg.hidden = !inObservatory;
 
@@ -946,6 +965,8 @@ function updateObservatoryUI() {
 
     // K-11: обсерватория — не то небо, для которого закладывают фигуру.
     renderSkyBookmark();
+
+    if (typeof updateExLibrisEmbedding === 'function') updateExLibrisEmbedding();
 }
 
 // =============================================================================
@@ -1001,6 +1022,7 @@ function openBook(cut) {
     if (book) book.hidden = false;
     if (document.body) document.body.classList.add('book-open-body');
     renderBook();
+    syncExLibrisAppMode();
 }
 
 function closeBook() {
@@ -1012,12 +1034,14 @@ function closeBook() {
         book.hidden = true;
     }
     if (document.body) document.body.classList.remove('book-open-body');
+    syncExLibrisAppMode();
 }
 
 function switchBookCut(cut) {
     if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
     bookCut = cut;
     renderBook();
+    syncExLibrisAppMode();
 }
 
 /**
@@ -1229,7 +1253,6 @@ function setupBookControls() {
 
     // K-06 риск 4: строка на «Сегодня» — второй, равноценный вход в тот же жест закрытия
     document.getElementById('bookReturnBtn')?.addEventListener('click', closeBook);
-    document.getElementById('exLibrisEnterBtn')?.addEventListener('click', onExLibrisEnterClick);
 
     // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
     document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));

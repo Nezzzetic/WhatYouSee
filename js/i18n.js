@@ -293,8 +293,6 @@ en: {
     'field.constellation': 'Constellation',
 
     // --- Обсерватория (B-02) --------------------------------------------------
-    'observatory.toObservatory': 'Go to the observatory',
-    'observatory.toField': 'Back to tonight’s sky',
     'observatory.modeConnect': 'Connect stars',
     'observatory.modeMove': 'Move and recolour stars',
     'observatory.lockedTitle': 'Observatory — a sky of your own',
@@ -302,7 +300,13 @@ en: {
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
     'observatory.unlockedTitle': 'Observatory unlocked',
     'observatory.unlockedSub': '7 stars are waiting for you',
-    'observatory.renamePrompt': 'Name this constellation:'
+    'observatory.renamePrompt': 'Name this constellation:',
+    // --- K-13: подпись под оттиском ---------------------------------------
+    'observatory.exLibris': 'Ex libris',
+    'observatory.beganCaption': {
+        one: 'begun on night {night} · {n} group',
+        other: 'begun on night {night} · {n} groups'
+    }
 },
 
 // -----------------------------------------------------------------------------
@@ -556,8 +560,6 @@ ru: {
     'field.constellation': 'Созвездие',
 
     // --- Обсерватория (B-02) --------------------------------------------------
-    'observatory.toObservatory': 'Перейти в обсерваторию',
-    'observatory.toField': 'Вернуться на небо',
     'observatory.modeConnect': 'Соединять звёзды',
     'observatory.modeMove': 'Перемещать и красить звёзды',
     'observatory.lockedTitle': 'Обсерватория — своё небо, которое можно переставлять',
@@ -565,7 +567,14 @@ ru: {
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
     'observatory.unlockedTitle': 'Обсерватория открыта',
     'observatory.unlockedSub': '7 звёзд ждут',
-    'observatory.renamePrompt': 'Назвать созвездие:'
+    'observatory.renamePrompt': 'Назвать созвездие:',
+    // --- K-13: подпись под оттиском ---------------------------------------
+    'observatory.exLibris': 'Ex libris',
+    'observatory.beganCaption': {
+        one: 'начат в {night}-ю ночь · {n} группа',
+        few: 'начат в {night}-ю ночь · {n} группы',
+        many: 'начат в {night}-ю ночь · {n} групп'
+    }
 }
 
 };
