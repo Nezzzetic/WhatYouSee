@@ -945,6 +945,57 @@ button:disabled {
     white-space: nowrap;
 }
 
+/* --- K-10: строка главы — имя + линейка точек + счёт (та же типографика, что
+   у сцепки K-08), знак ножа и порог ✦ у неразрезанной, колонцифра справа --- */
+
+.book-index-row-icon {
+    flex: none;
+    width: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+}
+
+.book-index-row-head {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+}
+
+.book-index-row-title {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.book-index-row-dots {
+    flex: 1;
+    min-width: 8px;
+    border-bottom: 1px dotted rgba(var(--ink-rgb), 0.28);
+    transform: translateY(-3px);
+}
+
+.book-index-row-wax {
+    flex: none;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--wax);
+    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+}
+
+.book-index-row-folio {
+    flex: none;
+    font-size: 11px;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
 /* --- шкала света у корешка: окно из двух засечек-сотен, K-06 -------------- */
 
 .book-gauge {
