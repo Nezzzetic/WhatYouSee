@@ -547,6 +547,22 @@ function isBookOpen() {
     return bookOpen;
 }
 
+/**
+ * K-10: модель нумерации страниц — единая формула, общая для шапки книги и
+ * оглавления. Считается детерминированно от состава глав, в сейве не живёт.
+ */
+function getAtlasChapterFolio(idx) {
+    return 3 + idx;
+}
+
+function getStampsChapterFolio(idx) {
+    return 3 + ATLAS_PAGE_COUNT + (idx - 1);
+}
+
+function getExLibrisFolio() {
+    return 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
+}
+
 /** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
 function renderBookHead() {
     const eyebrowEl = document.getElementById('bookEyebrow');
@@ -577,16 +593,16 @@ function renderBookHead() {
         const idx = getBookPageIndex('atlas');
         eyebrow = t('book.eyebrowAtlasChapter', { n: idx + 1, count: ATLAS_PAGE_COUNT });
         title = t('atlas.chapterTitle' + idx);
-        folioN = 3 + idx;
+        folioN = getAtlasChapterFolio(idx);
     } else if (bookCut === 'stamps') {
         const idx = getBookPageIndex('rewards');
         const page = REWARD_PAGES[idx];
         eyebrow = t('book.eyebrowStamps');
         title = page ? page.title : '';
-        folioN = 3 + ATLAS_PAGE_COUNT + (idx - 1);
+        folioN = getStampsChapterFolio(idx);
     } else if (bookCut === 'exlibris') {
         title = t('book.headExLibris');
-        folioN = 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
+        folioN = getExLibrisFolio();
     }
 
     eyebrowEl.textContent = eyebrow;
@@ -688,6 +704,62 @@ function renderBookTodayNews() {
  * Строка тапабельна — прыгает сразу на нужную главу, это и есть «объём решают
  * главы, а не длина свитка» из концепта.
  */
+/**
+ * K-10: строка главы — имя с линейкой из точек (как в сцепке K-08), счёт и
+ * колонцифра. Неразрезанная глава несёт знак ножа и порог в ✦ вместо счёта и
+ * колонцифры (страница недостижима постранично, но пейджер её уже показывает
+ * заглушкой `atlas.pageLocked` — сюда ведёт тот же тап). Сургучная точка —
+ * только там, где есть настоящее «взять» (Штампы); у атласа нет кнопки забора,
+ * поэтому просто вести не при чём.
+ */
+function createBookIndexRow(title, folioN, countText, opts) {
+    const o = opts || {};
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'book-index-row';
+
+    if (o.locked) {
+        const icon = document.createElement('span');
+        icon.className = 'book-index-row-icon achv-row-icon-uncut';
+        icon.appendChild(glyphSign('knife', 16));
+        row.appendChild(icon);
+    }
+
+    const head = document.createElement('span');
+    head.className = 'book-index-row-head';
+
+    if (o.wax) {
+        const wax = document.createElement('span');
+        wax.className = 'book-index-row-wax';
+        head.appendChild(wax);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'book-index-row-title';
+    label.textContent = title;
+    head.appendChild(label);
+
+    const dots = document.createElement('span');
+    dots.className = 'book-index-row-dots';
+    head.appendChild(dots);
+
+    const count = document.createElement('span');
+    count.className = 'book-index-row-status';
+    count.textContent = countText;
+    head.appendChild(count);
+
+    row.appendChild(head);
+
+    if (folioN !== null) {
+        const folio = document.createElement('span');
+        folio.className = 'book-index-row-folio';
+        folio.textContent = t('book.folio', { n: folioN });
+        row.appendChild(folio);
+    }
+
+    return row;
+}
+
 function renderBookIndex() {
     const el = document.getElementById('bookIndex');
     if (!el) return;
@@ -700,18 +772,20 @@ function renderBookIndex() {
     atlasTitle.textContent = t('book.cutAtlas');
     atlasSec.appendChild(atlasTitle);
     for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'book-index-row';
-        const label = document.createElement('span');
-        label.textContent = t('book.headAtlas', { n: i + 1, count: ATLAS_PAGE_COUNT });
-        row.appendChild(label);
-        const status = document.createElement('span');
-        status.className = 'book-index-row-status';
-        status.textContent = isAtlasPageUnlocked(i)
-            ? `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
-            : t('book.indexUncut');
-        row.appendChild(status);
+        const name = t('book.headAtlas', { n: i + 1, count: ATLAS_PAGE_COUNT });
+        const unlocked = isAtlasPageUnlocked(i);
+        const row = unlocked
+            ? createBookIndexRow(
+                name,
+                getAtlasChapterFolio(i),
+                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
+            )
+            : createBookIndexRow(
+                name,
+                null,
+                t('book.indexLocked', { n: getAtlasPageUnlockCost(i) }),
+                { locked: true }
+            );
         row.addEventListener('click', () => {
             setBookPageIndex('atlas', i);
             switchBookCut('atlas');
@@ -734,16 +808,12 @@ function renderBookIndex() {
             return p && p.stepIndex >= chain.steps.length;
         }).length;
 
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'book-index-row';
-        const label = document.createElement('span');
-        label.textContent = page.title;
-        row.appendChild(label);
-        const status = document.createElement('span');
-        status.className = 'book-index-row-status';
-        status.textContent = `${done} / ${chains.length}`;
-        row.appendChild(status);
+        const row = createBookIndexRow(
+            page.title,
+            getStampsChapterFolio(i),
+            `${done} / ${chains.length}`,
+            { wax: rewardPageHasClaimable(i) }
+        );
         row.addEventListener('click', () => {
             setBookPageIndex('rewards', i);
             switchBookCut('stamps');
@@ -754,17 +824,12 @@ function renderBookIndex() {
 
     const exSec = document.createElement('div');
     exSec.className = 'book-index-sec';
-    const exRow = document.createElement('button');
-    exRow.type = 'button';
-    exRow.className = 'book-index-row';
-    const exLabel = document.createElement('span');
-    exLabel.textContent = t('book.cutExLibris');
-    exRow.appendChild(exLabel);
-    const exStatus = document.createElement('span');
-    exStatus.className = 'book-index-row-status';
-    exStatus.textContent = (typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked())
-        ? '☾' : t('book.indexUncut');
-    exRow.appendChild(exStatus);
+    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const exRow = createBookIndexRow(
+        t('book.cutExLibris'),
+        getExLibrisFolio(),
+        exUnlocked ? '☾' : t('book.indexUncut')
+    );
     exRow.addEventListener('click', () => switchBookCut('exlibris'));
     exSec.appendChild(exRow);
     el.appendChild(exSec);

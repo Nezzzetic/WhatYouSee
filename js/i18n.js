@@ -254,6 +254,7 @@ en: {
     'book.eyebrowAtlasChapter': 'Atlas · Chapter {n} of {count}',
     'book.eyebrowStamps': 'STAMPS',
     'book.indexUncut': 'uncut',
+    'book.indexLocked': '{n} ✦',
     'book.indexOpen': 'Open the observatory',
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
@@ -517,6 +518,7 @@ ru: {
     'book.eyebrowAtlasChapter': 'Атлас · глава {n} из {count}',
     'book.eyebrowStamps': 'ШТАМПЫ',
     'book.indexUncut': 'не разрезано',
+    'book.indexLocked': '{n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
     'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
