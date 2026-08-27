@@ -477,6 +477,8 @@
             undoFloor,
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
+            // K-11: закладка-цель — терпимое поле прогрессии, не поля.
+            bookmarkedShape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
             // L-01: язык рядом с версиями сейва — сценарий должен видеть, в какой
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
@@ -521,6 +523,19 @@
     }
 
     /**
+     * K-11: булавка-закладка на карточке разворота атласа — настоящий клик
+     * по `.atlas-pin`, а не прямой вызов `toggleShapeBookmark`. Требует, чтобы
+     * книга уже была открыта на главе, где лежит эта фигура (см. `book()`).
+     */
+    function pin(shapeId) {
+        const btn = document.querySelector('.atlas-pin[data-shape-id="' + shapeId + '"]');
+        if (!btn) fail('pin: карточки «' + shapeId + '» нет в открытой главе разворота '
+            + '(книга не на той странице?)');
+        btn.click();
+        return { shapeId, bookmarked: typeof getBookmarkedShape === 'function' && getBookmarkedShape() === shapeId };
+    }
+
+    /**
      * K-07: состояние книги — открыта ли, какая высечка, номер страницы, окно
      * шкалы света у корешка (renderBookGauge — за lifetimeMetaEarned, а не за
      * тратящимся metaScore). `ui()` — псевдоним на время серии K.
@@ -541,7 +556,15 @@
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
             rewardsBadge: waxOn,
-            hasClaimable: hasClaimableAchievements()
+            hasClaimable: hasClaimableAchievements(),
+            // K-11: чертёж закладки-цели — виден, только пока книга закрыта.
+            // Прячется CSS-правилом (`.book-open-body .sky-bookmark`), не атрибутом
+            // `hidden`, поэтому «видимость» — по факту отрисовки, как у `ribbon`.
+            bookmark: (() => {
+                const el = document.getElementById('skyBookmark');
+                return { shape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
+                    visible: !!(el && el.getBoundingClientRect().width > 0) };
+            })()
         };
     }
 
@@ -889,6 +912,7 @@
         state,
         claim,
         press,
+        pin,
         book,
         observatory,
         commitWave: commitWaveState,

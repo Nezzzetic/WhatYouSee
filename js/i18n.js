@@ -248,6 +248,10 @@ en: {
     'book.headExLibris': 'A sky of your own',
     'book.eyebrowAtlas': 'ATLAS',
     'book.headAtlas': 'Chapter {n} of {count}',
+    // K-11: разворот-определитель — заголовок главы стал литературным, а
+    // прежний «Chapter N of M» уехал в надзаголовок (рабочие названия,
+    // решение заказчика 2026-08-25: настоящие придут с C-01).
+    'book.eyebrowAtlasChapter': 'Atlas · Chapter {n} of {count}',
     'book.eyebrowStamps': 'STAMPS',
     'book.indexUncut': 'uncut',
     'book.indexOpen': 'Open the observatory',
@@ -257,11 +261,31 @@ en: {
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open tonight.',
 
-    // --- Атлас ----------------------------------------------------------------
-    'atlas.unknownCard': '? ? ?',
+    // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Unknown constellation',
     'atlas.pageLocked': 'This page opens on its own once you have {n} ✦.',
     'atlas.pageLockedProgress': 'Now: {current} / {target} ✦',
+    // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
+    // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
+    'atlas.notYetTraced': 'not yet traced',
+    'atlas.notYetTracedStars': { one: '{n} star', other: '{n} stars' },
+    'atlas.pinOn': 'Bookmark this shape to build tonight',
+    'atlas.pinOff': 'Remove the bookmark',
+    // Рабочие названия глав атласа (решение заказчика 2026-08-25: настоящие
+    // литературные названия придут с C-01, ждать его эта задача не должна).
+    'atlas.chapterTitle0': 'First Lines',
+    'atlas.chapterTitle1': 'Deep Water',
+    'atlas.chapterTitle2': 'Sharp Edges',
+    'atlas.chapterTitle3': 'Low Light',
+    'atlas.chapterTitle4': 'Fair Wind',
+    'atlas.chapterTitle5': 'Old Roads',
+    'atlas.chapterTitle6': 'Near Dawn',
+
+    // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
+    'achv.lockedTitle': '? ? ?',
+
+    // --- Чертёж закладки на небе (K-11) ------------------------------------------
+    'sky.bookmarkLabel': 'bookmarked',
 
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Rename constellation:',
@@ -490,6 +514,7 @@ ru: {
     'book.headExLibris': 'Своё небо',
     'book.eyebrowAtlas': 'АТЛАС',
     'book.headAtlas': 'Глава {n} из {count}',
+    'book.eyebrowAtlasChapter': 'Атлас · глава {n} из {count}',
     'book.eyebrowStamps': 'ШТАМПЫ',
     'book.indexUncut': 'не разрезано',
     'book.indexOpen': 'Открыть обсерваторию',
@@ -498,11 +523,31 @@ ru: {
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
     'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
 
-    // --- Атлас ----------------------------------------------------------------
-    'atlas.unknownCard': '? ? ?',
+    // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',
     'atlas.pageLocked': 'Страница откроется сама, когда накопится {n} ✦.',
     'atlas.pageLockedProgress': 'Сейчас: {current} / {target} ✦',
+    'atlas.notYetTraced': 'ещё не прочерчена',
+    'atlas.notYetTracedStars': {
+        one: '{n} звезда',
+        few: '{n} звезды',
+        many: '{n} звёзд'
+    },
+    'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
+    'atlas.pinOff': 'Снять закладку',
+    'atlas.chapterTitle0': 'Первые линии',
+    'atlas.chapterTitle1': 'Глубокая вода',
+    'atlas.chapterTitle2': 'Острые края',
+    'atlas.chapterTitle3': 'Низкий свет',
+    'atlas.chapterTitle4': 'Попутный ветер',
+    'atlas.chapterTitle5': 'Старые дороги',
+    'atlas.chapterTitle6': 'У рассвета',
+
+    // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
+    'achv.lockedTitle': '? ? ?',
+
+    // --- Чертёж закладки на небе (K-11) ------------------------------------------
+    'sky.bookmarkLabel': 'заложено',
 
     // --- Поле -----------------------------------------------------------------
     'field.renamePrompt': 'Переименовать созвездие:',
