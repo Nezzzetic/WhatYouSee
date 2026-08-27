@@ -389,9 +389,16 @@ function getAtlasPageEntries(pageIndex) {
 /** U-09: цвет карточки — золото у огранённой фигуры, иначе цвет из SHAPES. */
 const ATLAS_FACETED_COLOR = [255, 211, 92];
 
+/**
+ * K-11: разворот-определитель — карточка `???` больше не существует.
+ * Неразгаданная фигура рисуется тем же глифом, что и разгаданная (просто
+ * бледнее целиком через `.atlas-card-unknown`), и подписывается «not yet
+ * traced» вместо имени — имя остаётся сюрпризом до первого создания.
+ */
 function createAtlasEntryCard(entry) {
     const faceted = entry.isCreated && typeof isShapeFaceted === 'function' && isShapeFaceted(entry.name);
     const drawColor = faceted ? ATLAS_FACETED_COLOR : entry.color;
+    const bookmarked = typeof getBookmarkedShape === 'function' && getBookmarkedShape() === entry.name;
 
     const card = document.createElement('div');
     card.className = 'atlas-card'
@@ -402,6 +409,23 @@ function createAtlasEntryCard(entry) {
         const crown = glyphSign('corona', 16, 'atlas-card-crown');
         card.appendChild(crown);
     }
+
+    // Булавка-закладка: разрешена и на уже найденной фигуре — строить её
+    // снова ради огранки законно (риск 1/2 дока K-11: спойлер принят).
+    const pin = document.createElement('button');
+    pin.type = 'button';
+    pin.className = 'atlas-pin' + (bookmarked ? ' atlas-pin-on' : '');
+    pin.dataset.shapeId = entry.name;
+    pin.setAttribute('aria-pressed', String(bookmarked));
+    pin.setAttribute('aria-label', t(bookmarked ? 'atlas.pinOff' : 'atlas.pinOn'));
+    pin.appendChild(document.createElement('i'));
+    pin.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (typeof toggleShapeBookmark === 'function') toggleShapeBookmark(entry.name);
+        renderAtlasList();
+        if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
+    });
+    card.appendChild(pin);
 
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-card-canvas';
@@ -415,14 +439,14 @@ function createAtlasEntryCard(entry) {
         title.textContent = getDisplayShapeName(entry.name);
         title.style.color = `rgb(${drawColor[0]},${drawColor[1]},${drawColor[2]})`;
     } else {
-        // Имя фигуры — сюрприз до первого создания
+        // Имя фигуры — сюрприз до первого создания; чертёж и число звёзд — нет.
         title.className = 'atlas-card-title atlas-card-title-unknown';
-        title.textContent = t('atlas.unknownCard');
+        title.textContent = t('atlas.notYetTraced');
     }
     card.appendChild(title);
 
-    // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
     if (entry.isCreated) {
+        // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
         const facets = document.createElement('div');
         facets.className = 'atlas-facets';
         for (const color of ACHIEVEMENT_COLOR_KEYS) {
@@ -433,6 +457,11 @@ function createAtlasEntryCard(entry) {
             facets.appendChild(gem);
         }
         card.appendChild(facets);
+    } else {
+        const note = document.createElement('div');
+        note.className = 'atlas-card-note';
+        note.textContent = tp('atlas.notYetTracedStars', entry.starCount);
+        card.appendChild(note);
     }
 
     if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor);
@@ -543,9 +572,11 @@ function renderBookHead() {
         title = t('book.headIndex');
         folioN = 2;
     } else if (bookCut === 'atlas') {
+        // K-11: заголовок страницы стал литературным названием главы;
+        // «Chapter N of M» уехало в надзаголовок.
         const idx = getBookPageIndex('atlas');
-        eyebrow = t('book.eyebrowAtlas');
-        title = t('book.headAtlas', { n: idx + 1, count: ATLAS_PAGE_COUNT });
+        eyebrow = t('book.eyebrowAtlasChapter', { n: idx + 1, count: ATLAS_PAGE_COUNT });
+        title = t('atlas.chapterTitle' + idx);
         folioN = 3 + idx;
     } else if (bookCut === 'stamps') {
         const idx = getBookPageIndex('rewards');
@@ -847,6 +878,9 @@ function updateObservatoryUI() {
     }
 
     if (bookOpen && bookCut === 'exlibris') renderBookExLibris();
+
+    // K-11: обсерватория — не то небо, для которого закладывают фигуру.
+    renderSkyBookmark();
 }
 
 // =============================================================================
@@ -937,6 +971,30 @@ function updateRibbonSignal() {
     getClaimFlightTargetRect();
     const wax = document.getElementById('ribbonWax');
     if (wax) wax.hidden = !hasSkyWaxSignal();
+    renderSkyBookmark();
+}
+
+/**
+ * K-11: чертёж закладки-цели в верхнем левом углу неба — DOM-узел, как лента
+ * (см. «Согласованный план» дока), не мировой объект на канвасе: ему незачем
+ * ходить за зумом и паном, он стоит на месте экрана. Прячется, если закладки
+ * нет, книга открыта (CSS-правило `.book-open-body .sky-bookmark`) или игрок
+ * в обсерватории — там это не его небо.
+ */
+function renderSkyBookmark() {
+    const el = document.getElementById('skyBookmark');
+    if (!el) return;
+    const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+    el.hidden = !shapeId || inObservatory;
+    if (!shapeId) return;
+
+    const nameEl = document.getElementById('skyBookmarkName');
+    if (nameEl) nameEl.textContent = getDisplayShapeName(shapeId);
+
+    const canvas = document.getElementById('skyBookmarkCanvas');
+    const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
+    if (canvas && pattern) drawShapeGlyph(canvas, pattern, getShapeColor(shapeId));
 }
 
 // =============================================================================

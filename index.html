@@ -109,6 +109,15 @@
             </span>
         </div>
 
+        <!-- K-11: чертёж закладки-цели — верхний левый угол неба, подальше от
+             руки. Единственный постоянный предмет неба помимо ленты; появляется
+             только когда закладка выставлена (renderSkyBookmark, ui.js). -->
+        <div id="skyBookmark" class="sky-bookmark" hidden aria-hidden="true">
+            <canvas id="skyBookmarkCanvas" class="sky-bookmark-canvas" width="60" height="60"></canvas>
+            <div id="skyBookmarkName" class="sky-bookmark-name"></div>
+            <div class="sky-bookmark-label" data-i18n="sky.bookmarkLabel"></div>
+        </div>
+
         <!-- K-06: книга — полноэкранная замена шторки U-09. Пять высечек
              сквозные (видны на каждой странице), навигация плоская — любой
              раздел из любого в одно касание. Шкала света у корешка держит

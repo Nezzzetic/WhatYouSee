@@ -1398,7 +1398,7 @@ function createAchievementLockedRow(reason) {
 
     const title = document.createElement('div');
     title.className = 'achv-row-title achv-row-title-hidden';
-    title.textContent = t('atlas.unknownCard');
+    title.textContent = t('achv.lockedTitle');
     body.appendChild(title);
 
     const text = document.createElement('div');
