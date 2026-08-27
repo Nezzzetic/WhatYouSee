@@ -765,7 +765,10 @@ function createBookIndexRow(title, folioN, countText, opts) {
 
     const count = document.createElement('span');
     count.className = 'book-index-row-status';
-    count.textContent = countText;
+    // K-16: в статусе строки может стоять не число, а знак кассы (K-02) — эмодзи
+    // в игре нет ни одного, а «открыто» у Ex Libris нечем считать.
+    if (o.countSign) count.appendChild(glyphSign(o.countSign, 16));
+    else count.textContent = countText;
     head.appendChild(count);
 
     row.appendChild(head);
@@ -859,7 +862,8 @@ function renderBookIndex() {
     const exRow = createBookIndexRow(
         t('book.cutExLibris'),
         getExLibrisFolio(),
-        exUnlocked ? '☾' : t('book.indexUncut')
+        exUnlocked ? '' : t('book.indexUncut'),
+        exUnlocked ? { countSign: 'crescent' } : undefined
     );
     exRow.addEventListener('click', () => switchBookCut('exlibris'));
     exSec.appendChild(exRow);
