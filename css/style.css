@@ -747,49 +747,39 @@ button:disabled {
     align-items: baseline;
 }
 
-/* --- пейджер под-страниц атласа/наград (временная навигация K-06; полноценный
-   разворот-определитель и главы штампов — K-11/K-12) --- */
+/* --- K-18: листание глав атласа/штампов переехало в подвал (было отдельной
+   строкой-пейджером над сеткой) — правая половина `.book-foot` вместо голой
+   колонцифры несёт «‹ p. N · M ▸». Кнопки те же узлы, что раньше жили в
+   `.book-pager` (сохраняют `data-pager`/`data-dir` — на них смотрит
+   verify-atlas-spread.js), просто без кружка-кнопки. */
 
-.book-pager {
+.book-foot-nav {
     flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 14px;
-    padding-bottom: 4px;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
 }
 
-.book-pager-btn {
+.book-foot-nav-btn {
     flex: none;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.04);
+    padding: 6px 4px;
+    margin: -6px -4px;
+    border: none;
+    background: none;
     color: var(--ink-muted);
-    font-size: 16px;
+    font-size: 12px;
     line-height: 1;
+    letter-spacing: normal;
     cursor: pointer;
 }
 
-.book-pager-btn:hover {
-    border-color: var(--ink-faint);
-    background: rgba(var(--ink-rgb), 0.08);
+.book-foot-nav-btn:hover {
     color: var(--ink);
 }
 
-.book-pager-btn:disabled {
+.book-foot-nav-btn:disabled {
     opacity: 0.35;
     cursor: default;
-}
-
-.book-pager-label {
-    min-width: 64px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--ink-muted);
-    font-variant-numeric: tabular-nums;
 }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
@@ -830,6 +820,9 @@ button:disabled {
 
 /* --- «вернуться на небо»: то же жест, что и потягивание вниз, но строкой --- */
 
+/* K-18: капитель (разрядка + капс — тот же приём, что у .book-eyebrow и
+   .book-index-sec-title; настоящих small-caps глифов у локального шрифта
+   не проверить, поэтому не font-variant-caps), не курсив. */
 .book-return {
     flex: none;
     margin-top: 10px;
@@ -838,9 +831,10 @@ button:disabled {
     background: none;
     color: var(--ink-faint);
     font-family: var(--font-text);
-    font-style: italic;
-    font-size: 12.5px;
-    letter-spacing: 0.04em;
+    font-style: normal;
+    text-transform: uppercase;
+    font-size: 10.5px;
+    letter-spacing: 0.14em;
     text-align: center;
     cursor: pointer;
 }
@@ -888,15 +882,19 @@ button:disabled {
     margin-top: 0;
 }
 
+/* K-18: строка оглавления — линейка из точек уже держит текстуру строки
+   (`.book-index-row-dots`); рамки и подложки нет (концепт: `.toc-line`). */
 .book-index-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 9px 10px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 10px;
-    background: rgba(var(--ink-rgb), 0.025);
+    padding: 6px 2px;
+    border: none;
+    /* строка — <button>, у которого есть базовый `button { border-radius: 4px }»
+       (style.css выше) — снимаем явно, иначе 4px просочится сквозь снятую рамку. */
+    border-radius: 0;
+    background: none;
     color: var(--ink);
     font-family: var(--font-text);
     font-size: 13px;
@@ -905,7 +903,7 @@ button:disabled {
 }
 
 .book-index-row:hover {
-    border-color: var(--ink-faint);
+    background: rgba(var(--ink-rgb), 0.05);
 }
 
 .book-index-row-status {
@@ -1304,6 +1302,8 @@ button:disabled {
     gap: 10px 16px;
 }
 
+/* K-18: фигура стоит прямо на бумаге — рамки и подложки нет (концепт: `.fig`
+   не несёт ни border, ни background). */
 .atlas-card {
     position: relative;
     display: flex;
@@ -1311,21 +1311,15 @@ button:disabled {
     align-items: center;
     gap: 3px;
     padding: 9px 6px 8px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 14px;
-    background: rgba(var(--ink-rgb), 0.025);
 }
 
 .atlas-card-unknown {
     opacity: 0.45;
 }
 
-.atlas-card-faceted {
-    border-color: rgba(var(--gold-rgb), 0.55);  /* огранка пройдена — золото пути */
-    background:
-        radial-gradient(120% 80% at 50% 0%, rgba(var(--gold-rgb), 0.16) 0%, rgba(var(--gold-rgb), 0) 70%),
-        rgba(var(--ink-rgb), 0.025);
-}
+/* Полная огранка уже несут корона (.atlas-card-crown) и золотой цвет подписи
+   (title.style.color, красится в JS) — своего вида класс не добавляет; он
+   остаётся классом-флагом для селектора `verify-atlas-spread.js`. */
 
 /* Корона сидит верхом на грани карточки и НЕ свешивается наружу: у .book-body
    `overflow-y: auto` (клипует и по X), и всё, что выше карточки больше чем на 4 px (её padding),
@@ -1412,24 +1406,38 @@ button:disabled {
     margin-top: 2px;
 }
 
-/* Грань: ромб, тусклый контур — не горит, залитый цветом — горит */
+/* K-18: грань — искра тем же контуром, что звезда на небе (drawSparkleShape,
+   camera.js), портированным на SVG-путь (createAtlasFacetSpark, ui.js).
+   Тусклый контур — не горит, залитая — горит. */
 .atlas-facet {
-    width: 7px;
-    height: 7px;
-    transform: rotate(45deg);
-    border: 1px solid var(--paper-edge);
-    background: transparent;
+    width: 9px;
+    height: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.atlas-facet-lit {
-    border-color: transparent;
+.atlas-facet svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
 }
 
-.atlas-facet-red.atlas-facet-lit    { background: var(--star-garnet); box-shadow: 0 0 5px rgba(var(--star-garnet-rgb), 0.6); }
-.atlas-facet-orange.atlas-facet-lit { background: var(--star-amber);  box-shadow: 0 0 5px rgba(var(--star-amber-rgb), 0.6); }
-.atlas-facet-yellow.atlas-facet-lit { background: var(--star-copper); box-shadow: 0 0 5px rgba(var(--star-copper-rgb), 0.6); }
-.atlas-facet-white.atlas-facet-lit  { background: var(--star-opal);   box-shadow: 0 0 5px rgba(var(--star-opal-rgb), 0.6); }
-.atlas-facet-blue.atlas-facet-lit   { background: var(--star-ice);    box-shadow: 0 0 5px rgba(var(--star-ice-rgb), 0.6); }
+.atlas-facet path {
+    fill: none;
+    stroke: var(--paper-edge);
+    stroke-width: 1;
+}
+
+.atlas-facet-lit path {
+    stroke: none;
+}
+
+.atlas-facet-red.atlas-facet-lit    path { fill: var(--star-garnet); filter: drop-shadow(0 0 3px rgba(var(--star-garnet-rgb), 0.6)); }
+.atlas-facet-orange.atlas-facet-lit path { fill: var(--star-amber);  filter: drop-shadow(0 0 3px rgba(var(--star-amber-rgb), 0.6)); }
+.atlas-facet-yellow.atlas-facet-lit path { fill: var(--star-copper); filter: drop-shadow(0 0 3px rgba(var(--star-copper-rgb), 0.6)); }
+.atlas-facet-white.atlas-facet-lit  path { fill: var(--star-opal);   filter: drop-shadow(0 0 3px rgba(var(--star-opal-rgb), 0.6)); }
+.atlas-facet-blue.atlas-facet-lit   path { fill: var(--star-ice);    filter: drop-shadow(0 0 3px rgba(var(--star-ice-rgb), 0.6)); }
 
 .atlas-page-locked {
     grid-column: 1 / -1;
@@ -1451,23 +1459,30 @@ button:disabled {
 .achv-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
 }
 
+/* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
+   (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
+   строка списка — без линейки. */
 .achv-row {
-    padding: 9px 12px 10px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 14px;
-    background: rgba(var(--ink-rgb), 0.025);
+    padding: 9px 0 10px;
+    border-bottom: 1px solid var(--paper-edge);
+}
+
+.achv-list > .achv-row:last-child {
+    border-bottom: none;
 }
 
 .achv-row-done {
     opacity: 0.55;
 }
 
+/* Носитель «готово прижать» на уровне строки — маргинальный акцент сургучом,
+   не рамка-карточка (риск 1: дублирует сургучный счёт шапки и кольцо готовой
+   марки — три независимых сигнала вместо одной рамки). */
 .achv-row-claimable {
-    border-color: rgba(var(--wax-rgb), 0.5);
-    background: rgba(var(--wax-rgb), 0.06);
+    box-shadow: inset 3px 0 0 var(--wax);
+    padding-left: 9px;
 }
 
 .achv-row-locked {
@@ -1589,9 +1604,12 @@ button:disabled {
     pointer-events: none;
 }
 
+/* K-18: было --gold-deep — на тёмной бумаге (--paper) почти нечитаемо;
+   --gold-light у готовой марки (ниже) остаётся ярче — двухступенчатая
+   лестница без нового токена. */
 .achv-tile-amt {
     font-size: 11px;
-    color: var(--gold-deep);
+    color: var(--gold);
     letter-spacing: 0.01em;
 }
 
