@@ -651,6 +651,7 @@ function renderBookHead() {
         title = page ? page.title : '';
         folioN = getStampsChapterFolio(idx);
     } else if (bookCut === 'exlibris') {
+        eyebrow = t('book.eyebrowExLibris');
         title = t('book.headExLibris');
         folioN = getExLibrisFolio();
     } else if (bookCut === 'settings') {
@@ -1034,6 +1035,7 @@ function renderBookExLibris() {
     if (plateEl) plateEl.hidden = !unlocked;
 
     if (!unlocked) {
+        closeObservatoryRenameField();
         const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
         const target = OBSERVATORY_UNLOCK_COST;
         const titleEl = document.getElementById('exLibrisLockTitle');
@@ -1066,6 +1068,49 @@ function renderExLibrisCaption() {
         || (achievementCounters ? achievementCounters.levelsCompleted : 0) + 1;
     const groups = typeof observatoryNames !== 'undefined' ? observatoryNames.length : 0;
     el.textContent = tp('observatory.beganCaption', groups, { night });
+}
+
+// =============================================================================
+// K-21: КНИЖНОЕ ПЕРЕИМЕНОВАНИЕ НА ЭКСЛИБРИСЕ (замена openObservatoryRenamePrompt)
+// =============================================================================
+//
+// Тап по подписи созвездия на холсте (или по знаку пера рядом с ней) больше не
+// зовёт системный prompt() — открывается эта строка на бумаге, рядом с
+// подписью «ex libris». Отмены нет: пустой ввод и Esc имя не меняют, Enter и
+// потеря фокуса коммитят непустое значение.
+
+/** Запись обсерватории (observatory.js), которую сейчас редактирует строка ввода. */
+let observatoryRenameEntry = null;
+
+function openObservatoryRenameField(entry) {
+    if (!entry) return false;
+    const row = document.getElementById('exLibrisRenameRow');
+    const input = document.getElementById('exLibrisRenameInput');
+    if (!row || !input) return false;
+    observatoryRenameEntry = entry;
+    input.value = typeof getObservatoryLabelText === 'function' ? getObservatoryLabelText(entry) : '';
+    row.hidden = false;
+    input.focus();
+    input.select();
+    return true;
+}
+
+function closeObservatoryRenameField() {
+    const row = document.getElementById('exLibrisRenameRow');
+    if (row) row.hidden = true;
+    observatoryRenameEntry = null;
+}
+
+/** Непустое значение уходит в entry.custom; пустое — имя остаётся прежним. */
+function commitObservatoryRenameField() {
+    const entry = observatoryRenameEntry;
+    const input = document.getElementById('exLibrisRenameInput');
+    if (!entry || !input) return;
+    const value = input.value.trim();
+    if (value !== '') {
+        entry.custom = value;
+        if (typeof saveObservatoryNow === 'function') saveObservatoryNow();
+    }
 }
 
 /**
@@ -1214,6 +1259,7 @@ function refreshBookIfOpen() {
 }
 
 function openBook(cut) {
+    closeObservatoryRenameField();
     if (BOOK_CUT_LIST.includes(cut)) bookCut = cut;
     bookOpen = true;
     const book = document.getElementById('book');
@@ -1225,6 +1271,7 @@ function openBook(cut) {
 
 function closeBook() {
     if (!bookOpen) return;
+    closeObservatoryRenameField();
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {
@@ -1237,6 +1284,7 @@ function closeBook() {
 
 function switchBookCut(cut) {
     if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
+    closeObservatoryRenameField();
     bookCut = cut;
     renderBook();
     syncExLibrisAppMode();
@@ -1455,6 +1503,36 @@ function setupBookControls() {
     // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
     document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));
     document.getElementById('obsModeMoveBtn')?.addEventListener('click', () => setObservatoryMode('move'));
+
+    // K-21: Enter коммитит и закрывает, Esc отменяет ввод (не коммитит) и
+    // закрывает, потеря фокуса коммитит — тот же путь, что и Enter.
+    const exLibrisRenameInput = document.getElementById('exLibrisRenameInput');
+    if (exLibrisRenameInput) {
+        // Enter/Esc зовут коммит/закрытие НАПРЯМУЮ, а не через .blur(): реальный
+        // blur — это событие потери фокуса, и полагаться, что программный blur()
+        // его вызовет, нельзя (в headless-браузере программный focus() не всегда
+        // становится document.activeElement, и .blur() тогда молча ничего не
+        // делает). blur() ниже — просто убрать курсор/клавиатуру, если фокус
+        // всё-таки настоящий; сам путь Enter/Esc от этого не зависит.
+        exLibrisRenameInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                commitObservatoryRenameField();
+                closeObservatoryRenameField();
+                exLibrisRenameInput.blur();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation(); // не даём window-хендлеру закрыть всю книгу
+                closeObservatoryRenameField(); // без коммита — ввод отбрасывается
+                exLibrisRenameInput.blur();
+            }
+        });
+        // Реальная потеря фокуса (тап мимо поля) — коммитит тем же путём, что Enter.
+        exLibrisRenameInput.addEventListener('blur', () => {
+            commitObservatoryRenameField();
+            closeObservatoryRenameField();
+        });
+    }
 
     setupBookCloseGesture();
 }

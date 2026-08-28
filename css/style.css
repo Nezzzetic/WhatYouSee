@@ -1110,42 +1110,7 @@ button:disabled {
     background: var(--paper-raised);
 }
 
-.seg-btn {
-    flex: 1;
-    padding: 7px 0;
-    border: none;
-    border-radius: 99px;
-    background: transparent;
-    color: var(--ink-muted);
-    font-size: 12.5px;
-    cursor: pointer;
-}
-
-.seg-btn:hover {
-    background: rgba(var(--ink-rgb), 0.07);
-    border-color: transparent;
-    color: var(--ink);
-}
-
-.seg-btn-on,
-.seg-btn-on:hover {
-    background: var(--gold);
-    border-color: transparent;
-    color: var(--night);
-    font-weight: 700;
-}
-
 /* --- B-02: обсерватория --------------------------------------------------- */
-
-/* Третья кнопка сегмента: только иконка, фиксированные 44 px. Atlas и Rewards
-   остаются flex: 1 — на 360 px три текстовые подписи не помещаются, а кнопка
-   перехода и по смыслу другого рода: она не показывает раздел, а меняет мир. */
-.seg-btn-icon {
-    flex: none;
-    width: 44px;
-    font-size: 16px;
-    line-height: 1;
-}
 
 .obs-lock-title {
     font-family: var(--font-title);
@@ -1269,17 +1234,65 @@ button:disabled {
     display: block;
 }
 
-/* K-13: тумблер «соединять»/«двигать» переехал с плавающего угла (K-04→до
+/* K-13/K-21: тумблер «соединять»/«двигать» переехал с плавающего угла (K-04→до
    K-13) на бумагу — под гравюру, вместе с остальными инструментами страницы
-   Ex Libris. Пилюля-контейнер: K-06 завёл под неё собственный класс вместо
-   переиспользованной `.sheet-seg` шторки; геометрия та же, позиционирование
-   больше не fixed — тумблер лежит в обычном потоке `.exlibris-plate`. */
-.obs-mode-toggle {
+   Ex Libris. K-21 (Табл. VII): два поля со знаком и словом вместо пилюли из
+   двух иконок — активное печатается золотом (текст, не заливка), перепутать
+   «двигать» (там тап красит звезду) и «соединять» дорого. */
+.exlibris-tools {
     display: flex;
-    gap: 3px;
-    padding: 3px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
+    justify-content: center;
+    gap: 8px;
+}
+
+.exlibris-tool {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 15px;
+    border: none;
+    box-shadow: inset 0 0 0 1px var(--paper-edge);
+    background: transparent;
+    font-family: var(--font-text);
+    font-size: 13px;
+    color: var(--ink-faint);
+    cursor: pointer;
+}
+
+.exlibris-tool-on {
+    color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.1);
+    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.5);
+}
+
+/* K-21: поле переименования — строка на бумаге рядом с подписью «ex libris»,
+   показывается только на время правки (тап по подписи на холсте или по её
+   знаку пера). Ввод без рамки полей ОС — нижняя линия страницы вместо box. */
+.exlibris-rename-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--gold-deep);
+}
+
+.exlibris-rename-input {
+    width: 168px;
+    max-width: 60%;
+    border: none;
+    border-bottom: 1px solid var(--paper-edge);
+    background: transparent;
+    padding: 2px 1px 4px;
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink);
+    text-align: center;
+}
+
+.exlibris-rename-input:focus {
+    outline: none;
+    border-bottom-color: var(--gold);
 }
 
 /* --- K-11: разворот-определитель — 2 колонки, ни одна фигура не спрятана --- */
