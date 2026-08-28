@@ -139,6 +139,14 @@ en: {
     'chain.ogranshchik.title': 'Gem Cutter',
     'chain.daily_entry.title': 'Arrival',
     'chain.daily_night.title': 'Night Closed',
+    // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
+    // как у остальных сцепок; настоящие придут с C-01.
+    'chain.size3.title': 'Threefold',
+    'chain.size4.title': 'Fourfold',
+    'chain.size5.title': 'Fivefold',
+    'chain.size6.title': 'Sixfold',
+    'chain.size7.title': 'Sevenfold',
+    'chain.size8plus.title': 'Eightfold+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -241,15 +249,20 @@ en: {
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
     'book.eyebrowAtlas': 'ATLAS',
-    'book.headAtlas': 'Chapter {n} of {count}',
-    // K-11: разворот-определитель — заголовок главы стал литературным, а
-    // прежний «Chapter N of M» уехал в надзаголовок (рабочие названия,
-    // решение заказчика 2026-08-25: настоящие придут с C-01).
-    'book.eyebrowAtlasChapter': 'Atlas · Chapter {n} of {count}',
+    // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
+    // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
+    // подставляется на вызове, отдельного ключа под него не заводим.
+    'book.indexChapterTitle': 'Ch. {n} · {name}',
+    // K-11: заголовок главы стал литературным, а нумерация уехала в
+    // надзаголовок (рабочие названия, решение заказчика 2026-08-25: настоящие
+    // придут с C-01). K-19: «of {count}» снято — оглавление и так знает объём.
+    'book.eyebrowAtlasChapter': 'Atlas · Chapter {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
-    'book.eyebrowStampsChapter': 'Stamps · Chapter {n} of {count}',
+    'book.eyebrowStampsChapter': 'Stamps · Chapter {n}',
     'book.indexUncut': 'uncut',
-    'book.indexLocked': '{n} ✦',
+    // K-19: неразрезанная глава — цена, а не порог: «uncut · N ✦» вместо
+    // голого числа («дорасти», а не «купить»).
+    'book.indexUncutCost': 'uncut · {n} ✦',
     'book.indexOpen': 'Open the observatory',
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
@@ -420,6 +433,14 @@ ru: {
     'chain.ogranshchik.title': 'Огранщик',
     'chain.daily_entry.title': 'Приход',
     'chain.daily_night.title': 'Ночь закрыта',
+    // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
+    // как у остальных сцепок; настоящие придут с C-01.
+    'chain.size3.title': 'Тройка',
+    'chain.size4.title': 'Четвёрка',
+    'chain.size5.title': 'Пятёрка',
+    'chain.size6.title': 'Шестёрка',
+    'chain.size7.title': 'Семёрка',
+    'chain.size8plus.title': 'Восьмёрка+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -531,12 +552,12 @@ ru: {
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowAtlas': 'АТЛАС',
-    'book.headAtlas': 'Глава {n} из {count}',
-    'book.eyebrowAtlasChapter': 'Атлас · глава {n} из {count}',
+    'book.indexChapterTitle': 'Гл. {n} · {name}',
+    'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
-    'book.eyebrowStampsChapter': 'Штампы · глава {n} из {count}',
+    'book.eyebrowStampsChapter': 'Штампы · глава {n}',
     'book.indexUncut': 'не разрезано',
-    'book.indexLocked': '{n} ✦',
+    'book.indexUncutCost': 'не разрезано · {n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
     'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',

@@ -63,8 +63,9 @@ const ACHIEVEMENT_COLOR_STAR_RGB = {
     red: [240, 122, 103], orange: [242, 162, 84], yellow: [242, 201, 101],
     white: [237, 239, 245], blue: [134, 200, 242]
 };
-// Размерные цепочки, «8★+», «Мозаика» и «Зодчий неба» — одна тема: построенные
-// созвездия. Счёт живёт в заголовке строки («5★»), знак говорит только о теме.
+// Размерные цепочки, «Восьмёрка+», «Мозаика» и «Зодчий неба» — одна тема:
+// построенные созвездия. K-19: заголовок строки — рабочее имя, а не ярлык
+// размера («Пятёрка», не «5★»); знак говорит только о теме.
 const ACHIEVEMENT_SIZE_SIGN = 'pillar';
 const ACHIEVEMENT_SIZE_KEYS = ['3', '4', '5', '6', '7', '8plus'];
 
@@ -93,8 +94,9 @@ function buildExactSizeChain(size) {
     const tiers = ACHIEVEMENT_VOLUME_TIERS;
     return {
         id: 'size_' + size,
-        // Заголовок — «4★»: цифра со звездой одинакова во всех локалях.
-        title: `${size}★`,
+        // K-19: заголовок был голым ярлыком «4★» — рабочее литературное имя,
+        // как у остальных сцепок; настоящие придут с C-01.
+        title: t(`chain.size${size}.title`),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.size.desc', { size }),
         steps: tiers.map(n => ({
@@ -175,7 +177,8 @@ const ACHIEVEMENT_CHAINS = [
     ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
     {
         id: 'size_8plus',
-        title: '8★+',
+        // K-19: было голым ярлыком «8★+» — рабочее литературное имя.
+        title: t('chain.size8plus.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.size8plus.desc'),
         // Тоже объёмная цепочка, но со своей шкалой (не ACHIEVEMENT_VOLUME_TIERS):
@@ -1266,6 +1269,23 @@ function rewardPageHasClaimable(pageIndex) {
         const p = achievementProgress[chain.id];
         return p && p.claimable;
     });
+}
+
+/**
+ * K-19: счёт главы штампов в оглавлении — прижатые марки, а не пройденные
+ * цепочки: `stepIndex` каждой цепочки и есть число забранных марок в её
+ * пятиклеточной полоске (K-08), сумма по главе складывается в «9 / 25».
+ * «Сутки» в подсчёте не участвуют — они не входят ни в одну страницу REWARD_PAGES.
+ */
+function getRewardPagePressedStamps(pageIndex) {
+    let pressed = 0;
+    let total = 0;
+    for (const chain of getRewardPageChains(pageIndex)) {
+        const p = achievementProgress[chain.id];
+        pressed += p ? p.stepIndex : 0;
+        total += chain.steps.length;
+    }
+    return { pressed, total };
 }
 
 /**

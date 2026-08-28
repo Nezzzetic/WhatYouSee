@@ -575,6 +575,21 @@ function isBookOpen() {
     return bookOpen;
 }
 
+/** K-19: римские цифры генерируются, не заводятся в словарь — до VII хватает. */
+function toRoman(n) {
+    const table = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+    let s = '';
+    for (const [v, sym] of table) {
+        while (n >= v) { s += sym; n -= v; }
+    }
+    return s;
+}
+
+/** K-19: строка оглавления — «Ch. <римская> · <имя>», одна форма для атласа и штампов. */
+function formatChapterIndexTitle(chapterNo, name) {
+    return t('book.indexChapterTitle', { n: toRoman(chapterNo), name });
+}
+
 /**
  * K-10: модель нумерации страниц — единая формула, общая для шапки книги и
  * оглавления. Считается детерминированно от состава глав, в сейве не живёт.
@@ -622,17 +637,17 @@ function renderBookHead() {
         folioN = 2;
     } else if (bookCut === 'atlas') {
         // K-11: заголовок страницы стал литературным названием главы;
-        // «Chapter N of M» уехало в надзаголовок.
+        // нумерация уехала в надзаголовок. K-19: «of M» из надзаголовка снято
+        // и номер стал римским — сколько всего, отвечает оглавление.
         const idx = getBookPageIndex('atlas');
-        eyebrow = t('book.eyebrowAtlasChapter', { n: idx + 1, count: ATLAS_PAGE_COUNT });
+        eyebrow = t('book.eyebrowAtlasChapter', { n: toRoman(idx + 1) });
         title = t('atlas.chapterTitle' + idx);
         folioN = getAtlasChapterFolio(idx);
     } else if (bookCut === 'stamps') {
-        // K-12: то же «Chapter N of M», что у атласа — главы штампов теперь
-        // такая же нумерованная последовательность, а не плоский список тем.
+        // K-12: главы штампов пронумерованы так же, как главы атласа.
         const idx = getBookPageIndex('rewards');
         const page = REWARD_PAGES[idx];
-        eyebrow = t('book.eyebrowStampsChapter', { n: idx, count: REWARD_PAGE_COUNT - 1 });
+        eyebrow = t('book.eyebrowStampsChapter', { n: toRoman(idx) });
         title = page ? page.title : '';
         folioN = getStampsChapterFolio(idx);
     } else if (bookCut === 'exlibris') {
@@ -767,8 +782,9 @@ function renderBookTodayNews() {
  * ночи, но событиями не являются: в `newsLog` не пишутся, в сейв не идут и
  * считаются заново на каждом рендере — поэтому и блок у них свой.
  *
- * Номер главы арабский, как в надзаголовке (`book.eyebrowAtlasChapter`):
- * римская цифра концепта в игре нигде больше не набирается.
+ * Номер главы здесь арабский (`book.todayBookmark`) — это отсылка к главе
+ * внутри предложения, не заголовок; римской цифрой (K-19) набираются только
+ * надзаголовок разворота и строка оглавления.
  */
 function renderBookTodayState() {
     const el = document.getElementById('bookTodayState');
@@ -876,18 +892,19 @@ function renderBookIndex() {
     atlasTitle.textContent = t('book.cutAtlas');
     atlasSec.appendChild(atlasTitle);
     for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
-        const name = t('book.headAtlas', { n: i + 1, count: ATLAS_PAGE_COUNT });
         const unlocked = isAtlasPageUnlocked(i);
+        // K-19: неразрезанная глава не раскрывает литературное имя — «?».
+        const title = formatChapterIndexTitle(i + 1, unlocked ? t('atlas.chapterTitle' + i) : '?');
         const row = unlocked
             ? createBookIndexRow(
-                name,
+                title,
                 getAtlasChapterFolio(i),
                 `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
             )
             : createBookIndexRow(
-                name,
+                title,
                 null,
-                t('book.indexLocked', { n: getAtlasPageUnlockCost(i) }),
+                t('book.indexUncutCost', { n: getAtlasPageUnlockCost(i) }),
                 { locked: true }
             );
         row.addEventListener('click', () => {
@@ -907,25 +924,25 @@ function renderBookIndex() {
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
         const page = REWARD_PAGES[i];
         const unlocked = isRewardPageUnlocked(i);
+        // K-19: неразрезанная глава не раскрывает литературное имя — «?».
+        const title = formatChapterIndexTitle(i, unlocked ? page.title : '?');
 
         let row;
         if (unlocked) {
-            const chains = getRewardPageChains(i);
-            const done = chains.filter(chain => {
-                const p = achievementProgress[chain.id];
-                return p && p.stepIndex >= chain.steps.length;
-            }).length;
+            // K-19: счёт главы — прижатые марки (сумма stepIndex) из общего
+            // числа марок главы, а не пройденные цепочки целиком.
+            const { pressed, total } = getRewardPagePressedStamps(i);
             row = createBookIndexRow(
-                page.title,
+                title,
                 getStampsChapterFolio(i),
-                `${done} / ${chains.length}`,
+                `${pressed} / ${total}`,
                 { wax: rewardPageHasClaimable(i) }
             );
         } else {
             row = createBookIndexRow(
-                page.title,
+                title,
                 null,
-                t('book.indexLocked', { n: getRewardPageUnlockCost(i) }),
+                t('book.indexUncutCost', { n: getRewardPageUnlockCost(i) }),
                 { locked: true }
             );
         }
