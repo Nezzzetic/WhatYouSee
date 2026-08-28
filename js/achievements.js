@@ -150,28 +150,27 @@ function getPageSpecialForPage(pageIndex) {
 }
 
 const ACHIEVEMENT_CHAINS = [
-    // M-05: суточные квесты — единственные бесконечные цепочки. Шаг ровно один,
-    // `stepIndex` не двигается никогда: «пройдено» и «следующая ступень» к ним
-    // неприменимы. Всё состояние живёт в `achievementCounters.daily` и
-    // обнуляется вместе со сменой неба, а не по часам (ensureDailyQuestsForToday).
+    // M-05/K-22: суточный квест — единственная бесконечная цепочка. Две ступени —
+    // «Приход» и «Ночь закрыта» — вместо прежних двух отдельных цепочек по одному
+    // шагу (концепт «Альманаха ночей», издание второе, свёл их в один вечерний
+    // обряд). `stepIndex` не хранится: выводится на лету из `entryClaimed`/
+    // `nightClaimed` в `deriveDailyStepIndex()` при каждом recompute — источник
+    // истины остаётся `achievementCounters.daily`, обнуляется вместе со сменой
+    // неба, а не по часам (ensureDailyQuestsForToday). Вторая марка недоступна,
+    // пока не прижата первая — это не отдельное правило, а обычная механика
+    // сцепки (`isCurrent = stepIndex === p.stepIndex`); игрока не наказывает,
+    // потому что «Приход» физически не может не случиться раньше «Ночи».
     {
-        id: 'daily_entry',
-        title: t('chain.daily_entry.title'),
-        sign: 'spark',
+        id: 'evening_rite',
+        title: t('chain.evening_rite.title'),
+        sign: 'crescent',
         daily: true,
-        // K-08: у суточных шаг ровно один — его же desc и есть описание сцепки.
-        desc: t('chain.daily_entry.step'),
-        stepRewards: [DAILY_QUEST_ENTRY_REWARD],
-        steps: [{ id: 'daily_entry_1', desc: t('chain.daily_entry.step'), check: { type: 'dailyEntry' } }]
-    },
-    {
-        id: 'daily_night',
-        title: t('chain.daily_night.title'),
-        sign: 'nightstar',
-        daily: true,
-        desc: t('chain.daily_night.step'),
-        stepRewards: [DAILY_QUEST_NIGHT_REWARD],
-        steps: [{ id: 'daily_night_1', desc: t('chain.daily_night.step'), check: { type: 'dailyNight' } }]
+        desc: t('chain.evening_rite.desc'),
+        stepRewards: [DAILY_QUEST_ENTRY_REWARD, DAILY_QUEST_NIGHT_REWARD],
+        steps: [
+            { id: 'evening_rite_entry', desc: t('chain.evening_rite.stepEntry'), check: { type: 'dailyEntry' } },
+            { id: 'evening_rite_night', desc: t('chain.evening_rite.stepNight'), check: { type: 'dailyNight' } }
+        ]
     },
     ...ACHIEVEMENT_COLOR_KEYS.map(buildColorChain),
     ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
@@ -517,17 +516,22 @@ function ensureDailyQuestsForToday() {
     return true;
 }
 
-/** Забран ли этот суточный квест в текущие сутки. */
-function isDailyQuestClaimed(chainId) {
+/**
+ * K-22: `stepIndex` цепочки `evening_rite` не хранится — выводится на лету из
+ * защёлок суток при каждом recompute. 0 — ничего не забрано, 1 — «Приход» взят,
+ * «Ночь» ещё нет, 2 — обе марки прижаты (цепочка «done» до конца суток).
+ */
+function deriveDailyStepIndex() {
     const daily = getDailyQuestState();
-    if (!daily) return false;
-    return chainId === 'daily_night' ? !!daily.nightClaimed : !!daily.entryClaimed;
+    if (!daily || !daily.entryClaimed) return 0;
+    return daily.nightClaimed ? 2 : 1;
 }
 
-function markDailyQuestClaimed(chainId) {
+/** K-22: отмечает шаг суточного квеста забранным — 0 «Приход», 1 «Ночь закрыта». */
+function markDailyQuestClaimed(stepIndex) {
     const daily = getDailyQuestState();
     if (!daily) return;
-    if (chainId === 'daily_night') daily.nightClaimed = true;
+    if (stepIndex === 1) daily.nightClaimed = true;
     else daily.entryClaimed = true;
 }
 
@@ -962,13 +966,10 @@ function recomputeAchievementsClaimable() {
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
         if (!p) continue;
-        // M-05: у суточного квеста нет ступеней и нет «пройдено» — только
-        // «выполнен сегодня» и «уже забран сегодня».
-        if (chain.daily) {
-            p.claimable = evaluateAchievementCheck(chain.steps[0].check, snap)
-                && !isDailyQuestClaimed(chain.id);
-            continue;
-        }
+        // K-22: у суточной цепочки stepIndex не хранится — выводится из защёлок
+        // суток перед общим расчётом, дальше она идёт тем же путём, что и любая
+        // другая многошаговая цепочка.
+        if (chain.daily) p.stepIndex = deriveDailyStepIndex();
         if (p.stepIndex >= chain.steps.length) {
             p.claimable = false; // цепочка завершена
             continue;
@@ -1143,7 +1144,7 @@ function claimAchievementStep(chainId) {
     const chain = getAchievementChainById(chainId);
     const p = achievementProgress[chainId];
     if (!chain || !p || !p.claimable) return false;
-    if (!chain.daily && p.stepIndex >= chain.steps.length) return false;
+    if (p.stepIndex >= chain.steps.length) return false;
 
     // B-01: платим за тот шаг, который забирают, — до сдвига индекса
     const reward = getAchievementChainStepReward(chain, p.stepIndex);
@@ -1159,9 +1160,9 @@ function claimAchievementStep(chainId) {
 
     awardMetaScore(reward);
     if (chain.daily) {
-        // M-05: ступеней нет — stepIndex не двигается, «забрано» живёт в блоке
-        // суток до прихода нового неба.
-        markDailyQuestClaimed(chain.id);
+        // K-22: stepIndex не хранится напрямую — «забрано» живёт в блоке суток
+        // до прихода нового неба, следующий recompute выведет stepIndex заново.
+        markDailyQuestClaimed(p.stepIndex);
     } else {
         p.stepIndex += 1;
     }
@@ -1213,7 +1214,7 @@ const REWARD_PAGES = [
         // M-05: суточные квесты стоят первым элементом массива — так исторически
         // сложилось (page 0 самой шторки U-09), K-06 забрал их себе для «Сегодня».
         id: 'daily', sign: 'crescent', title: t('rewardPage.daily'),
-        chainIds: ['daily_entry', 'daily_night']
+        chainIds: ['evening_rite']
     },
     {
         id: 'first_light', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.firstLight'),
@@ -1290,15 +1291,11 @@ function getRewardPagePressedStamps(pageIndex) {
 
 /**
  * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
- * цепочка пройдена целиком. У суточного квеста прогресса нет (условие
- * бинарное) — вместо числа тире, пока не готово и не забрано сегодня.
+ * цепочка пройдена целиком. У шагов суточного квеста прогресса нет (условие
+ * бинарное) — вместо числа тире (K-22: тот же общий путь, `getAchievementStepProgress`
+ * не знает проверок `dailyEntry`/`dailyNight` и честно отдаёт null).
  */
 function buildAchievementHeadCount(chain, p, done) {
-    if (chain.daily) {
-        if (p.claimable) return { text: t('rewards.headReady'), ready: true };
-        if (isDailyQuestClaimed(chain.id)) return { text: t('rewards.headDone'), ready: false };
-        return { text: '—', ready: false };
-    }
     if (done) return { text: t('rewards.headDone'), ready: false };
     if (p.claimable) return { text: t('rewards.headReady'), ready: true };
     const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
@@ -1318,8 +1315,10 @@ function createAchievementTile(chain, stepIndex, p) {
     const tile = document.createElement('div');
     tile.className = 'achv-tile';
 
-    const pressed = chain.daily ? isDailyQuestClaimed(chain.id) : stepIndex < p.stepIndex;
-    const isCurrent = chain.daily ? true : stepIndex === p.stepIndex;
+    // K-22: суточная цепочка идёт тем же путём — stepIndex у неё выведен
+    // recompute'ом из защёлок суток, «текущий» шаг всегда ровно один.
+    const pressed = stepIndex < p.stepIndex;
+    const isCurrent = stepIndex === p.stepIndex;
     const ready = isCurrent && !pressed && p.claimable;
 
     if (pressed) {
@@ -1365,7 +1364,7 @@ function createAchievementTile(chain, stepIndex, p) {
 function createAchievementTiles(chain, p) {
     const tiles = document.createElement('div');
     tiles.className = 'achv-row-tiles';
-    const total = chain.daily ? 1 : chain.steps.length;
+    const total = chain.steps.length;
     for (let i = 0; i < 5; i++) {
         if (i < total) {
             tiles.appendChild(createAchievementTile(chain, i, p));
@@ -1417,8 +1416,10 @@ function createAchievementRow(chain) {
     if (lockReason) return createAchievementLockedRow(lockReason);
 
     const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    // M-05: суточный квест не бывает «пройден» — он возвращается с новым небом
-    const done = !chain.daily && p.stepIndex >= chain.steps.length;
+    // K-22: суточная цепочка тоже уходит в «done» (обе марки прижаты), но
+    // до конца суток, а не навсегда — recompute сбросит stepIndex сам,
+    // как только придёт новое небо.
+    const done = p.stepIndex >= chain.steps.length;
 
     const row = document.createElement('div');
     row.className = 'achv-row'

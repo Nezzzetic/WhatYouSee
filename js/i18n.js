@@ -137,8 +137,7 @@ en: {
     'chain.unite_all.title': 'All-in-One',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
-    'chain.daily_entry.title': 'Arrival',
-    'chain.daily_night.title': 'Night Closed',
+    'chain.evening_rite.title': 'Evening Rite',
     // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
     // как у остальных сцепок; настоящие придут с C-01.
     'chain.size3.title': 'Threefold',
@@ -209,9 +208,10 @@ en: {
     },
     'chain.ogranshchik.stepAll': 'Facet all 29 atlas shapes',
     'chain.ogranshchik.desc': 'Atlas shapes faceted in all colors',
-    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
-    'chain.daily_entry.step': 'Draw your first constellation tonight',
-    'chain.daily_night.step': 'Complete the night',
+    // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
+    'chain.evening_rite.desc': 'Draw your first constellation, then finish the night.',
+    'chain.evening_rite.stepEntry': 'Draw your first constellation tonight',
+    'chain.evening_rite.stepNight': 'Complete the night',
 
     // --- Страницы наград --------------------------------------------------------
     // K-12: главы штампов вместо рубрик — рабочие литературные названия из
@@ -435,8 +435,7 @@ ru: {
     'chain.unite_all.title': 'Созвездие-всё',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
-    'chain.daily_entry.title': 'Приход',
-    'chain.daily_night.title': 'Ночь закрыта',
+    'chain.evening_rite.title': 'Вечерний обряд',
     // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
     // как у остальных сцепок; настоящие придут с C-01.
     'chain.size3.title': 'Тройка',
@@ -517,9 +516,10 @@ ru: {
     },
     'chain.ogranshchik.stepAll': 'Огранить все 29 фигур атласа',
     'chain.ogranshchik.desc': 'Фигуры, огранённые во всех цветах',
-    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
-    'chain.daily_entry.step': 'Создать первое созвездие этой ночью',
-    'chain.daily_night.step': 'Завершить ночь',
+    // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
+    'chain.evening_rite.desc': 'Начните ночь первым созвездием, а затем завершите её.',
+    'chain.evening_rite.stepEntry': 'Создать первое созвездие этой ночью',
+    'chain.evening_rite.stepNight': 'Завершить ночь',
 
     // --- Страницы наград ------------------------------------------------------
     // K-12: главы штампов вместо рубрик — рабочие названия (решение заказчика
