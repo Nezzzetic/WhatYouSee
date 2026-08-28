@@ -259,6 +259,17 @@ en: {
     'book.newsChainOpen': '{title} — a new achievement is open tonight.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Ex Libris opened tonight — {n} stars are waiting.',
+    // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
+    // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
+    'book.todayStarsLeft': {
+        one: 'The sky above holds {n} star yet unjoined.',
+        other: 'The sky above holds {n} stars yet unjoined.'
+    },
+    'book.todayBookmark': {
+        one: 'Bookmarked: {name} — {n} star, chapter {ch}.',
+        other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
+    },
+    'book.todayBookmarkPlain': 'Bookmarked: {name}.',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Settings',
@@ -534,6 +545,18 @@ ru: {
     'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Сегодня ночью открылся Экслибрис — {n} звёзд ждут.',
+    // K-17: строки состояния страницы — считаются на рендере, в новостях не живут.
+    'book.todayStarsLeft': {
+        one: 'На небе ещё не соединена {n} звезда.',
+        few: 'На небе ещё не соединены {n} звезды.',
+        many: 'На небе ещё не соединено {n} звёзд.'
+    },
+    'book.todayBookmark': {
+        one: 'Закладка: «{name}» — {n} звезда, глава {ch}.',
+        few: 'Закладка: «{name}» — {n} звезды, глава {ch}.',
+        many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
+    },
+    'book.todayBookmarkPlain': 'Закладка: «{name}».',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Настройки',
