@@ -290,8 +290,13 @@ const GLYPH_SIZES = { row: 16, card: 30, spread: 76 };
  * Глиф фигуры на канвасе. Размер канваса задаёт вызывающий; отступ, толщина
  * штриха и радиус точки едут за ним, но не ужимаются ниже читаемого предела —
  * иначе разворот и строка расходятся не масштабом, а видом.
+ *
+ * K-18: `blueprint` включает режим чертежа для неразгаданной фигуры — пунктир,
+ * полые точки без ореола, цвет фиксирован на --ink-faint (не спойлерит цвет
+ * тира до находки). Применяется только на кегле разворота (76px) — риск 3
+ * дока: пунктир на строке (16px) может выродиться в точки, там режим не используется.
  */
-function drawShapeGlyph(canvas, pattern, color) {
+function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
@@ -302,22 +307,33 @@ function drawShapeGlyph(canvas, pattern, color) {
     const halo = Math.max(2.6, side * 0.066);
     const iw = w - pad * 2;
     const ih = h - pad * 2;
+    const inkFaint = blueprint ? INK_FAINT_RGB : color;
 
     ctx.clearRect(0, 0, w, h);
 
     const pts = pattern.stars.map(([nx, ny]) => [pad + nx * iw, pad + ny * ih]);
 
-    ctx.strokeStyle = `rgba(${color[0]},${color[1]},${color[2]},0.7)`;
+    ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},0.7)`;
     ctx.lineWidth = Math.max(1, side * 0.02);
     ctx.lineCap = 'round';
+    ctx.setLineDash(blueprint ? [dot * 1.4, dot * 1.4] : []);
     for (const [a, b] of pattern.lines) {
         ctx.beginPath();
         ctx.moveTo(pts[a][0], pts[a][1]);
         ctx.lineTo(pts[b][0], pts[b][1]);
         ctx.stroke();
     }
+    ctx.setLineDash([]);
 
     for (const [px, py] of pts) {
+        if (blueprint) {
+            ctx.beginPath();
+            ctx.arc(px, py, dot, 0, Math.PI * 2);
+            ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},0.85)`;
+            ctx.lineWidth = Math.max(0.8, side * 0.013);
+            ctx.stroke();
+            continue;
+        }
         ctx.beginPath();
         ctx.arc(px, py, dot, 0, Math.PI * 2);
         ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
@@ -345,9 +361,29 @@ function shapeGlyphNode(shapeId, size = 'row', color = INK_MUTED_RGB) {
     return canvas;
 }
 
-/** Совместимость: прежнее имя рисовалки подсказок. */
-function drawHintPattern(canvas, pattern, color) {
-    drawShapeGlyph(canvas, pattern, color);
+/** Совместимость: прежнее имя рисовалки подсказок. K-18: пробрасывает режим чертежа. */
+function drawHintPattern(canvas, pattern, color, blueprint) {
+    drawShapeGlyph(canvas, pattern, color, blueprint);
+}
+
+/**
+ * K-18: грань фигуры как искра, а не ромбик — тот же контур, что звезда на
+ * небе (`drawSparkleShape`, camera.js, тот же `SPARK_WAIST`), но портированный
+ * с p5-`quadraticVertex` на SVG-путь: карточка рисуется обычным DOM/canvas 2D
+ * без p5-инстанса. Цвет и заливка (горит/не горит) — на CSS `.atlas-facet path`.
+ */
+function createFacetSparkSvg() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const R = 5;
+    const w = R * SPARK_WAIST;
+    const wd = w * Math.SQRT1_2;
+    const d = `M 0 ${-R} Q ${wd} ${-wd} ${R} 0 Q ${wd} ${wd} 0 ${R} Q ${-wd} ${wd} ${-R} 0 Q ${-wd} ${-wd} 0 ${-R} Z`;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '-6 -6 12 12');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', d);
+    svg.appendChild(path);
+    return svg;
 }
 
 // =============================================================================
@@ -472,6 +508,7 @@ function createAtlasEntryCard(entry) {
 
     if (entry.isCreated) {
         // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
+        // K-18: искра тем же контуром, что звезда на небе, а не ромбик.
         const facets = document.createElement('div');
         facets.className = 'atlas-facets';
         for (const color of ACHIEVEMENT_COLOR_KEYS) {
@@ -479,6 +516,7 @@ function createAtlasEntryCard(entry) {
             const gem = document.createElement('span');
             gem.className = `atlas-facet atlas-facet-${color}` + (lit ? ' atlas-facet-lit' : '');
             gem.title = achievementColorLabel(color);
+            gem.appendChild(createFacetSparkSvg());
             facets.appendChild(gem);
         }
         card.appendChild(facets);
@@ -489,7 +527,8 @@ function createAtlasEntryCard(entry) {
         card.appendChild(note);
     }
 
-    if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor);
+    // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
+    if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
 
     return card;
 }
@@ -615,12 +654,20 @@ function getSettingsFolio() {
 function renderBookHead() {
     const eyebrowEl = document.getElementById('bookEyebrow');
     const titleEl = document.getElementById('bookTitle');
+    const footLeftEl = document.getElementById('bookFootLeft');
     const folioEl = document.getElementById('bookFolio');
-    if (!eyebrowEl || !titleEl || !folioEl) return;
+    const prevBtn = document.getElementById('bookFootPrev');
+    const nextBtn = document.getElementById('bookFootNext');
+    if (!eyebrowEl || !titleEl || !footLeftEl || !folioEl) return;
 
     let eyebrow = '';
     let title = '';
     let folioN = 1;
+    let footLeft = t('book.brand');
+    // K-18: подвал атласа/штампов вместо ALMANAC несёт прогресс главы слева и
+    // «‹ p. N · M ▸» справа (пейджер, снятый со строки над сеткой); на
+    // остальных разделах pager остаётся null — там подвал прежний.
+    let pager = null;
 
     if (bookCut === 'today') {
         // K-09: «Night 213 · August 23» — номер ночи (текущая, ещё не завершённая)
@@ -643,6 +690,13 @@ function renderBookHead() {
         eyebrow = t('book.eyebrowAtlasChapter', { n: toRoman(idx + 1) });
         title = t('atlas.chapterTitle' + idx);
         folioN = getAtlasChapterFolio(idx);
+        // K-18: то же выражение, что уже считает счёт главы в оглавлении (K-19).
+        const traced = ATLAS_PAGES[idx].filter(isShapeCreated).length;
+        footLeft = t('book.footAtlasProgress', { current: traced, total: ATLAS_PAGES[idx].length });
+        pager = {
+            attr: 'atlas', idx, min: 0, max: ATLAS_PAGE_COUNT - 1,
+            nextFolio: idx < ATLAS_PAGE_COUNT - 1 ? getAtlasChapterFolio(idx + 1) : null
+        };
     } else if (bookCut === 'stamps') {
         // K-12: главы штампов пронумерованы так же, как главы атласа.
         const idx = getBookPageIndex('rewards');
@@ -650,6 +704,12 @@ function renderBookHead() {
         eyebrow = t('book.eyebrowStampsChapter', { n: toRoman(idx) });
         title = page ? page.title : '';
         folioN = getStampsChapterFolio(idx);
+        const { pressed, total } = getRewardPagePressedStamps(idx);
+        footLeft = t('book.footStampsProgress', { current: pressed, total });
+        pager = {
+            attr: 'rewards', idx, min: 1, max: REWARD_PAGE_COUNT - 1,
+            nextFolio: idx < REWARD_PAGE_COUNT - 1 ? getStampsChapterFolio(idx + 1) : null
+        };
     } else if (bookCut === 'exlibris') {
         eyebrow = t('book.eyebrowExLibris');
         title = t('book.headExLibris');
@@ -661,7 +721,21 @@ function renderBookHead() {
 
     eyebrowEl.textContent = eyebrow;
     titleEl.textContent = title;
-    folioEl.textContent = t('book.folio', { n: folioN });
+    footLeftEl.textContent = footLeft;
+    folioEl.textContent = (pager && pager.nextFolio !== null)
+        ? t('book.folioRange', { n: folioN, m: pager.nextFolio })
+        : t('book.folio', { n: folioN });
+
+    if (prevBtn && nextBtn) {
+        prevBtn.hidden = !pager;
+        nextBtn.hidden = !pager;
+        if (pager) {
+            prevBtn.dataset.pager = pager.attr;
+            nextBtn.dataset.pager = pager.attr;
+            prevBtn.disabled = pager.idx <= pager.min;
+            nextBtn.disabled = pager.idx >= pager.max;
+        }
+    }
 }
 
 /**
@@ -979,27 +1053,6 @@ function renderBookIndex() {
     el.appendChild(settingsSec);
 }
 
-/** Пейджер атласа: пока без свайпа — рельс страниц U-09 убран целиком. */
-function renderBookAtlasPager() {
-    const idx = getBookPageIndex('atlas');
-    const label = document.getElementById('atlasPagerLabel');
-    if (label) label.textContent = `${idx + 1} / ${ATLAS_PAGE_COUNT}`;
-    const prevBtn = document.querySelector('#atlasPager .book-pager-btn[data-dir="-1"]');
-    const nextBtn = document.querySelector('#atlasPager .book-pager-btn[data-dir="1"]');
-    if (prevBtn) prevBtn.disabled = idx <= 0;
-    if (nextBtn) nextBtn.disabled = idx >= ATLAS_PAGE_COUNT - 1;
-}
-
-function renderBookStampsPager() {
-    const idx = getBookPageIndex('rewards');
-    const label = document.getElementById('stampsPagerLabel');
-    if (label) label.textContent = `${idx} / ${REWARD_PAGE_COUNT - 1}`;
-    const prevBtn = document.querySelector('#stampsPager .book-pager-btn[data-dir="-1"]');
-    const nextBtn = document.querySelector('#stampsPager .book-pager-btn[data-dir="1"]');
-    if (prevBtn) prevBtn.disabled = idx <= 1;
-    if (nextBtn) nextBtn.disabled = idx >= REWARD_PAGE_COUNT - 1;
-}
-
 function stepBookPage(delta) {
     if (bookCut === 'atlas') {
         const idx = getBookPageIndex('atlas') + delta;
@@ -1234,10 +1287,8 @@ function renderBook() {
         renderBookIndex();
     } else if (bookCut === 'atlas') {
         renderAtlasList();
-        renderBookAtlasPager();
     } else if (bookCut === 'stamps') {
         renderAchievementsList();
-        renderBookStampsPager();
     } else if (bookCut === 'exlibris') {
         renderBookExLibris();
     } else if (bookCut === 'settings') {
@@ -1329,7 +1380,9 @@ function renderSkyBookmark() {
 
     const canvas = document.getElementById('skyBookmarkCanvas');
     const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
-    if (canvas && pattern) drawShapeGlyph(canvas, pattern, getShapeColor(shapeId));
+    // K-18: тот же режим чертежа, что на карточке атласа — визуальная
+    // когерентность одного состояния «не разгадано» на разных узлах.
+    if (canvas && pattern) drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !isShapeCreated(shapeId));
 }
 
 // =============================================================================
@@ -1489,13 +1542,14 @@ function setupBookControls() {
         btn.addEventListener('click', () => switchBookCut(btn.dataset.cut));
     });
 
-    const onPagerClick = (event) => {
-        const btn = event.target.closest('.book-pager-btn');
-        if (!btn) return;
-        stepBookPage(Number(btn.dataset.dir));
-    };
-    document.getElementById('atlasPager')?.addEventListener('click', onPagerClick);
-    document.getElementById('stampsPager')?.addEventListener('click', onPagerClick);
+    // K-18: пейджер переехал в подвал книги — те же два узла на всех главах
+    // атласа/штампов (renderBookHead переставляет им data-pager/disabled).
+    document.getElementById('bookFootPrev')?.addEventListener('click', (event) => {
+        stepBookPage(Number(event.currentTarget.dataset.dir));
+    });
+    document.getElementById('bookFootNext')?.addEventListener('click', (event) => {
+        stepBookPage(Number(event.currentTarget.dataset.dir));
+    });
 
     // K-06 риск 4: строка на «Сегодня» — второй, равноценный вход в тот же жест закрытия
     document.getElementById('bookReturnBtn')?.addEventListener('click', closeBook);

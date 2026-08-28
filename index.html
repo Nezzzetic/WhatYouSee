@@ -138,20 +138,12 @@
                         <button type="button" id="bookReturnBtn" class="book-return" data-i18n="book.returnToSky">— return to the sky —</button>
                     </div>
                     <div id="bookIndex" class="book-section book-index" hidden></div>
+                    <!-- K-18: пейджер-строка над сеткой снята — прогресс главы и
+                         листание переехали в подвал (.book-foot, ниже). -->
                     <div id="bookAtlasSection" class="book-section" hidden>
-                        <div class="book-pager" id="atlasPager">
-                            <button type="button" class="book-pager-btn" data-pager="atlas" data-dir="-1" aria-label="Previous chapter">‹</button>
-                            <span class="book-pager-label" id="atlasPagerLabel"></span>
-                            <button type="button" class="book-pager-btn" data-pager="atlas" data-dir="1" aria-label="Next chapter">›</button>
-                        </div>
                         <div id="atlasList" class="atlas-grid"></div>
                     </div>
                     <div id="bookStampsSection" class="book-section" hidden>
-                        <div class="book-pager" id="stampsPager">
-                            <button type="button" class="book-pager-btn" data-pager="rewards" data-dir="-1" aria-label="Previous chapter">‹</button>
-                            <span class="book-pager-label" id="stampsPagerLabel"></span>
-                            <button type="button" class="book-pager-btn" data-pager="rewards" data-dir="1" aria-label="Next chapter">›</button>
-                        </div>
                         <div id="achievementsList" class="achv-list"></div>
                     </div>
                     <div id="bookExLibris" class="book-section" hidden>
@@ -215,9 +207,17 @@
                         <div id="bookSettingsList" class="settings-list"></div>
                     </div>
                 </div>
+                <!-- K-18: колонтитул один на все разделы — содержимое подставляет
+                     renderBookHead() (ui.js). На атласе/штампах слева прогресс
+                     главы, справа «‹ p. N · M ▸»: те же кнопки, что раньше жили
+                     в снесённом .book-pager (сохраняют data-pager/data-dir). -->
                 <div class="book-foot">
-                    <span data-i18n="book.brand">ALMANAC</span>
-                    <span id="bookFolio"></span>
+                    <span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span>
+                    <span class="book-foot-nav">
+                        <button type="button" id="bookFootPrev" class="book-foot-nav-btn" data-dir="-1" aria-label="Previous chapter" hidden>‹</button>
+                        <span id="bookFolio"></span>
+                        <button type="button" id="bookFootNext" class="book-foot-nav-btn" data-dir="1" aria-label="Next chapter" hidden>▸</button>
+                    </span>
                 </div>
             </div>
             <div id="bookTabs" class="book-tabs" role="tablist">
