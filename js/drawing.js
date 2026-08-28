@@ -179,6 +179,190 @@ function getCommitWaveLabelAlpha(constellation) {
 }
 
 // =============================================================================
+// K-20 — ГРАВЮРНАЯ ШТРИХОВКА ЗАМКНУТОЙ ФИГУРЫ
+// =============================================================================
+// «Замкнутая» — не «граф содержит хоть один цикл» (это ловит и звёзды-хабы
+// с хвостами), а «есть ограниченная грань». Грани графа рёбер созвездия
+// трассируются обходом по вращению вокруг вершины (стандартный приём для
+// плоских графов без пересечений — SHAPE_PATTERNS ими и являются): у каждой
+// вершины соседи отсортированы по углу, следующее полуребро — предыдущее
+// в этом порядке. У связного плоского графа так трассируются ВСЕ грани, включая
+// внешнюю; в экранных (y вниз) координатах ограниченные грани дают
+// ПОЛОЖИТЕЛЬНУЮ площадь по формуле площади многоугольника (shoelace), внешняя
+// и вырожденные обходы вдоль хвоста (туда-обратно) — неположительную. Критерий:
+// «Бычок» (треугольник+два рога) штрихуется по треугольнику, рога не мешают;
+// «Ромб» (четырёхугольник+диагональ) даёт 2 грани-половинки без наложения по
+// общему ребру — заливка выходит цельной. Проверено на всех 29 фигурах
+// каталога скриптом (см. dev/docs/tasks/K-20 engraved-sky.md).
+
+/**
+ * Кэш граней по созвездию — вне самого объекта и вне сейва (тот же приём,
+ * что у atlasCollectedStarColors): `constellations` уходит в JSON сохранения
+ * целиком (save.js), и поле прямо на созвездии утекло бы в сейв.
+ */
+const constellationHatchFacesCache = new WeakMap();
+
+/**
+ * Грани графа созвездия — по одному массиву мировых точек на грань.
+ * `constellation.lines` после коммита не меняется, достаточно посчитать
+ * один раз, а не каждый кадр.
+ */
+function computeConstellationFaces(constellation) {
+    const cached = constellationHatchFacesCache.get(constellation);
+    if (cached) return cached;
+
+    const lines = constellation.lines;
+    if (!lines || lines.length < 3) {
+        constellationHatchFacesCache.set(constellation, []);
+        return [];
+    }
+
+    const idSet = new Set();
+    for (const seg of lines) { idSet.add(seg.startId); idSet.add(seg.endId); }
+
+    const pos = {};
+    for (const id of idSet) {
+        const s = getStarById(id);
+        if (!s) { constellationHatchFacesCache.set(constellation, []); return []; }
+        pos[id] = { x: s.x, y: s.y };
+    }
+
+    const adj = {};
+    for (const id of idSet) adj[id] = [];
+    for (const seg of lines) {
+        adj[seg.startId].push(seg.endId);
+        adj[seg.endId].push(seg.startId);
+    }
+    const sortedAdj = {};
+    for (const id of idSet) {
+        const p = pos[id];
+        sortedAdj[id] = [...new Set(adj[id])].sort((a, b) => {
+            const pa = pos[a], pb = pos[b];
+            return Math.atan2(pa.y - p.y, pa.x - p.x) - Math.atan2(pb.y - p.y, pb.x - p.x);
+        });
+    }
+
+    const visited = new Set();
+    const faces = [];
+    const maxSteps = lines.length * 2 + 2;
+    for (const seg of lines) {
+        for (const [u, v] of [[seg.startId, seg.endId], [seg.endId, seg.startId]]) {
+            const key = u + '→' + v;
+            if (visited.has(key)) continue;
+
+            const path = [];
+            let curU = u, curV = v;
+            let steps = 0;
+            while (steps++ < maxSteps) {
+                visited.add(curU + '→' + curV);
+                path.push(curV);
+                const nbrs = sortedAdj[curV];
+                const idx = nbrs.indexOf(curU);
+                const next = nbrs[(idx - 1 + nbrs.length) % nbrs.length];
+                if (curV === u && next === v) break;
+                curU = curV; curV = next;
+            }
+
+            let area = 0;
+            for (let i = 0; i < path.length; i++) {
+                const p1 = pos[path[i]], p2 = pos[path[(i + 1) % path.length]];
+                area += p1.x * p2.y - p2.x * p1.y;
+            }
+            if (area > HATCH_MIN_FACE_AREA_WORLD) {
+                faces.push(path.map(id => pos[id]));
+            }
+        }
+    }
+    constellationHatchFacesCache.set(constellation, faces);
+    return faces;
+}
+
+/**
+ * Параллельные волоски внутри многоугольника грани — сканлайнами под углом
+ * HATCH_ANGLE_DEG в мировых координатах, повёрнутых в свою систему (там
+ * штрих горизонтален, пересечения со сторонами считаются по Y и сортируются
+ * по X — чётно-нечётное правило корректно и для невыпуклых граней).
+ * Возвращает мировые отрезки: [{ax,ay,bx,by}, ...].
+ */
+function computeFaceHatchSegmentsWorld(polygon, stepWorld, angleDeg) {
+    if (!polygon || polygon.length < 3 || stepWorld <= 0) return [];
+    const rad = angleDeg * Math.PI / 180;
+    const cos = Math.cos(-rad), sin = Math.sin(-rad);
+    const rot = polygon.map(p => ({ x: p.x * cos - p.y * sin, y: p.x * sin + p.y * cos }));
+
+    let minY = Infinity, maxY = -Infinity;
+    for (const p of rot) { if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y; }
+    if (!(maxY > minY)) return [];
+
+    const firstY = Math.ceil(minY / stepWorld) * stepWorld;
+    const segments = [];
+    const n = rot.length;
+    for (let y = firstY; y <= maxY; y += stepWorld) {
+        const xs = [];
+        for (let i = 0; i < n; i++) {
+            const p1 = rot[i], p2 = rot[(i + 1) % n];
+            if (p1.y === p2.y) continue;
+            if ((y >= p1.y && y < p2.y) || (y >= p2.y && y < p1.y)) {
+                xs.push(p1.x + (y - p1.y) / (p2.y - p1.y) * (p2.x - p1.x));
+            }
+        }
+        xs.sort((a, b) => a - b);
+        for (let i = 0; i + 1 < xs.length; i += 2) {
+            segments.push({ ax: xs[i], ay: y, bx: xs[i + 1], by: y });
+        }
+    }
+
+    // назад в мировые координаты (обратный поворот, +rad)
+    const cosBack = Math.cos(rad), sinBack = Math.sin(rad);
+    return segments.map(s => ({
+        ax: s.ax * cosBack - s.ay * sinBack, ay: s.ax * sinBack + s.ay * cosBack,
+        bx: s.bx * cosBack - s.by * sinBack, by: s.bx * sinBack + s.by * cosBack
+    }));
+}
+
+/**
+ * Штриховка замкнутых граней созвездия. Шаг — экранные px, переведённые
+ * в мировые (риск «зум»: иначе на дальнем зуме штриховка схлопнется в заливку,
+ * на ближнем — расползётся). Альфа едет той же волной V-12/V-13, что и подпись
+ * (getCommitWaveLabelAlpha) и раскрытие финала (getFinaleConstellationAlpha) —
+ * штриховка не должна проявляться раньше своих линий и обязана гаснуть/рождаться
+ * вместе с фигурой в сцене V-13 (риск 4).
+ */
+function drawConstellationHatchingWorld(constellation, ox = 0) {
+    const faces = computeConstellationFaces(constellation);
+    if (faces.length === 0) return;
+
+    const waveAlpha = typeof getCommitWaveLabelAlpha === 'function'
+        ? getCommitWaveLabelAlpha(constellation) : 1;
+    if (waveAlpha <= 0) return;
+    const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
+        ? getFinaleConstellationAlpha(constellation) : 1;
+    if (finaleAlpha <= 0) return;
+
+    const c = constellation.lineColor || LINE_COLOR;
+    const alpha = HATCH_ALPHA * waveAlpha * finaleAlpha;
+    if (alpha <= 0) return;
+    const stepWorld = HATCH_STEP_PX / zoomLevel;
+
+    stroke(c[0], c[1], c[2], alpha);
+    strokeWeight(HATCH_STROKE_WEIGHT_PX / zoomLevel);
+    for (const face of faces) {
+        const segments = computeFaceHatchSegmentsWorld(face, stepWorld, HATCH_ANGLE_DEG);
+        for (const s of segments) line(s.ax + ox, s.ay, s.bx + ox, s.by);
+    }
+}
+
+/** Штриховка по всем видимым созвездиям тайла — тот же обход, что у скелета линий. */
+function drawConstellationHatchingOnTiles(tiles) {
+    for (const t of tiles) {
+        for (const constellation of constellations) {
+            if (!isConstellationVisible(constellation)) continue;
+            drawConstellationHatchingWorld(constellation, t.ox);
+        }
+    }
+}
+
+// =============================================================================
 // K-04 — КОРРЕКТОРСКАЯ ПОМЕТКА
 // =============================================================================
 // Единственный вход в отмену: постоянной кнопки на небе нет. Слот один — пометка
