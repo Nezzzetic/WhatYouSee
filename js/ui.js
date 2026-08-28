@@ -51,9 +51,13 @@ function releaseScoreDisplay(all) {
     pulseScoreDisplay();
 }
 
-/** K-06: лента коротко вздрагивает — награда доехала именно сюда. */
+/**
+ * K-06: цель коротко вздрагивает — награда доехала именно сюда.
+ * K-17: цель у пульса та же, что у монеты, — флажок шкалы, пока книга открыта.
+ */
 function pulseScoreDisplay() {
-    const el = document.querySelector('.ribbon-tail');
+    const el = (bookOpen && document.querySelector('#bookGauge .book-gauge-flag'))
+        || document.querySelector('.ribbon-tail');
     if (!el) return;
     el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
     el.classList.remove('score-pulse');
@@ -78,14 +82,35 @@ function prefersReducedMotion() {
  */
 let lastRibbonFlightRect = null;
 
-/** Цель полёта награды: лента-закладка, а не счётчик в шапке. */
+/**
+ * K-17: тот же приём для флажка шкалы. Шкала пересобирается на каждом рендере
+ * книги (`renderBookGauge` чистит узел целиком), и на смене высечки полёт
+ * мог бы застать её между двумя кадрами — кэш последнего ненулевого замера
+ * закрывает и это, и ресайз.
+ */
+let lastGaugeFlightRect = null;
+
+/**
+ * Цель полёта награды — флажок шкалы света у корешка: «число вылетает из клетки
+ * и уходит к корешку, растворяется в позолоте» (концепт, Табл. III b). Лента-
+ * закладка осталась запасной целью: пока книга закрыта, шкалы на экране нет.
+ *
+ * K-04 целился в ленту потому, что корешка тогда не было видно вовсе — шкалу
+ * закрашивала страница; с K-17 он виден, и цель вернулась туда, где ей место.
+ */
 function getClaimFlightTargetRect() {
+    const flag = document.querySelector('#bookGauge .book-gauge-flag');
+    if (flag) {
+        const rect = flag.getBoundingClientRect();
+        if (rect.width || rect.height) lastGaugeFlightRect = rect;
+    }
     const ribbon = document.getElementById('skyRibbon');
     if (ribbon) {
         const rect = ribbon.getBoundingClientRect();
         if (rect.width || rect.height) lastRibbonFlightRect = rect;
     }
-    return lastRibbonFlightRect;
+    if (bookOpen && lastGaugeFlightRect) return lastGaugeFlightRect;
+    return lastRibbonFlightRect || lastGaugeFlightRect;
 }
 
 /**
@@ -676,13 +701,29 @@ function stampsHaveClaimable() {
     return false;
 }
 
-/** Пять высечек: подсветка активной и капля сургуча на Штампах (концепт, Табл. III-VI). */
+/**
+ * K-17: второй раздел с настоящим «взять» — «Сегодня». Готовая суточная марка
+ * (REWARD_PAGES[0]) и непрочитанное событие мира — те же два условия, что
+ * поднимают каплю на ленте (`hasSkyWaxSignal`), но теперь видно и где именно.
+ */
+function todayHasSignal() {
+    return (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(0))
+        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
+}
+
+/**
+ * Пять высечек: подсветка активной и капля сургуча там, где есть готовое
+ * (концепт, Табл. III-VI). У «Атласа» и «Оглавления» забора нет — точка им
+ * не полагается никогда: она зовёт прижать, а прижимать там нечего.
+ */
 function renderBookTabs() {
     document.querySelectorAll('.book-tab').forEach(btn => {
         btn.classList.toggle('book-tab-on', btn.dataset.cut === bookCut);
     });
-    const wax = document.getElementById('bookTabStampsWax');
-    if (wax) wax.hidden = !stampsHaveClaimable();
+    const stampsWax = document.getElementById('bookTabStampsWax');
+    if (stampsWax) stampsWax.hidden = !stampsHaveClaimable();
+    const todayWax = document.getElementById('bookTabTodayWax');
+    if (todayWax) todayWax.hidden = !todayHasSignal();
 }
 
 /** «Сегодня»: ежедневка — то же достижение на две ступени, что и штампы (REWARD_PAGES[0]). */
@@ -695,6 +736,7 @@ function renderBookToday() {
         }
     }
     renderBookTodayNews();
+    renderBookTodayState();
 }
 
 /**
@@ -717,6 +759,45 @@ function renderBookTodayNews() {
     }
     // K-15: страница прочитана — капля сургуча на ленте гаснет по этой причине.
     if (daily) daily.newsUnseen = false;
+}
+
+/**
+ * K-17: две строки состояния страницы — сколько звёзд на небе ещё не соединено
+ * и что заложено закладкой. В концепте они стоят на «Сегодня» рядом с событиями
+ * ночи, но событиями не являются: в `newsLog` не пишутся, в сейв не идут и
+ * считаются заново на каждом рендере — поэтому и блок у них свой.
+ *
+ * Номер главы арабский, как в надзаголовке (`book.eyebrowAtlasChapter`):
+ * римская цифра концепта в игре нигде больше не набирается.
+ */
+function renderBookTodayState() {
+    const el = document.getElementById('bookTodayState');
+    if (!el) return;
+    el.innerHTML = '';
+
+    const addRow = (text) => {
+        const row = document.createElement('div');
+        row.className = 'book-state-row';
+        row.textContent = text;
+        el.appendChild(row);
+    };
+
+    const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
+    addRow(tp('book.todayStarsLeft', free));
+
+    const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
+    if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
+    const name = getDisplayShapeName(shapeId);
+    const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
+    const starCount = pattern && Array.isArray(pattern.stars) ? pattern.stars.length : 0;
+    const chapter = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(shapeId) : -1;
+    // Закладку ставят с карточки разворота, то есть у фигуры всегда есть и
+    // чертёж, и глава; страховка — на случай закладки из будущего источника.
+    if (starCount > 0 && chapter >= 0) {
+        addRow(tp('book.todayBookmark', starCount, { name, ch: chapter + 1 }));
+    } else {
+        addRow(t('book.todayBookmarkPlain', { name }));
+    }
 }
 
 /**

@@ -118,8 +118,11 @@
              раздел из любого в одно касание. Шкала света у корешка держит
              lifetimeMetaEarned (B-02), а не тратящийся metaScore. -->
         <div id="book" class="book" hidden>
-            <div id="bookGauge" class="book-gauge" aria-hidden="true"></div>
             <div id="bookPage" class="book-page">
+                <!-- K-17: шкала света лежит ВНУТРИ листа, в его левом поле. Снаружи
+                     её целиком закрашивал непрозрачный градиент страницы (`inset: 0`),
+                     и концепт кладёт её в поле листа, а не поверх него. -->
+                <div id="bookGauge" class="book-gauge" aria-hidden="true"></div>
                 <div class="book-head">
                     <div id="bookEyebrow" class="book-eyebrow"></div>
                     <h2 id="bookTitle" class="book-title"></h2>
@@ -129,6 +132,9 @@
                     <div id="bookToday" class="book-section" hidden>
                         <div id="bookTodayList" class="achv-list"></div>
                         <div id="bookTodayNews" class="book-news-list"></div>
+                        <!-- K-17: строки состояния — не события мира: в `newsLog`
+                             они не идут и считаются на рендере, поэтому и блок свой -->
+                        <div id="bookTodayState" class="book-state-list"></div>
                         <button type="button" id="bookReturnBtn" class="book-return" data-i18n="book.returnToSky">— return to the sky —</button>
                     </div>
                     <div id="bookIndex" class="book-section book-index" hidden></div>
@@ -200,7 +206,10 @@
                 </div>
             </div>
             <div id="bookTabs" class="book-tabs" role="tablist">
-                <button type="button" class="book-tab" data-cut="today" role="tab" data-i18n="book.cutToday">Today</button>
+                <button type="button" class="book-tab" data-cut="today" role="tab">
+                    <!-- K-17: та же пара «локализуемый span + своя капля», что у Штампов -->
+                    <span data-i18n="book.cutToday">Today</span><span id="bookTabTodayWax" class="book-tab-wax" hidden></span>
+                </button>
                 <button type="button" class="book-tab" data-cut="index" role="tab" data-i18n="book.cutIndex">Index</button>
                 <button type="button" class="book-tab" data-cut="atlas" role="tab" data-i18n="book.cutAtlas">Atlas</button>
                 <button type="button" class="book-tab" data-cut="stamps" role="tab">
