@@ -181,15 +181,30 @@
                                 </div>
                                 <div class="exlibris-caption-sub" id="exLibrisCaptionSub"></div>
                             </div>
-                            <!-- B-02: тумблер «соединять»/«двигать»; красить — тапом
-                                 в режиме «двигать» (тот же жест, что и раньше). -->
-                            <div id="observatoryModeSeg" class="obs-mode-toggle">
-                                <button type="button" id="obsModeConnectBtn" class="seg-btn seg-btn-icon"
-                                        data-i18n-title="observatory.modeConnect"
-                                        data-i18n-aria="observatory.modeConnect"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-link"/></svg></button>
-                                <button type="button" id="obsModeMoveBtn" class="seg-btn seg-btn-icon"
-                                        data-i18n-title="observatory.modeMove"
-                                        data-i18n-aria="observatory.modeMove"><svg class="ic ic-sm" width="16" height="16" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg></button>
+                            <!-- K-21: книжное переименование — тап по подписи на холсте
+                                 (или по знаку пера рядом с ней, drawObservatoryLabels)
+                                 показывает эту строку; поле живёт на бумаге, не на
+                                 канвасе и не в системном prompt(). Пустой ввод/Esc
+                                 имя не меняют — отмены здесь нет, как и в остальной книге. -->
+                            <div id="exLibrisRenameRow" class="exlibris-rename-row" hidden>
+                                <svg class="ic ic-sm" width="14" height="14" aria-hidden="true" focusable="false"><use href="#i-pen"/></svg>
+                                <input type="text" id="exLibrisRenameInput" class="exlibris-rename-input"
+                                       maxlength="24" autocomplete="off" autocapitalize="off" spellcheck="false"
+                                       data-i18n-aria="observatory.renamePrompt">
+                            </div>
+                            <!-- B-02/K-21: инструменты — знак и слово на бумаге,
+                                 активный печатается золотом (Табл. VII); прежняя
+                                 пилюля с иконками без слов путала «двигать» и
+                                 «соединять» — разница дорогая (там тап красит звезду). -->
+                            <div id="observatoryModeSeg" class="exlibris-tools">
+                                <button type="button" id="obsModeConnectBtn" class="exlibris-tool">
+                                    <svg class="ic ic-sm" width="15" height="15" aria-hidden="true" focusable="false"><use href="#i-link"/></svg>
+                                    <span data-i18n="observatory.modeConnect"></span>
+                                </button>
+                                <button type="button" id="obsModeMoveBtn" class="exlibris-tool">
+                                    <svg class="ic ic-sm" width="15" height="15" aria-hidden="true" focusable="false"><use href="#i-hand"/></svg>
+                                    <span data-i18n="observatory.modeMove"></span>
+                                </button>
                             </div>
                         </div>
                     </div>

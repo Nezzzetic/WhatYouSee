@@ -953,8 +953,12 @@ function isDraftConstellationValid(lines) {
 // INPUT HANDLERS (p5.js)
 // =============================================================================
 
-/** Открыт ли поверх канваса модальный оверлей (атлас/достижения) — тогда игнорируем ввод по полю. */
-/** K-06: пока книга открыта, поле не рисует и не панорамируется. */
+/**
+ * K-06: пока книга открыта, ПОЛЕ не рисует и не панорамируется. Только поле —
+ * с K-13 книга открыта постоянно, пока мы в обсерватории (одна страница), и
+ * вызывающий код обязан сам исключать обсерваторию до этой проверки, иначе
+ * она гасит там весь ввод.
+ */
 function isBlockingOverlayOpen() {
     return typeof isBookOpen === 'function' && isBookOpen();
 }
@@ -967,15 +971,20 @@ function isPointerEventOnCanvas(event) {
 function mousePressed(event) {
     initAudio();
     if (!isPointerEventOnCanvas(event)) return; // клики по HUD/панелям не рисуют и не панорамируют
-    if (isBlockingOverlayOpen()) return;
     if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
 
-    // B-02: обсерватория — свой мир со своими правилами ввода. Ветка ранняя,
-    // до любых полевых проверок (переименование, locked, bbox — там ничего этого нет).
+    // B-02/K-13: обсерватория — свой мир со своими правилами ввода. Ветка
+    // ранняя, до любых полевых проверок (переименование, locked, bbox — там
+    // ничего этого нет) И до isBlockingOverlayOpen(): тот гейт писан для поля
+    // («книга открыта — не рисуем»), а с K-13 книга открыта ВСЕГДА, пока мы
+    // в обсерватории (одна страница, вход больше не закрывает её сам) — если
+    // не вынести проверку сюда, обсерватория не реагирует на ввод вообще.
     if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
         observatoryMousePressed();
         return;
     }
+
+    if (isBlockingOverlayOpen()) return;
 
     // V-13: тап посреди финала ночи доигрывает сцену мгновенно и съедается
     // целиком — иначе тот же тап тут же откроет переименование (U-04): оно висит
@@ -1213,7 +1222,10 @@ function updatePinchMode() {
 function touchStarted(event) {
     initAudio();
     if (!isPointerEventOnCanvas(event)) return true; // HUD/оверлеи — браузеру
-    if (isBlockingOverlayOpen()) return true;
+    // K-13: то же исключение, что в mousePressed — книга открыта постоянно,
+    // пока мы в обсерватории, и общий гейт «книга открыта» её не касается.
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+    if (!inObservatory && isBlockingOverlayOpen()) return true;
     if (touches.length >= 2) {
         enterPinchMode();
         return false;
@@ -1225,7 +1237,8 @@ function touchStarted(event) {
 
 function touchMoved(event) {
     if (!isPointerEventOnCanvas(event)) return true;
-    if (isBlockingOverlayOpen()) return true;
+    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+    if (!inObservatory && isBlockingOverlayOpen()) return true;
     if (touches.length >= 2) {
         if (!isPinching) {
             enterPinchMode();
@@ -1253,7 +1266,8 @@ function touchEnded(event) {
             return false;
         }
         if (!isPointerEventOnCanvas(event)) return true;
-        if (isBlockingOverlayOpen()) return true;
+        const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
+        if (!inObservatory && isBlockingOverlayOpen()) return true;
         mouseReleased();
         return false;
     }

@@ -248,6 +248,9 @@ en: {
     'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
+    // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
+    // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
+    'book.eyebrowExLibris': 'EX LIBRIS',
     'book.eyebrowAtlas': 'ATLAS',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
@@ -333,6 +336,7 @@ en: {
     'observatory.lockedTitle': 'Observatory — a sky of your own',
     'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
+    // K-21: подпись прежнего prompt() переехала в aria-label книжного поля ввода.
     'observatory.renamePrompt': 'Name this constellation:',
     // --- K-13: подпись под оттиском ---------------------------------------
     'observatory.exLibris': 'Ex libris',
@@ -551,6 +555,7 @@ ru: {
     'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
+    'book.eyebrowExLibris': 'ЭКСЛИБРИС',
     'book.eyebrowAtlas': 'АТЛАС',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
