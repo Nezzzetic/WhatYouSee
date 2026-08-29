@@ -627,21 +627,20 @@ function drawConstellationLabelsOnTile() {
             continue;
         }
 
-        if (typeof isShapeRecognizedOnUnlockedAtlas === 'function'
-            && isShapeRecognizedOnUnlockedAtlas(constellation)) {
-            // V-09: имя распознанной атласной — простой стиль, цвет от звёзд.
-            // V-12: у только что закоммиченного имя ждёт конца волны, как и у
-            // atlas-collected — иначе подпись обгоняла бы собственные линии.
-            const waveAlpha = typeof getCommitWaveLabelAlpha === 'function'
-                ? getCommitWaveLabelAlpha(constellation)
-                : 1;
-            if (waveAlpha <= 0) continue;
-            const c = constellation.lineColor || LINE_COLOR;
-            drawSmallCapsLabelWorld(
-                getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
-                COLLECTED_ATLAS_LABEL_SIZE / zoomLevel, c, 255 * zoomAlpha * waveAlpha
-            );
-        }
+        // V-14: остальные — распознанная атласная и fallback (вне каталога)
+        // одинаково — получают имя сразу тем же простым стилем, что и
+        // atlas-collected, не дожидаясь конца ночи.
+        // V-12: у только что закоммиченного имя ждёт конца волны, как и у
+        // atlas-collected — иначе подпись обгоняла бы собственные линии.
+        const waveAlpha = typeof getCommitWaveLabelAlpha === 'function'
+            ? getCommitWaveLabelAlpha(constellation)
+            : 1;
+        if (waveAlpha <= 0) continue;
+        const c = constellation.lineColor || LINE_COLOR;
+        drawSmallCapsLabelWorld(
+            getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
+            COLLECTED_ATLAS_LABEL_SIZE / zoomLevel, c, 255 * zoomAlpha * waveAlpha
+        );
     }
 }
 
