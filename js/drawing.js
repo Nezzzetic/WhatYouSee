@@ -498,23 +498,11 @@ function computeUndoMarkLayout() {
 }
 
 /**
- * Что именно сотрёт пометка. Имя — только если игра его уже показала: fallback-имя
- * принадлежит раскрытию ночи, и выдавать его заранее нельзя. Безымянная фигура
- * называется размером — тем же «5★», что улетело флоатером на коммите.
+ * Что именно сотрёт пометка. V-14: имя видно на поле сразу после коммита у любого
+ * созвездия, включая fallback вне каталога, — пометка показывает то же имя.
  */
 function getUndoMarkLabel(constellation) {
-    if (isUndoMarkNameVisible(constellation)) {
-        return getConstellationDisplayName(constellation);
-    }
-    const n = typeof constellation.starCount === 'number' ? constellation.starCount : 0;
-    return `${n}★`;
-}
-
-function isUndoMarkNameVisible(constellation) {
-    if (constellationArtRevealed) return true;
-    if (constellation.atlasCollected) return true;
-    return typeof isShapeRecognizedOnUnlockedAtlas === 'function'
-        && isShapeRecognizedOnUnlockedAtlas(constellation);
+    return getConstellationDisplayName(constellation);
 }
 
 /** Попал ли тап в пометку. Зона касания шире надписи — как у ленты K-05. */
