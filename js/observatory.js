@@ -786,6 +786,8 @@ function observatoryMouseDragged() {
         scheduleObservatorySave();
     } else if (isObservatoryEdgeLengthValid(a, b)) {
         observatoryLines.push({ startId: a, endId: b });
+        // A-06: параметр теперь значит «номер ребра + 1», но 2 — по-прежнему первая
+        // нота лестницы; звук изолированного соединения обсерватории не меняем
         if (typeof playEdgeSnap === 'function') playEdgeSnap(2);
         syncObservatoryNames();
         scheduleObservatorySave();

@@ -1070,8 +1070,9 @@ function mouseDragged() {
                     startId: currentStartStar.id,
                     endId: starId
                 });
-                // A-02: высота звука растёт с числом звёзд в цепочке
-                playEdgeSnap(isNewStar ? uniqueCount + 1 : uniqueCount);
+                // A-06: высота звука растёт с числом рёбер черновика, а не звёзд —
+                // иначе замыкание кольца (ребро в уже посещённую звезду) повторяло ноту
+                playEdgeSnap(currentLines.length + 1);
                 attachFlashStarId = starId;
                 attachFlashStartTime = millis();
             }
