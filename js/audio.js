@@ -61,14 +61,16 @@ function chainStepFreq(n) {
 }
 
 // Короткий щелчок: соединение звезды в черновик.
-// chainStarCount — число звёзд в цепочке (visitedStars) с учётом присоединяемой.
-function playEdgeSnap(chainStarCount) {
+// A-06: chainEdgeCount — номер ребра в черновике (currentLines.length), считая
+// только что добавленное, плюс 1 — так первое ребро звучит той же нотой, что
+// раньше первая пара звёзд (chainSemitones калиброван под n=2 у первой ноты).
+function playEdgeSnap(chainEdgeCount) {
     if (!_audioCtx || !_soundEnabled) return;
     const now = Date.now();
     if (now - _lastEdgeSnapTime < 50) return; // debounce
     _lastEdgeSnapTime = now;
     try {
-        const n = typeof chainStarCount === 'number' && isFinite(chainStarCount) ? chainStarCount : 2;
+        const n = typeof chainEdgeCount === 'number' && isFinite(chainEdgeCount) ? chainEdgeCount : 2;
         const freq = chainStepFreq(n);
         const t = _audioCtx.currentTime;
         const osc = _audioCtx.createOscillator();
