@@ -128,9 +128,6 @@ en: {
     'chain.mosaic.title': 'Mosaic',
     'chain.vitrazh.title': 'Stained Glass',
     'chain.kaleidoscope.title': 'Kaleidoscope',
-    'chain.gobelen.title': 'Tapestry',
-    'chain.orchestra.title': 'Orchestra',
-    'chain.symphony.title': 'Symphony',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
     'chain.minimalism.title': 'Minimalism',
@@ -140,11 +137,9 @@ en: {
     'chain.evening_rite.title': 'Evening Rite',
     // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
     // как у остальных сцепок; настоящие придут с C-01.
-    'chain.size3.title': 'Threefold',
-    'chain.size4.title': 'Fourfold',
-    'chain.size5.title': 'Fivefold',
-    'chain.size6.title': 'Sixfold',
-    'chain.size7.title': 'Sevenfold',
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.title': 'Small Sky',
+    'chain.size_5_7.title': 'Wide Sky',
     'chain.size8plus.title': 'Eightfold+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
@@ -154,11 +149,17 @@ en: {
     },
     // K-08: описание сцепки — одна строка без числа, что именно считается.
     'chain.color.desc': 'Constellations finished in {color}',
-    'chain.size.step': {
-        one: '{n} constellation of {size}★',
-        other: '{n} constellations of {size}★'
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.step': {
+        one: '{n} constellation of 2–4★',
+        other: '{n} constellations of 2–4★'
     },
-    'chain.size.desc': 'Constellations of exactly {size} stars',
+    'chain.size_2_4.desc': 'Constellations of 2 to 4 stars',
+    'chain.size_5_7.step': {
+        one: '{n} constellation of 5–7★',
+        other: '{n} constellations of 5–7★'
+    },
+    'chain.size_5_7.desc': 'Constellations of 5 to 7 stars',
     'chain.size8plus.step': {
         one: '{n} constellation of 8★+',
         other: '{n} constellations of 8★+'
@@ -179,10 +180,7 @@ en: {
         other: '{n} nights: {desc}'
     },
     'chain.vitrazh.desc': 'page 3 shapes on the field in all 5 colors',
-    'chain.kaleidoscope.desc': 'all 5 shapes of page 4 on the field',
-    'chain.gobelen.desc': '3+ shapes of page 5 on the field',
-    'chain.orchestra.desc': 'create all 5 shapes of page 6 in one night',
-    'chain.symphony.desc': 'create the Perfectionist in one night',
+    'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
     'chain.nights.step': {
         one: '{n} completed night',
         other: '{n} completed nights'
@@ -200,13 +198,13 @@ en: {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
     },
-    'chain.razvedka.stepAll': 'Discover all 29 atlas shapes',
+    'chain.razvedka.stepAll': 'Discover all 24 atlas shapes',
     'chain.razvedka.desc': 'New atlas shapes discovered',
     'chain.ogranshchik.step': {
         one: '{n} faceted shape (all 5 colors each)',
         other: '{n} faceted shapes (all 5 colors each)'
     },
-    'chain.ogranshchik.stepAll': 'Facet all 29 atlas shapes',
+    'chain.ogranshchik.stepAll': 'Facet all 24 atlas shapes',
     'chain.ogranshchik.desc': 'Atlas shapes faceted in all colors',
     // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
     'chain.evening_rite.desc': 'Draw your first constellation, then finish the night.',
@@ -313,13 +311,11 @@ en: {
     'atlas.pinOff': 'Remove the bookmark',
     // Рабочие названия глав атласа (решение заказчика 2026-08-25: настоящие
     // литературные названия придут с C-01, ждать его эта задача не должна).
+    // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.
     'atlas.chapterTitle0': 'First Lines',
     'atlas.chapterTitle1': 'Deep Water',
     'atlas.chapterTitle2': 'Sharp Edges',
     'atlas.chapterTitle3': 'Low Light',
-    'atlas.chapterTitle4': 'Fair Wind',
-    'atlas.chapterTitle5': 'Old Roads',
-    'atlas.chapterTitle6': 'Near Dawn',
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',
@@ -431,9 +427,6 @@ ru: {
     'chain.mosaic.title': 'Мозаика',
     'chain.vitrazh.title': 'Витраж',
     'chain.kaleidoscope.title': 'Калейдоскоп',
-    'chain.gobelen.title': 'Гобелен',
-    'chain.orchestra.title': 'Оркестр',
-    'chain.symphony.title': 'Симфония',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
     'chain.minimalism.title': 'Минимализм',
@@ -443,11 +436,9 @@ ru: {
     'chain.evening_rite.title': 'Вечерний обряд',
     // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
     // как у остальных сцепок; настоящие придут с C-01.
-    'chain.size3.title': 'Тройка',
-    'chain.size4.title': 'Четвёрка',
-    'chain.size5.title': 'Пятёрка',
-    'chain.size6.title': 'Шестёрка',
-    'chain.size7.title': 'Семёрка',
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.title': 'Малое небо',
+    'chain.size_5_7.title': 'Широкое небо',
     'chain.size8plus.title': 'Восьмёрка+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
@@ -458,12 +449,19 @@ ru: {
     },
     // K-08: описание сцепки — одна строка без числа, что именно считается.
     'chain.color.desc': 'Созвездия цвета «{color}»',
-    'chain.size.step': {
-        one: '{n} созвездие по {size}★',
-        few: '{n} созвездия по {size}★',
-        many: '{n} созвездий по {size}★'
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.step': {
+        one: '{n} созвездие по 2–4★',
+        few: '{n} созвездия по 2–4★',
+        many: '{n} созвездий по 2–4★'
     },
-    'chain.size.desc': 'Созвездия ровно из {size} звёзд',
+    'chain.size_2_4.desc': 'Созвездия от 2 до 4 звёзд',
+    'chain.size_5_7.step': {
+        one: '{n} созвездие по 5–7★',
+        few: '{n} созвездия по 5–7★',
+        many: '{n} созвездий по 5–7★'
+    },
+    'chain.size_5_7.desc': 'Созвездия от 5 до 7 звёзд',
     'chain.size8plus.step': {
         one: '{n} созвездие от 8★',
         few: '{n} созвездия от 8★',
@@ -488,10 +486,7 @@ ru: {
         many: '{n} ночей: {desc}'
     },
     'chain.vitrazh.desc': 'фигуры стр. 3 на поле во всех 5 цветах',
-    'chain.kaleidoscope.desc': 'все 5 фигур стр. 4 на поле',
-    'chain.gobelen.desc': '3+ фигуры стр. 5 на поле',
-    'chain.orchestra.desc': 'создай все 5 фигур стр. 6 за ночь',
-    'chain.symphony.desc': 'создай Перфекциониста за ночь',
+    'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
         few: '{n} завершённые ночи',
@@ -512,14 +507,14 @@ ru: {
         few: '{n} открытые фигуры атласа',
         many: '{n} открытых фигур атласа'
     },
-    'chain.razvedka.stepAll': 'Открыть все 29 фигур атласа',
+    'chain.razvedka.stepAll': 'Открыть все 24 фигуры атласа',
     'chain.razvedka.desc': 'Открытые новые фигуры атласа',
     'chain.ogranshchik.step': {
         one: '{n} огранённая фигура (все 5 цветов у каждой)',
         few: '{n} огранённые фигуры (все 5 цветов у каждой)',
         many: '{n} огранённых фигур (все 5 цветов у каждой)'
     },
-    'chain.ogranshchik.stepAll': 'Огранить все 29 фигур атласа',
+    'chain.ogranshchik.stepAll': 'Огранить все 24 фигуры атласа',
     'chain.ogranshchik.desc': 'Фигуры, огранённые во всех цветах',
     // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
     'chain.evening_rite.desc': 'Начните ночь первым созвездием, а затем завершите её.',
@@ -613,13 +608,11 @@ ru: {
     },
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
+    // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.
     'atlas.chapterTitle0': 'Первые линии',
     'atlas.chapterTitle1': 'Глубокая вода',
     'atlas.chapterTitle2': 'Острые края',
     'atlas.chapterTitle3': 'Низкий свет',
-    'atlas.chapterTitle4': 'Попутный ветер',
-    'atlas.chapterTitle5': 'Старые дороги',
-    'atlas.chapterTitle6': 'У рассвета',
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',

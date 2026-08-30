@@ -520,6 +520,9 @@ function loadProgression() {
         if (!raw) {
             if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(null);
             if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+            // B-04: глава I стоит 0 ✦ намеренно — игрок без единого ✦ обязан
+            // увидеть её открытой сразу, а не после первого начисления.
+            maybeAutoUnlockAtlasPages();
             saveProgression();
             return false;
         }
