@@ -528,28 +528,27 @@ const BOOK_CLOSE_SWIPE_MIN_PX = 70;   // потягивание вниз — з�
 const BOOK_OPEN_SWIPE_MIN_PX = 40;    // потягивание ленты вверх — открыть
 const BOOK_AXIS_DECIDE_PX = 10;       // после стольких px решаем, чей это жест
 
-// Шкала света у корешка: окно из двух засечек-сотен вокруг lifetimeMetaEarned
-// (B-02) — «пройденную сотню и ближайшую», а не всю дорогу целиком.
-const BOOK_GAUGE_WINDOW = 100;
+// Шкала света у корешка: окно из двух засечек вокруг lifetimeMetaEarned (B-02) —
+// «пройденную отметку и ближайшую», а не всю дорогу целиком. B-04: масштаб
+// уменьшен вчетверо вместе с атласом — иначе окно не двигалось бы неделями.
+const BOOK_GAUGE_WINDOW = 25;
 
-// Atlas pages (каталог-29): страницы 0–1 — по 3 (демо), 2–5 — по 5, 6 (финал) — 3.
-// Все 29 фигур каталога распределены; открываются автоматически при накоплении ✦.
+// B-04: атлас 4×6 — четыре главы по шесть фигур, с прицелом на окно «первая
+// сессия → третий день» (глава I разрезана в день 1, глава II — в день 2).
+// Пять фигур, не поместившихся в главы (плотные графы, 7–9 рёбер), выведены
+// в резерв — см. DEMO_ACTIVE_BUILTIN_SHAPES ниже; ждут пятой главы вместе
+// с новыми фигурами C-01.
 const ATLAS_PAGES = [
-    ['checkmark', 'chip', 'cookie'],
-    ['banana', 'chicken-foot', 'earthworm'],
-    ['toothpick', 'spatula', 'diamond', 'radish', 'fan'],
-    ['donut', 'flag', 'tadpole', 'bunny', 'bull'],
-    ['bow', 'house', 'mace', 'kite', 'lantern'],
-    ['envelope', 'hand-fan', 'lollipop', 'book', 'origami'],
-    ['wheel', 'hammock', 'perfectionist']
+    ['toothpick', 'checkmark', 'chip', 'chicken-foot', 'cookie', 'earthworm'],
+    ['diamond', 'spatula', 'banana', 'envelope', 'fan', 'radish'],
+    ['donut', 'flag', 'tadpole', 'bunny', 'bull', 'bow'],
+    ['house', 'mace', 'kite', 'lantern', 'hand-fan', 'origami']
 ];
-// B-01: цены подобраны решателем совместно с доходом (sim-balance.js) так, чтобы
-// первые три страницы открывались по расписанию (ночи 1/3/7), а дальше шёл ровный
-// шаг ~16 ночей вместо растущих до 33. Немонотонность (1110 → 1100 → 840 → 960)
-// намеренна: доход к концу слегка замедляется, и ровный шаг требует, чтобы поздние
-// страницы стоили меньше. Игроку это не видно — списание молчаливое, магазина нет.
-// НЕ «исправлять» ради красоты ряда: сломается ритм.
-const ATLAS_PAGE_COSTS = [80, 240, 380, 1110, 1100, 840, 960];
+// B-04: масштаб уменьшен вчетверо относительно B-01 (решение заказчика), глава I
+// открыта бесплатно намеренно — при любой ненулевой цене весь первый вечер
+// игрок провёл бы без единого имени фигуры. Пороги подобраны и проверены
+// моделью (sim-balance.js) под раскадровку «глава I день 1 · глава II день 2».
+const ATLAS_PAGE_COSTS = [0, 100, 260, 420];
 const ATLAS_PAGE_COUNT = ATLAS_PAGES.length;
 
 // =============================================================================
@@ -561,17 +560,15 @@ const ATLAS_PAGE_COUNT = ATLAS_PAGES.length;
 // любое списание тормозило бы автооткрытие страниц атласа, и игрок не понял бы
 // причину (см. maybeAutoUnlockAtlasPages — жадный while по balance).
 //
-// 700 = 80 + 240 + 380 = Σ цен первых ТРЁХ страниц атласа: порог намеренно
-// совпадает с открытием 3-й страницы (ночь 4–9 по профилям sim-balance.js), но
-// выражен числом, чтобы игроку показывать один понятный прогресс-бар.
-// ⚠ При следующей перекалибровке ATLAS_PAGE_COSTS порог должен поехать вместе
-// с ними — иначе обсерватория разъедется с ритмом атласа.
-const OBSERVATORY_UNLOCK_COST = 700;
+// B-04: связь с Σ цен атласа разорвана намеренно — порог назначен от ритма
+// раскадровки, а не от суммы страниц. 115 ✦ по lifetimeMetaEarned без условий
+// по ночам: средний игрок проходит его во второй половине второго вечера,
+// вскоре после разреза главы II (Ex Libris открыт в день 2 — целевая раскадровка).
+const OBSERVATORY_UNLOCK_COST = 115;
 
-// Одна звезда на каждые 100 ✦ за всё время. На открытии выходит ровно 700/100 = 7
-// звёзд. Круглая цифра выбрана заказчиком осознанно вместо некруглых 140 ✦,
-// которые дали бы ровно 5 звёзд.
-const OBSERVATORY_STAR_COST = 100;
+// B-04: производная от масштаба атласа — при старой цене 100 ✦ за звезду холст
+// открывался бы с одной звездой, а окно шкалы у корешка не двигалось бы месяцами.
+const OBSERVATORY_STAR_COST = 25;
 
 // Legacy field goals (unused in meta-score flow; kept for save compatibility).
 const FIELD_GOAL_THRESHOLDS = [100, 250, 500];
@@ -625,22 +622,19 @@ const BUILTIN_SHAPE_NAMES = ALL_SHAPE_NAMES.filter(name => name !== SHAPE_UNRECO
 const FALLBACK_NAME_COUNT = 45;
 const FALLBACK_NAME_IDS = Array.from({ length: FALLBACK_NAME_COUNT }, (_, i) => 'fb' + i);
 // Home demo shape whitelist: каталог-29, топологический режим.
-// Все 29 фигур каталога активны (страницы атласа 0–6). Зубочистка (2★) —
-// теперь атласная фигура страницы 2 с пер-фигурной цепочкой.
+// B-04: атлас сократился до 24 фигур (4 главы × 6) — 5 плотных графов (Чупа-чупс,
+// Книжка, Колесо, Гамак, Перфекционист) выведены в резерв вместе со страницами
+// ATLAS_PAGES. Они остаются валидными ID в CATALOG_29/SHAPES (распознаватель их
+// не трогает), но убраны отсюда: иначе clampShapeToAtlasVisibility (progression.js)
+// пропускает их насквозь — isShapeOnAtlas вернёт false, зажима не будет, и фигура
+// получит настоящее имя на небе, не имея карточки в атласе. Убранные из белого
+// списка гасятся распознавателем (isBuiltinShapeEnabled) и читаются как
+// нераспознанные — получают поэтичное fallback-имя, как и было задумано.
 const DEMO_ACTIVE_BUILTIN_SHAPES = new Set([
-    'checkmark',
-    'chip',
-    'cookie',
-    'banana',
-    'chicken-foot',
-    'earthworm',
-    'toothpick',
-    // Недемо-фигуры каталога-29 (страницы 2–6)
-    'spatula', 'diamond', 'envelope', 'fan', 'radish',
-    'donut', 'flag', 'tadpole', 'bunny', 'bull',
-    'bow', 'house', 'mace', 'kite', 'lantern',
-    'hand-fan', 'lollipop', 'book', 'origami',
-    'wheel', 'hammock', 'perfectionist'
+    'toothpick', 'checkmark', 'chip', 'chicken-foot', 'cookie', 'earthworm',
+    'diamond', 'spatula', 'banana', 'envelope', 'fan', 'radish',
+    'donut', 'flag', 'tadpole', 'bunny', 'bull', 'bow',
+    'house', 'mace', 'kite', 'lantern', 'hand-fan', 'origami'
 ]);
 // All built-ins outside the home demo whitelist are soft-disabled.
 const SOFT_DISABLED_BUILTIN_SHAPES = new Set(

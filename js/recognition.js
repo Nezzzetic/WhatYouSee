@@ -188,9 +188,11 @@ function recognizeShapeTopologyDetailed(lines, starIds) {
     if (!name) return makeFallbackRecognition(SHAPE_UNRECOGNIZED);
 
     // Гейт активности: наружу отдаём только встроенные включённые фигуры.
-    // Все 29 фигур каталога-29 включены (страницы атласа 0–6). Видимость
-    // страниц атласа и запрет дублей доигрываются в commit-пути
-    // (clampShapeToAtlasVisibility и т.п.) — фигура с закрытой страницы → «Фигура».
+    // B-04: 24 из 29 фигур каталога-29 включены (страницы атласа 0–3) — 5 плотных
+    // графов в резерве (DEMO_ACTIVE_BUILTIN_SHAPES) гасятся здесь и уходят
+    // в fallback-имя. Видимость страниц атласа и запрет дублей доигрываются
+    // в commit-пути (clampShapeToAtlasVisibility и т.п.) — фигура с закрытой
+    // страницы → «Фигура».
     const enabled = typeof isBuiltinShapeName === 'function' && isBuiltinShapeName(name) &&
         typeof isBuiltinShapeEnabled === 'function' && isBuiltinShapeEnabled(name);
     if (!enabled) return makeFallbackRecognition(name);
