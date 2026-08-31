@@ -769,6 +769,7 @@ function renderBookHead() {
 function renderBookGauge() {
     const el = document.getElementById('bookGauge');
     if (!el) return;
+    const trackH = el.getBoundingClientRect().height;
     el.innerHTML = '';
 
     const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
@@ -778,7 +779,10 @@ function renderBookGauge() {
 
     const fill = document.createElement('div');
     fill.className = 'book-gauge-fill';
-    fill.style.height = `${Math.round(ratio * 100)}%`;
+    // K-25: заливка перекрывает обе риски запасом BOOK_GAUGE_OVERSHOOT_PX
+    // вместо того, чтобы упираться точно в их координату.
+    fill.style.bottom = `-${BOOK_GAUGE_OVERSHOOT_PX}px`;
+    fill.style.height = `calc(${Math.round(ratio * 100)}% + ${BOOK_GAUGE_OVERSHOOT_PX * 2}px)`;
     el.appendChild(fill);
 
     const topTick = document.createElement('div');
@@ -793,7 +797,11 @@ function renderBookGauge() {
 
     const flag = document.createElement('div');
     flag.className = 'book-gauge-flag';
-    flag.style.bottom = `${Math.round(ratio * 100)}%`;
+    // K-25: честная ratio-координата, но не ближе BOOK_GAUGE_FLAG_MIN_GAP_PX
+    // к любой из рисок — иначе цифра нижнего значения садится на риску текстом.
+    const minRatio = trackH > 0 ? Math.min(0.5, BOOK_GAUGE_FLAG_MIN_GAP_PX / trackH) : 0;
+    const flagRatio = Math.min(Math.max(ratio, minRatio), 1 - minRatio);
+    flag.style.bottom = `${flagRatio * 100}%`;
     flag.textContent = String(earned);
     el.appendChild(flag);
 }
