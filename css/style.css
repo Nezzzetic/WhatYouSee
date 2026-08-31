@@ -670,8 +670,32 @@ button:disabled {
     padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px) 10px
         max(var(--page-pad-left), 24px);
     background:
-        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%);
+        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%),
+        repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.006) 2px 3px);
     touch-action: pan-y;
+}
+
+/* K-27: книжные края — тень корешка слева (из концепта) и обрез справа
+   зеркалом той же кривой, но слабее: корешок в книге всегда темнее обреза
+   (в концепте правый край отдельно не нарисован — там одиночная страница). */
+.book-page::before,
+.book-page::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 22px;
+    pointer-events: none;
+}
+
+.book-page::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent);
+}
+
+.book-page::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(0, 0, 0, 0.2), transparent);
 }
 
 .book-head {
