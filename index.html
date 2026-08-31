@@ -208,14 +208,18 @@
                 </div>
                 <!-- K-18: колонтитул один на все разделы — содержимое подставляет
                      renderBookHead() (ui.js). На атласе/штампах слева прогресс
-                     главы, справа «‹ p. N · M ▸»: те же кнопки, что раньше жили
-                     в снесённом .book-pager (сохраняют data-pager/data-dir). -->
+                     главы, справа «‹ p. N ▸» — колонцифра текущей страницы.
+                     K-28: стрелки — сквозной пейджер по всей книге (swipeBookPage),
+                     не только внутри атласа/штампов; скрыты только на самом первом
+                     развороте («Today») и самом последнем («Ex Libris»). У «Settings»
+                     стрелок нет — страница вне сквозного порядка. Кнопки сохраняют
+                     data-pager/data-dir (смотрит verify-atlas-spread.js). -->
                 <div class="book-foot">
                     <span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span>
                     <span class="book-foot-nav">
-                        <button type="button" id="bookFootPrev" class="book-foot-nav-btn" data-dir="-1" aria-label="Previous chapter" hidden>‹</button>
+                        <button type="button" id="bookFootPrev" class="book-foot-nav-btn" data-dir="-1" data-i18n-aria="book.pagerPrev" hidden>‹</button>
                         <span id="bookFolio"></span>
-                        <button type="button" id="bookFootNext" class="book-foot-nav-btn" data-dir="1" aria-label="Next chapter" hidden>▸</button>
+                        <button type="button" id="bookFootNext" class="book-foot-nav-btn" data-dir="1" data-i18n-aria="book.pagerNext" hidden>▸</button>
                     </span>
                 </div>
             </div>

@@ -695,10 +695,10 @@ function renderBookHead() {
     let title = '';
     let folioN = 1;
     let footLeft = t('book.brand');
-    // K-18: подвал атласа/штампов вместо ALMANAC несёт прогресс главы слева и
-    // «‹ p. N · M ▸» справа (пейджер, снятый со строки над сеткой); на
-    // остальных разделах pager остаётся null — там подвал прежний.
-    let pager = null;
+    // K-18: подвал атласа/штампов вместо ALMANAC несёт прогресс главы слева;
+    // справа — колонцифра текущей страницы. K-28: стрелки пейджера теперь
+    // видны на любом развороте (сквозной swipeBookPage), не только на атласе
+    // и штампах — прячутся только на истинных краях книги (см. ниже).
 
     if (bookCut === 'today') {
         // K-09: «Night 213 · August 23» — номер ночи (текущая, ещё не завершённая)
@@ -724,10 +724,6 @@ function renderBookHead() {
         // K-18: то же выражение, что уже считает счёт главы в оглавлении (K-19).
         const traced = ATLAS_PAGES[idx].filter(isShapeCreated).length;
         footLeft = t('book.footAtlasProgress', { current: traced, total: ATLAS_PAGES[idx].length });
-        pager = {
-            attr: 'atlas', idx, min: 0, max: ATLAS_PAGE_COUNT - 1,
-            nextFolio: idx < ATLAS_PAGE_COUNT - 1 ? getAtlasChapterFolio(idx + 1) : null
-        };
     } else if (bookCut === 'stamps') {
         // K-12: главы штампов пронумерованы так же, как главы атласа.
         const idx = getBookPageIndex('rewards');
@@ -737,10 +733,6 @@ function renderBookHead() {
         folioN = getStampsChapterFolio(idx);
         const { pressed, total } = getRewardPagePressedStamps(idx);
         footLeft = t('book.footStampsProgress', { current: pressed, total });
-        pager = {
-            attr: 'rewards', idx, min: 1, max: REWARD_PAGE_COUNT - 1,
-            nextFolio: idx < REWARD_PAGE_COUNT - 1 ? getStampsChapterFolio(idx + 1) : null
-        };
     } else if (bookCut === 'exlibris') {
         eyebrow = t('book.eyebrowExLibris');
         title = t('book.headExLibris');
@@ -753,19 +745,17 @@ function renderBookHead() {
     eyebrowEl.textContent = eyebrow;
     titleEl.textContent = title;
     footLeftEl.textContent = footLeft;
-    folioEl.textContent = (pager && pager.nextFolio !== null)
-        ? t('book.folioRange', { n: folioN, m: pager.nextFolio })
-        : t('book.folio', { n: folioN });
+    folioEl.textContent = t('book.folio', { n: folioN });
 
     if (prevBtn && nextBtn) {
-        prevBtn.hidden = !pager;
-        nextBtn.hidden = !pager;
-        if (pager) {
-            prevBtn.dataset.pager = pager.attr;
-            nextBtn.dataset.pager = pager.attr;
-            prevBtn.disabled = pager.idx <= pager.min;
-            nextBtn.disabled = pager.idx >= pager.max;
-        }
+        // K-28: пейджер общий на всю книгу — data-pager называет текущий раздел
+        // (verify-atlas-spread.js смотрит на 'atlas' при клике), сама стрелка
+        // прячется только там, где swipeBookPage(±1) действительно некуда вести.
+        const pagerAttr = bookCut === 'stamps' ? 'rewards' : bookCut;
+        prevBtn.dataset.pager = pagerAttr;
+        nextBtn.dataset.pager = pagerAttr;
+        prevBtn.hidden = !canSwipeBookPage(-1);
+        nextBtn.hidden = !canSwipeBookPage(1);
     }
 }
 
@@ -1111,13 +1101,14 @@ function stepBookPage(delta) {
 }
 
 /**
- * K-28: горизонтальный свайп книги. Внутри атласа/штампов — то же самое, что
- * пейджер-кнопка (stepBookPage). На краю раздела — или там, где страниц нет
- * вовсе («Today»/«Index»/«Ex Libris») — переходит в соседнюю высечку по
- * порядку BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли,
- * чтобы номера страниц шли подряд по всей книге. «Settings» в эту цепочку не
- * входит (K-14, решение заказчика — высечек пять); край книги (до «Today»,
- * после «Ex Libris») свайп молчит, без зацикливания.
+ * K-28: горизонтальный переход по книге — общий и для свайпа, и для кнопок
+ * пейджера в подвале. Внутри атласа/штампов — то же самое, что было раньше:
+ * stepBookPage. На краю раздела — или там, где страниц нет вовсе («Today»/
+ * «Index»/«Ex Libris») — переходит в соседнюю высечку по порядку
+ * BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли, чтобы
+ * номера страниц шли подряд по всей книге. «Settings» в эту цепочку не входит
+ * (K-14, решение заказчика — высечек пять); край книги (до «Today», после
+ * «Ex Libris») жест молчит, без зацикливания.
  */
 function swipeBookPage(delta) {
     if (stepBookPage(delta)) return;
@@ -1129,6 +1120,25 @@ function swipeBookPage(delta) {
     if (nextCut === 'atlas') setBookPageIndex('atlas', delta > 0 ? 0 : ATLAS_PAGE_COUNT - 1);
     else if (nextCut === 'stamps') setBookPageIndex('rewards', delta > 0 ? 1 : REWARD_PAGE_COUNT - 1);
     switchBookCut(nextCut);
+}
+
+/**
+ * K-28: было бы swipeBookPage(delta) сейчас куда-то вести, без побочных
+ * эффектов — только чтобы решить, показывать ли стрелку пейджера. Логика
+ * зеркалит stepBookPage/swipeBookPage: внутри атласа/штампов смотрит на
+ * границы главы, иначе — на порядок высечек (BOOK_CUT_LIST без 'settings').
+ */
+function canSwipeBookPage(delta) {
+    if (bookCut === 'atlas') {
+        const idx = getBookPageIndex('atlas') + delta;
+        if (idx >= 0 && idx < ATLAS_PAGE_COUNT) return true;
+    } else if (bookCut === 'stamps') {
+        const idx = getBookPageIndex('rewards') + delta;
+        if (idx >= 1 && idx < REWARD_PAGE_COUNT) return true;
+    }
+    const order = BOOK_CUT_LIST.filter(cut => cut !== 'settings');
+    const i = order.indexOf(bookCut);
+    return i !== -1 && !!order[i + delta];
 }
 
 // =============================================================================
@@ -1754,13 +1764,15 @@ function setupBookControls() {
         btn.addEventListener('click', () => switchBookCut(btn.dataset.cut));
     });
 
-    // K-18: пейджер переехал в подвал книги — те же два узла на всех главах
-    // атласа/штампов (renderBookHead переставляет им data-pager/disabled).
+    // K-18: пейджер живёт в подвале книги, те же два узла на всех разворотах
+    // (renderBookHead переставляет им data-pager/hidden). K-28: ведёт сквозной
+    // swipeBookPage, а не stepBookPage — крутит и главы атласа/штампов, и
+    // переходы между разделами, ровно как горизонтальный свайп.
     document.getElementById('bookFootPrev')?.addEventListener('click', (event) => {
-        stepBookPage(Number(event.currentTarget.dataset.dir));
+        swipeBookPage(Number(event.currentTarget.dataset.dir));
     });
     document.getElementById('bookFootNext')?.addEventListener('click', (event) => {
-        stepBookPage(Number(event.currentTarget.dataset.dir));
+        swipeBookPage(Number(event.currentTarget.dataset.dir));
     });
 
     // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
@@ -1806,7 +1818,8 @@ function onGlobalPopupKeydown(event) {
         return;
     }
     if (!bookOpen) return;
-    if (event.key === 'ArrowLeft') stepBookPage(-1);
-    if (event.key === 'ArrowRight') stepBookPage(1);
+    // K-28: клавиатура — тот же сквозной переход, что кнопка и свайп.
+    if (event.key === 'ArrowLeft') swipeBookPage(-1);
+    if (event.key === 'ArrowRight') swipeBookPage(1);
 }
 
