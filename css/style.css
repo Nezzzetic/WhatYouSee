@@ -760,10 +760,14 @@ button:disabled {
     gap: 6px;
 }
 
+/* K-28: зона касания растёт через padding + отрицательный margin — тот же
+   приём, что уже держит зону касания ленты-закладки (K-05, шире хвоста) и
+   готовой марки (K-08, `.achv-tile-ready` шире на 6pt). Видимый глиф не
+   меняется, книжный вид подвала сохраняется. */
 .book-foot-nav-btn {
     flex: none;
-    padding: 6px 4px;
-    margin: -6px -4px;
+    padding: 12px 14px;
+    margin: -12px -14px;
     border: none;
     background: none;
     color: var(--ink-muted);
