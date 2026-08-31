@@ -243,7 +243,7 @@ function onConstellationCreated(shapeName) {
 // K-02: ДВА РЕГИСТРА — гравёрные знаки и созвездные глифы
 // =============================================================================
 //
-// Регистр первый — знак: действие, раздел, тема штампа. Восемнадцать штук,
+// Регистр первый — знак: действие, раздел, тема штампа. Девятнадцать штук,
 // спрайт лежит в index.html, своего цвета у знака нет.
 // Регистр второй — глиф: форма конкретной фигуры, точки и линии из
 // SHAPE_PATTERNS. Глиф — это чертёж, только маленький, поэтому он всегда честен.
@@ -252,10 +252,10 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все восемнадцать имён кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все девятнадцать имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
-    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc'
+    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock'
 ];
 
 /**
@@ -919,11 +919,12 @@ function renderBookTodayState() {
  */
 /**
  * K-10: строка главы — имя с линейкой из точек (как в сцепке K-08), счёт и
- * колонцифра. Неразрезанная глава несёт знак ножа и порог в ✦ вместо счёта и
- * колонцифры (страница недостижима постранично, но пейджер её уже показывает
- * заглушкой `atlas.pageLocked` — сюда ведёт тот же тап). Сургучная точка —
- * только там, где есть настоящее «взять» (Штампы); у атласа нет кнопки забора,
- * поэтому просто вести не при чём.
+ * колонцифра. Неразрезанная глава несёт знак замка (K-24, был нож — эта роль
+ * ножа осталась только за разрезанием страниц) и порог в ✦ вместо счёта, но
+ * с той же колонцифрой, что у разрезанной (страница недостижима постранично,
+ * но пейджер её уже показывает заглушкой `atlas.pageLocked` — сюда ведёт тот
+ * же тап). Сургучная точка — только там, где есть настоящее «взять» (Штампы);
+ * у атласа нет кнопки забора, поэтому просто вести не при чём.
  */
 function createBookIndexRow(title, folioN, countText, opts) {
     const o = opts || {};
@@ -931,7 +932,7 @@ function createBookIndexRow(title, folioN, countText, opts) {
     row.type = 'button';
     row.className = 'book-index-row';
 
-    // K-23: жёлоб под знак ножа держит место всегда, у любой строки оглавления —
+    // K-23: жёлоб под знак замка держит место всегда, у любой строки оглавления —
     // не только затем, чтобы разрезанная и запертая глава не отличались геометрией,
     // но и чтобы заголовки всех строк (включая Ex Libris и Настройки, замка не
     // знающие) лежали на одной вертикали, а не рвали список вразнобой.
@@ -939,7 +940,7 @@ function createBookIndexRow(title, folioN, countText, opts) {
     icon.className = 'book-index-row-icon';
     if (o.locked) {
         icon.classList.add('achv-row-icon-uncut');
-        icon.appendChild(glyphSign('knife', 16));
+        icon.appendChild(glyphSign('lock', 16));
     }
     row.appendChild(icon);
 
@@ -1007,8 +1008,8 @@ function renderBookIndex() {
             )
             : createBookIndexRow(
                 title,
-                null,
-                t('book.indexUncutCost', { n: getAtlasPageUnlockCost(i) }),
+                getAtlasChapterFolio(i),
+                t('book.indexOpensAt', { n: getAtlasPageUnlockCost(i) }),
                 { locked: true }
             );
         row.addEventListener('click', () => {
@@ -1045,8 +1046,8 @@ function renderBookIndex() {
         } else {
             row = createBookIndexRow(
                 title,
-                null,
-                t('book.indexUncutCost', { n: getRewardPageUnlockCost(i) }),
+                getStampsChapterFolio(i),
+                t('book.indexOpensAt', { n: getRewardPageUnlockCost(i) }),
                 { locked: true }
             );
         }
@@ -1064,7 +1065,7 @@ function renderBookIndex() {
     const exRow = createBookIndexRow(
         t('book.cutExLibris'),
         getExLibrisFolio(),
-        exUnlocked ? '' : t('book.indexUncut'),
+        exUnlocked ? '' : t('book.indexOpensAt', { n: OBSERVATORY_UNLOCK_COST }),
         exUnlocked ? { countSign: 'crescent' } : undefined
     );
     exRow.addEventListener('click', () => switchBookCut('exlibris'));
