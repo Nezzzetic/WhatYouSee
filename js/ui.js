@@ -345,7 +345,10 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
 
     const pts = pattern.stars.map(([nx, ny]) => [pad + nx * iw, pad + ny * ih]);
 
-    ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},0.7)`;
+    // K-31: контур чертежа неразгаданной был бледен дважды — здесь и через
+    // `.atlas-card-unknown` (снята). Альфа поднята с 0.7 до 0.85, вровень
+    // с контуром точки ниже — сам чертёж теперь несёт весь контраст.
+    ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},${blueprint ? 0.85 : 0.7})`;
     ctx.lineWidth = Math.max(1, side * 0.02);
     ctx.lineCap = 'round';
     ctx.setLineDash(blueprint ? [dot * 1.4, dot * 1.4] : []);
@@ -501,9 +504,9 @@ const ATLAS_FACETED_COLOR = [255, 211, 92];
 
 /**
  * K-11: разворот-определитель — карточка `???` больше не существует.
- * Неразгаданная фигура рисуется тем же глифом, что и разгаданная (просто
- * бледнее целиком через `.atlas-card-unknown`), и подписывается «not yet
- * traced» вместо имени — имя остаётся сюрпризом до первого создания.
+ * Неразгаданная фигура рисуется тем же глифом, что и разгаданная — чертежом
+ * (K-18). K-31: подпись «not yet traced» и число звёзд убраны совсем — на их
+ * месте одинокий знак «?»; фигура рассказывает о себе только контуром.
  */
 function createAtlasEntryCard(entry) {
     const faceted = entry.isCreated && typeof isShapeFaceted === 'function' && isShapeFaceted(entry.name);
@@ -515,25 +518,43 @@ function createAtlasEntryCard(entry) {
         + (entry.isCreated ? ' atlas-card-known' : ' atlas-card-unknown')
         + (faceted ? ' atlas-card-faceted' : '');
 
+    // K-31: закладка тапом по любой части карточки, не только булавкой —
+    // сама карточка становится доступной интерактивной целью (роль/фокус/aria).
+    card.setAttribute('role', 'button');
+    card.tabIndex = 0;
+    card.setAttribute('aria-pressed', String(bookmarked));
+    card.setAttribute('aria-label', t(bookmarked ? 'atlas.pinOff' : 'atlas.pinOn'));
+    const togglePin = () => {
+        if (typeof toggleShapeBookmark === 'function') toggleShapeBookmark(entry.name);
+        renderAtlasList();
+        if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
+    };
+    card.addEventListener('click', togglePin);
+    card.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        togglePin();
+    });
+
     if (faceted) {
         const crown = glyphSign('corona', 16, 'atlas-card-crown');
         card.appendChild(crown);
     }
 
-    // Булавка-закладка: разрешена и на уже найденной фигуре — строить её
-    // снова ради огранки законно (риск 1/2 дока K-11: спойлер принят).
+    // Булавка остаётся видимым индикатором состояния (риск дока K-31), но
+    // клик по карточке уже переключает закладку сам — булавка не дублирует
+    // фокус клавиатуры и убрана из a11y-дерева, чтобы не звучать дважды.
+    // `.atlas-pin[data-shape-id]` держит и харнесс (`__test.pin`).
     const pin = document.createElement('button');
     pin.type = 'button';
     pin.className = 'atlas-pin' + (bookmarked ? ' atlas-pin-on' : '');
     pin.dataset.shapeId = entry.name;
-    pin.setAttribute('aria-pressed', String(bookmarked));
-    pin.setAttribute('aria-label', t(bookmarked ? 'atlas.pinOff' : 'atlas.pinOn'));
+    pin.tabIndex = -1;
+    pin.setAttribute('aria-hidden', 'true');
     pin.appendChild(document.createElement('i'));
     pin.addEventListener('click', (event) => {
         event.stopPropagation();
-        if (typeof toggleShapeBookmark === 'function') toggleShapeBookmark(entry.name);
-        renderAtlasList();
-        if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
+        togglePin();
     });
     card.appendChild(pin);
 
@@ -548,9 +569,9 @@ function createAtlasEntryCard(entry) {
         title.textContent = getDisplayShapeName(entry.name);
         title.style.color = `rgb(${drawColor[0]},${drawColor[1]},${drawColor[2]})`;
     } else {
-        // Имя фигуры — сюрприз до первого создания; чертёж и число звёзд — нет.
+        // Имя фигуры — сюрприз до первого создания; вместо него — «?».
         title.className = 'atlas-card-title atlas-card-title-unknown';
-        title.textContent = t('atlas.notYetTraced');
+        title.textContent = '?';
     }
     card.appendChild(title);
 
@@ -558,11 +579,6 @@ function createAtlasEntryCard(entry) {
         // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
         // K-18: искра тем же контуром, что звезда на небе, а не ромбик.
         card.appendChild(createFacetsRow(entry.name));
-    } else {
-        const note = document.createElement('div');
-        note.className = 'atlas-card-note';
-        note.textContent = tp('atlas.notYetTracedStars', entry.starCount);
-        card.appendChild(note);
     }
 
     // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
@@ -729,9 +745,9 @@ function renderBookHead() {
         eyebrow = t('book.eyebrowAtlasChapter', { n: toRoman(idx + 1) });
         title = t('atlas.chapterTitle' + idx);
         folioN = getAtlasChapterFolio(idx);
-        // K-18: то же выражение, что уже считает счёт главы в оглавлении (K-19).
-        const traced = ATLAS_PAGES[idx].filter(isShapeCreated).length;
-        footLeft = t('book.footAtlasProgress', { current: traced, total: ATLAS_PAGES[idx].length });
+        // K-31: счётчик «N of M traced» в подвале снят — счёт главы остался
+        // только в оглавлении (K-19); подвал атласа падает на бренд, как у
+        // Today/Index/Ex Libris/Settings.
     } else if (bookCut === 'stamps') {
         // K-12: главы штампов пронумерованы так же, как главы атласа.
         const idx = getBookPageIndex('rewards');
