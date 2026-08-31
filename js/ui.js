@@ -603,10 +603,11 @@ function renderAtlasList() {
 //
 // Шторка U-09 (85vh, рельс страниц, сегмент Atlas/Rewards/Observatory) стала
 // полноэкранной книгой. Навигация плоская: любая высечка из любой, без
-// промежуточных разделов. Под-страницы атласа (7 глав) и наград (4 главы —
-// «Сутки» переехали на «Сегодня», см. ниже) листаются пейджер-кнопками, а не
-// свайпом: горизонтальных свайпов страниц (SHEET_SWIPE_MIN_PX и компания)
-// K-06 убрал совсем.
+// промежуточных разделов. Под-страницы атласа и наград листаются
+// пейджер-кнопками в подвале и горизонтальным свайпом (K-28, вернул то, что
+// K-06 когда-то убрал целиком) — оба пути ведут через один stepBookPage.
+// Свайп же на краю раздела не останавливается, а переводит в соседнюю
+// высечку (swipeBookPage) — сквозная последовательность страниц всей книги.
 
 // K-14: 'settings' — валидная цель openBook/switchBookCut, но не шестая
 // высечка — вход только строкой из «Index» (решение заказчика 2026-08-25:
@@ -1109,6 +1110,27 @@ function stepBookPage(delta) {
     return false;
 }
 
+/**
+ * K-28: горизонтальный свайп книги. Внутри атласа/штампов — то же самое, что
+ * пейджер-кнопка (stepBookPage). На краю раздела — или там, где страниц нет
+ * вовсе («Today»/«Index»/«Ex Libris») — переходит в соседнюю высечку по
+ * порядку BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли,
+ * чтобы номера страниц шли подряд по всей книге. «Settings» в эту цепочку не
+ * входит (K-14, решение заказчика — высечек пять); край книги (до «Today»,
+ * после «Ex Libris») свайп молчит, без зацикливания.
+ */
+function swipeBookPage(delta) {
+    if (stepBookPage(delta)) return;
+    const order = BOOK_CUT_LIST.filter(cut => cut !== 'settings');
+    const i = order.indexOf(bookCut);
+    if (i === -1) return; // 'settings' — вне сквозного порядка, свайп молчит
+    const nextCut = order[i + delta];
+    if (!nextCut) return;
+    if (nextCut === 'atlas') setBookPageIndex('atlas', delta > 0 ? 0 : ATLAS_PAGE_COUNT - 1);
+    else if (nextCut === 'stamps') setBookPageIndex('rewards', delta > 0 ? 1 : REWARD_PAGE_COUNT - 1);
+    switchBookCut(nextCut);
+}
+
 // =============================================================================
 // B-02/K-13: ОБСЕРВАТОРИЯ В КНИГЕ — страница «Ex Libris»
 // =============================================================================
@@ -1512,11 +1534,21 @@ function openBookAnimated(cut) {
 }
 
 /**
- * Единственный жест книги — потягивание вниз закрывает её с любой страницы
- * (риск 4 дока K-06: возврат на небо обязан быть таким же дешёвым, как вход).
- * Тянут вниз в самом верху прокрутки страницы — закрытие; тянут в середине
- * списка — обычная прокрутка. Горизонтальных свайпов страниц (SHEET_SWIPE_MIN_PX
- * и компания) в книге больше нет — под-страницы листает пейджер-кнопка.
+ * Два жеста книги на одном обработчике, разведённые по оси (BOOK_AXIS_DECIDE_PX,
+ * риск 1 дока K-28 — тот же приём, что уже развёл закрытие книги (вниз) и
+ * потягивание ленты (вверх), см. setupRibbonPullGesture):
+ *
+ * — вертикаль: потягивание вниз закрывает книгу с любой страницы (риск 4
+ *   дока K-06 — возврат на небо обязан быть таким же дешёвым, как вход).
+ *   Тянут вниз в самом верху прокрутки страницы — закрытие; тянут в середине
+ *   списка — обычная прокрутка, жест её не трогает.
+ * — горизонталь (K-28): свайп листает страницу — swipeBookPage(), тот же
+ *   переход, что у пейджер-кнопки в подвале, плюс переход в соседний раздел
+ *   на краю текущего. Без протяжки страницы за пальцем — решение осознанно
+ *   (см. «Согласованный план» дока K-28): раздел просто перерисовывается,
+ *   как от кнопки.
+ *
+ * Мультитач и щипок зума (isMultiTouch) не считаются ни тем, ни другим жестом.
  */
 function setupBookCloseGesture() {
     if (bookHandlersBound) return;
@@ -1525,8 +1557,9 @@ function setupBookCloseGesture() {
     const ribbon = document.getElementById('skyRibbon');
     if (!book || !body) return;
 
+    let startX = 0;
     let startY = 0;
-    let decided = false;
+    let axis = null; // 'vertical' | 'horizontal', решается на BOOK_AXIS_DECIDE_PX
     let closing = false;
     let tracking = false;
 
@@ -1535,8 +1568,9 @@ function setupBookCloseGesture() {
         if (event.type === 'mousedown' && event.button !== 0) return;
         const p = getGesturePoint(event);
         if (!p) return;
+        startX = p.clientX;
         startY = p.clientY;
-        decided = false;
+        axis = null;
         closing = false;
         tracking = true;
     };
@@ -1545,14 +1579,25 @@ function setupBookCloseGesture() {
         if (!tracking || isMultiTouch(event)) return;
         const p = getGesturePoint(event);
         if (!p) return;
+        const dx = p.clientX - startX;
         const dy = p.clientY - startY;
 
-        if (!decided) {
-            if (Math.abs(dy) < BOOK_AXIS_DECIDE_PX) return;
-            decided = true;
-            closing = dy > 0 && body.scrollTop <= 0;
+        if (!axis) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) < BOOK_AXIS_DECIDE_PX) return;
+            if (Math.abs(dx) > Math.abs(dy)) {
+                axis = 'horizontal';
+            } else {
+                axis = 'vertical';
+                closing = dy > 0 && body.scrollTop <= 0;
+            }
         }
 
+        if (axis === 'horizontal') {
+            // K-28: страница не тянется за пальцем — только preventDefault,
+            // чтобы жест не ушёл в браузер; сам переход — на отпускании.
+            if (event.cancelable) event.preventDefault();
+            return;
+        }
         if (!closing) return;
         if (event.cancelable) event.preventDefault();
         book.style.transform = `translateY(${Math.max(0, dy)}px)`;
@@ -1562,8 +1607,15 @@ function setupBookCloseGesture() {
         if (!tracking) return;
         tracking = false;
         const p = getGesturePoint(event);
-        const dy = p ? Math.max(0, p.clientY - startY) : 0;
 
+        if (axis === 'horizontal') {
+            const dx = p ? p.clientX - startX : 0;
+            if (Math.abs(dx) >= BOOK_PAGE_SWIPE_MIN_PX) swipeBookPage(dx < 0 ? 1 : -1);
+            axis = null;
+            return;
+        }
+
+        const dy = p ? Math.max(0, p.clientY - startY) : 0;
         if (closing && dy >= BOOK_CLOSE_SWIPE_MIN_PX) {
             // K-26: довод — доезжаем вниз до конца тем же ходом, что вёл за
             // пальцем, и только потом прячем; раньше это обрывалось тут же.
@@ -1575,6 +1627,7 @@ function setupBookCloseGesture() {
             book.style.transform = '';
         }
         closing = false;
+        axis = null;
     };
 
     book.addEventListener('touchstart', onStart, { passive: true });
