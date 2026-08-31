@@ -940,17 +940,17 @@ function createBookIndexRow(title, folioN, countText, opts) {
     row.type = 'button';
     row.className = 'book-index-row';
 
-    // K-23: жёлоб под знак ножа держит место всегда у строк главы (`chapter`),
-    // разрезанной или нет, — иначе у них разная геометрия заголовка.
-    if (o.chapter) {
-        const icon = document.createElement('span');
-        icon.className = 'book-index-row-icon';
-        if (o.locked) {
-            icon.classList.add('achv-row-icon-uncut');
-            icon.appendChild(glyphSign('knife', 16));
-        }
-        row.appendChild(icon);
+    // K-23: жёлоб под знак ножа держит место всегда, у любой строки оглавления —
+    // не только затем, чтобы разрезанная и запертая глава не отличались геометрией,
+    // но и чтобы заголовки всех строк (включая Ex Libris и Настройки, замка не
+    // знающие) лежали на одной вертикали, а не рвали список вразнобой.
+    const icon = document.createElement('span');
+    icon.className = 'book-index-row-icon';
+    if (o.locked) {
+        icon.classList.add('achv-row-icon-uncut');
+        icon.appendChild(glyphSign('knife', 16));
     }
+    row.appendChild(icon);
 
     const head = document.createElement('span');
     head.className = 'book-index-row-head';
@@ -1012,14 +1012,13 @@ function renderBookIndex() {
             ? createBookIndexRow(
                 title,
                 getAtlasChapterFolio(i),
-                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`,
-                { chapter: true }
+                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
             )
             : createBookIndexRow(
                 title,
                 null,
                 t('book.indexUncutCost', { n: getAtlasPageUnlockCost(i) }),
-                { locked: true, chapter: true }
+                { locked: true }
             );
         row.addEventListener('click', () => {
             setBookPageIndex('atlas', i);
@@ -1050,14 +1049,14 @@ function renderBookIndex() {
                 title,
                 getStampsChapterFolio(i),
                 `${pressed} / ${total}`,
-                { wax: rewardPageHasClaimable(i), chapter: true }
+                { wax: rewardPageHasClaimable(i) }
             );
         } else {
             row = createBookIndexRow(
                 title,
                 null,
                 t('book.indexUncutCost', { n: getRewardPageUnlockCost(i) }),
-                { locked: true, chapter: true }
+                { locked: true }
             );
         }
         row.addEventListener('click', () => {
