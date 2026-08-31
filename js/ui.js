@@ -417,6 +417,24 @@ function createFacetSparkSvg() {
     return svg;
 }
 
+/**
+ * K-32: тот же ряд граней, что на карточке атласа (`createAtlasEntryCard`) —
+ * нужен ещё и в окошке закладки на небе, вынесен сюда, чтобы не дублировать.
+ */
+function createFacetsRow(shapeName) {
+    const facets = document.createElement('div');
+    facets.className = 'atlas-facets';
+    for (const color of ACHIEVEMENT_COLOR_KEYS) {
+        const lit = typeof isShapeFacetLit === 'function' && isShapeFacetLit(shapeName, color);
+        const gem = document.createElement('span');
+        gem.className = `atlas-facet atlas-facet-${color}` + (lit ? ' atlas-facet-lit' : '');
+        gem.title = achievementColorLabel(color);
+        gem.appendChild(createFacetSparkSvg());
+        facets.appendChild(gem);
+    }
+    return facets;
+}
+
 // =============================================================================
 // ATLAS DATA
 // =============================================================================
@@ -539,17 +557,7 @@ function createAtlasEntryCard(entry) {
     if (entry.isCreated) {
         // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
         // K-18: искра тем же контуром, что звезда на небе, а не ромбик.
-        const facets = document.createElement('div');
-        facets.className = 'atlas-facets';
-        for (const color of ACHIEVEMENT_COLOR_KEYS) {
-            const lit = typeof isShapeFacetLit === 'function' && isShapeFacetLit(entry.name, color);
-            const gem = document.createElement('span');
-            gem.className = `atlas-facet atlas-facet-${color}` + (lit ? ' atlas-facet-lit' : '');
-            gem.title = achievementColorLabel(color);
-            gem.appendChild(createFacetSparkSvg());
-            facets.appendChild(gem);
-        }
-        card.appendChild(facets);
+        card.appendChild(createFacetsRow(entry.name));
     } else {
         const note = document.createElement('div');
         note.className = 'atlas-card-note';
@@ -1456,6 +1464,11 @@ function renderSkyBookmark() {
 
     const nameEl = document.getElementById('skyBookmarkName');
     if (nameEl) nameEl.textContent = getDisplayShapeName(shapeId);
+
+    // K-32: тот же ряд граней, что на карточке атласа — видно, в каких цветах
+    // фигура уже собрана. До первого создания фигуры все грани просто не горят.
+    const facetsEl = document.getElementById('skyBookmarkFacets');
+    if (facetsEl) facetsEl.replaceChildren(...Array.from(createFacetsRow(shapeId).children));
 
     const canvas = document.getElementById('skyBookmarkCanvas');
     const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
