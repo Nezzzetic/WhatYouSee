@@ -241,7 +241,6 @@ en: {
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
-    'book.footAtlasProgress': '{current} of {total} traced',
     'book.footStampsProgress': '{current} of {total} pressed',
     // K-28: пейджер в подвале — сквозной по всей книге, не только внутри
     // атласа/штампов (swipeBookPage).
@@ -305,8 +304,7 @@ en: {
     'atlas.pageLockedProgress': 'Now: {current} / {target} ✦',
     // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
     // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
-    'atlas.notYetTraced': 'not yet traced',
-    'atlas.notYetTracedStars': { one: '{n} star', other: '{n} stars' },
+    // K-31: подпись и число звёзд сняты — на карточке остаётся только «?».
     'atlas.pinOn': 'Bookmark this shape to build tonight',
     'atlas.pinOff': 'Remove the bookmark',
     // Рабочие названия глав атласа (решение заказчика 2026-08-25: настоящие
@@ -550,7 +548,6 @@ ru: {
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
-    'book.footAtlasProgress': 'прочерчено {current} из {total}',
     'book.footStampsProgress': 'прижато {current} из {total}',
     'book.pagerPrev': 'Предыдущая страница',
     'book.pagerNext': 'Следующая страница',
@@ -599,12 +596,6 @@ ru: {
     'atlas.unknownConstellation': 'Неизвестное созвездие',
     'atlas.pageLocked': 'Страница откроется сама, когда накопится {n} ✦.',
     'atlas.pageLockedProgress': 'Сейчас: {current} / {target} ✦',
-    'atlas.notYetTraced': 'ещё не прочерчена',
-    'atlas.notYetTracedStars': {
-        one: '{n} звезда',
-        few: '{n} звезды',
-        many: '{n} звёзд'
-    },
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
     // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.

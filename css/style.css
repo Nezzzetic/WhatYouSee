@@ -1325,11 +1325,21 @@ button:disabled {
     align-items: center;
     gap: 3px;
     padding: 9px 6px 8px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.atlas-card-unknown {
-    opacity: 0.45;
+.atlas-card:focus-visible {
+    outline: 1px solid var(--ink-faint);
+    outline-offset: 2px;
+    border-radius: var(--r-md);
 }
+
+/* K-31: `.atlas-card-unknown` больше не гасит карточку (было opacity: 0.45
+   поверх уже бледного чертежа — drawShapeGlyph рисовал его альфой 0.7,
+   контур падал ниже 2:1 к бумаге). Класс остался флагом состояния для
+   `verify-atlas-spread.js` и для .atlas-card-title-unknown ниже — контраст
+   теперь несёт сам чертёж (альфа 0.85) и «?» вместо имени. */
 
 /* Полная огранка уже несут корона (.atlas-card-crown) и золотой цвет подписи
    (title.style.color, красится в JS) — своего вида класс не добавляет; он
@@ -1363,20 +1373,13 @@ button:disabled {
     text-align: center;
 }
 
+/* K-31: «?» вместо имени и вместо снятой подписи «not yet traced» —
+   крупнее строки и на --ink-muted (не --ink-faint): текст, в отличие от
+   контура чертежа, меряется по WCAG для текста, не для графики. */
 .atlas-card-title-unknown {
-    color: var(--ink-faint);
-    letter-spacing: 1px;
-}
-
-/* K-11: «N stars» под подписью неразгаданной — вместо граней, которых у неё
-   ещё нет. Тот же приём, что у .fnote в концепте: мелко, разрядка, тускло. */
-.atlas-card-note {
-    font-family: var(--font-text);
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-top: 2px;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--ink-muted);
 }
 
 /* K-11: булавка-закладка — верхний правый угол карточки. Кружок-контур,
