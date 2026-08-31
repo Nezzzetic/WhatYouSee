@@ -1388,7 +1388,7 @@ function createAchievementLockedRow(reason) {
 
     const icon = document.createElement('div');
     icon.className = 'achv-row-icon achv-row-icon-uncut';
-    icon.appendChild(glyphSign('knife', 22));
+    icon.appendChild(glyphSign('lock', 22));
     row.appendChild(icon);
 
     const body = document.createElement('div');

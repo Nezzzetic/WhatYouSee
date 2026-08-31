@@ -265,10 +265,10 @@ en: {
     'book.eyebrowAtlasChapter': 'Atlas · Chapter {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
     'book.eyebrowStampsChapter': 'Stamps · Chapter {n}',
-    'book.indexUncut': 'uncut',
-    // K-19: неразрезанная глава — цена, а не порог: «uncut · N ✦» вместо
-    // голого числа («дорасти», а не «купить»).
-    'book.indexUncutCost': 'uncut · {n} ✦',
+    // K-24: неразрезанная глава — не цена, а порог: та же формулировка, что
+    // на самой запертой странице («opens on its own once you have N ✦»),
+    // только короче. «uncut» снято — звёзды не тратятся и не сгорают.
+    'book.indexOpensAt': 'opens at {n} ✦',
     'book.indexOpen': 'Open the observatory',
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
@@ -564,8 +564,7 @@ ru: {
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
     'book.eyebrowStampsChapter': 'Штампы · глава {n}',
-    'book.indexUncut': 'не разрезано',
-    'book.indexUncutCost': 'не разрезано · {n} ✦',
+    'book.indexOpensAt': 'откроется на {n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
     'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
