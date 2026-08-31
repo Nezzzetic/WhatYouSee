@@ -1445,6 +1445,73 @@ function isMultiTouch(event) {
     return !!(event.touches && event.touches.length > 1);
 }
 
+/** K-26: во столько px книга уходит за нижний край экрана целиком. */
+function bookTravelPx() {
+    return window.innerHeight || document.documentElement.clientHeight || 800;
+}
+
+/**
+ * K-26: довод жеста книги — от текущей позиции translateY плавно к цели
+ * (или мгновенно при «уменьшить движение»), потом зовёт onSettled. Общая
+ * точка для открытия и закрытия: раньше на отпускании transform сбрасывался
+ * и hidden ставился в один тик без всякой доводки — движение обрывалось.
+ */
+function settleBookTransform(book, targetPx, onSettled) {
+    if (!book) { onSettled(); return; }
+    const finalTransform = targetPx ? `translateY(${targetPx}px)` : '';
+    if (prefersReducedMotion()) {
+        book.style.transition = '';
+        book.style.transform = finalTransform;
+        onSettled();
+        return;
+    }
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        book.removeEventListener('transitionend', onEnd);
+        clearTimeout(timer);
+        book.style.transition = '';
+        onSettled();
+    };
+    const onEnd = (event) => { if (event.target === book && event.propertyName === 'transform') finish(); };
+    book.addEventListener('transitionend', onEnd);
+    const timer = setTimeout(finish, BOOK_SETTLE_MS + 120);
+    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
+    // Форсированный рефлоу — браузер обязан зафиксировать стартовую (тянутую
+    // пальцем) позицию до смены на целевую, иначе переход схлопнется в один
+    // кадр без анимации. rAF для этого не годится — в фоновой/скрытой вкладке
+    // кадров нет вовсе, и жест завис бы там намертво.
+    void book.offsetHeight;
+    book.style.transform = finalTransform;
+}
+
+/**
+ * K-26: тап по ленте и Enter — короткая дорога к открытию, но не должны
+ * выглядеть рывком: страница едет с закрытой позиции тем же ходом, что и
+ * потягивание. openBook() остаётся синхронным (нужно тестовому харнессу и
+ * программным вызовам) — это чисто визуальная доводка поверх готового состояния.
+ */
+function openBookAnimated(cut) {
+    const book = document.getElementById('book');
+    const canAnimate = !!book && !prefersReducedMotion();
+    if (canAnimate) {
+        book.style.transition = 'none';
+        book.style.transform = `translateY(${bookTravelPx()}px)`;
+    }
+    openBook(cut);
+    if (!canAnimate) return;
+    void book.offsetHeight; // рефлоу теперь, когда книга уже видима — фиксирует старт
+    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
+    book.style.transform = '';
+    const onEnd = (event) => {
+        if (event.target !== book || event.propertyName !== 'transform') return;
+        book.removeEventListener('transitionend', onEnd);
+        book.style.transition = '';
+    };
+    book.addEventListener('transitionend', onEnd);
+}
+
 /**
  * Единственный жест книги — потягивание вниз закрывает её с любой страницы
  * (риск 4 дока K-06: возврат на небо обязан быть таким же дешёвым, как вход).
@@ -1496,10 +1563,18 @@ function setupBookCloseGesture() {
         if (!tracking) return;
         tracking = false;
         const p = getGesturePoint(event);
-        const dy = p ? p.clientY - startY : 0;
+        const dy = p ? Math.max(0, p.clientY - startY) : 0;
 
-        book.style.transform = '';
-        if (closing && dy >= BOOK_CLOSE_SWIPE_MIN_PX) closeBook();
+        if (closing && dy >= BOOK_CLOSE_SWIPE_MIN_PX) {
+            // K-26: довод — доезжаем вниз до конца тем же ходом, что вёл за
+            // пальцем, и только потом прячем; раньше это обрывалось тут же.
+            settleBookTransform(book, bookTravelPx(), () => closeBook());
+        } else if (closing) {
+            // ниже порога — страница падает обратно тем же доводом
+            settleBookTransform(book, 0, () => {});
+        } else {
+            book.style.transform = '';
+        }
         closing = false;
     };
 
@@ -1517,21 +1592,40 @@ function setupBookCloseGesture() {
     bookHandlersBound = true;
 }
 
-/** K-05: тянем ленту-закладку вверх — книга открывается на последней высечке. */
+/**
+ * K-05/K-26: тянем ленту-закладку вверх — книга едет за пальцем той же
+ * формулой, что и закрытие (setupBookCloseGesture), и на отпускании либо
+ * доводится до конца, либо падает обратно. Открывается на последней высечке.
+ */
 function setupRibbonPullGesture(ribbon) {
+    const book = document.getElementById('book');
     let startY = 0;
     let startX = 0;
     let tracking = false;
+    let decided = false;
+    let dragging = false;
     let pulled = false;
 
+    const beginDrag = () => {
+        if (!book) return;
+        dragging = true;
+        pulled = true; // жест пошёл — тап после него не должен сработать отдельно
+        book.style.transition = '';
+        book.hidden = false;
+        renderBook();
+        book.style.transform = `translateY(${bookTravelPx()}px)`;
+    };
+
     const start = (event) => {
-        if (isMultiTouch(event)) { tracking = false; return; }
+        if (isMultiTouch(event) || bookOpen) { tracking = false; return; }
         if (event.type === 'mousedown' && event.button !== 0) return;
         const p = getGesturePoint(event);
         if (!p) return;
         startY = p.clientY;
         startX = p.clientX;
         tracking = true;
+        decided = false;
+        dragging = false;
         pulled = false;
     };
 
@@ -1541,24 +1635,46 @@ function setupRibbonPullGesture(ribbon) {
         if (!p) return;
         const dy = startY - p.clientY;
         const dx = Math.abs(p.clientX - startX);
-        if (dy >= BOOK_OPEN_SWIPE_MIN_PX && dy > dx) {
-            pulled = true;
-            tracking = false;
-            openBook();
+
+        if (!decided) {
+            if (Math.max(dy, dx) < BOOK_AXIS_DECIDE_PX) return;
+            decided = true;
+            if (dy <= 0 || dy <= dx) { tracking = false; return; } // не вверх — не наш жест
+            beginDrag();
+        }
+
+        if (!dragging) return;
+        if (event.cancelable) event.preventDefault();
+        book.style.transform = `translateY(${Math.max(0, bookTravelPx() - dy)}px)`;
+    };
+
+    const end = (event) => {
+        if (!tracking) { tracking = false; return; }
+        tracking = false;
+        if (!dragging) return;
+        const p = getGesturePoint(event);
+        const dy = p ? startY - p.clientY : 0;
+        dragging = false;
+
+        if (dy >= BOOK_OPEN_SWIPE_MIN_PX) {
+            // K-26: довод — доезжаем вверх до конца тем же ходом, что вёл
+            // за пальцем, и только потом открываем по-настоящему.
+            settleBookTransform(book, 0, () => openBook());
+        } else {
+            // ниже порога — страница падает обратно, книга остаётся закрытой
+            settleBookTransform(book, bookTravelPx(), () => { if (book) book.hidden = true; });
         }
     };
 
-    const end = () => { tracking = false; };
-
     ribbon.addEventListener('touchstart', start, { passive: true });
-    ribbon.addEventListener('touchmove', move, { passive: true });
+    ribbon.addEventListener('touchmove', move, { passive: false });
     ribbon.addEventListener('touchend', end);
     ribbon.addEventListener('touchcancel', end);
     ribbon.addEventListener('mousedown', start);
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', end);
 
-    // Потянули вверх — click по ленте под пальцем не должен переоткрыть книгу
+    // Потянули — click по ленте под пальцем не должен сработать отдельно
     ribbon.addEventListener('click', (event) => {
         if (!pulled) return;
         pulled = false;
@@ -1566,10 +1682,10 @@ function setupRibbonPullGesture(ribbon) {
         event.preventDefault();
     }, true);
 
-    // Тап по ленте открывает книгу
+    // Тап по ленте — короткая дорога, но с тем же доводом (K-26)
     ribbon.addEventListener('click', () => {
         if (bookOpen) return;
-        openBook();
+        openBookAnimated();
     });
 }
 
@@ -1579,7 +1695,7 @@ function setupBookControls() {
     document.getElementById('skyRibbon')?.addEventListener('keydown', (event) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
         event.preventDefault();
-        openBook();
+        openBookAnimated();
     });
 
     document.querySelectorAll('.book-tab').forEach(btn => {
@@ -1594,9 +1710,6 @@ function setupBookControls() {
     document.getElementById('bookFootNext')?.addEventListener('click', (event) => {
         stepBookPage(Number(event.currentTarget.dataset.dir));
     });
-
-    // K-06 риск 4: строка на «Сегодня» — второй, равноценный вход в тот же жест закрытия
-    document.getElementById('bookReturnBtn')?.addEventListener('click', closeBook);
 
     // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
     document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));

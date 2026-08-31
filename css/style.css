@@ -818,31 +818,6 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* --- «вернуться на небо»: то же жест, что и потягивание вниз, но строкой --- */
-
-/* K-18: капитель (разрядка + капс — тот же приём, что у .book-eyebrow и
-   .book-index-sec-title; настоящих small-caps глифов у локального шрифта
-   не проверить, поэтому не font-variant-caps), не курсив. */
-.book-return {
-    flex: none;
-    margin-top: 10px;
-    padding: 6px;
-    border: none;
-    background: none;
-    color: var(--ink-faint);
-    font-family: var(--font-text);
-    font-style: normal;
-    text-transform: uppercase;
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-align: center;
-    cursor: pointer;
-}
-
-.book-return:hover {
-    color: var(--ink-muted);
-}
-
 /* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
 
 .book-btn {
