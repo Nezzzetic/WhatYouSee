@@ -955,14 +955,14 @@ function createBookIndexRow(title, folioN, countText, opts) {
     const head = document.createElement('span');
     head.className = 'book-index-row-head';
 
-    // K-23: жёлоб под сургучную точку держит место всегда у строк, которые
-    // вообще умеют её показывать (передан ключ `wax`, пусть и `false`) —
-    // появление/исчезновение точки не толкает заголовок.
-    if ('wax' in o) {
-        const wax = document.createElement('span');
-        wax.className = 'book-index-row-wax' + (o.wax ? ' book-index-row-wax-lit' : '');
-        head.appendChild(wax);
-    }
+    // K-23: жёлоб под сургучную точку — той же общей мерой, что и жёлоб под нож
+    // (см. выше): держит место у ЛЮБОЙ строки, не только там, где вызывающий
+    // код передаёт `wax`, иначе штампы (жёлоб есть) съезжают от атласа и
+    // Ex Libris/Настроек (жёлоба не было) на его ширину — тот же рваный
+    // список, только с другим виновником (фидбек с телефона 2026-08-31).
+    const wax = document.createElement('span');
+    wax.className = 'book-index-row-wax' + (o.wax ? ' book-index-row-wax-lit' : '');
+    head.appendChild(wax);
 
     const label = document.createElement('span');
     label.className = 'book-index-row-title';
