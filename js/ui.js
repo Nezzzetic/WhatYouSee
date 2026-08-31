@@ -940,19 +940,27 @@ function createBookIndexRow(title, folioN, countText, opts) {
     row.type = 'button';
     row.className = 'book-index-row';
 
-    if (o.locked) {
+    // K-23: жёлоб под знак ножа держит место всегда у строк главы (`chapter`),
+    // разрезанной или нет, — иначе у них разная геометрия заголовка.
+    if (o.chapter) {
         const icon = document.createElement('span');
-        icon.className = 'book-index-row-icon achv-row-icon-uncut';
-        icon.appendChild(glyphSign('knife', 16));
+        icon.className = 'book-index-row-icon';
+        if (o.locked) {
+            icon.classList.add('achv-row-icon-uncut');
+            icon.appendChild(glyphSign('knife', 16));
+        }
         row.appendChild(icon);
     }
 
     const head = document.createElement('span');
     head.className = 'book-index-row-head';
 
-    if (o.wax) {
+    // K-23: жёлоб под сургучную точку держит место всегда у строк, которые
+    // вообще умеют её показывать (передан ключ `wax`, пусть и `false`) —
+    // появление/исчезновение точки не толкает заголовок.
+    if ('wax' in o) {
         const wax = document.createElement('span');
-        wax.className = 'book-index-row-wax';
+        wax.className = 'book-index-row-wax' + (o.wax ? ' book-index-row-wax-lit' : '');
         head.appendChild(wax);
     }
 
@@ -1004,13 +1012,14 @@ function renderBookIndex() {
             ? createBookIndexRow(
                 title,
                 getAtlasChapterFolio(i),
-                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
+                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`,
+                { chapter: true }
             )
             : createBookIndexRow(
                 title,
                 null,
                 t('book.indexUncutCost', { n: getAtlasPageUnlockCost(i) }),
-                { locked: true }
+                { locked: true, chapter: true }
             );
         row.addEventListener('click', () => {
             setBookPageIndex('atlas', i);
@@ -1041,14 +1050,14 @@ function renderBookIndex() {
                 title,
                 getStampsChapterFolio(i),
                 `${pressed} / ${total}`,
-                { wax: rewardPageHasClaimable(i) }
+                { wax: rewardPageHasClaimable(i), chapter: true }
             );
         } else {
             row = createBookIndexRow(
                 title,
                 null,
                 t('book.indexUncutCost', { n: getRewardPageUnlockCost(i) }),
-                { locked: true }
+                { locked: true, chapter: true }
             );
         }
         row.addEventListener('click', () => {

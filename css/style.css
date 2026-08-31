@@ -947,11 +947,16 @@ button:disabled {
     transform: translateY(-3px);
 }
 
+/* K-23: жёлоб под точку зарезервирован в разметке всегда (createBookIndexRow) —
+   здесь только её вид, чтобы появление/исчезновение не толкало заголовок. */
 .book-index-row-wax {
     flex: none;
     width: 6px;
     height: 6px;
     border-radius: 50%;
+}
+
+.book-index-row-wax-lit {
     background: var(--wax);
     box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
 }
@@ -1464,8 +1469,11 @@ button:disabled {
 /* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
    (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
    строка списка — без линейки. */
+/* K-23: жёлоб под сургучную полосу зарезервирован всегда — иначе появление
+   сигнала «готово прижать» расталкивает строку (padding был только у
+   `.achv-row-claimable`, box-shadow сам по себе на геометрию не влияет). */
 .achv-row {
-    padding: 9px 0 10px;
+    padding: 9px 0 10px 9px;
     border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -1482,7 +1490,6 @@ button:disabled {
    марки — три независимых сигнала вместо одной рамки). */
 .achv-row-claimable {
     box-shadow: inset 3px 0 0 var(--wax);
-    padding-left: 9px;
 }
 
 .achv-row-locked {
