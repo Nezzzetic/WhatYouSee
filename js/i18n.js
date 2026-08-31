@@ -241,11 +241,12 @@ en: {
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
-    // K-18: колонтитул атласа/штампов — прогресс главы слева, диапазон
-    // колонцифр справа, взамен снятой строки-пейджера над сеткой.
-    'book.folioRange': 'p. {n} · {m}',
     'book.footAtlasProgress': '{current} of {total} traced',
     'book.footStampsProgress': '{current} of {total} pressed',
+    // K-28: пейджер в подвале — сквозной по всей книге, не только внутри
+    // атласа/штампов (swipeBookPage).
+    'book.pagerPrev': 'Previous page',
+    'book.pagerNext': 'Next page',
     'book.openRibbon': 'Open the almanac',
     'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
@@ -549,9 +550,10 @@ ru: {
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
-    'book.folioRange': 'стр. {n} · {m}',
     'book.footAtlasProgress': 'прочерчено {current} из {total}',
     'book.footStampsProgress': 'прижато {current} из {total}',
+    'book.pagerPrev': 'Предыдущая страница',
+    'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',
     'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',

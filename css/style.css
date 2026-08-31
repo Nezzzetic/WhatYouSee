@@ -744,26 +744,30 @@ button:disabled {
     color: var(--ink-faint);
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
+    align-items: center;
 }
 
 /* --- K-18: листание глав атласа/штампов переехало в подвал (было отдельной
    строкой-пейджером над сеткой) — правая половина `.book-foot` вместо голой
-   колонцифры несёт «‹ p. N · M ▸». Кнопки те же узлы, что раньше жили в
+   колонцифры несёт «‹ p. N ▸». Кнопки те же узлы, что раньше жили в
    `.book-pager` (сохраняют `data-pager`/`data-dir` — на них смотрит
-   verify-atlas-spread.js), просто без кружка-кнопки. */
+   verify-atlas-spread.js), просто без кружка-кнопки. K-28: пейджер стал
+   сквозным на всю книгу — стрелки видны на любом развороте, прячутся только
+   на истинных краях (canSwipeBookPage в ui.js), поэтому align-items здесь
+   center, а не baseline — глиф крупнее строчного текста рядом. */
 
 .book-foot-nav {
     flex: none;
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 6px;
 }
 
-/* K-28: зона касания растёт через padding + отрицательный margin — тот же
-   приём, что уже держит зону касания ленты-закладки (K-05, шире хвоста) и
-   готовой марки (K-08, `.achv-tile-ready` шире на 6pt). Видимый глиф не
-   меняется, книжный вид подвала сохраняется. */
+/* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
+   странно попадать пальцем даже с увеличенной зоной касания. Зона касания
+   растёт ещё и через padding + отрицательный margin — тот же приём, что уже
+   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой марки
+   (K-08, `.achv-tile-ready` шире на 6pt). */
 .book-foot-nav-btn {
     flex: none;
     padding: 12px 14px;
@@ -771,7 +775,7 @@ button:disabled {
     border: none;
     background: none;
     color: var(--ink-muted);
-    font-size: 12px;
+    font-size: 24px;
     line-height: 1;
     letter-spacing: normal;
     cursor: pointer;
@@ -779,11 +783,6 @@ button:disabled {
 
 .book-foot-nav-btn:hover {
     color: var(--ink);
-}
-
-.book-foot-nav-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
 }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
