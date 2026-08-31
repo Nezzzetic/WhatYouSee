@@ -767,11 +767,15 @@ button:disabled {
    странно попадать пальцем даже с увеличенной зоной касания. Зона касания
    растёт ещё и через padding + отрицательный margin — тот же приём, что уже
    держит зону касания ленты-закладки (K-05, шире хвоста) и готовой марки
-   (K-08, `.achv-tile-ready` шире на 6pt). */
+   (K-08, `.achv-tile-ready` шире на 6pt). Горизонталь — асимметрично: сторона
+   к колонцифре (`#bookFolio`) остаётся узкой (4px, в пределах gap:6px), чтобы
+   хиткон стрелки не наезжал на число при наведении/касании (был баг — правка
+   по фидбеку с телефона), наружная сторона (к пустому полю страницы) растёт
+   на все 20px — там расти некуда мешать. */
 .book-foot-nav-btn {
     flex: none;
-    padding: 12px 14px;
-    margin: -12px -14px;
+    padding: 12px 4px;
+    margin: -12px -4px;
     border: none;
     background: none;
     color: var(--ink-muted);
@@ -784,6 +788,9 @@ button:disabled {
 .book-foot-nav-btn:hover {
     color: var(--ink);
 }
+
+#bookFootPrev { padding-left: 20px; margin-left: -20px; }
+#bookFootNext { padding-right: 20px; margin-right: -20px; }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
 
