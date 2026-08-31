@@ -1451,9 +1451,13 @@ function createAchievementRow(chain) {
 
     row.appendChild(head);
 
+    // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
+    // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
+    // steps) описания не показывает — печатать нечего.
     const desc = document.createElement('div');
     desc.className = 'achv-row-desc';
-    desc.textContent = chain.desc || '';
+    const stepEntry = chain.steps[p.stepIndex];
+    desc.textContent = stepEntry ? stepEntry.desc : '';
     row.appendChild(desc);
 
     row.appendChild(createAchievementTiles(chain, p));

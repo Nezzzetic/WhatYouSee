@@ -208,7 +208,7 @@ en: {
     'chain.ogranshchik.desc': 'Atlas shapes faceted in all colors',
     // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
     'chain.evening_rite.desc': 'Draw your first constellation, then finish the night.',
-    'chain.evening_rite.stepEntry': 'Draw your first constellation tonight',
+    'chain.evening_rite.stepEntry': 'Draw your first constellation',
     'chain.evening_rite.stepNight': 'Complete the night',
 
     // --- Страницы наград --------------------------------------------------------
@@ -272,12 +272,12 @@ en: {
     'book.indexOpen': 'Open the observatory',
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
-    'book.newsAtlasCut': 'Chapter {n} was cut open tonight.',
-    'book.newsShapeOpened': '{name} — a new shape in the atlas tonight.',
+    'book.newsAtlasCut': 'Chapter {n} has opened.',
+    'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
-    'book.newsChainOpen': '{title} — a new achievement is open tonight.',
+    'book.newsChainOpen': '{title} — a new achievement is open.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
-    'book.newsObservatoryOpen': 'Ex Libris opened tonight — {n} stars are waiting.',
+    'book.newsObservatoryOpen': 'Ex Libris has opened — {n} stars are waiting.',
     // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
     // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
     'book.todayStarsLeft': {
@@ -518,7 +518,7 @@ ru: {
     'chain.ogranshchik.desc': 'Фигуры, огранённые во всех цветах',
     // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
     'chain.evening_rite.desc': 'Начните ночь первым созвездием, а затем завершите её.',
-    'chain.evening_rite.stepEntry': 'Создать первое созвездие этой ночью',
+    'chain.evening_rite.stepEntry': 'Создать первое созвездие',
     'chain.evening_rite.stepNight': 'Завершить ночь',
 
     // --- Страницы наград ------------------------------------------------------
@@ -567,12 +567,12 @@ ru: {
     'book.indexOpensAt': 'откроется на {n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
-    'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
-    'book.newsShapeOpened': '«{name}» — новая фигура в атласе этой ночью.',
+    'book.newsAtlasCut': 'Глава {n} открыта.',
+    'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
-    'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
+    'book.newsChainOpen': '«{title}» — новое достижение открыто.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
-    'book.newsObservatoryOpen': 'Сегодня ночью открылся Экслибрис — {n} звёзд ждут.',
+    'book.newsObservatoryOpen': 'Открылся Экслибрис — {n} звёзд ждут.',
     // K-17: строки состояния страницы — считаются на рендере, в новостях не живут.
     'book.todayStarsLeft': {
         one: 'На небе ещё не соединена {n} звезда.',
