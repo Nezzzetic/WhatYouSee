@@ -287,6 +287,30 @@ function glyphSign(name, size = 24, className = '') {
 const GLYPH_SIZES = { row: 16, card: 30, spread: 76 };
 
 /**
+ * K-30: буфер канваса — в физических пикселях (`cssPx * devicePixelRatio`),
+ * логический размер (для CSS и для формул `drawShapeGlyph`) кладём в
+ * `dataset.glyphCssPx`. DPR читается заново при каждом вызове (не кэшируется) —
+ * смена плотности на лету (другой монитор, зум браузера) подхватывается
+ * следующей перерисовкой.
+ *
+ * `forceCssSize` пиннит видимый размер инлайн-стилем — нужно канвасам без
+ * своего CSS-правила размера (`.shape-glyph`, `#skyBookmarkCanvas`). Для
+ * `.atlas-card-canvas` (тянется `width:100%; max-width:76px` на узком экране)
+ * передаём `false` — инлайн-стиль сломал бы отзывчивость, видимый размер
+ * остаётся на совести CSS, буфер просто становится резче.
+ */
+function sizeGlyphCanvas(canvas, cssPx, forceCssSize = true) {
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(cssPx * dpr);
+    canvas.height = Math.round(cssPx * dpr);
+    canvas.dataset.glyphCssPx = cssPx;
+    if (forceCssSize) {
+        canvas.style.width = cssPx + 'px';
+        canvas.style.height = cssPx + 'px';
+    }
+}
+
+/**
  * Глиф фигуры на канвасе. Размер канваса задаёт вызывающий; отступ, толщина
  * штриха и радиус точки едут за ним, но не ужимаются ниже читаемого предела —
  * иначе разворот и строка расходятся не масштабом, а видом.
@@ -295,11 +319,19 @@ const GLYPH_SIZES = { row: 16, card: 30, spread: 76 };
  * полые точки без ореола, цвет фиксирован на --ink-faint (не спойлерит цвет
  * тира до находки). Применяется только на кегле разворота (76px) — риск 3
  * дока: пунктир на строке (16px) может выродиться в точки, там режим не используется.
+ *
+ * K-30: буфер канваса может быть больше CSS-размера (HiDPI, см. `sizeGlyphCanvas`).
+ * Отступ/толщина/радиус считаются от **логической** стороны (CSS px), иначе
+ * порог читаемости K-02 (мин. 1.4 px точки на строке) на большом DPR съезжает
+ * вниз — контекст масштабируется один раз, дальше формулы не меняются.
  */
 function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
+    const cssSize = Number(canvas.dataset.glyphCssPx) || canvas.width;
+    const dpr = canvas.width / cssSize;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = cssSize;
+    const h = cssSize;
     const side = Math.min(w, h);
     // Всё, что ниже — доли от стороны с полом: на строке (16 px) пол и работает.
     const pad = Math.max(2, side * 0.105);
@@ -354,8 +386,7 @@ function shapeGlyphNode(shapeId, size = 'row', color = INK_MUTED_RGB) {
     const px = typeof size === 'number' ? size : (GLYPH_SIZES[size] || GLYPH_SIZES.row);
     const canvas = document.createElement('canvas');
     canvas.className = 'shape-glyph';
-    canvas.width = px;
-    canvas.height = px;
+    sizeGlyphCanvas(canvas, px);
     const pattern = (typeof SHAPE_PATTERNS !== 'undefined' && SHAPE_PATTERNS[shapeId]) || null;
     if (pattern) drawShapeGlyph(canvas, pattern, color);
     return canvas;
@@ -490,8 +521,7 @@ function createAtlasEntryCard(entry) {
 
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-card-canvas';
-    canvas.width = 76;
-    canvas.height = 76;
+    sizeGlyphCanvas(canvas, GLYPH_SIZES.spread, false);
     card.appendChild(canvas);
 
     const title = document.createElement('div');
@@ -1382,7 +1412,12 @@ function renderSkyBookmark() {
     const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
     // K-18: тот же режим чертежа, что на карточке атласа — визуальная
     // когерентность одного состояния «не разгадано» на разных узлах.
-    if (canvas && pattern) drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !isShapeCreated(shapeId));
+    // K-30: CSS уже пиннит видимый размер (.sky-bookmark-canvas), но буфер
+    // нужно досчитать под DPR — иначе чертёж в углу неба мылится сильнее всего.
+    if (canvas && pattern) {
+        sizeGlyphCanvas(canvas, 60);
+        drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !isShapeCreated(shapeId));
+    }
 }
 
 // =============================================================================
