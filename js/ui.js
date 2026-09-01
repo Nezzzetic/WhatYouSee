@@ -252,10 +252,12 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все девятнадцать имён кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все двадцать четыре имени кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
-    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock'
+    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
+    // K-33: свой знак каждому цветовому квесту
+    'round', 'hex', 'oct', 'marquise', 'trillion'
 ];
 
 /**
