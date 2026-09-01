@@ -256,8 +256,8 @@ function onConstellationCreated(shapeName) {
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
-    // K-33: свой знак каждому цветовому квесту
-    'round', 'hex', 'oct', 'marquise', 'trillion'
+    // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
+    'drop', 'flame', 'ring', 'ball', 'wave'
 ];
 
 /**
