@@ -1125,48 +1125,60 @@ button:disabled {
 }
 
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
-   не поповером над подвалом шторки (той больше нет). --- */
+   не поповером над подвалом шторки (той больше нет).
+   K-34: рамка/заливка/12px-радиус сняты — та же карточка-плашка, которую
+   K-18/K-24/K-25 уже вывели отовсюду в пользу волосяной линейки; текст ложится
+   прямо на бумагу. Бар прогресса — тонкая линия (тот же словарь, что у шкалы
+   света корешка и точечной линейки сцепки), не отдельная толстая пилюля. --- */
 
 .obs-lock-hint {
-    padding: 10px 12px 11px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 12px;
-    background: var(--paper-raised);
+    padding: 8px 4px 2px;
+    text-align: center;
 }
 
 /* --- B-02: обсерватория --------------------------------------------------- */
 
 .obs-lock-title {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     font-family: var(--font-title);
-    font-size: 12.5px;
+    font-size: 13.5px;
     color: var(--ink);
 }
 
 .obs-lock-sub {
-    margin-top: 2px;
-    font-size: 11.5px;
+    margin-top: 6px;
+    font-style: italic;
+    font-size: 12px;
+    line-height: 1.4;
     color: var(--ink-muted);
 }
 
 .obs-lock-bar {
-    margin-top: 7px;
-    height: 6px;
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.07);
-    overflow: hidden;
+    position: relative;
+    margin: 16px auto 0;
+    max-width: 200px;
+    height: 1px;
+    background: var(--paper-edge);
 }
 
 .obs-lock-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
     height: 100%;
     width: 0;
-    border-radius: 99px;
     background: var(--gold);
+    box-shadow: 0 0 4px rgba(var(--gold-rgb), 0.5);
 }
 
 .obs-lock-progress {
-    margin-top: 4px;
+    margin-top: 8px;
     font-size: 11px;
-    color: var(--ink-muted);
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
 }
 
 /* =============================================================================
