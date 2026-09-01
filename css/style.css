@@ -635,6 +635,11 @@ button:disabled {
     margin-top: 2px;
 }
 
+/* K-31 (аналогия): имя — сюрприз до первого создания, как на карточке атласа. */
+.sky-bookmark-name-unknown {
+    color: var(--ink-faint);
+}
+
 .sky-bookmark-label {
     font-family: var(--font-text);
     font-size: 9px;
