@@ -1478,8 +1478,14 @@ function renderSkyBookmark() {
     el.hidden = !shapeId || inObservatory;
     if (!shapeId) return;
 
+    // K-31: имя — сюрприз до первого создания фигуры, как на карточке атласа
+    // («?» вместо текста); чертёж рядом уже рисуется блупринтом (см. ниже).
+    const created = isShapeCreated(shapeId);
     const nameEl = document.getElementById('skyBookmarkName');
-    if (nameEl) nameEl.textContent = getDisplayShapeName(shapeId);
+    if (nameEl) {
+        nameEl.textContent = created ? getDisplayShapeName(shapeId) : '?';
+        nameEl.classList.toggle('sky-bookmark-name-unknown', !created);
+    }
 
     // K-32: тот же ряд граней, что на карточке атласа — видно, в каких цветах
     // фигура уже собрана. До первого создания фигуры все грани просто не горят.
@@ -1494,7 +1500,7 @@ function renderSkyBookmark() {
     // нужно досчитать под DPR — иначе чертёж в углу неба мылится сильнее всего.
     if (canvas && pattern) {
         sizeGlyphCanvas(canvas, 60);
-        drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !isShapeCreated(shapeId));
+        drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !created);
     }
 }
 
