@@ -1049,6 +1049,13 @@ button:disabled {
     font-variant-numeric: tabular-nums;
 }
 
+/* K-25: на нуле «● 0» нечего показывать, но узел остаётся в разметке —
+   getClaimFlightTargetRect() целится в него же, и первый в жизни игрока
+   забор не должен искать устаревшую (и уже скрытую книгой) цель на ленте. */
+.book-gauge-flag-empty {
+    visibility: hidden;
+}
+
 .book-gauge-flag::before {
     content: '';
     width: 5px;

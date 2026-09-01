@@ -820,7 +820,12 @@ function renderBookGauge() {
     el.appendChild(bottomTick);
 
     const flag = document.createElement('div');
-    flag.className = 'book-gauge-flag';
+    // На нуле флажку нечего показывать — «● 0» рядом с нижней риской выглядит
+    // как случайная деталь, а не как метка прогресса, которого ещё нет. Узел
+    // остаётся в разметке (visibility, не display/innerHTML) — на нём стоит
+    // getClaimFlightTargetRect(), и первый в жизни игрока забор не должен
+    // целиться в устаревший (и уже скрытый книгой) прямоугольник ленты.
+    flag.className = earned > 0 ? 'book-gauge-flag' : 'book-gauge-flag book-gauge-flag-empty';
     // K-25: честная ratio-координата, но не ближе BOOK_GAUGE_FLAG_MIN_GAP_PX
     // к любой из рисок — иначе цифра нижнего значения садится на риску текстом.
     const minRatio = trackH > 0 ? Math.min(0.5, BOOK_GAUGE_FLAG_MIN_GAP_PX / trackH) : 0;
