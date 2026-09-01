@@ -969,29 +969,28 @@ function createBookIndexRow(title, folioN, countText, opts) {
     row.type = 'button';
     row.className = 'book-index-row';
 
-    // K-23: жёлоб под знак замка держит место всегда, у любой строки оглавления —
-    // не только затем, чтобы разрезанная и запертая глава не отличались геометрией,
-    // но и чтобы заголовки всех строк (включая Ex Libris и Настройки, замка не
-    // знающие) лежали на одной вертикали, а не рвали список вразнобой.
+    // K-23: жёлоб держит место у ЛЮБОЙ строки оглавления — не только затем,
+    // чтобы разрезанная и запертая глава не отличались геометрией, но и
+    // чтобы заголовки всех строк (включая Ex Libris и Настройки, ни замка,
+    // ни точки не знающие) лежали на одной вертикали, а не рвали список
+    // вразнобой (фидбек с телефона 2026-08-31). K-24: замок и сургучная точка
+    // на одной строке никогда не встречаются (замок — атлас/штампы взаперти,
+    // точка — только разрезанные штампы с чем взять) — жёлоб на двоих один,
+    // не два: второй пустой слот только раздвигал бы список зазором без смысла.
     const icon = document.createElement('span');
     icon.className = 'book-index-row-icon';
     if (o.locked) {
         icon.classList.add('achv-row-icon-uncut');
         icon.appendChild(glyphSign('lock', 16));
+    } else if (o.wax) {
+        const wax = document.createElement('span');
+        wax.className = 'book-index-row-wax book-index-row-wax-lit';
+        icon.appendChild(wax);
     }
     row.appendChild(icon);
 
     const head = document.createElement('span');
     head.className = 'book-index-row-head';
-
-    // K-23: жёлоб под сургучную точку — той же общей мерой, что и жёлоб под нож
-    // (см. выше): держит место у ЛЮБОЙ строки, не только там, где вызывающий
-    // код передаёт `wax`, иначе штампы (жёлоб есть) съезжают от атласа и
-    // Ex Libris/Настроек (жёлоба не было) на его ширину — тот же рваный
-    // список, только с другим виновником (фидбек с телефона 2026-08-31).
-    const wax = document.createElement('span');
-    wax.className = 'book-index-row-wax' + (o.wax ? ' book-index-row-wax-lit' : '');
-    head.appendChild(wax);
 
     const label = document.createElement('span');
     label.className = 'book-index-row-title';
