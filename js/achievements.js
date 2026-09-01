@@ -50,13 +50,19 @@ const ACHIEVEMENT_COLOR_KEYS = ['red', 'orange', 'yellow', 'white', 'blue'];
 function achievementColorLabel(color) {
     return t('color.' + color);
 }
-// K-02: знак обозначает ТЕМУ, а не цепочку. У пяти цветовых цепочек знак один —
-// ромб грани; различает их цвет строки, взятый из звёздного тира. Своего цвета
-// у знака нет, он берёт цвет строки, в которой стоит.
+// K-33 (отменяет правило K-02 для цветовых цепочек): плашка марки — одного
+// книжного цвета всегда, различает квесты знак, а не цвет. До K-33 у пяти
+// цветовых цепочек был один знак (ромб грани `loz`), а плашку красил цвет
+// тира — без цвета все пять читались одинаково (дальтонизм; заказчик отменил
+// правило 2026-08-31, фидбек с Miro-доски, п. 22). `ACHIEVEMENT_COLOR_SIGN`
+// остался генерик-знаком темы «огранка/цвет» — им по-прежнему помечены
+// «Радуга» (цепочка по всем пяти цветам сразу, не про один) и страница
+// The Cutter's Hand целиком; по самим цепочкам `color_*` он больше не ставится.
 const ACHIEVEMENT_COLOR_SIGN = 'loz';
-const ACHIEVEMENT_COLOR_STAR_RGB = {
-    red: [240, 122, 103], orange: [242, 162, 84], yellow: [242, 201, 101],
-    white: [237, 239, 245], blue: [134, 200, 242]
+// K-33: свой знак на каждую цепочку — форма огранки (та же тема кассы K-02,
+// что и generic `loz`), различима без цвета на кегле марки (14 px).
+const ACHIEVEMENT_COLOR_CHAIN_SIGNS = {
+    red: 'round', orange: 'hex', yellow: 'oct', white: 'marquise', blue: 'trillion'
 };
 // Размерные цепочки, «Восьмёрка+», «Мозаика» и «Зодчий неба» — одна тема:
 // построенные созвездия. K-19: заголовок строки — рабочее имя, а не ярлык
@@ -72,8 +78,7 @@ function buildColorChain(color) {
     return {
         id: 'color_' + color,
         title: t(`chain.color_${color}.title`),
-        sign: ACHIEVEMENT_COLOR_SIGN,
-        signColor: ACHIEVEMENT_COLOR_STAR_RGB[color],
+        sign: ACHIEVEMENT_COLOR_CHAIN_SIGNS[color],
         // K-08: описание сцепки — что именно считается, без числа ступени.
         desc: t('chain.color.desc', { color: achievementColorLabel(color) }),
         steps: tiers.map(n => ({
@@ -1327,9 +1332,7 @@ function createAchievementTile(chain, stepIndex, p) {
 
     if (pressed) {
         tile.classList.add('achv-tile-lit');
-        const ic = glyphSign(chain.sign || 'arc', 14);
-        if (chain.signColor) ic.style.color = `rgb(${chain.signColor.join(',')})`;
-        tile.appendChild(ic);
+        tile.appendChild(glyphSign(chain.sign || 'arc', 14));
         return tile;
     }
 
