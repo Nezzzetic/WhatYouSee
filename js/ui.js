@@ -1211,25 +1211,7 @@ function renderBookExLibris() {
             fillEl.style.width = (ratio * 100).toFixed(1) + '%';
         }
         if (progressEl) progressEl.textContent = t('observatory.lockedProgress', { current, target });
-        return;
     }
-
-    renderExLibrisCaption();
-}
-
-/**
- * K-13: «когда лист начат и сколько на нём групп», курсивом под оттиском —
- * ровно так подписывали таблицы в старых атласах. Ночь — та, в которую холст
- * получил первую звезду (getObservatoryBeganNight, observatory.js); групп —
- * столько, сколько подписанных созвездий держит сам холст (U-12).
- */
-function renderExLibrisCaption() {
-    const el = document.getElementById('exLibrisCaptionSub');
-    if (!el) return;
-    const night = (typeof getObservatoryBeganNight === 'function' && getObservatoryBeganNight())
-        || (achievementCounters ? achievementCounters.levelsCompleted : 0) + 1;
-    const groups = typeof observatoryNames !== 'undefined' ? observatoryNames.length : 0;
-    el.textContent = tp('observatory.beganCaption', groups, { night });
 }
 
 // =============================================================================

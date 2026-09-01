@@ -1139,12 +1139,9 @@ button:disabled {
 /* --- B-02: обсерватория --------------------------------------------------- */
 
 .obs-lock-title {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
     font-family: var(--font-title);
-    font-size: 13.5px;
+    font-size: 15px;
+    line-height: 1.3;
     color: var(--ink);
 }
 
@@ -1226,14 +1223,6 @@ button:disabled {
     width: 38px;
     height: 1px;
     background: var(--paper-edge);
-}
-
-.exlibris-caption-sub {
-    font-family: var(--font-text);
-    font-style: italic;
-    font-size: 12.5px;
-    color: var(--ink-muted);
-    margin-top: 7px;
 }
 
 /* Канвас встроен: репозиционируется fixed поверх .exlibris-canvas-slot, но
