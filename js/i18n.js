@@ -332,17 +332,15 @@ en: {
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.modeConnect': 'Connect stars',
     'observatory.modeMove': 'Move and recolour stars',
-    'observatory.lockedTitle': 'A sky of your own',
+    // K-34: заголовок хинта был дословным повтором заголовка страницы
+    // (book.headExLibris — «A sky of your own») — теперь зовёт, а не повторяет.
+    'observatory.lockedTitle': 'Create your own, unique constellation',
     'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
     // K-21: подпись прежнего prompt() переехала в aria-label книжного поля ввода.
     'observatory.renamePrompt': 'Name this constellation:',
     // --- K-13: подпись под оттиском ---------------------------------------
     'observatory.exLibris': 'Ex libris',
-    'observatory.beganCaption': {
-        one: 'begun on night {night} · {n} group',
-        other: 'begun on night {night} · {n} groups'
-    }
 },
 
 // -----------------------------------------------------------------------------
@@ -621,17 +619,14 @@ ru: {
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.modeConnect': 'Соединять звёзды',
     'observatory.modeMove': 'Перемещать и красить звёзды',
-    'observatory.lockedTitle': 'Своё небо, которое можно переставлять',
+    // K-34: заголовок хинта дословно повторял заголовок страницы
+    // (book.headExLibris — «Своё небо») — теперь зовёт, а не повторяет.
+    'observatory.lockedTitle': 'Создай своё, уникальное созвездие',
     'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
     'observatory.renamePrompt': 'Назвать созвездие:',
     // --- K-13: подпись под оттиском ---------------------------------------
     'observatory.exLibris': 'Ex libris',
-    'observatory.beganCaption': {
-        one: 'начат в {night}-ю ночь · {n} группа',
-        few: 'начат в {night}-ю ночь · {n} группы',
-        many: 'начат в {night}-ю ночь · {n} групп'
-    }
 }
 
 };
