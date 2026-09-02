@@ -293,8 +293,9 @@ en: {
     'book.cutSettings': 'Settings',
     'book.headSettings': 'Settings',
 
-    // --- Настройки (K-14) --------------------------------------------------------
+    // --- Настройки (K-14, U-14) ---------------------------------------------------
     'settings.sound': 'Sound',
+    'settings.haptic': 'Vibration',
     'settings.toggleOn': 'on',
     'settings.toggleOff': 'off',
 
@@ -587,8 +588,9 @@ ru: {
     'book.cutSettings': 'Настройки',
     'book.headSettings': 'Настройки',
 
-    // --- Настройки (K-14) --------------------------------------------------------
+    // --- Настройки (K-14, U-14) ---------------------------------------------------
     'settings.sound': 'Звук',
+    'settings.haptic': 'Вибрация',
     'settings.toggleOn': 'вкл',
     'settings.toggleOff': 'выкл',
 
