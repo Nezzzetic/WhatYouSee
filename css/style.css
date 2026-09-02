@@ -1138,6 +1138,15 @@ button:disabled {
 
 /* --- B-02: обсерватория --------------------------------------------------- */
 
+/* K-34: замок K-24 (тот же знак, что у запертых глав атласа/штампов и
+   Odd Nights) — статус «заперто» читается сам, без слов, до заголовка-CTA. */
+.obs-lock-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+    color: var(--ink-muted);
+}
+
 .obs-lock-title {
     font-family: var(--font-title);
     font-size: 15px;
