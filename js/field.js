@@ -770,3 +770,30 @@ function recomputeSuppressedStars() {
         star.suppressed = suppressed;
     }
 }
+
+/**
+ * M-07: гасит играбельные звёзды, для которых на всём поле не осталось ни одной
+ * валидной пары (по длине ребра и без пересечения уже начерченных линий) — иначе
+ * они горят, но соединить их уже ни с кем нельзя. Возвращает id погашенных этим
+ * вызовом звёзд (нужно для отката последнего созвездия).
+ */
+function extinguishOrphanStars() {
+    const playable = getPlayableStars();
+    const orphanIds = [];
+    for (const star of playable) {
+        let hasPartner = false;
+        for (const other of playable) {
+            if (other === star) continue;
+            if (isValidEdgeBetweenStars(star, other)) {
+                hasPartner = true;
+                break;
+            }
+        }
+        if (!hasPartner) orphanIds.push(star.id);
+    }
+    for (const id of orphanIds) {
+        const star = getStarById(id);
+        if (star) star.extinguished = true;
+    }
+    return orphanIds;
+}

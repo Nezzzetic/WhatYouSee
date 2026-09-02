@@ -483,8 +483,9 @@
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
             // K-14: настройка звука — свой ключ, вне сейва; видна сценарию так же,
-            // как язык и версии сейва рядом.
+            // как язык и версии сейва рядом. U-14: вибро — тот же ключ, второе поле.
             soundEnabled: typeof isSoundEnabled === 'function' ? isSoundEnabled() : true,
+            hapticEnabled: typeof isHapticEnabled === 'function' ? isHapticEnabled() : true,
             saveVersion: {
                 achievements: ACHIEVEMENTS_SAVE_VERSION,
                 catalog: CATALOG_SAVE_VERSION
@@ -567,6 +568,35 @@
                 const el = document.getElementById('skyBookmark');
                 return { shape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
                     visible: !!(el && el.getBoundingClientRect().width > 0) };
+            })(),
+            // K-17: шесть сигналов концепта — то, что сценарий не может увидеть
+            // ни по модели, ни по одному узлу: видна ли шкала физически (её
+            // закрашивала страница), куда целится монета и на какой высечке
+            // горит капля.
+            signals: (() => {
+                const gauge = document.getElementById('bookGauge');
+                const box = gauge ? gauge.getBoundingClientRect() : null;
+                const hit = box && box.width
+                    ? document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+                    : null;
+                const target = typeof getClaimFlightTargetRect === 'function'
+                    ? getClaimFlightTargetRect() : null;
+                const flag = document.querySelector('#bookGauge .book-gauge-flag');
+                const flagBox = flag ? flag.getBoundingClientRect() : null;
+                const waxOf = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? !el.hidden : null;
+                };
+                return {
+                    gaugeVisible: !!(box && box.width > 0 && hit && gauge.contains(hit)),
+                    gaugeHit: hit ? (hit.id || hit.className || hit.tagName) : null,
+                    flightOnFlag: !!(target && flagBox && flagBox.width
+                        && Math.abs(target.left - flagBox.left) < 1
+                        && Math.abs(target.top - flagBox.top) < 1),
+                    tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') },
+                    todayState: [...document.querySelectorAll('#bookTodayState .book-state-row')]
+                        .map(r => r.textContent)
+                };
             })(),
             // K-13: холст встроен в разворот страницы — канвас репозиционирован
             // поверх #exLibrisCanvasSlot, а не рисует во весь экран.

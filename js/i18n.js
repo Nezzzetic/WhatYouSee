@@ -128,17 +128,19 @@ en: {
     'chain.mosaic.title': 'Mosaic',
     'chain.vitrazh.title': 'Stained Glass',
     'chain.kaleidoscope.title': 'Kaleidoscope',
-    'chain.gobelen.title': 'Tapestry',
-    'chain.orchestra.title': 'Orchestra',
-    'chain.symphony.title': 'Symphony',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
     'chain.minimalism.title': 'Minimalism',
     'chain.unite_all.title': 'All-in-One',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
-    'chain.daily_entry.title': 'Arrival',
-    'chain.daily_night.title': 'Night Closed',
+    'chain.evening_rite.title': 'Evening Rite',
+    // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
+    // как у остальных сцепок; настоящие придут с C-01.
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.title': 'Small Sky',
+    'chain.size_5_7.title': 'Wide Sky',
+    'chain.size8plus.title': 'Eightfold+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -147,11 +149,17 @@ en: {
     },
     // K-08: описание сцепки — одна строка без числа, что именно считается.
     'chain.color.desc': 'Constellations finished in {color}',
-    'chain.size.step': {
-        one: '{n} constellation of {size}★',
-        other: '{n} constellations of {size}★'
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.step': {
+        one: '{n} constellation of 2–4★',
+        other: '{n} constellations of 2–4★'
     },
-    'chain.size.desc': 'Constellations of exactly {size} stars',
+    'chain.size_2_4.desc': 'Constellations of 2 to 4 stars',
+    'chain.size_5_7.step': {
+        one: '{n} constellation of 5–7★',
+        other: '{n} constellations of 5–7★'
+    },
+    'chain.size_5_7.desc': 'Constellations of 5 to 7 stars',
     'chain.size8plus.step': {
         one: '{n} constellation of 8★+',
         other: '{n} constellations of 8★+'
@@ -172,10 +180,7 @@ en: {
         other: '{n} nights: {desc}'
     },
     'chain.vitrazh.desc': 'page 3 shapes on the field in all 5 colors',
-    'chain.kaleidoscope.desc': 'all 5 shapes of page 4 on the field',
-    'chain.gobelen.desc': '3+ shapes of page 5 on the field',
-    'chain.orchestra.desc': 'create all 5 shapes of page 6 in one night',
-    'chain.symphony.desc': 'create the Perfectionist in one night',
+    'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
     'chain.nights.step': {
         one: '{n} completed night',
         other: '{n} completed nights'
@@ -193,17 +198,18 @@ en: {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
     },
-    'chain.razvedka.stepAll': 'Discover all 29 atlas shapes',
+    'chain.razvedka.stepAll': 'Discover all 24 atlas shapes',
     'chain.razvedka.desc': 'New atlas shapes discovered',
     'chain.ogranshchik.step': {
         one: '{n} faceted shape (all 5 colors each)',
         other: '{n} faceted shapes (all 5 colors each)'
     },
-    'chain.ogranshchik.stepAll': 'Facet all 29 atlas shapes',
+    'chain.ogranshchik.stepAll': 'Facet all 24 atlas shapes',
     'chain.ogranshchik.desc': 'Atlas shapes faceted in all colors',
-    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
-    'chain.daily_entry.step': 'Draw your first constellation tonight',
-    'chain.daily_night.step': 'Complete the night',
+    // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
+    'chain.evening_rite.desc': 'Draw your first constellation, then finish the night.',
+    'chain.evening_rite.stepEntry': 'Draw your first constellation',
+    'chain.evening_rite.stepNight': 'Complete the night',
 
     // --- Страницы наград --------------------------------------------------------
     // K-12: главы штампов вместо рубрик — рабочие литературные названия из
@@ -235,37 +241,61 @@ en: {
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
+    'book.footStampsProgress': '{current} of {total} pressed',
+    // K-28: пейджер в подвале — сквозной по всей книге, не только внутри
+    // атласа/штампов (swipeBookPage).
+    'book.pagerPrev': 'Previous page',
+    'book.pagerNext': 'Next page',
     'book.openRibbon': 'Open the almanac',
-    'book.returnToSky': '— return to the sky —',
     'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
+    // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
+    // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
+    'book.eyebrowExLibris': 'EX LIBRIS',
     'book.eyebrowAtlas': 'ATLAS',
-    'book.headAtlas': 'Chapter {n} of {count}',
-    // K-11: разворот-определитель — заголовок главы стал литературным, а
-    // прежний «Chapter N of M» уехал в надзаголовок (рабочие названия,
-    // решение заказчика 2026-08-25: настоящие придут с C-01).
-    'book.eyebrowAtlasChapter': 'Atlas · Chapter {n} of {count}',
+    // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
+    // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
+    // подставляется на вызове, отдельного ключа под него не заводим.
+    'book.indexChapterTitle': 'Ch. {n} · {name}',
+    // K-11: заголовок главы стал литературным, а нумерация уехала в
+    // надзаголовок (рабочие названия, решение заказчика 2026-08-25: настоящие
+    // придут с C-01). K-19: «of {count}» снято — оглавление и так знает объём.
+    'book.eyebrowAtlasChapter': 'Atlas · Chapter {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
-    'book.eyebrowStampsChapter': 'Stamps · Chapter {n} of {count}',
-    'book.indexUncut': 'uncut',
-    'book.indexLocked': '{n} ✦',
+    'book.eyebrowStampsChapter': 'Stamps · Chapter {n}',
+    // K-24: неразрезанная глава — не цена, а порог: та же формулировка, что
+    // на самой запертой странице («opens on its own once you have N ✦»),
+    // только короче. «uncut» снято — звёзды не тратятся и не сгорают.
+    'book.indexOpensAt': 'opens at {n} ✦',
     'book.indexOpen': 'Open the observatory',
     // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': 'Night {n} · {date}',
-    'book.newsAtlasCut': 'Chapter {n} was cut open tonight.',
-    'book.newsShapeOpened': '{name} — a new shape in the atlas tonight.',
+    'book.newsAtlasCut': 'Chapter {n} has opened.',
+    'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
-    'book.newsChainOpen': '{title} — a new achievement is open tonight.',
+    'book.newsChainOpen': '{title} — a new achievement is open.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
-    'book.newsObservatoryOpen': 'Ex Libris opened tonight — {n} stars are waiting.',
+    'book.newsObservatoryOpen': 'Ex Libris has opened — {n} stars are waiting.',
+    // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
+    // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
+    'book.todayStarsLeft': {
+        one: 'The sky above holds {n} star yet unjoined.',
+        other: 'The sky above holds {n} stars yet unjoined.'
+    },
+    'book.todayBookmark': {
+        one: 'Bookmarked: {name} — {n} star, chapter {ch}.',
+        other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
+    },
+    'book.todayBookmarkPlain': 'Bookmarked: {name}.',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Settings',
     'book.headSettings': 'Settings',
 
-    // --- Настройки (K-14) --------------------------------------------------------
+    // --- Настройки (K-14, U-14) ---------------------------------------------------
     'settings.sound': 'Sound',
+    'settings.haptic': 'Vibration',
     'settings.toggleOn': 'on',
     'settings.toggleOff': 'off',
 
@@ -275,19 +305,16 @@ en: {
     'atlas.pageLockedProgress': 'Now: {current} / {target} ✦',
     // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
     // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
-    'atlas.notYetTraced': 'not yet traced',
-    'atlas.notYetTracedStars': { one: '{n} star', other: '{n} stars' },
+    // K-31: подпись и число звёзд сняты — на карточке остаётся только «?».
     'atlas.pinOn': 'Bookmark this shape to build tonight',
     'atlas.pinOff': 'Remove the bookmark',
     // Рабочие названия глав атласа (решение заказчика 2026-08-25: настоящие
     // литературные названия придут с C-01, ждать его эта задача не должна).
+    // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.
     'atlas.chapterTitle0': 'First Lines',
     'atlas.chapterTitle1': 'Deep Water',
     'atlas.chapterTitle2': 'Sharp Edges',
     'atlas.chapterTitle3': 'Low Light',
-    'atlas.chapterTitle4': 'Fair Wind',
-    'atlas.chapterTitle5': 'Old Roads',
-    'atlas.chapterTitle6': 'Near Dawn',
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',
@@ -306,16 +333,17 @@ en: {
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.modeConnect': 'Connect stars',
     'observatory.modeMove': 'Move and recolour stars',
-    'observatory.lockedTitle': 'Observatory — a sky of your own',
-    'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
+    // K-34: заголовок хинта был дословным повтором заголовка страницы
+    // (book.headExLibris — «A sky of your own») — теперь зовёт, а не повторяет,
+    // и стоит один, без второй строки про звёзды (та переехала в plateHint,
+    // где её видно уже после разблокировки, а не до неё).
+    'observatory.lockedTitle': 'Create your own, unique constellation.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
+    // K-34: та же строка, что раньше была под запертым хинтом — теперь под
+    // гравюрой, когда холст уже открыт и объяснение к месту.
+    'observatory.plateHint': 'Stars you can move, connect and recolour. It never resets.',
+    // K-21: подпись прежнего prompt() переехала в aria-label книжного поля ввода.
     'observatory.renamePrompt': 'Name this constellation:',
-    // --- K-13: подпись под оттиском ---------------------------------------
-    'observatory.exLibris': 'Ex libris',
-    'observatory.beganCaption': {
-        one: 'begun on night {night} · {n} group',
-        other: 'begun on night {night} · {n} groups'
-    }
 },
 
 // -----------------------------------------------------------------------------
@@ -398,17 +426,19 @@ ru: {
     'chain.mosaic.title': 'Мозаика',
     'chain.vitrazh.title': 'Витраж',
     'chain.kaleidoscope.title': 'Калейдоскоп',
-    'chain.gobelen.title': 'Гобелен',
-    'chain.orchestra.title': 'Оркестр',
-    'chain.symphony.title': 'Симфония',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
     'chain.minimalism.title': 'Минимализм',
     'chain.unite_all.title': 'Созвездие-всё',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
-    'chain.daily_entry.title': 'Приход',
-    'chain.daily_night.title': 'Ночь закрыта',
+    'chain.evening_rite.title': 'Вечерний обряд',
+    // K-19: цепочки размеров назывались голым ярлыком («4★») — рабочие имена,
+    // как у остальных сцепок; настоящие придут с C-01.
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.title': 'Малое небо',
+    'chain.size_5_7.title': 'Широкое небо',
+    'chain.size8plus.title': 'Восьмёрка+',
 
     // --- Цепочки наград: шаги -------------------------------------------------
     'chain.color.step': {
@@ -418,12 +448,19 @@ ru: {
     },
     // K-08: описание сцепки — одна строка без числа, что именно считается.
     'chain.color.desc': 'Созвездия цвета «{color}»',
-    'chain.size.step': {
-        one: '{n} созвездие по {size}★',
-        few: '{n} созвездия по {size}★',
-        many: '{n} созвездий по {size}★'
+    // B-04: шесть точных размеров заменены тремя диапазонами.
+    'chain.size_2_4.step': {
+        one: '{n} созвездие по 2–4★',
+        few: '{n} созвездия по 2–4★',
+        many: '{n} созвездий по 2–4★'
     },
-    'chain.size.desc': 'Созвездия ровно из {size} звёзд',
+    'chain.size_2_4.desc': 'Созвездия от 2 до 4 звёзд',
+    'chain.size_5_7.step': {
+        one: '{n} созвездие по 5–7★',
+        few: '{n} созвездия по 5–7★',
+        many: '{n} созвездий по 5–7★'
+    },
+    'chain.size_5_7.desc': 'Созвездия от 5 до 7 звёзд',
     'chain.size8plus.step': {
         one: '{n} созвездие от 8★',
         few: '{n} созвездия от 8★',
@@ -448,10 +485,7 @@ ru: {
         many: '{n} ночей: {desc}'
     },
     'chain.vitrazh.desc': 'фигуры стр. 3 на поле во всех 5 цветах',
-    'chain.kaleidoscope.desc': 'все 5 фигур стр. 4 на поле',
-    'chain.gobelen.desc': '3+ фигуры стр. 5 на поле',
-    'chain.orchestra.desc': 'создай все 5 фигур стр. 6 за ночь',
-    'chain.symphony.desc': 'создай Перфекциониста за ночь',
+    'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
         few: '{n} завершённые ночи',
@@ -472,18 +506,19 @@ ru: {
         few: '{n} открытые фигуры атласа',
         many: '{n} открытых фигур атласа'
     },
-    'chain.razvedka.stepAll': 'Открыть все 29 фигур атласа',
+    'chain.razvedka.stepAll': 'Открыть все 24 фигуры атласа',
     'chain.razvedka.desc': 'Открытые новые фигуры атласа',
     'chain.ogranshchik.step': {
         one: '{n} огранённая фигура (все 5 цветов у каждой)',
         few: '{n} огранённые фигуры (все 5 цветов у каждой)',
         many: '{n} огранённых фигур (все 5 цветов у каждой)'
     },
-    'chain.ogranshchik.stepAll': 'Огранить все 29 фигур атласа',
+    'chain.ogranshchik.stepAll': 'Огранить все 24 фигуры атласа',
     'chain.ogranshchik.desc': 'Фигуры, огранённые во всех цветах',
-    // M-05: суточные квесты. Условие бинарное — множественного числа не нужно.
-    'chain.daily_entry.step': 'Создать первое созвездие этой ночью',
-    'chain.daily_night.step': 'Завершить ночь',
+    // M-05/K-22: суточный квест. Условие бинарное — множественного числа не нужно.
+    'chain.evening_rite.desc': 'Начните ночь первым созвездием, а затем завершите её.',
+    'chain.evening_rite.stepEntry': 'Создать первое созвездие',
+    'chain.evening_rite.stepNight': 'Завершить ночь',
 
     // --- Страницы наград ------------------------------------------------------
     // K-12: главы штампов вместо рубрик — рабочие названия (решение заказчика
@@ -514,33 +549,48 @@ ru: {
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
+    'book.footStampsProgress': 'прижато {current} из {total}',
+    'book.pagerPrev': 'Предыдущая страница',
+    'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',
-    'book.returnToSky': '— вернуться на небо —',
     'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
+    'book.eyebrowExLibris': 'ЭКСЛИБРИС',
     'book.eyebrowAtlas': 'АТЛАС',
-    'book.headAtlas': 'Глава {n} из {count}',
-    'book.eyebrowAtlasChapter': 'Атлас · глава {n} из {count}',
+    'book.indexChapterTitle': 'Гл. {n} · {name}',
+    'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
-    'book.eyebrowStampsChapter': 'Штампы · глава {n} из {count}',
-    'book.indexUncut': 'не разрезано',
-    'book.indexLocked': '{n} ✦',
+    'book.eyebrowStampsChapter': 'Штампы · глава {n}',
+    'book.indexOpensAt': 'откроется на {n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': 'Ночь {n} · {date}',
-    'book.newsAtlasCut': 'Сегодня ночью разрезана глава {n}.',
-    'book.newsShapeOpened': '«{name}» — новая фигура в атласе этой ночью.',
+    'book.newsAtlasCut': 'Глава {n} открыта.',
+    'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
-    'book.newsChainOpen': '«{title}» — новое достижение открыто сегодня.',
+    'book.newsChainOpen': '«{title}» — новое достижение открыто.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
-    'book.newsObservatoryOpen': 'Сегодня ночью открылся Экслибрис — {n} звёзд ждут.',
+    'book.newsObservatoryOpen': 'Открылся Экслибрис — {n} звёзд ждут.',
+    // K-17: строки состояния страницы — считаются на рендере, в новостях не живут.
+    'book.todayStarsLeft': {
+        one: 'На небе ещё не соединена {n} звезда.',
+        few: 'На небе ещё не соединены {n} звезды.',
+        many: 'На небе ещё не соединено {n} звёзд.'
+    },
+    'book.todayBookmark': {
+        one: 'Закладка: «{name}» — {n} звезда, глава {ch}.',
+        few: 'Закладка: «{name}» — {n} звезды, глава {ch}.',
+        many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
+    },
+    'book.todayBookmarkPlain': 'Закладка: «{name}».',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Настройки',
     'book.headSettings': 'Настройки',
 
-    // --- Настройки (K-14) --------------------------------------------------------
+    // --- Настройки (K-14, U-14) ---------------------------------------------------
     'settings.sound': 'Звук',
+    'settings.haptic': 'Вибрация',
     'settings.toggleOn': 'вкл',
     'settings.toggleOff': 'выкл',
 
@@ -548,21 +598,13 @@ ru: {
     'atlas.unknownConstellation': 'Неизвестное созвездие',
     'atlas.pageLocked': 'Страница откроется сама, когда накопится {n} ✦.',
     'atlas.pageLockedProgress': 'Сейчас: {current} / {target} ✦',
-    'atlas.notYetTraced': 'ещё не прочерчена',
-    'atlas.notYetTracedStars': {
-        one: '{n} звезда',
-        few: '{n} звезды',
-        many: '{n} звёзд'
-    },
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
+    // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.
     'atlas.chapterTitle0': 'Первые линии',
     'atlas.chapterTitle1': 'Глубокая вода',
     'atlas.chapterTitle2': 'Острые края',
     'atlas.chapterTitle3': 'Низкий свет',
-    'atlas.chapterTitle4': 'Попутный ветер',
-    'atlas.chapterTitle5': 'Старые дороги',
-    'atlas.chapterTitle6': 'У рассвета',
 
     // --- Штампы: строка-замок (U-09) — имя цепочки ещё скрыто -------------------
     'achv.lockedTitle': '? ? ?',
@@ -581,17 +623,16 @@ ru: {
     // --- Обсерватория (B-02) --------------------------------------------------
     'observatory.modeConnect': 'Соединять звёзды',
     'observatory.modeMove': 'Перемещать и красить звёзды',
-    'observatory.lockedTitle': 'Обсерватория — своё небо, которое можно переставлять',
-    'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
+    // K-34: заголовок хинта дословно повторял заголовок страницы
+    // (book.headExLibris — «Своё небо») — теперь зовёт, а не повторяет, и стоит
+    // один, без второй строки про звёзды (та переехала в plateHint, где её
+    // видно уже после разблокировки, а не до неё).
+    'observatory.lockedTitle': 'Создай своё, уникальное созвездие.',
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
+    // K-34: та же строка, что раньше была под запертым хинтом — теперь под
+    // гравюрой, когда холст уже открыт и объяснение к месту.
+    'observatory.plateHint': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
     'observatory.renamePrompt': 'Назвать созвездие:',
-    // --- K-13: подпись под оттиском ---------------------------------------
-    'observatory.exLibris': 'Ex libris',
-    'observatory.beganCaption': {
-        one: 'начат в {night}-ю ночь · {n} группа',
-        few: 'начат в {night}-ю ночь · {n} группы',
-        many: 'начат в {night}-ю ночь · {n} групп'
-    }
 }
 
 };

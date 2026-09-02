@@ -359,14 +359,27 @@ function drawUndoMarkScreen() {
     if (!m) return;
 
     const a = m.alpha;
+    // K-20: рамка — карточка на бумаге вокруг знака и текста (Табл. II концепта).
+    // Геометрия содержимого не меняется (её всё ещё считает computeUndoMarkLayout —
+    // и для отрисовки, и для попадания пальцем), рамка просто шире на паддинг.
+    const frameLeft = m.left - UNDO_MARK_FRAME_PAD_X_PX;
+    const frameTop = m.top - UNDO_MARK_FRAME_PAD_Y_PX;
+    const frameW = m.w + UNDO_MARK_FRAME_PAD_X_PX * 2;
+    const frameH = m.h + UNDO_MARK_FRAME_PAD_Y_PX * 2;
+
     push();
     try {
-        // Волосок-выноска: от подписи к пометке. Разворачивается вместе с ней.
+        // Волосок-выноска: от подписи к рамке. Разворачивается вместе с ней.
         const fromY = m.anchorY + (m.below ? UNDO_MARK_LEADER_GAP_PX : -UNDO_MARK_LEADER_GAP_PX);
-        const toY = m.below ? m.top : m.top + m.h;
+        const toY = m.below ? frameTop : frameTop + frameH;
         stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 150 * a);
         strokeWeight(1);
         line(m.anchorX, fromY, m.cx, toY);
+
+        noFill();
+        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 165 * a);
+        strokeWeight(1);
+        rect(frameLeft, frameTop, frameW, frameH, UNDO_MARK_FRAME_RADIUS_PX);
 
         const signCx = m.left + UNDO_MARK_SIGN_PX / 2;
         drawUndoSignScreen(signCx, m.cy, UNDO_MARK_SIGN_PX, INK_MUTED_RGB, 235 * a);
@@ -513,6 +526,44 @@ function drawConstellationLineArtImagesOnTile() {
     }
 }
 
+/**
+ * K-20: капитель — единственный способ набрать имя созвездия на небе. p5 не
+ * умеет letter-spacing, поэтому буквы кладутся по одной с ручным шагом; под
+ * именем — волосяная линейка в его ширину (Табл. II концепта). `sizePx` уже
+ * в мировых единицах (поделено на zoomLevel вызывающим — тот же приём, что у
+ * прежнего textSize(... / zoomLevel)), поэтому и tracking, и толщина линейки
+ * считаются здесь же, без повторного деления.
+ */
+function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
+    if (!str || alpha <= 0) return;
+    const upper = str.toUpperCase();
+    const tracking = sizePx * SMALL_CAPS_TRACKING_EM;
+
+    push();
+    textAlign(LEFT, CENTER);
+    textSize(sizePx);
+
+    let totalW = 0;
+    for (let i = 0; i < upper.length; i++) {
+        totalW += textWidth(upper[i]) + (i < upper.length - 1 ? tracking : 0);
+    }
+
+    noStroke();
+    fill(rgb[0], rgb[1], rgb[2], alpha);
+    let x = cx - totalW / 2;
+    for (let i = 0; i < upper.length; i++) {
+        const ch = upper[i];
+        text(ch, x, cy);
+        x += textWidth(ch) + tracking;
+    }
+
+    const ruleY = cy + sizePx * SMALL_CAPS_RULE_OFFSET_EM;
+    stroke(rgb[0], rgb[1], rgb[2], alpha * SMALL_CAPS_RULE_ALPHA_MULT);
+    strokeWeight(1 / zoomLevel);
+    line(cx - totalW / 2, ruleY, cx + totalW / 2, ruleY);
+    pop();
+}
+
 function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAlpha = 1) {
     // V-09: простой стиль — обычный текст цветом от звёзд (lineColor), без
     // золотого ★-бейджа и декоративного цвета фигуры.
@@ -527,10 +578,7 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAl
         : 1;
     if (waveAlpha <= 0) return;
 
-    noStroke();
-    fill(c[0], c[1], c[2], 255 * zoomAlpha * waveAlpha);
-    textSize(labelSize);
-    text(name, labelAnchor.x, labelAnchor.y);
+    drawSmallCapsLabelWorld(name, labelAnchor.x, labelAnchor.y, labelSize, c, 255 * zoomAlpha * waveAlpha);
 }
 
 function drawConstellationLabelsOnTile() {
@@ -567,9 +615,10 @@ function drawConstellationLabelsOnTile() {
             // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
             // волна отыгрывает своё независимо, и при обратном зуме после ночи
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
-            fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], alpha * zoomAlpha);
-            textSize(REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel);
-            text(getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y);
+            drawSmallCapsLabelWorld(
+                getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
+                REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel, INK_RGB, alpha * zoomAlpha
+            );
             continue;
         }
 
@@ -578,20 +627,20 @@ function drawConstellationLabelsOnTile() {
             continue;
         }
 
-        if (typeof isShapeRecognizedOnUnlockedAtlas === 'function'
-            && isShapeRecognizedOnUnlockedAtlas(constellation)) {
-            // V-09: имя распознанной атласной — простой стиль, цвет от звёзд.
-            // V-12: у только что закоммиченного имя ждёт конца волны, как и у
-            // atlas-collected — иначе подпись обгоняла бы собственные линии.
-            const waveAlpha = typeof getCommitWaveLabelAlpha === 'function'
-                ? getCommitWaveLabelAlpha(constellation)
-                : 1;
-            if (waveAlpha <= 0) continue;
-            const c = constellation.lineColor || LINE_COLOR;
-            fill(c[0], c[1], c[2], 255 * zoomAlpha * waveAlpha);
-            textSize(COLLECTED_ATLAS_LABEL_SIZE / zoomLevel);
-            text(getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y);
-        }
+        // V-14: остальные — распознанная атласная и fallback (вне каталога)
+        // одинаково — получают имя сразу тем же простым стилем, что и
+        // atlas-collected, не дожидаясь конца ночи.
+        // V-12: у только что закоммиченного имя ждёт конца волны, как и у
+        // atlas-collected — иначе подпись обгоняла бы собственные линии.
+        const waveAlpha = typeof getCommitWaveLabelAlpha === 'function'
+            ? getCommitWaveLabelAlpha(constellation)
+            : 1;
+        if (waveAlpha <= 0) continue;
+        const c = constellation.lineColor || LINE_COLOR;
+        drawSmallCapsLabelWorld(
+            getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
+            COLLECTED_ATLAS_LABEL_SIZE / zoomLevel, c, 255 * zoomAlpha * waveAlpha
+        );
     }
 }
 
@@ -609,6 +658,9 @@ function drawFieldMode() {
         pop();
     }
 
+    if (typeof drawConstellationHatchingOnTiles === 'function') {
+        drawConstellationHatchingOnTiles(tiles);
+    }
     drawConstellationSkeletonLinesWorld(tiles);
     drawCurrentAndPendingLinesWorld(tiles);
 

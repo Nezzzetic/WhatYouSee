@@ -58,6 +58,13 @@ const OBSERVATORY_LABEL_HIT_PAD = 10;
 /** Звезда строго под пальцем выигрывает у подписи, накрывшей её (мировые ед.). */
 const OBSERVATORY_LABEL_STAR_PRIORITY = STAR_SIZE * 1.5;
 
+// K-21: знак пера рядом с подписью — приглашение к тапу, не украшение
+// (единственное место в игре, где ставится #i-pen кассы K-02).
+/** Экранный размер знака пера у подписи. */
+const OBSERVATORY_LABEL_PEN_PX = 13;
+/** Зазор между текстом подписи и знаком пера. */
+const OBSERVATORY_LABEL_PEN_GAP_PX = 4;
+
 // =============================================================================
 // ХРАНЕНИЕ
 // =============================================================================
@@ -588,6 +595,8 @@ function getObservatoryLabelAt(fieldX, fieldY) {
 
     const labelSize = COLLECTED_ATLAS_LABEL_SIZE / zoomLevel;
     const pad = OBSERVATORY_LABEL_HIT_PAD / zoomLevel;
+    // K-21: знак пера сидит правее текста — попадание в него тоже открывает ввод
+    const penZone = (OBSERVATORY_LABEL_PEN_GAP_PX + OBSERVATORY_LABEL_PEN_PX) / zoomLevel;
 
     push();
     textSize(labelSize);
@@ -596,7 +605,7 @@ function getObservatoryLabelAt(fieldX, fieldY) {
     for (const entry of observatoryNames) {
         const g = getObservatoryLabelGeometry(entry);
         if (!g) continue;
-        const halfW = textWidth(getObservatoryLabelText(entry)) / 2 + pad;
+        const halfW = textWidth(getObservatoryLabelText(entry)) / 2 + pad + penZone;
         const halfH = labelSize / 2 + pad;
         if (Math.abs(fieldX - g.x) > halfW || Math.abs(fieldY - g.y) > halfH) continue;
         const d = Math.hypot(fieldX - g.x, fieldY - g.y);
@@ -607,18 +616,6 @@ function getObservatoryLabelAt(fieldX, fieldY) {
     }
     pop();
     return best;
-}
-
-/** U-04 на холсте: тем же промптом, теми же правилами перевода. */
-function openObservatoryRenamePrompt(entry) {
-    if (!entry) return false;
-    const current = getObservatoryLabelText(entry);
-    // Промпт переводится, введённое игроком имя — нет (решение исполнителя L-01)
-    const result = prompt(t('observatory.renamePrompt'), current);
-    if (result === null || result.trim() === '') return false;
-    entry.custom = result.trim();
-    saveObservatoryNow();
-    return true;
 }
 
 /** Сдвинуть подпись в мировые координаты (x, y); возвращает зажатое смещение. */
@@ -789,6 +786,8 @@ function observatoryMouseDragged() {
         scheduleObservatorySave();
     } else if (isObservatoryEdgeLengthValid(a, b)) {
         observatoryLines.push({ startId: a, endId: b });
+        // A-06: параметр теперь значит «номер ребра + 1», но 2 — по-прежнему первая
+        // нота лестницы; звук изолированного соединения обсерватории не меняем
         if (typeof playEdgeSnap === 'function') playEdgeSnap(2);
         syncObservatoryNames();
         scheduleObservatorySave();
@@ -806,12 +805,16 @@ function observatoryMouseReleased() {
     const heldMs = millis() - observatoryPressMs;
     const isTap = !observatoryPressMovedOut && heldMs <= OBSERVATORY_TAP_MAX_MS;
 
-    // U-12: тап по подписи переименовывает, протяжка её просто оставляет на месте
+    // U-12/K-21: тап по подписи открывает книжное поле ввода (ui.js), протяжка
+    // её просто оставляет на месте.
     if (observatoryDragLabel) {
         const label = observatoryDragLabel;
         resetObservatoryDragState();
-        if (isTap) openObservatoryRenamePrompt(label);
-        else scheduleObservatorySave();
+        if (isTap) {
+            if (typeof openObservatoryRenameField === 'function') openObservatoryRenameField(label);
+        } else {
+            scheduleObservatorySave();
+        }
         return;
     }
 
@@ -930,14 +933,47 @@ function drawObservatoryDraftLine() {
 }
 
 /**
+ * K-21: знак пера из кассы K-02 (`#i-pen`) на канвасе — контур символа
+ * (viewBox 0 0 24 24) в примитивах p5, тем же приёмом, что drawUndoSignScreen
+ * (camera.js) рисует `#i-undo`. Круглый стык (strokeJoin) вместо точной SVG-дуги
+ * у кончика пера — на размере знака разница неразличима.
+ */
+function drawPenSignWorld(cx, cy, size, rgb, alpha) {
+    const k = size / 24;
+    const strokePx = size <= 16 ? 1.1 : 1.4;
+
+    push();
+    translate(cx - size / 2, cy - size / 2);
+    scale(k);
+    noFill();
+    stroke(rgb[0], rgb[1], rgb[2], alpha);
+    strokeWeight(strokePx / k);
+    strokeCap(ROUND);
+    strokeJoin(ROUND);
+    beginShape();
+    vertex(4, 20.2);
+    vertex(8.4, 19);
+    vertex(18.8, 8.6);
+    vertex(15.7, 5.5);
+    vertex(5.3, 15.9);
+    endShape(CLOSE);
+    line(14.6, 6.9, 17.1, 9.4);
+    pop();
+}
+
+/**
  * U-12: подписи созвездий. Центр берётся на отрисовке, поэтому подпись едет
  * за звёздами прямо во время перетаскивания, сохраняя своё смещение.
- * Гаснут на дальнем зуме вместе с полевыми (V-11).
+ * Гаснут на дальнем зуме вместе с полевыми (V-11). K-21: знак пера справа от
+ * текста — цвета своего у него нет, берёт цвет строки (касса K-02).
  */
 function drawObservatoryLabels() {
     const zoomAlpha = typeof getLabelZoomAlphaFactor === 'function'
         ? getLabelZoomAlphaFactor() : 1;
     if (zoomAlpha <= 0) return;
+
+    const penSize = OBSERVATORY_LABEL_PEN_PX / zoomLevel;
+    const penGap = OBSERVATORY_LABEL_PEN_GAP_PX / zoomLevel;
 
     push();
     noStroke();
@@ -947,8 +983,13 @@ function drawObservatoryLabels() {
         const g = getObservatoryLabelGeometry(entry);
         if (!g) continue;
         const rgb = observatoryLabelRgb(entry);
-        fill(rgb[0], rgb[1], rgb[2], 255 * zoomAlpha);
-        text(getObservatoryLabelText(entry), g.x, g.y);
+        const alpha = 255 * zoomAlpha;
+        const label = getObservatoryLabelText(entry);
+        fill(rgb[0], rgb[1], rgb[2], alpha);
+        text(label, g.x, g.y);
+
+        const penCx = g.x + textWidth(label) / 2 + penGap + penSize / 2;
+        drawPenSignWorld(penCx, g.y, penSize, rgb, alpha);
     }
     pop();
 }

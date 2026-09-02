@@ -4,42 +4,37 @@
 // КОНСТАНТЫ
 // =============================================================================
 
-// B-01: награда за шаг растёт вместе с тиром, по индексу шага в цепочке.
-// До перекалибровки ставка была плоской (5 ✦), и первый тир «1 созвездие цвета»
-// платил столько же, сколько пятый «60 созвездий цвета» — достижения работали
-// стартовым бонусом и выгорали за месяц. Теперь шаг пятого тира стоит больше
-// трёх ночей, и цепочки становятся долгим доходом.
-const ACHIEVEMENT_STEP_REWARDS = [10, 20, 30, 45, 70];
+// B-04: общая лестница шага ужата вместе со всей экономикой окна «первая
+// сессия → третий день» (масштаб ×¼ от B-01, решение заказчика). Кто задаёт
+// свою шкалу через chain.stepRewards (ниже) — общую не использует.
+const ACHIEVEMENT_STEP_REWARDS = [3, 6, 10, 16, 25];
 // Запасное значение для цепочек короче/длиннее пяти шагов (сейчас таких нет).
-const ACHIEVEMENT_STEP_REWARD_FALLBACK = 10;
+const ACHIEVEMENT_STEP_REWARD_FALLBACK = 3;
 
-// Объёмные цепочки (цвета и размеры).
-// Исходные пороги были [1,5,15,30,60]; B-01 растянул их ×8 → [8,40,120,240,480],
-// чтобы пул не выгорал за месяц. Текущие значения — решение заказчика поверх
-// расчёта: первые две ступени возвращены к исходным 1 и 5 (цепочка должна
-// подавать признаки жизни с первых ночей), остальные три — вдвое мягче
-// расчётных ×8.
-//
-// Цена решения замерена и принята: разброс между профилями 1,17× → 1,50×,
-// доля ночи 49,2 % → 46,8 %. Мягкий верх выгоднее тому, кто делает больше
-// созвездий, поэтому охотник закрывает атлас за 54 ночи против 81 у казуала.
-// Ценами это не лечится — разброс про состав дохода, а не про траты.
-//
-// НЕ применять к «Зодчему небес»: его тиры [10,50,250,1000,5000] и так тянутся
-// до 167-й ночи, ×8 дал бы 40 000 созвездий — три с половиной года.
-const ACHIEVEMENT_VOLUME_TIERS = [1, 5, 60, 120, 240];
+// B-04: объёмные цепочки (цвета и размеры) больше не делят один ряд порогов —
+// у цветов и у каждого размерного бакета свой, потому что бакеты наполняются
+// с принципиально разной скоростью (см. B-04 task-док, шаг 3, замер моделью:
+// четыре профиля × 800 прогонов × 26 ночей). Награда за шаг — общая лестница
+// выше, если явно не сказано иное.
+// Правка заказчика 2026-08-30: 20 на второй ступени было слишком жёстко для
+// редких цветов (красный/голубой — единицы процентов созвездий) — снижено до 5.
+const ACHIEVEMENT_COLOR_TIERS = [1, 5, 60, 150, 350];
+const ACHIEVEMENT_SIZE_2_4_TIERS = [1, 25, 90, 250, 600];
+const ACHIEVEMENT_SIZE_5_7_TIERS = [1, 12, 45, 130, 320];
+// 8★+ реже остальных бакетов сам по себе — своя шкала наград, а не общая.
+const ACHIEVEMENT_SIZE_8PLUS_TIERS = [1, 3, 8, 20, 50];
+const ACHIEVEMENT_SIZE_8PLUS_STEP_REWARDS = [8, 14, 20, 30, 45];
+// «Первооткрыватель» — на 24 фигуры атласа (было 29 до B-04, 5 фигур в резерве).
+const RAZVEDKA_TIERS = [1, 4, 8, 14, 24];
+const RAZVEDKA_STEP_REWARDS = [15, 25, 40, 65, 100];
+// «Огранщик» — тоже на 24 фигуры, общая лестница.
+const OGRANSHCHIK_TIERS = [1, 3, 6, 12, 24];
 
-// M-05: суточные квесты. Сумма 10 + 20 = 30 — ровно то, что давал за завершённую
-// ночь LEVEL_COMPLETE_POINTS (снят в этой же задаче): темп открытия страниц
-// атласа не двигается, B-01 калибровался именно на 30 ✦ за ночь, и менять эту
-// цифру — отдельная реформа (прогон вариантов 20/30/40/45 — в task-доке).
-//
-// Раздача 10 / 20 — решение заказчика: приход платит мало и сразу, закрытая
-// ночь — много и в конце. Один эффект у перестройки всё же есть, и прогон его
-// не видит (он считает, что небо закрывается каждую ночь): игрок, который зашёл
-// и не доиграл, получает теперь 10 вместо нуля.
-const DAILY_QUEST_ENTRY_REWARD = 10;
-const DAILY_QUEST_NIGHT_REWARD = 20;
+// M-05/B-04: суточные квесты. Раздача 5/10 — тот же принцип, что и в M-05
+// (приход платит мало и сразу, закрытая ночь — больше и в конце), масштаб
+// ужат вместе со всей общей лестницей ×¼.
+const DAILY_QUEST_ENTRY_REWARD = 5;
+const DAILY_QUEST_NIGHT_REWARD = 10;
 
 // K-09: лента новостей мира на «Сегодня» — сколько строк держим за ночь про запас
 // (реальных источников за ночь единицы, потолок только страхует от разрастания).
@@ -55,30 +50,39 @@ const ACHIEVEMENT_COLOR_KEYS = ['red', 'orange', 'yellow', 'white', 'blue'];
 function achievementColorLabel(color) {
     return t('color.' + color);
 }
-// K-02: знак обозначает ТЕМУ, а не цепочку. У пяти цветовых цепочек знак один —
-// ромб грани; различает их цвет строки, взятый из звёздного тира. Своего цвета
-// у знака нет, он берёт цвет строки, в которой стоит.
+// K-33 (отменяет правило K-02 для цветовых цепочек): плашка марки — одного
+// книжного цвета всегда, различает квесты знак, а не цвет. До K-33 у пяти
+// цветовых цепочек был один знак (ромб грани `loz`), а плашку красил цвет
+// тира — без цвета все пять читались одинаково (дальтонизм; заказчик отменил
+// правило 2026-08-31, фидбек с Miro-доски, п. 22). `ACHIEVEMENT_COLOR_SIGN`
+// остался генерик-знаком темы «огранка/цвет» — им по-прежнему помечены
+// «Радуга» (цепочка по всем пяти цветам сразу, не про один) и страница
+// The Cutter's Hand целиком; по самим цепочкам `color_*` он больше не ставится.
 const ACHIEVEMENT_COLOR_SIGN = 'loz';
-const ACHIEVEMENT_COLOR_STAR_RGB = {
-    red: [240, 122, 103], orange: [242, 162, 84], yellow: [242, 201, 101],
-    white: [237, 239, 245], blue: [134, 200, 242]
+// K-33: свой знак на каждую цепочку — предмет по мотиву цвета (капля, огонёк,
+// кольцо, шар, волна), не отвлечённая форма; различим без цвета на кегле
+// марки (14 px). Правка заказчика 2026-09-01 — первая раскладка (формы
+// огранки: круг/шестиугольник/восьмиугольник/маркиз/треугольник) читалась
+// логично только на странице The Cutter's Hand, предметная понятнее сама
+// по себе.
+const ACHIEVEMENT_COLOR_CHAIN_SIGNS = {
+    red: 'drop', orange: 'flame', yellow: 'ring', white: 'ball', blue: 'wave'
 };
-// Размерные цепочки, «8★+», «Мозаика» и «Зодчий неба» — одна тема: построенные
-// созвездия. Счёт живёт в заголовке строки («5★»), знак говорит только о теме.
+// Размерные цепочки, «Восьмёрка+», «Мозаика» и «Зодчий неба» — одна тема:
+// построенные созвездия. K-19: заголовок строки — рабочее имя, а не ярлык
+// размера («Пятёрка», не «5★»); знак говорит только о теме.
 const ACHIEVEMENT_SIZE_SIGN = 'pillar';
-const ACHIEVEMENT_SIZE_KEYS = ['3', '4', '5', '6', '7', '8plus'];
 
 // =============================================================================
 // ОПРЕДЕЛЕНИЕ ЦЕПОЧЕК (17 слотов)
 // =============================================================================
 
 function buildColorChain(color) {
-    const tiers = ACHIEVEMENT_VOLUME_TIERS;
+    const tiers = ACHIEVEMENT_COLOR_TIERS;
     return {
         id: 'color_' + color,
         title: t(`chain.color_${color}.title`),
-        sign: ACHIEVEMENT_COLOR_SIGN,
-        signColor: ACHIEVEMENT_COLOR_STAR_RGB[color],
+        sign: ACHIEVEMENT_COLOR_CHAIN_SIGNS[color],
         // K-08: описание сцепки — что именно считается, без числа ступени.
         desc: t('chain.color.desc', { color: achievementColorLabel(color) }),
         steps: tiers.map(n => ({
@@ -89,38 +93,37 @@ function buildColorChain(color) {
     };
 }
 
-function buildExactSizeChain(size) {
-    const tiers = ACHIEVEMENT_VOLUME_TIERS;
+// B-04: шесть цепочек «ровно N★» заменены двумя диапазонами — 2–4★ и 5–7★
+// (решение заказчика). check.bucket указывает прямо на ключ starCountTotals,
+// чтобы evaluateAchievementCheck не гадала по min/max.
+function buildSizeRangeChain(id, min, max, bucket, tiers) {
     return {
-        id: 'size_' + size,
-        // Заголовок — «4★»: цифра со звездой одинакова во всех локалях.
-        title: `${size}★`,
+        id,
+        title: t(`chain.${id}.title`),
         sign: ACHIEVEMENT_SIZE_SIGN,
-        desc: t('chain.size.desc', { size }),
+        desc: t(`chain.${id}.desc`),
         steps: tiers.map(n => ({
-            id: `size_${size}_${n}`,
-            desc: tp('chain.size.step', n, { size }),
-            check: { type: 'starCountTotal', mode: 'exact', size, n }
+            id: `${id}_${n}`,
+            desc: tp(`chain.${id}.step`, n),
+            check: { type: 'starCountTotal', mode: 'range', min, max, bucket, n }
         }))
     };
 }
 
 const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
 
-// S-01 / atlas-pages-graph: особые достижения страниц 2–6 (у страниц 0/1 —
-// Радуга/Мозаика ниже). Каждое — ночная коллекция (≤1/ночь, тиры 1→3→7→15→30),
-// со своей осью, видимость по полному комплекту созданных фигур страницы.
+// B-04: атлас сократился до 4 глав — «особых» на страницу теперь тоже четыре:
+// Радуга (глава I) и Мозаика (глава II) остались отдельными цепочками ниже,
+// а на главы III/IV достаточно двух записей здесь (было пять на семь старых
+// страниц). Сняты gobelen/orchestra/symphony вместе с бывшими главами
+// V/VI/VII; symphony к тому же завязана на Перфекциониста, который уехал
+// в резерв. Каждое — ночная коллекция (≤1/ночь, тиры 1→3→7→15→30), со своей
+// осью, видимость по полному комплекту созданных фигур страницы.
 const ATLAS_PAGE_SPECIALS = [
     { page: 2, id: 'vitrazh', title: t('chain.vitrazh.title'), sign: 'comet', mechanic: 'pageColors',
       desc: t('chain.vitrazh.desc') },
     { page: 3, id: 'kaleidoscope', title: t('chain.kaleidoscope.title'), sign: 'comet', mechanic: 'pageAllOnField',
-      desc: t('chain.kaleidoscope.desc') },
-    { page: 4, id: 'gobelen', title: t('chain.gobelen.title'), sign: 'comet', mechanic: 'pageCountOnField', k: 3,
-      desc: t('chain.gobelen.desc') },
-    { page: 5, id: 'orchestra', title: t('chain.orchestra.title'), sign: 'comet', mechanic: 'pageAllCreatedNight',
-      desc: t('chain.orchestra.desc') },
-    { page: 6, id: 'symphony', title: t('chain.symphony.title'), sign: 'comet', mechanic: 'shapeCreatedNight', shape: 'perfectionist',
-      desc: t('chain.symphony.desc') }
+      desc: t('chain.kaleidoscope.desc') }
 ];
 
 const ATLAS_PAGE_SPECIAL_TIERS = [1, 3, 7, 15, 30];
@@ -148,44 +151,48 @@ function getPageSpecialForPage(pageIndex) {
 }
 
 const ACHIEVEMENT_CHAINS = [
-    // M-05: суточные квесты — единственные бесконечные цепочки. Шаг ровно один,
-    // `stepIndex` не двигается никогда: «пройдено» и «следующая ступень» к ним
-    // неприменимы. Всё состояние живёт в `achievementCounters.daily` и
-    // обнуляется вместе со сменой неба, а не по часам (ensureDailyQuestsForToday).
+    // M-05/K-22: суточный квест — единственная бесконечная цепочка. Две ступени —
+    // «Приход» и «Ночь закрыта» — вместо прежних двух отдельных цепочек по одному
+    // шагу (концепт «Альманаха ночей», издание второе, свёл их в один вечерний
+    // обряд). `stepIndex` не хранится: выводится на лету из `entryClaimed`/
+    // `nightClaimed` в `deriveDailyStepIndex()` при каждом recompute — источник
+    // истины остаётся `achievementCounters.daily`, обнуляется вместе со сменой
+    // неба, а не по часам (ensureDailyQuestsForToday). Вторая марка недоступна,
+    // пока не прижата первая — это не отдельное правило, а обычная механика
+    // сцепки (`isCurrent = stepIndex === p.stepIndex`); игрока не наказывает,
+    // потому что «Приход» физически не может не случиться раньше «Ночи».
     {
-        id: 'daily_entry',
-        title: t('chain.daily_entry.title'),
-        sign: 'spark',
+        id: 'evening_rite',
+        title: t('chain.evening_rite.title'),
+        sign: 'crescent',
         daily: true,
-        // K-08: у суточных шаг ровно один — его же desc и есть описание сцепки.
-        desc: t('chain.daily_entry.step'),
-        stepRewards: [DAILY_QUEST_ENTRY_REWARD],
-        steps: [{ id: 'daily_entry_1', desc: t('chain.daily_entry.step'), check: { type: 'dailyEntry' } }]
-    },
-    {
-        id: 'daily_night',
-        title: t('chain.daily_night.title'),
-        sign: 'nightstar',
-        daily: true,
-        desc: t('chain.daily_night.step'),
-        stepRewards: [DAILY_QUEST_NIGHT_REWARD],
-        steps: [{ id: 'daily_night_1', desc: t('chain.daily_night.step'), check: { type: 'dailyNight' } }]
+        desc: t('chain.evening_rite.desc'),
+        stepRewards: [DAILY_QUEST_ENTRY_REWARD, DAILY_QUEST_NIGHT_REWARD],
+        steps: [
+            { id: 'evening_rite_entry', desc: t('chain.evening_rite.stepEntry'), check: { type: 'dailyEntry' } },
+            { id: 'evening_rite_night', desc: t('chain.evening_rite.stepNight'), check: { type: 'dailyNight' } }
+        ]
     },
     ...ACHIEVEMENT_COLOR_KEYS.map(buildColorChain),
-    ...[3, 4, 5, 6, 7].map(buildExactSizeChain),
+    // B-04: шесть цепочек «ровно N★» заменены двумя диапазонами (решение
+    // заказчика) — квесты больше не запираются очками, три диапазона вместо
+    // шести точных размеров.
+    buildSizeRangeChain('size_2_4', 2, 4, 's24', ACHIEVEMENT_SIZE_2_4_TIERS),
+    buildSizeRangeChain('size_5_7', 5, 7, 's57', ACHIEVEMENT_SIZE_5_7_TIERS),
     {
         id: 'size_8plus',
-        title: '8★+',
+        // K-19: было голым ярлыком «8★+» — рабочее литературное имя.
+        title: t('chain.size8plus.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.size8plus.desc'),
-        // Тоже объёмная цепочка, но со своей шкалой (не ACHIEVEMENT_VOLUME_TIERS):
-        // 8★+ созвездия редки сами по себе. Тот же принцип: первые две ступени —
-        // исходные [1,3], остальные три — вдвое мягче расчётных ×8 [64,120,200].
-        steps: [1, 3, 32, 60, 100].map(n => ({
+        // Своя шкала: 8★+ созвездия редки сами по себе, и в каталоге нет фигур
+        // больше пяти звёзд — эта цепочка не приносит атласных находок никогда.
+        steps: ACHIEVEMENT_SIZE_8PLUS_TIERS.map(n => ({
             id: `size_8plus_${n}`,
             desc: tp('chain.size8plus.step', n),
-            check: { type: 'starCountTotal', mode: 'gte', size: 8, n }
-        }))
+            check: { type: 'starCountTotal', mode: 'gte', bucket: 's8plus', size: 8, n }
+        })),
+        stepRewards: ACHIEVEMENT_SIZE_8PLUS_STEP_REWARDS
     },
     {
         id: 'rainbow',
@@ -259,20 +266,12 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.razvedka.title'),
         sign: 'tel',
         desc: t('chain.razvedka.desc'),
-        // Своя шкала вместо общей: та же сумма, что раньше капала по 35 ✦ за
-        // каждое открытие, распределена по ступеням пропорционально их «весу».
-        // Приросты порогов 1·5·6·8·9 фигур × 35 ✦ = 35·175·210·280·315,
-        // в сумме ровно 1015 ✦ — столько же, сколько давали 29 открытий.
-        //
-        // Пороги нарочно разведены ровнее, чем у «Огранщика» (1·3·7·15·29):
-        // там удвоение — это про редкое достижение, а здесь награда не назначена,
-        // а распределена, и её нельзя запирать за последней ступенью. При 1·3·7·15·29
-        // почти половина суммы (490 ✦) висела бы на «открой все 29», куда за три
-        // месяца доходит только охотник — референс останавливается на 27,6.
-        stepRewards: [35, 175, 210, 280, 315],
-        steps: [1, 6, 12, 20, 29].map(n => ({
+        // B-04: атлас сократился до 24 фигур (было 29) — пороги и своя шкала
+        // пересчитаны под новый потолок, сумма Σ 245 ✦ (было 1015).
+        stepRewards: RAZVEDKA_STEP_REWARDS,
+        steps: RAZVEDKA_TIERS.map(n => ({
             id: `razvedka_${n}`,
-            desc: n === 29
+            desc: n === RAZVEDKA_TIERS[RAZVEDKA_TIERS.length - 1]
                 ? t('chain.razvedka.stepAll')
                 : tp('chain.razvedka.step', n),
             check: { type: 'createdAtlasShapes', n }
@@ -289,9 +288,10 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.ogranshchik.title'),
         sign: 'gem',
         desc: t('chain.ogranshchik.desc'),
-        steps: [1, 3, 7, 15, 29].map(n => ({
+        // B-04: атлас сократился до 24 фигур (было 29) — пороги пересчитаны.
+        steps: OGRANSHCHIK_TIERS.map(n => ({
             id: `ogranshchik_${n}`,
-            desc: n === 29
+            desc: n === OGRANSHCHIK_TIERS[OGRANSHCHIK_TIERS.length - 1]
                 ? t('chain.ogranshchik.stepAll')
                 : tp('chain.ogranshchik.step', n),
             check: { type: 'facetedShapes', n }
@@ -380,8 +380,12 @@ let announcedSpecialChains = new Set();
 // огранкой; B-01 v5: пороги объёмных цепочек ×8 и ступенчатая награда за шаг —
 // обе миграции сбрасывают ВЕСЬ прогресс, включая ✦ и страницы атласа;
 // L-01 v6: имена фигур стали ASCII-ID, старые ключи shapeColors/createdShapes
-// больше не резолвятся — сброс всего прогресса, решение заказчика 2026-08-03).
-const ACHIEVEMENTS_SAVE_VERSION = 6;
+// больше не резолвятся — сброс всего прогресса, решение заказчика 2026-08-03;
+// B-04 v7: атлас сжат до 4×6, состав глав и цены переписаны, размерные цепочки
+// сведены к трём диапазонам (ключи starCountTotals и id цепочек — другие),
+// «Первооткрыватель»/«Огранщик» пересчитаны под 24 фигуры вместо 29 — мигрировать
+// нечего, полный сброс прогресса, версия сейва объявляется отдельно до релиза).
+const ACHIEVEMENTS_SAVE_VERSION = 7;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -391,7 +395,9 @@ function makeDefaultAchievementCounters() {
         levelsCompleted: 0,
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
-        starCountTotals: { 3: 0, 4: 0, 5: 0, 6: 0, 7: 0, '8plus': 0 },
+        // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
+        // не считался вообще (ключа «2» не было) — теперь попадает в s24.
+        starCountTotals: { s24: 0, s57: 0, s8plus: 0 },
         rainbowNights: 0,
         mosaicNights: 0,
         // atlas-pages-graph: id особого достижения страницы → всего засчитанных ночей
@@ -514,17 +520,22 @@ function ensureDailyQuestsForToday() {
     return true;
 }
 
-/** Забран ли этот суточный квест в текущие сутки. */
-function isDailyQuestClaimed(chainId) {
+/**
+ * K-22: `stepIndex` цепочки `evening_rite` не хранится — выводится на лету из
+ * защёлок суток при каждом recompute. 0 — ничего не забрано, 1 — «Приход» взят,
+ * «Ночь» ещё нет, 2 — обе марки прижаты (цепочка «done» до конца суток).
+ */
+function deriveDailyStepIndex() {
     const daily = getDailyQuestState();
-    if (!daily) return false;
-    return chainId === 'daily_night' ? !!daily.nightClaimed : !!daily.entryClaimed;
+    if (!daily || !daily.entryClaimed) return 0;
+    return daily.nightClaimed ? 2 : 1;
 }
 
-function markDailyQuestClaimed(chainId) {
+/** K-22: отмечает шаг суточного квеста забранным — 0 «Приход», 1 «Ночь закрыта». */
+function markDailyQuestClaimed(stepIndex) {
     const daily = getDailyQuestState();
     if (!daily) return;
-    if (chainId === 'daily_night') daily.nightClaimed = true;
+    if (stepIndex === 1) daily.nightClaimed = true;
     else daily.entryClaimed = true;
 }
 
@@ -748,6 +759,10 @@ let achievementsMigrationNeedsFullReset = false;
  *   `shapeColors`, `createdShapes`, `constellations[].shape` в старом сейве —
  *   кириллица, в реестре ID её нет: пересчитывать нечего, таблицу соответствия
  *   заводить ради одного релиза дороже, чем сбросить. Решение заказчика.
+ * - v<7 (B-04): атлас сжат 7→4 главы (состав и цены другие), размерные цепочки
+ *   сведены к трём диапазонам вместо шести точных размеров (id цепочек и ключи
+ *   starCountTotals другие), «Первооткрыватель»/«Огранщик» пересчитаны под 24
+ *   фигуры вместо 29. Пересчитывать нечего — полный сброс.
  *
  * Home Demo, живых игроков нет — честный старт с нуля дешевле пересчёта.
  */
@@ -755,7 +770,7 @@ function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (version < 6) {
+    if (version < 7) {
         // Сбрасывать по шагам смысла нет — обнуляем всё разом.
         initAchievementState();
         achievementsMigrationNeedsFullReset = true;
@@ -783,11 +798,14 @@ function constellationColorBucket(starIds) {
     return ACHIEVEMENT_BUCKET_BY_VALUE[String(best)];
 }
 
+// B-04: три диапазона вместо шести точных размеров — 2★ теперь тоже попадает
+// в бакет (раньше 2★ не считался вообще).
 function constellationSizeKey(starCount) {
     const n = typeof starCount === 'number' ? starCount : 0;
-    if (n >= 8) return '8plus';
-    if (n >= 3 && n <= 7) return String(n);
-    return null; // 2★ и меньше — нет цепочки размеров
+    if (n >= 8) return 's8plus';
+    if (n >= 5) return 's57';
+    if (n >= 2) return 's24';
+    return null;
 }
 
 /** Бакет для «Мозаики»: включает 2★ (в отличие от цепочек размеров). */
@@ -894,10 +912,9 @@ function evaluateAchievementCheck(check, snap) {
     switch (check.type) {
         case 'colorTotal':
             return (c.colorTotals[check.color] || 0) >= check.n;
-        case 'starCountTotal': {
-            const key = check.mode === 'gte' ? '8plus' : String(check.size);
-            return (c.starCountTotals[key] || 0) >= check.n;
-        }
+        // B-04: ключ бакета лежит прямо в check (three-bucket range/gte).
+        case 'starCountTotal':
+            return (c.starCountTotals[check.bucket] || 0) >= check.n;
         // U-10: огранка — производное свойство, счётчика в сейве нет.
         // Считаем по shapeColors тем же предикатом, что рисует венец на карточке.
         case 'facetedShapes':
@@ -934,10 +951,8 @@ function getAchievementStepProgress(check) {
     const c = achievementCounters;
     switch (check.type) {
         case 'colorTotal': return { current: c.colorTotals[check.color] || 0, target: check.n };
-        case 'starCountTotal': {
-            const key = check.mode === 'gte' ? '8plus' : String(check.size);
-            return { current: c.starCountTotals[key] || 0, target: check.n };
-        }
+        case 'starCountTotal':
+            return { current: c.starCountTotals[check.bucket] || 0, target: check.n };
         case 'facetedShapes': return { current: getFacetedShapeCount(), target: check.n };
         case 'createdAtlasShapes': return { current: getCreatedAtlasShapeCount(), target: check.n };
         case 'rainbowNights': return { current: c.rainbowNights, target: check.n };
@@ -959,13 +974,10 @@ function recomputeAchievementsClaimable() {
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
         if (!p) continue;
-        // M-05: у суточного квеста нет ступеней и нет «пройдено» — только
-        // «выполнен сегодня» и «уже забран сегодня».
-        if (chain.daily) {
-            p.claimable = evaluateAchievementCheck(chain.steps[0].check, snap)
-                && !isDailyQuestClaimed(chain.id);
-            continue;
-        }
+        // K-22: у суточной цепочки stepIndex не хранится — выводится из защёлок
+        // суток перед общим расчётом, дальше она идёт тем же путём, что и любая
+        // другая многошаговая цепочка.
+        if (chain.daily) p.stepIndex = deriveDailyStepIndex();
         if (p.stepIndex >= chain.steps.length) {
             p.claimable = false; // цепочка завершена
             continue;
@@ -1140,7 +1152,7 @@ function claimAchievementStep(chainId) {
     const chain = getAchievementChainById(chainId);
     const p = achievementProgress[chainId];
     if (!chain || !p || !p.claimable) return false;
-    if (!chain.daily && p.stepIndex >= chain.steps.length) return false;
+    if (p.stepIndex >= chain.steps.length) return false;
 
     // B-01: платим за тот шаг, который забирают, — до сдвига индекса
     const reward = getAchievementChainStepReward(chain, p.stepIndex);
@@ -1156,9 +1168,9 @@ function claimAchievementStep(chainId) {
 
     awardMetaScore(reward);
     if (chain.daily) {
-        // M-05: ступеней нет — stepIndex не двигается, «забрано» живёт в блоке
-        // суток до прихода нового неба.
-        markDailyQuestClaimed(chain.id);
+        // K-22: stepIndex не хранится напрямую — «забрано» живёт в блоке суток
+        // до прихода нового неба, следующий recompute выведет stepIndex заново.
+        markDailyQuestClaimed(p.stepIndex);
     } else {
         p.stepIndex += 1;
     }
@@ -1199,42 +1211,47 @@ function claimAchievementStep(chainId) {
  *
  * K-12: главы 1..4 — те же четыре рубрики («Цвета»/«Размеры»/«Особые»/
  * «Огранка и путь»), но с литературными именами и рабочими названиями из
- * концепта; состав `chainIds` внутри каждой не менялся. `unlockAtIndex` —
- * индекс в ATLAS_PAGE_COSTS: глава разрезана, когда `lifetimeMetaEarned`
- * проходит кумулятивную сумму до этого индекса включительно
- * (getAtlasCumulativeCost) — тот же нож, что и у атласа, на том же ряду
- * чисел. `null` — глава открыта всегда, порог не существует.
+ * концепта. `unlockAtIndex` — индекс в ATLAS_PAGE_COSTS: глава разрезана,
+ * когда `lifetimeMetaEarned` проходит кумулятивную сумму до этого индекса
+ * включительно (getAtlasCumulativeCost) — тот же нож, что и у атласа, на том
+ * же ряду чисел. `null` — глава открыта всегда, порог не существует.
+ *
+ * B-04: все главы Штампов открыты сразу (unlockAtIndex → null везде) — при
+ * четырёх главах атласа прежние индексы 1/3/5 либо совпали бы с самим окном
+ * первых дней, либо ушли за пределы ряда. Замки особых достижений
+ * (requiresPageComplete/getChainLockReason) это решение не трогает.
  */
 const REWARD_PAGES = [
     {
         // M-05: суточные квесты стоят первым элементом массива — так исторически
         // сложилось (page 0 самой шторки U-09), K-06 забрал их себе для «Сегодня».
         id: 'daily', sign: 'crescent', title: t('rewardPage.daily'),
-        chainIds: ['daily_entry', 'daily_night']
+        chainIds: ['evening_rite']
     },
     {
         id: 'first_light', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.firstLight'),
-        chainIds: ['size_3', 'size_4', 'size_5', 'size_6', 'size_7', 'size_8plus'],
+        chainIds: ['size_2_4', 'size_5_7', 'size_8plus'],
         unlockAtIndex: null
     },
     {
         // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
         chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all'],
-        unlockAtIndex: 1 // Σ 320 ✦ — тот же нож, что режет атлас-главу II
+        unlockAtIndex: null
     },
     {
         id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
-        unlockAtIndex: 3 // Σ 1810 ✦ — атлас-глава IV
+        unlockAtIndex: null
     },
     {
         // Особые достижения страниц атласа: у каждой уже есть свой замок
         // (requiresPageComplete/getChainLockReason) — этот порог лишь решает,
         // видна ли сама глава на оглавлении и в пейджере, замка не дублирует.
+        // B-04: gobelen/orchestra/symphony сняты вместе с бывшими главами V/VI/VII.
         id: 'odd_nights', sign: 'comet', title: t('rewardPage.oddNights'),
-        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope', 'gobelen', 'orchestra', 'symphony'],
-        unlockAtIndex: 5 // Σ 3750 ✦ — атлас-глава VI
+        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
+        unlockAtIndex: null
     }
 ];
 
@@ -1269,16 +1286,29 @@ function rewardPageHasClaimable(pageIndex) {
 }
 
 /**
+ * K-19: счёт главы штампов в оглавлении — прижатые марки, а не пройденные
+ * цепочки: `stepIndex` каждой цепочки и есть число забранных марок в её
+ * пятиклеточной полоске (K-08), сумма по главе складывается в «9 / 25».
+ * «Сутки» в подсчёте не участвуют — они не входят ни в одну страницу REWARD_PAGES.
+ */
+function getRewardPagePressedStamps(pageIndex) {
+    let pressed = 0;
+    let total = 0;
+    for (const chain of getRewardPageChains(pageIndex)) {
+        const p = achievementProgress[chain.id];
+        pressed += p ? p.stepIndex : 0;
+        total += chain.steps.length;
+    }
+    return { pressed, total };
+}
+
+/**
  * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
- * цепочка пройдена целиком. У суточного квеста прогресса нет (условие
- * бинарное) — вместо числа тире, пока не готово и не забрано сегодня.
+ * цепочка пройдена целиком. У шагов суточного квеста прогресса нет (условие
+ * бинарное) — вместо числа тире (K-22: тот же общий путь, `getAchievementStepProgress`
+ * не знает проверок `dailyEntry`/`dailyNight` и честно отдаёт null).
  */
 function buildAchievementHeadCount(chain, p, done) {
-    if (chain.daily) {
-        if (p.claimable) return { text: t('rewards.headReady'), ready: true };
-        if (isDailyQuestClaimed(chain.id)) return { text: t('rewards.headDone'), ready: false };
-        return { text: '—', ready: false };
-    }
     if (done) return { text: t('rewards.headDone'), ready: false };
     if (p.claimable) return { text: t('rewards.headReady'), ready: true };
     const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
@@ -1298,15 +1328,15 @@ function createAchievementTile(chain, stepIndex, p) {
     const tile = document.createElement('div');
     tile.className = 'achv-tile';
 
-    const pressed = chain.daily ? isDailyQuestClaimed(chain.id) : stepIndex < p.stepIndex;
-    const isCurrent = chain.daily ? true : stepIndex === p.stepIndex;
+    // K-22: суточная цепочка идёт тем же путём — stepIndex у неё выведен
+    // recompute'ом из защёлок суток, «текущий» шаг всегда ровно один.
+    const pressed = stepIndex < p.stepIndex;
+    const isCurrent = stepIndex === p.stepIndex;
     const ready = isCurrent && !pressed && p.claimable;
 
     if (pressed) {
         tile.classList.add('achv-tile-lit');
-        const ic = glyphSign(chain.sign || 'arc', 14);
-        if (chain.signColor) ic.style.color = `rgb(${chain.signColor.join(',')})`;
-        tile.appendChild(ic);
+        tile.appendChild(glyphSign(chain.sign || 'arc', 14));
         return tile;
     }
 
@@ -1345,7 +1375,7 @@ function createAchievementTile(chain, stepIndex, p) {
 function createAchievementTiles(chain, p) {
     const tiles = document.createElement('div');
     tiles.className = 'achv-row-tiles';
-    const total = chain.daily ? 1 : chain.steps.length;
+    const total = chain.steps.length;
     for (let i = 0; i < 5; i++) {
         if (i < total) {
             tiles.appendChild(createAchievementTile(chain, i, p));
@@ -1365,7 +1395,7 @@ function createAchievementLockedRow(reason) {
 
     const icon = document.createElement('div');
     icon.className = 'achv-row-icon achv-row-icon-uncut';
-    icon.appendChild(glyphSign('knife', 22));
+    icon.appendChild(glyphSign('lock', 22));
     row.appendChild(icon);
 
     const body = document.createElement('div');
@@ -1397,8 +1427,10 @@ function createAchievementRow(chain) {
     if (lockReason) return createAchievementLockedRow(lockReason);
 
     const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    // M-05: суточный квест не бывает «пройден» — он возвращается с новым небом
-    const done = !chain.daily && p.stepIndex >= chain.steps.length;
+    // K-22: суточная цепочка тоже уходит в «done» (обе марки прижаты), но
+    // до конца суток, а не навсегда — recompute сбросит stepIndex сам,
+    // как только придёт новое небо.
+    const done = p.stepIndex >= chain.steps.length;
 
     const row = document.createElement('div');
     row.className = 'achv-row'
@@ -1426,9 +1458,13 @@ function createAchievementRow(chain) {
 
     row.appendChild(head);
 
+    // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
+    // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
+    // steps) описания не показывает — печатать нечего.
     const desc = document.createElement('div');
     desc.className = 'achv-row-desc';
-    desc.textContent = chain.desc || '';
+    const stepEntry = chain.steps[p.stepIndex];
+    desc.textContent = stepEntry ? stepEntry.desc : '';
     row.appendChild(desc);
 
     row.appendChild(createAchievementTiles(chain, p));

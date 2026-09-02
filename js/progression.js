@@ -266,24 +266,6 @@ function clampShapeToAtlasVisibility(shapeName) {
     return normalized;
 }
 
-/** Созвездие — первая на поле копия атласной фигуры с открытой страницы (дубликаты не подсвечиваем). */
-function isShapeRecognizedOnUnlockedAtlas(constellation) {
-    if (!constellation) return false;
-    const name = normalizeShapeName(constellation.shape || constellation.name);
-    if (!name || name === SHAPE_UNRECOGNIZED) return false;
-    if (!isShapeVisibleInAtlas(name)) return false;
-
-    const committed = Array.isArray(constellations) ? constellations : [];
-    for (const c of committed) {
-        if (!c) continue;
-        const cn = normalizeShapeName(c.shape || c.name);
-        if (cn !== name) continue;
-        if (!isShapeVisibleInAtlas(cn)) continue;
-        return c === constellation;
-    }
-    return false;
-}
-
 function getUnlockedAtlasShapeNames() {
     const names = [];
     for (let i = 0; i < ATLAS_PAGES.length; i++) {
@@ -538,6 +520,9 @@ function loadProgression() {
         if (!raw) {
             if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(null);
             if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+            // B-04: глава I стоит 0 ✦ намеренно — игрок без единого ✦ обязан
+            // увидеть её открытой сразу, а не после первого начисления.
+            maybeAutoUnlockAtlasPages();
             saveProgression();
             return false;
         }

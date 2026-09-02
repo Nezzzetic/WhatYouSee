@@ -169,7 +169,11 @@
 
     /* --- Сетка: модуль 4 pt ----------------------------------------------- */
     --u: 4px;
-    --page-pad-left: 20px;       /* слева — за шкалой света у корешка */
+    /* K-17: поле под шкалу света считается по её самому широкому предмету —
+       флажку с пятизначным числом (замер: 44 px от левого края экрана; ✦ за всё
+       время не тратится и до пяти знаков дорастает). Единственный источник этой
+       геометрии: страница отступает на него, .book-gauge им же и меряется. */
+    --page-pad-left: 46px;       /* слева — за шкалой света у корешка */
     --page-pad-right: 16px;      /* справа — за высечками */
     --r-sm: 2px;                 /* радиусы книжные, 2–4 pt */
     --r-md: 3px;
@@ -631,6 +635,11 @@ button:disabled {
     margin-top: 2px;
 }
 
+/* K-31 (аналогия): имя — сюрприз до первого создания, как на карточке атласа. */
+.sky-bookmark-name-unknown {
+    color: var(--ink-faint);
+}
+
 .sky-bookmark-label {
     font-family: var(--font-text);
     font-size: 9px;
@@ -653,9 +662,11 @@ button:disabled {
     background: var(--night);
 }
 
-/* Гауge и высечки лежат в собственных полях страницы (--page-pad-left/-right,
+/* Шкала и высечки лежат в собственных полях страницы (--page-pad-left/-right,
    K-01) абсолютным наложением — как в концепте: страница читается на всю
-   ширину, поля просто заняты линейкой и стопкой высечек. */
+   ширину, поля просто заняты линейкой и стопкой высечек.
+   K-17: шкала — ребёнок листа, а не сосед. Соседом её закрашивал непрозрачный
+   фон `.book-page` (`inset: 0`), и в DOM она лежала до него. */
 .book-page {
     position: absolute;
     inset: 0;
@@ -664,8 +675,32 @@ button:disabled {
     padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px) 10px
         max(var(--page-pad-left), 24px);
     background:
-        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%);
+        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%),
+        repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.006) 2px 3px);
     touch-action: pan-y;
+}
+
+/* K-27: книжные края — тень корешка слева (из концепта) и обрез справа
+   зеркалом той же кривой, но слабее: корешок в книге всегда темнее обреза
+   (в концепте правый край отдельно не нарисован — там одиночная страница). */
+.book-page::before,
+.book-page::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 22px;
+    pointer-events: none;
+}
+
+.book-page::before {
+    left: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent);
+}
+
+.book-page::after {
+    right: 0;
+    background: linear-gradient(270deg, rgba(0, 0, 0, 0.2), transparent);
 }
 
 .book-head {
@@ -738,53 +773,53 @@ button:disabled {
     color: var(--ink-faint);
     display: flex;
     justify-content: space-between;
-    align-items: baseline;
-}
-
-/* --- пейджер под-страниц атласа/наград (временная навигация K-06; полноценный
-   разворот-определитель и главы штампов — K-11/K-12) --- */
-
-.book-pager {
-    flex: none;
-    display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 14px;
-    padding-bottom: 4px;
 }
 
-.book-pager-btn {
+/* --- K-18: листание глав атласа/штампов переехало в подвал (было отдельной
+   строкой-пейджером над сеткой) — правая половина `.book-foot` вместо голой
+   колонцифры несёт «‹ p. N ▸». Кнопки те же узлы, что раньше жили в
+   `.book-pager` (сохраняют `data-pager`/`data-dir` — на них смотрит
+   verify-atlas-spread.js), просто без кружка-кнопки. K-28: пейджер стал
+   сквозным на всю книгу — стрелки видны на любом развороте, прячутся только
+   на истинных краях (canSwipeBookPage в ui.js), поэтому align-items здесь
+   center, а не baseline — глиф крупнее строчного текста рядом. */
+
+.book-foot-nav {
     flex: none;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.04);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
+   странно попадать пальцем даже с увеличенной зоной касания. Зона касания
+   растёт ещё и через padding + отрицательный margin — тот же приём, что уже
+   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой марки
+   (K-08, `.achv-tile-ready` шире на 6pt). Горизонталь — асимметрично: сторона
+   к колонцифре (`#bookFolio`) остаётся узкой (4px, в пределах gap:6px), чтобы
+   хиткон стрелки не наезжал на число при наведении/касании (был баг — правка
+   по фидбеку с телефона), наружная сторона (к пустому полю страницы) растёт
+   на все 20px — там расти некуда мешать. */
+.book-foot-nav-btn {
+    flex: none;
+    padding: 12px 4px;
+    margin: -12px -4px;
+    border: none;
+    background: none;
     color: var(--ink-muted);
-    font-size: 16px;
+    font-size: 24px;
     line-height: 1;
+    letter-spacing: normal;
     cursor: pointer;
 }
 
-.book-pager-btn:hover {
-    border-color: var(--ink-faint);
-    background: rgba(var(--ink-rgb), 0.08);
+.book-foot-nav-btn:hover {
     color: var(--ink);
 }
 
-.book-pager-btn:disabled {
-    opacity: 0.35;
-    cursor: default;
-}
-
-.book-pager-label {
-    min-width: 64px;
-    text-align: center;
-    font-size: 12px;
-    color: var(--ink-muted);
-    font-variant-numeric: tabular-nums;
-}
+#bookFootPrev { padding-left: 20px; margin-left: -20px; }
+#bookFootNext { padding-right: 20px; margin-right: -20px; }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
 
@@ -803,25 +838,23 @@ button:disabled {
     color: var(--ink-muted);
 }
 
-/* --- «вернуться на небо»: то же жест, что и потягивание вниз, но строкой --- */
+/* K-17: строки состояния страницы — не новости. Тот же кегль и та же линия,
+   что у ленты событий (в концепте они стоят одним абзацем), но тише на тон:
+   событие ночи прочитывается один раз, состояние висит всегда. */
 
-.book-return {
+.book-state-list {
     flex: none;
-    margin-top: 10px;
-    padding: 6px;
-    border: none;
-    background: none;
-    color: var(--ink-faint);
-    font-family: var(--font-text);
-    font-style: italic;
-    font-size: 12.5px;
-    letter-spacing: 0.04em;
-    text-align: center;
-    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: 7px;
 }
 
-.book-return:hover {
-    color: var(--ink-muted);
+.book-state-row {
+    font-family: var(--font-text);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink-faint);
 }
 
 /* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
@@ -863,15 +896,19 @@ button:disabled {
     margin-top: 0;
 }
 
+/* K-18: строка оглавления — линейка из точек уже держит текстуру строки
+   (`.book-index-row-dots`); рамки и подложки нет (концепт: `.toc-line`). */
 .book-index-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    padding: 9px 10px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 10px;
-    background: rgba(var(--ink-rgb), 0.025);
+    padding: 6px 2px;
+    border: none;
+    /* строка — <button>, у которого есть базовый `button { border-radius: 4px }»
+       (style.css выше) — снимаем явно, иначе 4px просочится сквозь снятую рамку. */
+    border-radius: 0;
+    background: none;
     color: var(--ink);
     font-family: var(--font-text);
     font-size: 13px;
@@ -880,7 +917,7 @@ button:disabled {
 }
 
 .book-index-row:hover {
-    border-color: var(--ink-faint);
+    background: rgba(var(--ink-rgb), 0.05);
 }
 
 .book-index-row-status {
@@ -924,11 +961,16 @@ button:disabled {
     transform: translateY(-3px);
 }
 
+/* K-24: точка садится в тот же жёлоб .book-index-row-icon, что и замок —
+   на одной строке они не встречаются, второй слот был лишним зазором. */
 .book-index-row-wax {
     flex: none;
     width: 6px;
     height: 6px;
     border-radius: 50%;
+}
+
+.book-index-row-wax-lit {
     background: var(--wax);
     box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
 }
@@ -948,7 +990,12 @@ button:disabled {
     left: 4px;
     top: calc(var(--safe-top) + 60px);
     bottom: 42px;
-    width: 16px;
+    /* Ширина — всё поле листа минус её собственный отступ: засечки и флажок
+       обязаны помещаться в свою полосу и не наезжать на текст (K-17, риск 1). */
+    width: calc(var(--page-pad-left) - 6px);
+    /* Та же ось, что у страницы: полоса теперь ловит хит-тест, и жест
+       перелистывания не должен об неё спотыкаться. */
+    touch-action: pan-y;
 }
 
 .book-gauge::before {
@@ -1000,6 +1047,13 @@ button:disabled {
     font-weight: 700;
     color: var(--gold-light);
     font-variant-numeric: tabular-nums;
+}
+
+/* K-25: на нуле «● 0» нечего показывать, но узел остаётся в разметке —
+   getClaimFlightTargetRect() целится в него же, и первый в жизни игрока
+   забор не должен искать устаревшую (и уже скрытую книгой) цель на ленте. */
+.book-gauge-flag-empty {
+    visibility: hidden;
 }
 
 .book-gauge-flag::before {
@@ -1071,83 +1125,58 @@ button:disabled {
 }
 
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
-   не поповером над подвалом шторки (той больше нет). --- */
+   не поповером над подвалом шторки (той больше нет).
+   K-34: рамка/заливка/12px-радиус сняты — та же карточка-плашка, которую
+   K-18/K-24/K-25 уже вывели отовсюду в пользу волосяной линейки; текст ложится
+   прямо на бумагу. Бар прогресса — тонкая линия (тот же словарь, что у шкалы
+   света корешка и точечной линейки сцепки), не отдельная толстая пилюля. --- */
 
 .obs-lock-hint {
-    padding: 10px 12px 11px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 12px;
-    background: var(--paper-raised);
-}
-
-.seg-btn {
-    flex: 1;
-    padding: 7px 0;
-    border: none;
-    border-radius: 99px;
-    background: transparent;
-    color: var(--ink-muted);
-    font-size: 12.5px;
-    cursor: pointer;
-}
-
-.seg-btn:hover {
-    background: rgba(var(--ink-rgb), 0.07);
-    border-color: transparent;
-    color: var(--ink);
-}
-
-.seg-btn-on,
-.seg-btn-on:hover {
-    background: var(--gold);
-    border-color: transparent;
-    color: var(--night);
-    font-weight: 700;
+    padding: 8px 4px 2px;
+    text-align: center;
 }
 
 /* --- B-02: обсерватория --------------------------------------------------- */
 
-/* Третья кнопка сегмента: только иконка, фиксированные 44 px. Atlas и Rewards
-   остаются flex: 1 — на 360 px три текстовые подписи не помещаются, а кнопка
-   перехода и по смыслу другого рода: она не показывает раздел, а меняет мир. */
-.seg-btn-icon {
-    flex: none;
-    width: 44px;
-    font-size: 16px;
-    line-height: 1;
+/* K-34: замок K-24 (тот же знак, что у запертых глав атласа/штампов и
+   Odd Nights) — статус «заперто» читается сам, без слов, до заголовка-CTA. */
+.obs-lock-icon {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 8px;
+    color: var(--ink-muted);
 }
 
 .obs-lock-title {
     font-family: var(--font-title);
-    font-size: 12.5px;
+    font-size: 15px;
+    line-height: 1.3;
     color: var(--ink);
 }
 
-.obs-lock-sub {
-    margin-top: 2px;
-    font-size: 11.5px;
-    color: var(--ink-muted);
-}
-
 .obs-lock-bar {
-    margin-top: 7px;
-    height: 6px;
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.07);
-    overflow: hidden;
+    position: relative;
+    margin: 16px auto 0;
+    max-width: 200px;
+    height: 1px;
+    background: var(--paper-edge);
 }
 
 .obs-lock-bar-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
     height: 100%;
     width: 0;
-    border-radius: 99px;
     background: var(--gold);
+    box-shadow: 0 0 4px rgba(var(--gold-rgb), 0.5);
 }
 
 .obs-lock-progress {
-    margin-top: 4px;
+    margin-top: 8px;
     font-size: 11px;
-    color: var(--ink-muted);
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
 }
 
 /* =============================================================================
@@ -1174,20 +1203,11 @@ button:disabled {
     text-align: center;
 }
 
-.exlibris-caption-el {
-    font-family: var(--font-text);
-    font-size: 12.5px;
-    letter-spacing: 0.34em;
-    text-transform: uppercase;
-    color: var(--gold);
-}
-
 .exlibris-caption-flourish {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 9px;
-    margin-top: 6px;
     color: var(--gold-deep);
 }
 
@@ -1198,11 +1218,12 @@ button:disabled {
 }
 
 .exlibris-caption-sub {
+    margin-top: 10px;
     font-family: var(--font-text);
     font-style: italic;
     font-size: 12.5px;
+    line-height: 1.4;
     color: var(--ink-muted);
-    margin-top: 7px;
 }
 
 /* Канвас встроен: репозиционируется fixed поверх .exlibris-canvas-slot, но
@@ -1239,17 +1260,65 @@ button:disabled {
     display: block;
 }
 
-/* K-13: тумблер «соединять»/«двигать» переехал с плавающего угла (K-04→до
+/* K-13/K-21: тумблер «соединять»/«двигать» переехал с плавающего угла (K-04→до
    K-13) на бумагу — под гравюру, вместе с остальными инструментами страницы
-   Ex Libris. Пилюля-контейнер: K-06 завёл под неё собственный класс вместо
-   переиспользованной `.sheet-seg` шторки; геометрия та же, позиционирование
-   больше не fixed — тумблер лежит в обычном потоке `.exlibris-plate`. */
-.obs-mode-toggle {
+   Ex Libris. K-21 (Табл. VII): два поля со знаком и словом вместо пилюли из
+   двух иконок — активное печатается золотом (текст, не заливка), перепутать
+   «двигать» (там тап красит звезду) и «соединять» дорого. */
+.exlibris-tools {
     display: flex;
-    gap: 3px;
-    padding: 3px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
+    justify-content: center;
+    gap: 8px;
+}
+
+.exlibris-tool {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 15px;
+    border: none;
+    box-shadow: inset 0 0 0 1px var(--paper-edge);
+    background: transparent;
+    font-family: var(--font-text);
+    font-size: 13px;
+    color: var(--ink-faint);
+    cursor: pointer;
+}
+
+.exlibris-tool-on {
+    color: var(--gold);
+    background: rgba(var(--gold-rgb), 0.1);
+    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.5);
+}
+
+/* K-21: поле переименования — строка на бумаге рядом с подписью «ex libris»,
+   показывается только на время правки (тап по подписи на холсте или по её
+   знаку пера). Ввод без рамки полей ОС — нижняя линия страницы вместо box. */
+.exlibris-rename-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    color: var(--gold-deep);
+}
+
+.exlibris-rename-input {
+    width: 168px;
+    max-width: 60%;
+    border: none;
+    border-bottom: 1px solid var(--paper-edge);
+    background: transparent;
+    padding: 2px 1px 4px;
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 14px;
+    color: var(--ink);
+    text-align: center;
+}
+
+.exlibris-rename-input:focus {
+    outline: none;
+    border-bottom-color: var(--gold);
 }
 
 /* --- K-11: разворот-определитель — 2 колонки, ни одна фигура не спрятана --- */
@@ -1261,6 +1330,8 @@ button:disabled {
     gap: 10px 16px;
 }
 
+/* K-18: фигура стоит прямо на бумаге — рамки и подложки нет (концепт: `.fig`
+   не несёт ни border, ни background). */
 .atlas-card {
     position: relative;
     display: flex;
@@ -1268,21 +1339,25 @@ button:disabled {
     align-items: center;
     gap: 3px;
     padding: 9px 6px 8px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 14px;
-    background: rgba(var(--ink-rgb), 0.025);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
-.atlas-card-unknown {
-    opacity: 0.45;
+.atlas-card:focus-visible {
+    outline: 1px solid var(--ink-faint);
+    outline-offset: 2px;
+    border-radius: var(--r-md);
 }
 
-.atlas-card-faceted {
-    border-color: rgba(var(--gold-rgb), 0.55);  /* огранка пройдена — золото пути */
-    background:
-        radial-gradient(120% 80% at 50% 0%, rgba(var(--gold-rgb), 0.16) 0%, rgba(var(--gold-rgb), 0) 70%),
-        rgba(var(--ink-rgb), 0.025);
-}
+/* K-31: `.atlas-card-unknown` больше не гасит карточку (было opacity: 0.45
+   поверх уже бледного чертежа — drawShapeGlyph рисовал его альфой 0.7,
+   контур падал ниже 2:1 к бумаге). Класс остался флагом состояния для
+   `verify-atlas-spread.js` и для .atlas-card-title-unknown ниже — контраст
+   теперь несёт сам чертёж (альфа 0.85) и «?» вместо имени. */
+
+/* Полная огранка уже несут корона (.atlas-card-crown) и золотой цвет подписи
+   (title.style.color, красится в JS) — своего вида класс не добавляет; он
+   остаётся классом-флагом для селектора `verify-atlas-spread.js`. */
 
 /* Корона сидит верхом на грани карточки и НЕ свешивается наружу: у .book-body
    `overflow-y: auto` (клипует и по X), и всё, что выше карточки больше чем на 4 px (её padding),
@@ -1312,20 +1387,13 @@ button:disabled {
     text-align: center;
 }
 
+/* K-31: «?» вместо имени и вместо снятой подписи «not yet traced» —
+   крупнее строки и на --ink-muted (не --ink-faint): текст, в отличие от
+   контура чертежа, меряется по WCAG для текста, не для графики. */
 .atlas-card-title-unknown {
-    color: var(--ink-faint);
-    letter-spacing: 1px;
-}
-
-/* K-11: «N stars» под подписью неразгаданной — вместо граней, которых у неё
-   ещё нет. Тот же приём, что у .fnote в концепте: мелко, разрядка, тускло. */
-.atlas-card-note {
-    font-family: var(--font-text);
-    font-size: 9px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: var(--ink-faint);
-    margin-top: 2px;
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--ink-muted);
 }
 
 /* K-11: булавка-закладка — верхний правый угол карточки. Кружок-контур,
@@ -1369,24 +1437,38 @@ button:disabled {
     margin-top: 2px;
 }
 
-/* Грань: ромб, тусклый контур — не горит, залитый цветом — горит */
+/* K-18: грань — искра тем же контуром, что звезда на небе (drawSparkleShape,
+   camera.js), портированным на SVG-путь (createAtlasFacetSpark, ui.js).
+   Тусклый контур — не горит, залитая — горит. */
 .atlas-facet {
-    width: 7px;
-    height: 7px;
-    transform: rotate(45deg);
-    border: 1px solid var(--paper-edge);
-    background: transparent;
+    width: 9px;
+    height: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.atlas-facet-lit {
-    border-color: transparent;
+.atlas-facet svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
 }
 
-.atlas-facet-red.atlas-facet-lit    { background: var(--star-garnet); box-shadow: 0 0 5px rgba(var(--star-garnet-rgb), 0.6); }
-.atlas-facet-orange.atlas-facet-lit { background: var(--star-amber);  box-shadow: 0 0 5px rgba(var(--star-amber-rgb), 0.6); }
-.atlas-facet-yellow.atlas-facet-lit { background: var(--star-copper); box-shadow: 0 0 5px rgba(var(--star-copper-rgb), 0.6); }
-.atlas-facet-white.atlas-facet-lit  { background: var(--star-opal);   box-shadow: 0 0 5px rgba(var(--star-opal-rgb), 0.6); }
-.atlas-facet-blue.atlas-facet-lit   { background: var(--star-ice);    box-shadow: 0 0 5px rgba(var(--star-ice-rgb), 0.6); }
+.atlas-facet path {
+    fill: none;
+    stroke: var(--paper-edge);
+    stroke-width: 1;
+}
+
+.atlas-facet-lit path {
+    stroke: none;
+}
+
+.atlas-facet-red.atlas-facet-lit    path { fill: var(--star-garnet); filter: drop-shadow(0 0 3px rgba(var(--star-garnet-rgb), 0.6)); }
+.atlas-facet-orange.atlas-facet-lit path { fill: var(--star-amber);  filter: drop-shadow(0 0 3px rgba(var(--star-amber-rgb), 0.6)); }
+.atlas-facet-yellow.atlas-facet-lit path { fill: var(--star-copper); filter: drop-shadow(0 0 3px rgba(var(--star-copper-rgb), 0.6)); }
+.atlas-facet-white.atlas-facet-lit  path { fill: var(--star-opal);   filter: drop-shadow(0 0 3px rgba(var(--star-opal-rgb), 0.6)); }
+.atlas-facet-blue.atlas-facet-lit   path { fill: var(--star-ice);    filter: drop-shadow(0 0 3px rgba(var(--star-ice-rgb), 0.6)); }
 
 .atlas-page-locked {
     grid-column: 1 / -1;
@@ -1408,23 +1490,32 @@ button:disabled {
 .achv-list {
     display: flex;
     flex-direction: column;
-    gap: 6px;
 }
 
+/* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
+   (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
+   строка списка — без линейки. */
+/* K-23: жёлоб под сургучную полосу зарезервирован всегда — иначе появление
+   сигнала «готово прижать» расталкивает строку (padding был только у
+   `.achv-row-claimable`, box-shadow сам по себе на геометрию не влияет). */
 .achv-row {
-    padding: 9px 12px 10px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 14px;
-    background: rgba(var(--ink-rgb), 0.025);
+    padding: 9px 0 10px 9px;
+    border-bottom: 1px solid var(--paper-edge);
+}
+
+.achv-list > .achv-row:last-child {
+    border-bottom: none;
 }
 
 .achv-row-done {
     opacity: 0.55;
 }
 
+/* Носитель «готово прижать» на уровне строки — маргинальный акцент сургучом,
+   не рамка-карточка (риск 1: дублирует сургучный счёт шапки и кольцо готовой
+   марки — три независимых сигнала вместо одной рамки). */
 .achv-row-claimable {
-    border-color: rgba(var(--wax-rgb), 0.5);
-    background: rgba(var(--wax-rgb), 0.06);
+    box-shadow: inset 3px 0 0 var(--wax);
 }
 
 .achv-row-locked {
@@ -1546,9 +1637,12 @@ button:disabled {
     pointer-events: none;
 }
 
+/* K-18: было --gold-deep — на тёмной бумаге (--paper) почти нечитаемо;
+   --gold-light у готовой марки (ниже) остаётся ярче — двухступенчатая
+   лестница без нового токена. */
 .achv-tile-amt {
     font-size: 11px;
-    color: var(--gold-deep);
+    color: var(--gold);
     letter-spacing: 0.01em;
 }
 
@@ -1694,7 +1788,10 @@ button:disabled {
 /* Прилёт: лента вздрагивает — награда доехала именно сюда. Раньше пульс жил
    на счётчике ✦ в шапке шторки (U-09); счётчика на небе больше нет, роль —
    у ленты, туда же летит и сама монета (getClaimFlightTargetRect). */
-.ribbon-tail.score-pulse {
+/* K-17: пульс прилёта стоит там же, куда прилетела монета — на флажке шкалы,
+   пока книга открыта, и на ленте, когда закрыта. */
+.ribbon-tail.score-pulse,
+.book-gauge-flag.score-pulse {
     animation: scorePulse var(--score-pulse-ms, 240ms) var(--ease);
 }
 
@@ -1720,7 +1817,8 @@ button:disabled {
     .claim-coin,
     .claim-coin-y,
     .claim-coin-pill,
-    .ribbon-tail.score-pulse {
+    .ribbon-tail.score-pulse,
+    .book-gauge-flag.score-pulse {
         animation: none;
     }
 }

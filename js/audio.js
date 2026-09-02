@@ -1,16 +1,25 @@
-// audio.js — Web Audio API sound effects (vanilla JS, no modules)
+// audio.js — Web Audio API sound effects + A-05 хаптик (navigator.vibrate).
 // All functions are global. Safe to call before initAudio() — they silently no-op.
 
 let _audioCtx = null;
 let _lastEdgeSnapTime = 0;
 
+// A-05: жест игрока уже был. Ставится initAudio() — она зовётся ровно из точек
+// жеста (mousePressed/touchStarted, забор, dev-кнопка) и служит игре хуком
+// «первое касание». Нужен свой признак, а не _audioCtx: как только у звука
+// появится выключатель, initAudio() может перестать создавать контекст —
+// вибро на загрузке завершённой ночи (save.js, revealConstellationArt(false))
+// не должно проснуться вместе с этим.
+let _interacted = false;
+
 // K-14: первая настоящая настройка — звук вкл/выкл. Свой ключ, отдельный от
 // SAVE_KEY и от прогрессии: настройка переживает и сброс прогресса, и смену
-// неба (риск 1 дока). Объект, а не голый булев — U-14 добавит сюда `haptic`
-// вторым полем на готовое место, не заводя второй ключ.
+// неба (риск 1 дока). A-05 добавила сюда `haptic` вторым полем на готовое
+// место, не заводя второй ключ.
 const SETTINGS_SAVE_KEY = 'starsReborn_settings_v01';
 
 let _soundEnabled = true;
+let _hapticEnabled = true; // A-05: своя настройка, гасится независимо от звука
 
 function loadSoundSetting() {
     try {
@@ -18,12 +27,13 @@ function loadSoundSetting() {
         if (!raw) return;
         const data = JSON.parse(raw);
         if (typeof data.sound === 'boolean') _soundEnabled = data.sound;
+        if (typeof data.haptic === 'boolean') _hapticEnabled = data.haptic;
     } catch (e) { /* ignore */ }
 }
 
 function saveSoundSetting() {
     try {
-        localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({ sound: _soundEnabled }));
+        localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({ sound: _soundEnabled, haptic: _hapticEnabled }));
     } catch (e) { /* ignore */ }
 }
 
@@ -38,7 +48,51 @@ function setSoundEnabled(on) {
     saveSoundSetting();
 }
 
+// A-05: гейт звука в play*-функциях — техническая возможность (_audioCtx)
+// и желание игрока (_soundEnabled) в одной точке.
+function isSoundOn() {
+    return _soundEnabled && !!_audioCtx;
+}
+
+function isHapticEnabled() {
+    return _hapticEnabled;
+}
+
+function setHapticEnabled(on) {
+    _hapticEnabled = !!on;
+    saveSoundSetting();
+    if (!_hapticEnabled) {
+        // выключатель обязан оборвать уже идущий паттерн, а не ждать его конца
+        try {
+            if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') navigator.vibrate(0);
+        } catch (e) {}
+    }
+}
+
+// A-05: длительности вибро — рядом со звуком, который они сопровождают.
+// 0 и [] штатно значат «это событие без вибро», а не ошибку.
+const HAPTIC_SNAP_MS = 10;              // соединение звезды — самый короткий тик
+const HAPTIC_CLAIM_MS = 15;             // забор награды — лёгкое «взял»
+const HAPTIC_COMMIT_MS = 25;            // коммит созвездия — самое весомое одиночное событие
+const HAPTIC_NIGHT_END_MS = [30, 70, 30]; // конец ночи — единственный паттерн, не импульс
+const HAPTIC_TOGGLE_MS = 15;            // U-14: включил тумблер вибро — почувствовал, что именно он включил
+
+/**
+ * A-05: единственная точка, где игра вообще касается navigator.vibrate.
+ * `pattern` — число мс или паттерн [мс...]; 0/[] — штатное «без вибро».
+ */
+function hapticPulse(pattern) {
+    if (!_hapticEnabled) return;
+    if (!_interacted) return;
+    if (!pattern || (Array.isArray(pattern) && pattern.length === 0)) return;
+    if (typeof navigator === 'undefined' || typeof navigator.vibrate !== 'function') return;
+    try {
+        navigator.vibrate(pattern);
+    } catch (e) {}
+}
+
 function initAudio() {
+    _interacted = true;
     if (_audioCtx) return;
     try {
         _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -61,14 +115,17 @@ function chainStepFreq(n) {
 }
 
 // Короткий щелчок: соединение звезды в черновик.
-// chainStarCount — число звёзд в цепочке (visitedStars) с учётом присоединяемой.
-function playEdgeSnap(chainStarCount) {
-    if (!_audioCtx || !_soundEnabled) return;
+// A-06: chainEdgeCount — номер ребра в черновике (currentLines.length), считая
+// только что добавленное, плюс 1 — так первое ребро звучит той же нотой, что
+// раньше первая пара звёзд (chainSemitones калиброван под n=2 у первой ноты).
+function playEdgeSnap(chainEdgeCount) {
     const now = Date.now();
-    if (now - _lastEdgeSnapTime < 50) return; // debounce
+    if (now - _lastEdgeSnapTime < 50) return; // debounce — общий для звука и вибро
     _lastEdgeSnapTime = now;
+    hapticPulse(HAPTIC_SNAP_MS);
+    if (!isSoundOn()) return;
     try {
-        const n = typeof chainStarCount === 'number' && isFinite(chainStarCount) ? chainStarCount : 2;
+        const n = typeof chainEdgeCount === 'number' && isFinite(chainEdgeCount) ? chainEdgeCount : 2;
         const freq = chainStepFreq(n);
         const t = _audioCtx.currentTime;
         const osc = _audioCtx.createOscillator();
@@ -87,7 +144,8 @@ function playEdgeSnap(chainStarCount) {
 
 // Мягкий аккорд: коммит созвездия
 function playCommit() {
-    if (!_audioCtx || !_soundEnabled) return;
+    hapticPulse(HAPTIC_COMMIT_MS);
+    if (!isSoundOn()) return;
     try {
         const t = _audioCtx.currentTime;
         [[400, 0.14], [600, 0.10]].forEach(([freq, vol]) => {
@@ -141,13 +199,15 @@ function claimNoteCount(reward) {
  * пробегом, а не кашей из пяти одинаковых арпеджио.
  */
 function playClaim(reward) {
-    if (!_audioCtx || !_soundEnabled) return;
     const now = Date.now();
-    if (now - _lastClaimTime < CLAIM_DEBOUNCE_MS) return;
+    if (now - _lastClaimTime < CLAIM_DEBOUNCE_MS) return; // общий пол для звука и вибро
     _claimSeriesShift = (now - _lastClaimTime < CLAIM_SERIES_WINDOW_MS)
         ? Math.min(CLAIM_SERIES_MAX, _claimSeriesShift + CLAIM_SERIES_STEP)
         : 0;
     _lastClaimTime = now;
+
+    hapticPulse(HAPTIC_CLAIM_MS);
+    if (!isSoundOn()) return;
 
     try {
         const t = _audioCtx.currentTime;
@@ -187,7 +247,8 @@ function playClaim(reward) {
 
 // Восходящий арпеджио: конец уровня
 function playLevelComplete() {
-    if (!_audioCtx || !_soundEnabled) return;
+    hapticPulse(HAPTIC_NIGHT_END_MS);
+    if (!isSoundOn()) return;
     try {
         const t = _audioCtx.currentTime;
         [523, 659, 784].forEach((freq, i) => {
