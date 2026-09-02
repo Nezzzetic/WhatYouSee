@@ -333,14 +333,16 @@ en: {
     'observatory.modeConnect': 'Connect stars',
     'observatory.modeMove': 'Move and recolour stars',
     // K-34: заголовок хинта был дословным повтором заголовка страницы
-    // (book.headExLibris — «A sky of your own») — теперь зовёт, а не повторяет.
-    'observatory.lockedTitle': 'Create your own, unique constellation',
-    'observatory.lockedSub': 'Stars you can move, connect and recolour. It never resets.',
+    // (book.headExLibris — «A sky of your own») — теперь зовёт, а не повторяет,
+    // и стоит один, без второй строки про звёзды (та переехала в plateHint,
+    // где её видно уже после разблокировки, а не до неё).
+    'observatory.lockedTitle': 'Create your own, unique constellation.',
     'observatory.lockedProgress': '{current} / {target} ✦ earned all-time',
+    // K-34: та же строка, что раньше была под запертым хинтом — теперь под
+    // гравюрой, когда холст уже открыт и объяснение к месту.
+    'observatory.plateHint': 'Stars you can move, connect and recolour. It never resets.',
     // K-21: подпись прежнего prompt() переехала в aria-label книжного поля ввода.
     'observatory.renamePrompt': 'Name this constellation:',
-    // --- K-13: подпись под оттиском ---------------------------------------
-    'observatory.exLibris': 'Ex libris',
 },
 
 // -----------------------------------------------------------------------------
@@ -620,13 +622,15 @@ ru: {
     'observatory.modeConnect': 'Соединять звёзды',
     'observatory.modeMove': 'Перемещать и красить звёзды',
     // K-34: заголовок хинта дословно повторял заголовок страницы
-    // (book.headExLibris — «Своё небо») — теперь зовёт, а не повторяет.
-    'observatory.lockedTitle': 'Создай своё, уникальное созвездие',
-    'observatory.lockedSub': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
+    // (book.headExLibris — «Своё небо») — теперь зовёт, а не повторяет, и стоит
+    // один, без второй строки про звёзды (та переехала в plateHint, где её
+    // видно уже после разблокировки, а не до неё).
+    'observatory.lockedTitle': 'Создай своё, уникальное созвездие.',
     'observatory.lockedProgress': '{current} / {target} ✦ за всё время',
+    // K-34: та же строка, что раньше была под запертым хинтом — теперь под
+    // гравюрой, когда холст уже открыт и объяснение к месту.
+    'observatory.plateHint': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
     'observatory.renamePrompt': 'Назвать созвездие:',
-    // --- K-13: подпись под оттиском ---------------------------------------
-    'observatory.exLibris': 'Ex libris',
 }
 
 };
