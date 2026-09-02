@@ -1411,6 +1411,8 @@ function commitConstellationFromPayload(payload) {
         );
     }
     recomputeSuppressedStars();
+    // M-07: звёзды, которых после этого коммита больше не с кем соединить.
+    constellation.orphanExtinguishedIds = extinguishOrphanStars();
     recomputeAtlasCollectedStarColors();
 
     updateScoreUI(0, finalShape, starCount);
@@ -1465,6 +1467,12 @@ function undoLastConstellation() {
     for (const id of collectStarIdsFromLines(last.lines)) {
         const s = getStarById(id);
         if (s) s.locked = false;
+    }
+
+    // M-07: звёзды, погашенные как сироты именно этим коммитом, — обратно.
+    for (const id of (last.orphanExtinguishedIds || [])) {
+        const s = getStarById(id);
+        if (s) s.extinguished = false;
     }
 
     totalScore -= (last.score || 0);
