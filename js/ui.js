@@ -1201,11 +1201,9 @@ function renderBookExLibris() {
         const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
         const target = OBSERVATORY_UNLOCK_COST;
         const titleEl = document.getElementById('exLibrisLockTitle');
-        const subEl = document.getElementById('exLibrisLockSub');
         const fillEl = document.getElementById('exLibrisLockBarFill');
         const progressEl = document.getElementById('exLibrisLockProgress');
         if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
-        if (subEl) subEl.textContent = t('observatory.lockedSub');
         if (fillEl) {
             const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
             fillEl.style.width = (ratio * 100).toFixed(1) + '%';
