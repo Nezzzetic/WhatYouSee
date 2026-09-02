@@ -1349,6 +1349,21 @@ function renderBookSettings() {
     if (!el) return;
     el.innerHTML = '';
     el.appendChild(createSettingsToggleRow('settings.sound', isSoundEnabled, setSoundEnabled));
+    // U-14: второй тумблер на готовое место — раздельно от звука (требование
+    // заказчика 2026-08-23), тем же конструктором строки.
+    el.appendChild(createSettingsToggleRow('settings.haptic', isHapticEnabled, toggleHapticSetting));
+}
+
+// U-14: включение тумблера вибро обязано само себя подтвердить — короткий
+// импульс, чтобы игрок почувствовал, что включил именно вибро (риск дока).
+// Выключение молчит: setHapticEnabled(false) само гасит уже идущий паттерн.
+// Клик — по DOM-кнопке, не по канвасу p5, жест туда не долетает сам по себе —
+// initAudio() зовётся здесь явно, как у claimAchievementStep (A-03), иначе
+// самый первый в жизни игрока тап по этой кнопке был бы холостым.
+function toggleHapticSetting(on) {
+    if (typeof initAudio === 'function') initAudio();
+    setHapticEnabled(on);
+    if (on && typeof hapticPulse === 'function') hapticPulse(HAPTIC_TOGGLE_MS);
 }
 
 // =============================================================================

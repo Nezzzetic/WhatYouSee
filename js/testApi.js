@@ -483,8 +483,9 @@
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
             // K-14: настройка звука — свой ключ, вне сейва; видна сценарию так же,
-            // как язык и версии сейва рядом.
+            // как язык и версии сейва рядом. U-14: вибро — тот же ключ, второе поле.
             soundEnabled: typeof isSoundEnabled === 'function' ? isSoundEnabled() : true,
+            hapticEnabled: typeof isHapticEnabled === 'function' ? isHapticEnabled() : true,
             saveVersion: {
                 achievements: ACHIEVEMENTS_SAVE_VERSION,
                 catalog: CATALOG_SAVE_VERSION
