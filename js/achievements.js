@@ -396,6 +396,10 @@ function makeDefaultAchievementCounters() {
         // O-02: сколько фиксированных картинок первых ночей уже показано (не
         // завершено) — 0/1/2, дальше воскресенье/обычный выбор как раньше.
         onboardingFieldsShown: 0,
+        // O-01: тутор первых жестов. Хранится ОДИН бит — «отзум сделан, тутор
+        // закрыт»; шаг соединения в сейве не живёт вовсе, он выводится из
+        // constellations.length (заодно бесплатно верное поведение отката).
+        tutorial: makeDefaultTutorialState(),
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
@@ -440,6 +444,25 @@ function makeDefaultDailyQuestState() {
         // длины лога, — лог капается `DAILY_NEWS_LOG_MAX` и не годится в мерило.
         newsUnseen: false
     };
+}
+
+/**
+ * O-01: состояние тутора первых жестов. Один бит — и намеренно один: шаг
+ * соединения выводится из поля (`constellations.length`), а не хранится.
+ */
+function makeDefaultTutorialState() {
+    return { done: false };
+}
+
+/**
+ * O-01: тот же терпимый приём, что у блока суток, — в сейве до этой задачи
+ * поля нет, берётся дефолт `{done:false}`, версия достижений НЕ поднимается.
+ * Игроку с прогрессом это ничем не грозит: тутор отсечён счётчиком O-02
+ * (`onboardingFieldsShown`), который у него давно израсходован.
+ */
+function sanitizeTutorialState(raw) {
+    if (!raw || typeof raw !== 'object') return makeDefaultTutorialState();
+    return { done: !!raw.done };
 }
 
 /** M-05: нормализует сохранённый блок суток (в старом сейве его просто нет). */
@@ -706,6 +729,8 @@ function applyAchievementSaveData(state) {
             // O-02: в сейве до этой задачи поля нет — дефолт 0, версия не
             // поднята (активных игроков нет, мигрировать некого).
             onboardingFieldsShown: Number(s.onboardingFieldsShown) || 0,
+            // O-01: аддитивное поле, версия достижений не поднимается
+            tutorial: sanitizeTutorialState(s.tutorial),
             totalConstellations: Number(s.totalConstellations) || 0,
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),

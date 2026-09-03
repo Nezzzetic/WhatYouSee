@@ -119,6 +119,13 @@
             </span>
         </div>
 
+        <!-- O-01: строка тутора первых жестов — верх экрана. Единственное место,
+             где игра говорит словами поверх неба, и живёт оно ровно одну ночь:
+             после отзума узел скрывается навсегда (флаг в сейве прогрессии). -->
+        <div id="skyTutor" class="sky-tutor" hidden aria-live="polite">
+            <div id="skyTutorText" class="sky-tutor-text"></div>
+        </div>
+
         <!-- K-11: чертёж закладки-цели — верхний левый угол неба, подальше от
              руки. Единственный постоянный предмет неба помимо ленты; появляется
              только когда закладка выставлена (renderSkyBookmark, ui.js). -->
@@ -278,6 +285,7 @@
     <script src="js/ui.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/save.js"></script>
+    <script src="js/tutorial.js"></script>
     <script src="js/sketch.js"></script>
 </body>
 </html>
