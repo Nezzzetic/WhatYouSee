@@ -727,13 +727,12 @@ function renderBookHead() {
     // и штампах — прячутся только на истинных краях книги (см. ниже).
 
     if (bookCut === 'today') {
-        // K-09: «Night 213 · August 23» — номер ночи (текущая, ещё не завершённая)
-        // и дата эффективных суток; титул страницы остаётся «Tonight».
-        const nightNo = (achievementCounters ? achievementCounters.levelsCompleted : 0) + 1;
+        // K-09/U-16: надзаголовок — дата эффективных суток без номера ночи;
+        // титул страницы остаётся «Tonight».
         const dateStr = typeof getEffectiveSkyDateInt === 'function' && typeof formatSkyDateLong === 'function'
             ? formatSkyDateLong(getEffectiveSkyDateInt())
             : '';
-        eyebrow = t('book.eyebrowToday', { n: nightNo, date: dateStr });
+        eyebrow = t('book.eyebrowToday', { date: dateStr });
         title = t('book.headToday');
         folioN = 1;
     } else if (bookCut === 'index') {

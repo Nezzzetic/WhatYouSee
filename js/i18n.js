@@ -269,8 +269,8 @@ en: {
     // только короче. «uncut» снято — звёзды не тратятся и не сгорают.
     'book.indexOpensAt': 'opens at {n} ✦',
     'book.indexOpen': 'Open the observatory',
-    // K-09: шапка «Сегодня» — номер ночи и дата; лента новостей мира под ежедневкой.
-    'book.eyebrowToday': 'Night {n} · {date}',
+    // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
+    'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
     'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
@@ -564,7 +564,7 @@ ru: {
     'book.eyebrowStampsChapter': 'Штампы · глава {n}',
     'book.indexOpensAt': 'откроется на {n} ✦',
     'book.indexOpen': 'Открыть обсерваторию',
-    'book.eyebrowToday': 'Ночь {n} · {date}',
+    'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
     'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
