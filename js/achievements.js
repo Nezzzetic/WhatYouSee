@@ -1234,14 +1234,16 @@ const REWARD_PAGES = [
         unlockAtIndex: null
     },
     {
-        // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
-        id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all'],
+        // U-17: «Рука гранильщика» переехала на вторую страницу Штампов (после
+        // «Первого света», перед «Долгим путём») — решение заказчика.
+        id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
+        chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
         unlockAtIndex: null
     },
     {
-        id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
-        chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
+        // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
+        id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
+        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all'],
         unlockAtIndex: null
     },
     {
