@@ -940,6 +940,74 @@
         };
     }
 
+    /**
+     * O-01: срез тутора первых жестов. Отдаёт и состояние, и то, что заперто, —
+     * иначе сценарий утверждал бы «шаг второй», ничего не зная про блокировку.
+     *
+     * `ghost` — геометрия призрачного ребра ровно та, по которой он нарисован
+     * (computeTutorialGhostLayout), а не пересчитанная догадка.
+     */
+    function tutorialState() {
+        const step = typeof getTutorialStep === 'function' ? getTutorialStep() : 0;
+        // Пару берём у самого тутора, а не пересчитываем по id активной картинки:
+        // после перезагрузки id неизвестен (сейв неба его не хранит), и харнесс
+        // отдавал бы null там, где игра прекрасно знает пару. Отчёт обязан
+        // показывать то, чем игра пользуется, иначе он проверяет свою копию правил.
+        const pairStars = step !== 0 && typeof getTutorialPair === 'function'
+            ? getTutorialPair()
+            : null;
+        const pair = pairStars ? [pairStars[0].id, pairStars[1].id] : null;
+        const ghost = typeof computeTutorialGhostLayout === 'function'
+            ? computeTutorialGhostLayout()
+            : null;
+        const box = document.getElementById('skyTutor');
+        const textEl = document.getElementById('skyTutorText');
+        const ribbon = document.getElementById('skyRibbon');
+        const ribbonStyle = ribbon ? window.getComputedStyle(ribbon) : null;
+        return {
+            step,                       // 0 — тутора нет, 1 — соединение, 2 — отзум
+            night: typeof isTutorialNight === 'function' ? isTutorialNight() : false,
+            done: typeof isTutorialDone === 'function' ? isTutorialDone() : true,
+            pair,
+            cameraLocked: typeof isTutorialCameraLocked === 'function' ? isTutorialCameraLocked() : false,
+            bookLocked: typeof isTutorialBookLocked === 'function' ? isTutorialBookLocked() : false,
+            // Лента не `display:none`, а прозрачная и непрокликиваемая — проверяем
+            // именно это, потому что от её прямоугольника зависит getBottomUIHeight().
+            ribbon: ribbonStyle ? {
+                opacity: Number(ribbonStyle.opacity),
+                pointerEvents: ribbonStyle.pointerEvents,
+                height: ribbon.getBoundingClientRect().height
+            } : null,
+            text: {
+                visible: !!(box && !box.hidden),
+                value: textEl ? textEl.textContent : null
+            },
+            ghost: ghost ? {
+                progress: ghost.progress,
+                alpha: ghost.alpha,
+                starIds: ghost.starIds
+            } : null,
+            camera: {
+                zoom: zoomLevel,
+                minZoom: getMinZoomLevel(),
+                startZoom: typeof tutorialStartZoom === 'number' ? tutorialStartZoom : 0,
+                camX, camY
+            }
+        };
+    }
+
+    /**
+     * O-01: зум без пальцев. Идёт через ту же zoomAtScreenPoint, что колесо и
+     * кнопки, — то есть НА ШАГЕ 1 ОБЯЗАН НЕ СРАБОТАТЬ. Так блокировка
+     * проверяется, а не обходится мимо неё присваиванием в zoomLevel.
+     */
+    function setZoom(value) {
+        const z = Number(value);
+        if (!Number.isFinite(z)) fail('setZoom: нужен зум числом');
+        zoomAtScreenPoint(width / 2, height / 2, z);
+        return { zoom: zoomLevel, minZoom: getMinZoomLevel(), maxZoom: MAX_ZOOM };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -969,6 +1037,8 @@
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
         proof: proofState,
+        tutorial: tutorialState,
+        setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
         errors,

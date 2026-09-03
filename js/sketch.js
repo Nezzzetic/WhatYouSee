@@ -298,6 +298,9 @@ function setup() {
     }
 
     centerCamera();
+    // O-01: тьюторная ночь открывается вблизи пары звёзд. Строго ПОСЛЕ
+    // centerCamera() и отдельно от неё — её же зовёт камера финала V-13.
+    if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
 
     updateScoreUI(0, '', 0);
     updateProgressionUI();
@@ -317,14 +320,17 @@ function setup() {
         devControls.hidden = false;
     }
     setupDevToggleButton();
-    resetBtn?.addEventListener("click", onResetSky);
-    fullResetBtn?.addEventListener("click", onFullReset);
-    devNewDayBtn?.addEventListener("click", onDevNewDay);
+    // O-01: действия, меняющие небо, закрывают панель за собой — иначе она
+    // стоит поверх того, ради чего её нажали (тьюторный кадр она закрывала целиком).
+    resetBtn?.addEventListener("click", () => { hideDevControls(); onResetSky(); });
+    fullResetBtn?.addEventListener("click", () => { if (onFullReset()) hideDevControls(); });
+    devNewDayBtn?.addEventListener("click", () => { hideDevControls(); onDevNewDay(); });
     document.getElementById("devAddMetaButton")?.addEventListener("click", onDevAddMetaScore);
     devResetAchvBtn?.addEventListener("click", onDevResetAchievements);
     initDevPictureFieldFromUrl();
     populateDevPictureFieldSelect();
-    document.getElementById("devPictureFieldShowBtn")?.addEventListener("click", onDevPictureFieldShow);
+    document.getElementById("devPictureFieldShowBtn")
+        ?.addEventListener("click", () => { hideDevControls(); onDevPictureFieldShow(); });
     document.getElementById("zoomInButton")?.addEventListener("click", () => zoomByStep(1));
     document.getElementById("zoomOutButton")?.addEventListener("click", () => zoomByStep(-1));
 
@@ -348,7 +354,9 @@ function draw() {
 
     updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
     updateLevelFinaleCamera(); // V-13: отзум финала ночи — до отрисовки кадра
+    updateTutorialProgress();  // O-01: отдалил небо — тутор закрыт, лента вернулась
     drawFieldMode();
+    drawTutorialGhostScreen(); // O-01: призрак ребра между парой первой ночи
     drawDraftStarCountLabelScreen();
     drawFloatingScores();
     drawUndoMarkScreen(); // K-04: пометка корректора — поверх всего, что на небе
@@ -380,6 +388,16 @@ function toggleDevControls() {
     const el = document.getElementById("devControls");
     if (!el) return;
     el.hidden = !el.hidden;
+}
+
+/**
+ * Панель закрывается сама после действий, которые меняют небо: смотреть надо на
+ * небо, а панель стоит ровно перед ним. Заводится в O-01 — тьюторный кадр она
+ * закрывала целиком, и «полный сброс» нечем было проверить, не убрав её руками.
+ */
+function hideDevControls() {
+    const el = document.getElementById("devControls");
+    if (el) el.hidden = true;
 }
 
 /** Невидимая кнопка в левом нижнем углу: тройной быстрый тап — показать/скрыть панель. */
@@ -464,6 +482,7 @@ function startNewDailySky(options) {
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
+    if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
 
     resetDragState();
     isPanning = false;
@@ -494,6 +513,7 @@ function onResetSky() {
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
+    if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
     resetDragState();
     isPanning = false;
 
@@ -646,6 +666,7 @@ function performFullReset(options) {
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
+    if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
 
     resetDragState();
     isPanning = false;
@@ -660,7 +681,9 @@ function performFullReset(options) {
     autoSave();
 }
 
+/** @returns {boolean} сброс состоялся (нажали «отмена» в confirm — false). */
 function onFullReset() {
-    if (!confirm('Полный сброс удалит ВСЕ данные: очки, прогресс, уровень, пользовательские виды. Продолжить?')) return;
+    if (!confirm('Полный сброс удалит ВСЕ данные: очки, прогресс, уровень, пользовательские виды. Продолжить?')) return false;
     performFullReset();
+    return true;
 }

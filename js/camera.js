@@ -82,12 +82,21 @@ function clampZoomToField() {
  * Общая логика для колеса мыши, кнопок «+»/«−» и pinch.
  */
 function zoomAtScreenPoint(sx, sy, newZoom) {
+    // O-01: шаг 1 тутора держит кадр намертво. Гейт стоит здесь, а не в
+    // обработчиках, потому что это общая точка колеса и кнопок «+»/«−»; пинч
+    // считает зум сам (updatePinchMode в drawing.js) и заперт отдельно.
+    // centerCamera() и камера финала V-13 пишут zoomLevel напрямую и гейта
+    // не касаются — это намеренно, тутор не должен мешать сценам.
+    if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) return;
     const worldX = sx / zoomLevel + camX;
     const worldY = sy / zoomLevel + camY;
     zoomLevel = constrain(newZoom, getMinZoomLevel(), MAX_ZOOM);
     camX = worldX - sx / zoomLevel;
     camY = worldY - sy / zoomLevel;
     clampCamera();
+    // O-01: шаг «отзум» закрывается здесь же, синхронно с жестом, а не тиком
+    // следующего кадра.
+    if (typeof checkTutorialZoomStep === 'function') checkTutorialZoomStep();
 }
 
 /** D-01: шаг зума кнопками — мультипликативный, якорь — центр экрана. dir: +1 / −1. */

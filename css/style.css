@@ -653,6 +653,55 @@ button:disabled {
     display: none;
 }
 
+/* --- O-01: строка тутора первых жестов --------------------------------------
+   Верх экрана, по центру: единственное место, где игра объясняет словами, и
+   живёт оно одну ночь. С чертежом закладки (K-11) не спорит: у новичка закладки
+   нет, а к тому времени, когда она появится, тутор давно пройден. */
+.sky-tutor {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: calc(var(--safe-top) + 18px);
+    z-index: 35;
+    display: flex;
+    justify-content: center;
+    padding: 0 22px;
+    pointer-events: none; /* строка читается, а не жмётся — под ней небо */
+}
+
+/* Кегль крупнее книжного текста (13–15) и вровень с заголовком страницы (21):
+   это единственная строка, которую игра просит прочитать с вытянутой руки, и на
+   телефоне она читается первой. Меньше — не читается (замечание заказчика
+   с устройства). */
+.sky-tutor-text {
+    max-width: 34ch;
+    font-family: var(--font-text);
+    font-size: 20px;
+    line-height: 1.4;
+    text-align: center;
+    text-wrap: balance;
+    color: var(--ink);
+    text-shadow: 0 1px 10px rgba(var(--paper-deep-rgb), 0.9);
+    animation: tutor-in var(--t-scene) var(--ease) both;
+}
+
+@keyframes tutor-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sky-tutor-text { animation: none; }
+}
+
+/* Тутор идёт — входа в книгу на небе нет. Не `display:none`: getBottomUIHeight()
+   меряет системный инсет по прямоугольнику ленты, и скрытый узел заморозил бы
+   замер, а вместе с ним минимальный зум. */
+.tutor-locked .ribbon {
+    opacity: 0;
+    pointer-events: none;
+}
+
 /* --- K-06: книга — полноэкранная страница, пять высечек, шкала света ------ */
 
 .book {
