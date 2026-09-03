@@ -79,6 +79,19 @@ function restoreCameraSlot(slot) {
     clampCamera();
 }
 
+/**
+ * U-18: три источника кадра экслибриса, по убыванию свежести — слот этой
+ * сессии, сохранённый в холсте кадр прошлой, обзор всего листа.
+ */
+function restoreObservatoryCamera() {
+    if (observatoryCameraSlot) {
+        restoreCameraSlot(observatoryCameraSlot);
+        return;
+    }
+    if (typeof applyObservatorySavedView === 'function' && applyObservatorySavedView()) return;
+    centerCamera();
+}
+
 function setAppMode(mode) {
     if (mode !== 'field' && mode !== 'observatory') return false;
     if (appMode === mode) return false;
@@ -93,6 +106,10 @@ function setAppMode(mode) {
         fieldCameraSlot = captureCameraSlot();
     } else {
         observatoryCameraSlot = captureCameraSlot();
+        // U-18: тот же кадр, но нормированный, уходит в сейв холста — чтобы
+        // экслибрис открылся там же и после перезапуска, а не только в этой сессии.
+        if (typeof rememberObservatoryView === 'function') rememberObservatoryView();
+        if (typeof scheduleObservatorySave === 'function') scheduleObservatorySave();
     }
 
     // Незавершённый жест не должен доехать до другого мира
@@ -104,9 +121,19 @@ function setAppMode(mode) {
     if (typeof resetObservatoryDragState === 'function') resetObservatoryDragState();
 
     appMode = mode;
-    restoreCameraSlot(appMode === 'field' ? fieldCameraSlot : observatoryCameraSlot);
 
-    if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+    if (appMode === 'field') {
+        restoreCameraSlot(fieldCameraSlot);
+        if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+    } else {
+        // U-18: холст экслибриса ужимается до прямоугольника страницы только
+        // внутри updateObservatoryUI() → updateExLibrisEmbedding(). Камеру
+        // ставим ПОСЛЕ него: и обзор, и сохранённый кадр считаются от ширины
+        // канваса, а до этой строки она ещё полноэкранная — раньше вход давал
+        // угол листа крупным планом вместо обзора.
+        if (typeof updateObservatoryUI === 'function') updateObservatoryUI();
+        restoreObservatoryCamera();
+    }
     return true;
 }
 

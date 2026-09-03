@@ -767,6 +767,25 @@
             return observatoryNameView(entry);
         },
         grantDue: () => ({ granted: grantObservatoryStarsDue(), starCount: observatoryStars.length }),
+        /**
+         * U-18: кадр экслибриса тремя срезами. `live` — камера как есть
+         * (экранные величины), `now` — нормированный вид этой же камеры,
+         * `remembered` — то, что игра запомнила, `stored` — то, что лежит
+         * в localStorage прямо сейчас.
+         */
+        view: () => {
+            let stored = null;
+            try {
+                const raw = localStorage.getItem(OBSERVATORY_SAVE_KEY);
+                if (raw) stored = JSON.parse(raw).cam || null;
+            } catch (e) { /* битый сейв читается как «кадра нет» */ }
+            return {
+                live: { camX, camY, zoom: zoomLevel, minZoom: getMinZoomLevel(), canvas: [width, height] },
+                now: typeof captureObservatoryView === 'function' ? captureObservatoryView() : null,
+                remembered: typeof observatorySavedView !== 'undefined' ? observatorySavedView : null,
+                stored
+            };
+        },
         /** Записать холст в localStorage немедленно (обычно это дебаунс 500 мс). */
         save: () => { saveObservatoryNow(); return observatoryState(); }
     };

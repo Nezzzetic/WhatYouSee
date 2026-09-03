@@ -74,10 +74,72 @@ const OBSERVATORY_LABEL_PEN_GAP_PX = 4;
 
 let observatorySaveTimer = null;
 
+// -----------------------------------------------------------------------------
+// U-18: КАДР ЭКСЛИБРИСА
+// -----------------------------------------------------------------------------
+//
+// Хранится не сырая тройка camX/camY/zoomLevel, а нормированный ВИД:
+// {ncx, ncy} — центр кадра в долях FIELD_WIDTH/FIELD_HEIGHT, nvw — видимая
+// ширина мира в долях FIELD_WIDTH. Причина та же, по которой нормированы
+// позиции звёзд: zoomLevel — это пикселей на мировую единицу, величина
+// экранная, и после смены устройства или поворота она означала бы уже другой
+// кадр. Видимая доля листа означает одно и то же везде.
+//
+// null = кадра нет (новый игрок или сейв до этой задачи) — вход показывает обзор.
+
+let observatorySavedView = null;
+
+/** Снимок текущей камеры в нормированном виде. null, если канвас ещё не готов. */
+function captureObservatoryView() {
+    if (typeof width !== 'number' || width <= 0 || !zoomLevel) return null;
+    const usableH = typeof getUsableViewHeight === 'function' ? getUsableViewHeight() : height;
+    const viewW = width / zoomLevel;
+    const viewH = usableH / zoomLevel;
+    return {
+        ncx: (camX + viewW / 2) / FIELD_WIDTH,
+        ncy: (camY + viewH / 2) / FIELD_HEIGHT,
+        nvw: viewW / FIELD_WIDTH
+    };
+}
+
+/**
+ * Ставит камеру по сохранённому кадру. Зовётся ПОСЛЕ того, как канвас ужат до
+ * прямоугольника страницы, — иначе зум считается от полноэкранной ширины.
+ * @returns {boolean} false — кадра нет, зовущий показывает обзор сам.
+ */
+function applyObservatorySavedView() {
+    const v = observatorySavedView;
+    if (!v || typeof width !== 'number' || width <= 0) return false;
+
+    const targetViewW = v.nvw * FIELD_WIDTH;
+    if (!(targetViewW > 0)) return false;
+
+    zoomLevel = width / targetViewW;
+    clampZoomToField();
+    const usableH = typeof getUsableViewHeight === 'function' ? getUsableViewHeight() : height;
+    camX = v.ncx * FIELD_WIDTH - (width / zoomLevel) / 2;
+    camY = v.ncy * FIELD_HEIGHT - (usableH / zoomLevel) / 2;
+    // Экран мог стать шире листа — кламп вернёт кадр в границы поля сам.
+    clampCamera();
+    return true;
+}
+
+/** Запомнить кадр, в котором игрок оставил экслибрис (уход из режима, сохранение). */
+function rememberObservatoryView() {
+    const v = captureObservatoryView();
+    if (v) observatorySavedView = v;
+}
+
 function saveObservatoryNow() {
     if (observatorySaveTimer !== null) {
         clearTimeout(observatorySaveTimer);
         observatorySaveTimer = null;
+    }
+    // U-18: сохранение может прийти и из поля (visibilitychange на любой
+    // странице книги) — живую камеру снимаем только там, где она обсерваторная,
+    // иначе кадр листа затёрся бы кадром неба.
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
+        rememberObservatoryView();
     }
     try {
         const state = {
@@ -101,7 +163,9 @@ function saveObservatoryNow() {
                 dny: (e.dy || 0) / FIELD_HEIGHT
             })),
             // K-13: поле аддитивное, как names — старый сейв читается без него.
-            beganNight: observatoryBeganNight || null
+            beganNight: observatoryBeganNight || null,
+            // U-18: третье аддитивное поле. null — кадра нет, вход даст обзор.
+            cam: observatorySavedView
         };
         localStorage.setItem(OBSERVATORY_SAVE_KEY, JSON.stringify(state));
     } catch (e) {
@@ -124,6 +188,7 @@ function loadObservatory() {
     observatoryNames = [];
     observatoryNextStarId = 0;
     observatoryBeganNight = null;
+    observatorySavedView = null;
     try {
         const raw = localStorage.getItem(OBSERVATORY_SAVE_KEY);
         if (!raw) return false;
@@ -183,6 +248,18 @@ function loadObservatory() {
             observatoryBeganNight = getObservatoryCurrentNightNumber();
         }
 
+        // U-18: кадр экслибриса. Битые числа читаются как «кадра нет» — вход
+        // покажет обзор, а не улетит в NaN.
+        const cam = state.cam;
+        if (cam) {
+            const ncx = Number(cam.ncx);
+            const ncy = Number(cam.ncy);
+            const nvw = Number(cam.nvw);
+            if (Number.isFinite(ncx) && Number.isFinite(ncy) && Number.isFinite(nvw) && nvw > 0) {
+                observatorySavedView = { ncx, ncy, nvw };
+            }
+        }
+
         syncObservatoryNames();
         return true;
     } catch (e) {
@@ -209,6 +286,7 @@ function resetObservatoryForFullReset() {
     observatoryNextStarId = 0;
     observatoryMode = 'connect';
     observatoryBeganNight = null;
+    observatorySavedView = null; // U-18: вайп забирает и кадр — вход снова с обзора
     resetObservatoryDragState();
     clearObservatorySave();
 }
