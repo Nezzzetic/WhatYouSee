@@ -7,6 +7,16 @@
 let fieldStars = [];
 let fieldBackgroundStars = [];
 
+// O-02: какая картинка сейчас реально на поле (не ручной override — та живёт в
+// devPictureFieldId/URL, а именно то, что построила generatePictureField).
+// null = процедурное поле. Нужно харнессу — иначе `?picture=` не отличить от
+// авто-показа (воскресенье, первые ночи).
+let activeFieldPictureId = null;
+
+function getActiveFieldPictureId() {
+    return activeFieldPictureId;
+}
+
 // Fade-in звёзд при старте уровня
 let skyStartTime = 0;   // millis() в момент генерации неба
 let skyFadeScale = 1.0; // 1.0 = новое небо, 0.25 = повторное открытие
@@ -227,6 +237,20 @@ function injectAnchorStarsForTargets(targets) {
 }
 
 function generateDailyField() {
+    // O-02: первые две ночи новичка — фиксированные картинки, приоритет выше
+    // воскресенья (первое впечатление не должно зависеть от дня недели).
+    const onboardingId = consumeOnboardingFixedPictureId();
+    if (onboardingId) {
+        generatePictureField(onboardingId);
+        dailyTargetShapes = [];
+        assignStarAppearDelays();
+        generateBackgroundStars();
+        if (typeof console !== 'undefined' && console.info) {
+            console.info('[picture] Фиксированное поле первых ночей:', onboardingId);
+        }
+        return;
+    }
+
     // C-02: штатный воскресный показ (если нет ручного override — он выше по коду).
     const scheduledId = getScheduledPictureFieldId();
     if (scheduledId) {
@@ -351,6 +375,7 @@ function generatePictureField(pictureId) {
         return;
     }
 
+    activeFieldPictureId = id;
     fieldStars = [];
     const usableW = FIELD_WIDTH - 2 * STAR_EDGE_MARGIN;
     const usableH = FIELD_HEIGHT - 2 * STAR_EDGE_MARGIN;
@@ -398,7 +423,32 @@ function getScheduledPictureFieldId() {
     return PICTURE_FIELD_IDS[idx];
 }
 
+// --- O-02: фиксированные поля первых двух ночей -------------------------
+// Первая ночь — «Кот», вторая — «Близнецы», дальше обычный выбор. Считается
+// не завершёнными ночами (levelsCompleted), а именно ПОКАЗАННЫМИ картинками
+// (achievementCounters.onboardingFieldsShown) — недоигранная первая ночь при
+// возврате другим днём не должна снова показать «Кота» (решение заказчика).
+
+const ONBOARDING_FIXED_PICTURE_IDS = ['cat', 'gemini'];
+
+/**
+ * Следующая фиксированная картинка первых ночей, или null, если обе уже
+ * показаны. Каждый вызов, вернувший id, СРАЗУ продвигает счётчик и сохраняет
+ * прогрессию — иначе показ, не подтверждённый другим событием сейва
+ * (коммит/забор), потерялся бы при перезагрузке другим днём.
+ */
+function consumeOnboardingFixedPictureId() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return null;
+    const n = achievementCounters.onboardingFieldsShown || 0;
+    const id = ONBOARDING_FIXED_PICTURE_IDS[n];
+    if (!id) return null;
+    achievementCounters.onboardingFieldsShown = n + 1;
+    if (typeof saveProgression === 'function') saveProgression();
+    return id;
+}
+
 function generateStars() {
+    activeFieldPictureId = null;
     fieldStars = [];
     const minX = STAR_EDGE_MARGIN;
     const maxX = FIELD_WIDTH - STAR_EDGE_MARGIN;
