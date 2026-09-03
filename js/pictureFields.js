@@ -215,6 +215,13 @@ const PICTURE_FIELDS = {
     'cat': {
         name: 'Кот',
         // 241 звёзд · внутри 63%
+        // O-01: пара, на которую тутор ставит камеру первой ночи. Индексы —
+        // позиции в этом же массиве, они же id звёзд (generatePictureField
+        // кладёт их по индексу). Выбраны замером, а не на глаз: 145 world-units
+        // между звёздами, ближайшая посторонняя — 155 от их середины. Изолировать
+        // пару сильнее нечем — раскладка равномерно плотная по правилам v2 (C-04),
+        // медиана до ближайшего соседа 59. Охраняется docs/tools/verify-tutor-pair.js.
+        tutorPair: [177, 184],
         stars: [
         {x:0.49906,y:0.17614,c:-50}, {x:0.56433,y:0.18263,c:100}, {x:0.62700,y:0.19785,c:-50}, {x:0.67654,y:0.22377,c:100}, {x:0.71044,y:0.25750,c:-50}, {x:0.72249,y:0.29808,c:50},
         {x:0.71100,y:0.33277,c:-50}, {x:0.68202,y:0.36987,c:100}, {x:0.63129,y:0.39548,c:100}, {x:0.57237,y:0.41244,c:0}, {x:0.50332,y:0.41813,c:-50}, {x:0.43580,y:0.40977,c:-100},
@@ -505,4 +512,18 @@ const PICTURE_FIELD_IDS = Object.keys(PICTURE_FIELDS);
 function getPictureFieldById(id) {
     if (!id || typeof PICTURE_FIELDS !== 'object') return null;
     return Object.prototype.hasOwnProperty.call(PICTURE_FIELDS, id) ? PICTURE_FIELDS[id] : null;
+}
+
+/**
+ * O-01: пара звёзд, на которую тутор ставит камеру. Есть только у картинок,
+ * которыми открывается игра, — у остальных null, и тутор на них не встаёт.
+ * @returns {[number, number] | null} пара id звёзд поля
+ */
+function getPictureFieldTutorPair(id) {
+    const pic = getPictureFieldById(id);
+    if (!pic || !Array.isArray(pic.tutorPair) || pic.tutorPair.length !== 2) return null;
+    const [a, b] = pic.tutorPair;
+    if (!Number.isInteger(a) || !Number.isInteger(b) || a === b) return null;
+    if (a < 0 || b < 0 || a >= pic.stars.length || b >= pic.stars.length) return null;
+    return [a, b];
 }

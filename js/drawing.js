@@ -1008,6 +1008,9 @@ function mousePressed(event) {
         currentStartStar = clickedStar;
         visitedStars = [clickedStar.id];
         currentLine = { startId: clickedStar.id };
+    } else if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) {
+        // O-01: шаг 1 — тап мимо звезды не начинает пан. Кадр стоит.
+        return;
     } else {
         isPanning = true;
         panStartMouseX = mouseX;
@@ -1144,6 +1147,9 @@ function edgePanAxisDelta(pos, size) {
 function updateEdgePanDuringDraw() {
     if (!isDragging || !currentStartStar) return; // только рисование цепочки
     if (isPanning || isPinching || wasPinching) return; // не конкурировать с пан/pinch
+    // O-01: шаг 1 — кадр фиксирован. Без этого камера уезжала бы прямо во время
+    // того самого жеста, которому тутор учит: пара стоит у нижнего края кадра.
+    if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) return;
     if (typeof mouseX !== 'number' || typeof mouseY !== 'number') return;
     if (mouseX < 0 || mouseX > width || mouseY < 0 || mouseY > height) return;
 
@@ -1196,6 +1202,10 @@ function enterPinchMode() {
 
 function updatePinchMode() {
     if (touches.length < 2) return;
+    // O-01: на шаге 1 тутора пинч входит и выходит как обычно (второй палец
+    // по-прежнему отменяет черновик — это привычный отклик), но камеру не
+    // двигает: ни зум, ни двухпальцевый пан.
+    if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) return;
     const t0 = touches[0];
     const t1 = touches[1];
     const dist = Math.hypot(t1.x - t0.x, t1.y - t0.y);
@@ -1206,6 +1216,9 @@ function updatePinchMode() {
     camX = pinchWorldX - midX / zoomLevel;
     camY = pinchWorldY - midY / zoomLevel;
     clampCamera();
+    // O-01: пинч — вторая (и на телефоне единственная) точка, где игрок меняет
+    // зум. Шаг «отзум» закрывается прямо в жесте, не дожидаясь кадра.
+    if (typeof checkTutorialZoomStep === 'function') checkTutorialZoomStep();
 }
 
 function touchStarted(event) {
@@ -1421,6 +1434,11 @@ function commitConstellationFromPayload(payload) {
 
     if (typeof recordAchievementCommit === 'function') recordAchievementCommit(constellation);
 
+    // O-01: первое созвездие переводит тутор со шага «соединение» на «отзум».
+    // Сам шаг выводится из constellations.length — здесь только досылаем это
+    // в строку на небе, чтобы текст сменился в тот же момент, что и состояние.
+    if (typeof updateTutorialUI === 'function') updateTutorialUI();
+
     autoSave();
 
     tryRevealConstellationArtIfComplete();
@@ -1503,6 +1521,9 @@ function undoLastConstellation() {
     updateBestScoreFromFieldScore();
     updateScoreUI(0, '', 0);
     updateProgressionUI();
+    // O-01: снял единственное созвездие тьюторной ночи — вернулись на шаг
+    // «соединение». Тутор пройденный этим не воскрешается: у него свой флаг.
+    if (typeof updateTutorialUI === 'function') updateTutorialUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     autoSave();
 }
