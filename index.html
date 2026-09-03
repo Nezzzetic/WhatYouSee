@@ -83,7 +83,8 @@
         <!-- K-04: постоянного интерфейса на небе не осталось — отмена стала
              корректорской пометкой на канвасе. -->
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>
-        <div id="devControls" class="dev-controls">
+        <!-- D-02: скрыта в разметке по умолчанию — setup()/тройной тап только показывают -->
+        <div id="devControls" class="dev-controls" hidden>
             <div class="dev-zoom-row">
                 <button type="button" id="zoomOutButton" title="Отдалить">−</button>
                 <button type="button" id="zoomInButton" title="Приблизить">＋</button>
