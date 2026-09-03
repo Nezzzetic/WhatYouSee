@@ -393,6 +393,9 @@ const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
 function makeDefaultAchievementCounters() {
     return {
         levelsCompleted: 0,
+        // O-02: сколько фиксированных картинок первых ночей уже показано (не
+        // завершено) — 0/1/2, дальше воскресенье/обычный выбор как раньше.
+        onboardingFieldsShown: 0,
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
@@ -700,6 +703,9 @@ function applyAchievementSaveData(state) {
         const s = state.achievementCounters;
         achievementCounters = {
             levelsCompleted: Number(s.levelsCompleted) || 0,
+            // O-02: в сейве до этой задачи поля нет — дефолт 0, версия не
+            // поднята (активных игроков нет, мигрировать некого).
+            onboardingFieldsShown: Number(s.onboardingFieldsShown) || 0,
             totalConstellations: Number(s.totalConstellations) || 0,
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),

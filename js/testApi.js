@@ -123,12 +123,17 @@
     // =========================================================================
 
     /**
-     * @param {{seed?, date?, picture?, pages?}} [options]
-     *   seed    — подменяет playerId (раскладка поля, воскресная картинка, цели);
-     *   date    — эффективная дата неба (число 20260802 или '2026-08-02');
-     *   picture — id поля-картинки (перебивает обычную генерацию), null снимает;
-     *   pages   — сколько первых страниц атласа открыть бесплатно (по умолчанию 0,
-     *             как у нового игрока: до 80 ✦ имён у фигур нет).
+     * @param {{seed?, date?, picture?, pages?, skipOnboarding?}} [options]
+     *   seed           — подменяет playerId (раскладка поля, воскресная картинка, цели);
+     *   date           — эффективная дата неба (число 20260802 или '2026-08-02');
+     *   picture        — id поля-картинки (перебивает обычную генерацию), null снимает;
+     *   pages          — сколько первых страниц атласа открыть бесплатно (по умолчанию 0,
+     *                    как у нового игрока: до 80 ✦ имён у фигур нет);
+     *   skipOnboarding — true: пропустить фиксированные картинки первых ночей
+     *                    (O-02) — как у чистого reset() без него, поле сразу
+     *                    процедурное/воскресное. По умолчанию false — свежий
+     *                    reset() ведёт себя как у настоящего нового игрока и
+     *                    показывает «Кота» первым, это и есть штатный сценарий.
      */
     function reset(options) {
         const o = options || {};
@@ -152,6 +157,12 @@
         performFullReset({
             beforeFieldRegen: function () {
                 for (let i = 0; i < pages; i++) unlockedPageIndices.add(i);
+                // O-02: часть сценариев тестирует процедурное поле как таковое
+                // (раскладку, разброс звёзд) и картинка первых ночей им мешает —
+                // явный флаг отводит счётчик за пределы ONBOARDING_FIXED_PICTURE_IDS.
+                if (o.skipOnboarding && achievementCounters && typeof ONBOARDING_FIXED_PICTURE_IDS !== 'undefined') {
+                    achievementCounters.onboardingFieldsShown = ONBOARDING_FIXED_PICTURE_IDS.length;
+                }
             }
         });
 
@@ -454,7 +465,9 @@
             fieldScore: typeof getFieldScore === 'function' ? getFieldScore() : 0,
             skyDate: getEffectiveSkyDateInt(),
             playerId,
-            pictureFieldId: typeof getActivePictureFieldId === 'function' ? getActivePictureFieldId() : null,
+            // O-02: реально загруженная картинка (оверрайд/воскресенье/первые
+            // ночи), а не только ручной оверрайд, как было раньше.
+            pictureFieldId: typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null,
             dailyTargets: getDailyTargetShapes(),
             starCount: Array.isArray(fieldStars) ? fieldStars.length : 0,
             freeStarCount: getPlayableStars().length,
