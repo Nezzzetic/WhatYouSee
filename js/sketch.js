@@ -312,9 +312,9 @@ function setup() {
     const fullResetBtn = document.getElementById("fullResetButton");
     const devNewDayBtn = document.getElementById("devNewDayButton");
     const devResetAchvBtn = document.getElementById("devResetAchievementsButton");
-    // D-01: панель скрыта по умолчанию; ?dev=1 — форс-показ при загрузке
-    if (!isDevModeEnabled()) {
-        if (devControls) devControls.style.display = "none";
+    // D-02: панель скрыта в разметке по умолчанию; ?dev=1 — форс-показ при загрузке
+    if (devControls && isDevModeEnabled()) {
+        devControls.hidden = false;
     }
     setupDevToggleButton();
     resetBtn?.addEventListener("click", onResetSky);
@@ -379,7 +379,7 @@ let _devTapLastMs = 0;
 function toggleDevControls() {
     const el = document.getElementById("devControls");
     if (!el) return;
-    el.style.display = el.style.display === "none" ? "" : "none";
+    el.hidden = !el.hidden;
 }
 
 /** Невидимая кнопка в левом нижнем углу: тройной быстрый тап — показать/скрыть панель. */
