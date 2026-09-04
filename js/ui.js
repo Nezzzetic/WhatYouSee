@@ -583,6 +583,18 @@ function createAtlasEntryCard(entry) {
         card.appendChild(createFacetsRow(entry.name));
     }
 
+    // U-22: состояние закладки словом — тем же самым, что стоит подписью под
+    // чертежом в углу неба (`sky.bookmarkLabel`, K-11/K-32). Одна подпись на
+    // двух экранах и есть недостающее объяснение: точка здесь — чертёж там.
+    // Новых ключей локали задача не заводит.
+    // K-23: жёлоб резервируется у КАЖДОЙ карточки, а не только у заложенной, —
+    // прячет слово `visibility`, а не отсутствие узла: сетка не должна ехать
+    // под пальцем в момент постановки закладки.
+    const mark = document.createElement('div');
+    mark.className = 'atlas-card-mark' + (bookmarked ? ' atlas-card-mark-on' : '');
+    mark.textContent = t('sky.bookmarkLabel');
+    card.appendChild(mark);
+
     // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
     if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
 
@@ -1412,9 +1424,31 @@ function refreshBookIfOpen() {
     if (bookOpen) renderBook();
 }
 
+/**
+ * U-21: самое первое за игру открытие книги приходится на разворот атласа —
+ * иначе новичок не находит его вовсе: сигнала у высечки у атласа нет и не
+ * будет (бейджей он не показывает никогда), а глава I бесплатна, то есть
+ * разворот не пустой ни у кого. Дальше книга открывается там, где игрок был
+ * в прошлый раз (K-05). Флаг тратится только на путях игрока — тап по ленте,
+ * потягивание, Enter, — они зовут openBook() без аргумента; харнесс с явным
+ * разделом первое открытие не съедает.
+ */
+function consumeFirstBookOpenCut() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return null;
+    if (achievementCounters.bookFirstOpenDone) return null;
+    achievementCounters.bookFirstOpenDone = true;
+    if (typeof saveProgression === 'function') saveProgression();
+    return 'atlas';
+}
+
 function openBook(cut) {
     closeObservatoryRenameField();
-    if (BOOK_CUT_LIST.includes(cut)) bookCut = cut;
+    if (BOOK_CUT_LIST.includes(cut)) {
+        bookCut = cut;
+    } else {
+        const firstCut = consumeFirstBookOpenCut();
+        if (firstCut) bookCut = firstCut;
+    }
     bookOpen = true;
     const book = document.getElementById('book');
     if (book) book.hidden = false;

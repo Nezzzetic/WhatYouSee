@@ -400,6 +400,11 @@ function makeDefaultAchievementCounters() {
         // закрыт»; шаг соединения в сейве не живёт вовсе, он выводится из
         // constellations.length (заодно бесплатно верное поведение отката).
         tutorial: makeDefaultTutorialState(),
+        // U-21: первое за всю игру открытие книги показывает разворот атласа —
+        // единственный повод новичка туда заглянуть (сигнала у высечки атлас
+        // не получает никогда, GDD). Флаг аддитивный, дефолт false, версия
+        // сейва НЕ поднимается — тем же приёмом, что tutorial.done (O-01).
+        bookFirstOpenDone: false,
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
@@ -731,6 +736,10 @@ function applyAchievementSaveData(state) {
             onboardingFieldsShown: Number(s.onboardingFieldsShown) || 0,
             // O-01: аддитивное поле, версия достижений не поднимается
             tutorial: sanitizeTutorialState(s.tutorial),
+            // U-21: аддитивное поле, версия достижений не поднимается. В сейве
+            // до этой задачи его нет — игрок с прогрессом получит разворот
+            // атласа один раз, и это не вредно.
+            bookFirstOpenDone: !!s.bookFirstOpenDone,
             totalConstellations: Number(s.totalConstellations) || 0,
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),
