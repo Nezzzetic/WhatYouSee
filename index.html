@@ -7,7 +7,18 @@
          в WebView всегда ноль, и лента-закладка уедет под навигационную панель.
          В обычном браузере инсеты нулевые, так что на Pages не меняется ничего. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Stars Reborn v0.1</title>
+    <title>What You See</title>
+    <!-- V-15: иконка одна на все каналы — вкладка браузера, «на экран Домой» в
+         мобильном браузере и лаунчер нативной сборки. Файлы собирает
+         dev/docs/tools/gen-app-icon.js из тех же SVG, что и mipmap-комплект. -->
+    <link rel="icon" href="images/icon/favicon.svg" type="image/svg+xml">
+    <link rel="icon" href="images/icon/favicon-32.png" sizes="32x32" type="image/png">
+    <link rel="apple-touch-icon" href="images/icon/apple-touch-icon.png">
+    <!-- display не задан намеренно (по умолчанию "browser"): манифест нужен ради
+         имени и иконки при «Добавить на экран Домой», а не ради баннера установки —
+         нативная раздача идёт APK из ветки capacitor (P-02). -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#05090F">
     <link rel="stylesheet" href="css/style.css">
     <!-- P-02: p5 лежит в репозитории, а не на cdnjs — упавший CDN означал «игра
          не стартует вообще», а в нативной обёртке ещё и «нет сети — нет игры».
