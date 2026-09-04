@@ -378,26 +378,23 @@ function drawUndoMarkScreen() {
 
     push();
     try {
-        // Волосок-выноска: от подписи к рамке. Разворачивается вместе с ней.
-        const fromY = m.anchorY + (m.below ? UNDO_MARK_LEADER_GAP_PX : -UNDO_MARK_LEADER_GAP_PX);
-        const toY = m.below ? frameTop : frameTop + frameH;
+        // U-19: волосок-выноска теперь горизонтальный — от подписи к рамке
+        // сбоку, а не вниз. Разворачивается вместе с рамкой.
+        const fromX = m.anchorX + (m.right ? UNDO_MARK_LEADER_GAP_PX : -UNDO_MARK_LEADER_GAP_PX);
+        const toX = m.right ? frameLeft : frameLeft + frameW;
         stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 150 * a);
         strokeWeight(1);
-        line(m.anchorX, fromY, m.cx, toY);
+        line(fromX, m.anchorY, toX, m.cy);
 
         noFill();
         stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 165 * a);
         strokeWeight(1);
         rect(frameLeft, frameTop, frameW, frameH, UNDO_MARK_FRAME_RADIUS_PX);
 
-        const signCx = m.left + UNDO_MARK_SIGN_PX / 2;
-        drawUndoSignScreen(signCx, m.cy, UNDO_MARK_SIGN_PX, INK_MUTED_RGB, 235 * a);
-
-        noStroke();
-        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 240 * a);
-        textAlign(LEFT, CENTER);
-        textSize(UNDO_MARK_TEXT_PX);
-        text(m.label, m.left + UNDO_MARK_SIGN_PX + UNDO_MARK_SIGN_GAP_PX, m.cy);
+        // U-19: пометка — один знак, без имени. Читалась как подпись к находке;
+        // единственная живая пометка на небе не нуждается в тексте, чтобы
+        // сказать, что именно сотрёт.
+        drawUndoSignScreen(m.cx, m.cy, UNDO_MARK_SIGN_PX, INK_MUTED_RGB, 235 * a);
     } finally {
         pop();
     }
@@ -536,6 +533,27 @@ function drawConstellationLineArtImagesOnTile() {
 }
 
 /**
+ * Ширина капители без отрисовки — тот же алгоритм трекинга, что у
+ * drawSmallCapsLabelWorld, одной функцией на двоих: разъедься они, и всё,
+ * что меряет расстояние до подписи (пометка K-04/U-19), считало бы вслепую.
+ * `sizePx` в тех же единицах, что и у самой отрисовки (экранные px, если
+ * зовут вне scale(zoomLevel), мировые — если внутри).
+ */
+function measureSmallCapsWidth(str, sizePx) {
+    if (!str) return 0;
+    const upper = str.toUpperCase();
+    const tracking = sizePx * SMALL_CAPS_TRACKING_EM;
+    push();
+    textSize(sizePx);
+    let totalW = 0;
+    for (let i = 0; i < upper.length; i++) {
+        totalW += textWidth(upper[i]) + (i < upper.length - 1 ? tracking : 0);
+    }
+    pop();
+    return totalW;
+}
+
+/**
  * K-20: капитель — единственный способ набрать имя созвездия на небе. p5 не
  * умеет letter-spacing, поэтому буквы кладутся по одной с ручным шагом; под
  * именем — волосяная линейка в его ширину (Табл. II концепта). `sizePx` уже
@@ -547,15 +565,11 @@ function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
     if (!str || alpha <= 0) return;
     const upper = str.toUpperCase();
     const tracking = sizePx * SMALL_CAPS_TRACKING_EM;
+    const totalW = measureSmallCapsWidth(str, sizePx);
 
     push();
     textAlign(LEFT, CENTER);
     textSize(sizePx);
-
-    let totalW = 0;
-    for (let i = 0; i < upper.length; i++) {
-        totalW += textWidth(upper[i]) + (i < upper.length - 1 ? tracking : 0);
-    }
 
     noStroke();
     fill(rgb[0], rgb[1], rgb[2], alpha);

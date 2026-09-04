@@ -870,9 +870,8 @@
             pending: false,
             canUndo: canUndoLastConstellation(),
             startsInMs: Math.round(undoMark.startMs - millis()),
-            label: layout.label,
             alpha: layout.alpha,
-            below: layout.below,
+            right: layout.right,
             rect: {
                 left: layout.left,
                 top: layout.top,
