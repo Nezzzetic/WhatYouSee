@@ -680,6 +680,11 @@ function performFullReset(options) {
     // проставляем текущие сутки, иначе первый же коммит взвёл бы защёлку
     // в блоке несуществующего дня.
     if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+    // U-21: бесплатная глава I открывается сразу и после вайпа — тем же вызовом,
+    // что и у игрока без сейва вообще (loadProgression, B-04). Без этого дев-сброс
+    // оставлял разворот атласа запертым до первого начисления ✦ или до F5, и
+    // первое открытие книги (см. openBook) приводило игрока на заглушку.
+    if (typeof maybeAutoUnlockAtlasPages === 'function') maybeAutoUnlockAtlasPages();
     saveProgression();
     // Хук beforeFieldRegen (T-01) открывает страницы бесплатно, накопитель не
     // трогая, — после вайпа обсерватория обязана быть закрытой и пустой.

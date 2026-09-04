@@ -1483,6 +1483,25 @@ button:disabled {
     background: var(--ink);
 }
 
+/* U-22: состояние закладки словом. Вид взят у подписи под чертежом в углу неба
+   (.sky-bookmark-label) — одна и та же подпись на двух экранах, это и есть
+   объяснение связи «точка здесь → чертёж там».
+   K-23: узел стоит у КАЖДОЙ карточки и прячется видимостью, а не отсутствием —
+   постановка закладки не должна двигать сетку под пальцем. */
+.atlas-card-mark {
+    font-family: var(--font-text);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+    visibility: hidden;
+}
+
+.atlas-card-mark-on {
+    visibility: visible;
+}
+
 .atlas-facets {
     display: flex;
     justify-content: center;
