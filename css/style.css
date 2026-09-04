@@ -1664,9 +1664,10 @@ button:disabled {
 /* --- сцепка: полоска из пяти клеток ----------------------------------------- */
 
 .achv-row-tiles {
+    --tile-gap: 6px;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
+    gap: var(--tile-gap);
     margin-top: 7px;
 }
 
@@ -1714,19 +1715,28 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* Готова прижать: сургучная рамка, тот же жест, что у ежедневной марки. */
+/* U-20: готова прижать — сургуч заливкой, единственное закрашенное пятно
+   среди волосяных линеек страницы (было кольцо-рамка, на бумаге не читалось
+   как «нажми»). Дышит ровно эта клетка (K-03: яркость 0.8…1.0, период 5–9 с,
+   геометрия неподвижна — двигать нельзя, марка не должна елозить под пальцем).
+   z-index обязателен: opacity/filter дыхания создают контекст наложения, и без
+   него растянутая .achv-tile-hit уходит под соседние клетки ниже по DOM. */
 .achv-tile-ready {
+    z-index: 2;
+    background: var(--wax);
     box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    animation: achvTileBreathe 6.4s ease-in-out infinite alternate;
 }
 
 .achv-tile-ready::before {
-    border-color: rgba(var(--wax-rgb), 0.45);
+    border-color: rgba(var(--gold-light-rgb), 0.35);
 }
 
 .achv-tile-ready .achv-tile-amt {
     color: var(--gold-light);
+    font-weight: 650;
 }
 
 .achv-tile-ready:hover,
@@ -1735,11 +1745,24 @@ button:disabled {
     outline: none;
 }
 
-/* Зона касания шире марки на 6 pt с каждой стороны — марка мелкая, палец
-   крупный. Реальный узел (не псевдоэлемент): надёжнее ловит тап в WebView. */
+@keyframes achvTileBreathe {
+    from { opacity: 0.82; }
+    to   { opacity: 1; }
+}
+
+/* U-20: по вертикали зона касания заметно шире марки (48 px — под полоской
+   ~20 px мёртвого поля, отнять не у кого). По горизонтали растягивается до
+   краёв полоски через --hit-l/--hit-r (шаг клетки задаёт createAchievementTile,
+   потолок сетки всегда 5 — createAchievementTiles): вторая марка в строке не
+   активируется, пока не прижата первая (K-22), так что мишени соседних строк
+   не пересекаются. Реальный узел (не псевдоэлемент): надёжнее ловит тап в
+   WebView. */
 .achv-tile-hit {
     position: absolute;
-    inset: -6px;
+    top: -8px;
+    bottom: -8px;
+    left: calc(-1 * var(--hit-l, 0) * (100% + var(--tile-gap)) - 6px);
+    right: calc(-1 * var(--hit-r, 0) * (100% + var(--tile-gap)) - 6px);
     z-index: 1;
 }
 
@@ -1871,7 +1894,8 @@ button:disabled {
     .claim-coin-y,
     .claim-coin-pill,
     .ribbon-tail.score-pulse,
-    .book-gauge-flag.score-pulse {
+    .book-gauge-flag.score-pulse,
+    .achv-tile-ready {
         animation: none;
     }
 }
