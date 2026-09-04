@@ -152,6 +152,14 @@
                     <h2 id="bookTitle" class="book-title"></h2>
                     <div class="book-rule" aria-hidden="true"></div>
                 </div>
+                <!-- V-16: баннер разреза главы — единственный тост в игре, узкое
+                     исключение из K-15 (showChapterCutBanner, ui.js). Ребёнок
+                     .book-page, не .book-body — renderBook() не трогает этот узел
+                     при перерисовке текущего раздела. -->
+                <div id="chapterCutBanner" class="chapter-cut-banner" hidden role="status" aria-live="polite">
+                    <div class="chapter-cut-banner-eyebrow" data-i18n="book.chapterCutBannerEyebrow"></div>
+                    <div id="chapterCutBannerTitle" class="chapter-cut-banner-title"></div>
+                </div>
                 <div id="bookBody" class="book-body">
                     <div id="bookToday" class="book-section" hidden>
                         <div id="bookTodayList" class="achv-list"></div>
