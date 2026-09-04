@@ -1387,6 +1387,10 @@ function createAchievementTile(chain, stepIndex, p) {
         const hit = document.createElement('span');
         hit.className = 'achv-tile-hit';
         hit.setAttribute('aria-hidden', 'true');
+        // U-20: сетка всегда до пяти клеток (createAchievementTiles) — хит-зона
+        // растягивается на соседей до краёв полоски через эти два безразмерных числа.
+        hit.style.setProperty('--hit-l', stepIndex);
+        hit.style.setProperty('--hit-r', 4 - stepIndex);
         tile.appendChild(hit);
         // A-03: по data-chain-id `claimAchievementStep` находит точку старта перелёта ✦
         tile.addEventListener('click', (e) => {
