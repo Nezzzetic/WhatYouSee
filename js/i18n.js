@@ -272,6 +272,11 @@ en: {
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
+    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15,
+    // строка в ленте новостей (book.newsAtlasCut) выше остаётся отдельно.
+    'book.chapterCutBannerEyebrow': 'A new chapter',
+    'book.chapterCutBanner': 'Chapter {n} — {name} has opened.',
+    'book.chapterCutBannerMultiple': 'New chapters have opened: {names}.',
     'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open.',
@@ -572,6 +577,10 @@ ru: {
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
+    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15.
+    'book.chapterCutBannerEyebrow': 'Новая глава',
+    'book.chapterCutBanner': 'Глава {n} — «{name}» открыта.',
+    'book.chapterCutBannerMultiple': 'Открыты новые главы: {names}.',
     'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
     'book.newsChainOpen': '«{title}» — новое достижение открыто.',

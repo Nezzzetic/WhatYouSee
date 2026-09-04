@@ -1206,7 +1206,20 @@ function claimAchievementStep(chainId) {
     if (typeof playClaim === 'function') playClaim(reward);
     if (typeof flyClaimReward === 'function') flyClaimReward(fromRect, reward);
 
+    // V-16: разрез главы атласа — узкое исключение из K-15, решение заказчика
+    // 2026-09-04. Забор марки — единственный live-путь к maybeAutoUnlockAtlasPages
+    // (в отличие от загрузки сейва и дев-вайпа), поэтому достаточно сверить
+    // unlockedPageIndices до/после — без изменения сигнатур awardMetaScore
+    // и maybeAutoUnlockAtlasPages.
+    const atlasPagesBeforeClaim = new Set(unlockedPageIndices);
     awardMetaScore(reward);
+    if (typeof showChapterCutBanner === 'function') {
+        const newlyCutPages = [...unlockedPageIndices]
+            .filter(i => !atlasPagesBeforeClaim.has(i))
+            .sort((a, b) => a - b);
+        if (newlyCutPages.length) showChapterCutBanner(newlyCutPages);
+    }
+
     if (chain.daily) {
         // K-22: stepIndex не хранится напрямую — «забрано» живёт в блоке суток
         // до прихода нового неба, следующий recompute выведет stepIndex заново.
