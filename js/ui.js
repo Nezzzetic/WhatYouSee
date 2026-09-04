@@ -583,6 +583,18 @@ function createAtlasEntryCard(entry) {
         card.appendChild(createFacetsRow(entry.name));
     }
 
+    // U-22: состояние закладки словом — тем же самым, что стоит подписью под
+    // чертежом в углу неба (`sky.bookmarkLabel`, K-11/K-32). Одна подпись на
+    // двух экранах и есть недостающее объяснение: точка здесь — чертёж там.
+    // Новых ключей локали задача не заводит.
+    // K-23: жёлоб резервируется у КАЖДОЙ карточки, а не только у заложенной, —
+    // прячет слово `visibility`, а не отсутствие узла: сетка не должна ехать
+    // под пальцем в момент постановки закладки.
+    const mark = document.createElement('div');
+    mark.className = 'atlas-card-mark' + (bookmarked ? ' atlas-card-mark-on' : '');
+    mark.textContent = t('sky.bookmarkLabel');
+    card.appendChild(mark);
+
     // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
     if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
 
@@ -1412,9 +1424,31 @@ function refreshBookIfOpen() {
     if (bookOpen) renderBook();
 }
 
+/**
+ * U-21: самое первое за игру открытие книги приходится на разворот атласа —
+ * иначе новичок не находит его вовсе: сигнала у высечки у атласа нет и не
+ * будет (бейджей он не показывает никогда), а глава I бесплатна, то есть
+ * разворот не пустой ни у кого. Дальше книга открывается там, где игрок был
+ * в прошлый раз (K-05). Флаг тратится только на путях игрока — тап по ленте,
+ * потягивание, Enter, — они зовут openBook() без аргумента; харнесс с явным
+ * разделом первое открытие не съедает.
+ */
+function consumeFirstBookOpenCut() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return null;
+    if (achievementCounters.bookFirstOpenDone) return null;
+    achievementCounters.bookFirstOpenDone = true;
+    if (typeof saveProgression === 'function') saveProgression();
+    return 'atlas';
+}
+
 function openBook(cut) {
     closeObservatoryRenameField();
-    if (BOOK_CUT_LIST.includes(cut)) bookCut = cut;
+    if (BOOK_CUT_LIST.includes(cut)) {
+        bookCut = cut;
+    } else {
+        const firstCut = consumeFirstBookOpenCut();
+        if (firstCut) bookCut = firstCut;
+    }
     bookOpen = true;
     const book = document.getElementById('book');
     if (book) book.hidden = false;
@@ -1426,6 +1460,7 @@ function openBook(cut) {
 function closeBook() {
     if (!bookOpen) return;
     closeObservatoryRenameField();
+    dismissChapterCutBanner(true); // V-16: баннер не переживает закрытие книги
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {
@@ -1442,6 +1477,87 @@ function switchBookCut(cut) {
     bookCut = cut;
     renderBook();
     syncExLibrisAppMode();
+}
+
+// =============================================================================
+// V-16 — БАННЕР РАЗРЕЗА ГЛАВЫ: УЗКОЕ ИСКЛЮЧЕНИЕ ИЗ K-15
+// =============================================================================
+// Единственный тост в игре — решение заказчика 2026-09-04: разрез главы атласа
+// достаточно важен, чтобы получить яркий отклик прямо в момент забора марки,
+// внутри уже открытой книги. Остальные события (огранка, особые цепочки,
+// обсерватория) по-прежнему идут только строкой в ленте «Сегодня» + каплей
+// сургуча (K-15) — это исключение их не отменяет.
+//
+// Состояние сессионное, вне сейва: узел — ребёнок #bookPage (не переживает
+// закрытие книги, не трогается перерисовкой конкретных разделов renderBook()).
+// Триггер — только claimAchievementStep (achievements.js): забор марки
+// физически невозможен вне открытой книги и никогда не случается на путях
+// загрузки сейва/дев-вайпа, поэтому отдельный announce-флаг не нужен.
+
+let chapterCutBannerIndices = [];
+let chapterCutBannerTimer = null;
+
+/** Заголовок главы(-ав) — та же форма, что в оглавлении (K-19), без «Ch.»/римской в начале. */
+function chapterCutBannerText(indices) {
+    if (indices.length === 1) {
+        const idx = indices[0];
+        return t('book.chapterCutBanner', {
+            n: toRoman(idx + 1),
+            name: t('atlas.chapterTitle' + idx)
+        });
+    }
+    const names = indices.map(idx => t('atlas.chapterTitle' + idx)).join(', ');
+    return t('book.chapterCutBannerMultiple', { names });
+}
+
+/**
+ * Показать баннер. Батч: несколько порогов в одном заборе — один вызов с
+ * массивом индексов, а не несколько подряд. Повторный клейм, пока баннер ещё
+ * виден, — мёрджит список глав и продлевает таймер вместо второго баннера.
+ */
+function showChapterCutBanner(newIndices) {
+    if (!Array.isArray(newIndices) || newIndices.length === 0) return;
+    // Баннер — поверх ОТКРЫТОЙ книги; в реальной игре забор вне книги
+    // невозможен физически, а __test.claim() умеет забирать и мимо DOM (K-07).
+    if (!bookOpen) return;
+    const el = document.getElementById('chapterCutBanner');
+    const titleEl = document.getElementById('chapterCutBannerTitle');
+    if (!el || !titleEl) return;
+
+    const merged = new Set(chapterCutBannerIndices);
+    for (const i of newIndices) merged.add(i);
+    chapterCutBannerIndices = [...merged].sort((a, b) => a - b);
+    titleEl.textContent = chapterCutBannerText(chapterCutBannerIndices);
+
+    el.hidden = false;
+    // Форсированный рефлоу — тот же приём, что у книжных доводок K-26
+    // (`void book.offsetHeight`), а не requestAnimationFrame: во вкладке,
+    // которая не рендерится (свёрнута/не в фокусе), rAF может не выстрелить
+    // вовсе, и переход застрянет с classList без -on навсегда.
+    void el.offsetHeight;
+    el.classList.add('chapter-cut-banner-on');
+
+    if (chapterCutBannerTimer) clearTimeout(chapterCutBannerTimer);
+    chapterCutBannerTimer = setTimeout(
+        () => dismissChapterCutBanner(false), CHAPTER_CUT_BANNER_HOLD_MS
+    );
+}
+
+/** immediate=true — обрыв без доигрывания (закрытие книги); false — гаснет плавно. */
+function dismissChapterCutBanner(immediate) {
+    if (chapterCutBannerTimer) {
+        clearTimeout(chapterCutBannerTimer);
+        chapterCutBannerTimer = null;
+    }
+    chapterCutBannerIndices = [];
+    const el = document.getElementById('chapterCutBanner');
+    if (!el || el.hidden) return;
+    el.classList.remove('chapter-cut-banner-on');
+    if (immediate || prefersReducedMotion()) {
+        el.hidden = true;
+        return;
+    }
+    setTimeout(() => { el.hidden = true; }, MOTION_SCENE_MS);
 }
 
 /**

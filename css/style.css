@@ -874,6 +874,56 @@ button:disabled {
 #bookFootPrev { padding-left: 20px; margin-left: -20px; }
 #bookFootNext { padding-right: 20px; margin-right: -20px; }
 
+/* --- V-16: баннер разреза главы — единственный тост в игре, узкое исключение
+   из K-15 («тостов нет вовсе»). Решение заказчика 2026-09-04: разрез главы —
+   один из важнейших этапов игры, ради него можно позволить себе яркий отклик
+   прямо поверх открытой книги, а не только строку в ленте новостей ниже.
+   Ребёнок .book-page (не .book-body) — плавает над текущим разделом, лист под
+   него не выделяет отдельного места в раскладке. Слой между страницей книги
+   (1200) и перелётом монеты (1300, A-03) — по смыслу «под» жестом забора. --- */
+
+.chapter-cut-banner {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--safe-top) + 58px);
+    z-index: 1220;
+    max-width: min(84%, 340px);
+    padding: 13px 20px;
+    text-align: center;
+    border: 1px solid var(--wax);
+    border-radius: var(--r-lg);
+    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
+    box-shadow: 0 10px 26px rgba(var(--paper-deep-rgb), 0.55), 0 0 18px rgba(var(--wax-rgb), 0.4);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -10px);
+    transition: opacity var(--t-scene) var(--ease), transform var(--t-scene) var(--ease);
+}
+
+.chapter-cut-banner-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.chapter-cut-banner-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--wax-soft);
+}
+
+.chapter-cut-banner-title {
+    font-family: var(--font-title);
+    font-size: 16.5px;
+    line-height: 1.3;
+    color: var(--gold-light);
+    margin-top: 5px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chapter-cut-banner { transition: none; }
+}
+
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
 
 .book-news-list {
@@ -1483,6 +1533,25 @@ button:disabled {
     background: var(--ink);
 }
 
+/* U-22: состояние закладки словом. Вид взят у подписи под чертежом в углу неба
+   (.sky-bookmark-label) — одна и та же подпись на двух экранах, это и есть
+   объяснение связи «точка здесь → чертёж там».
+   K-23: узел стоит у КАЖДОЙ карточки и прячется видимостью, а не отсутствием —
+   постановка закладки не должна двигать сетку под пальцем. */
+.atlas-card-mark {
+    font-family: var(--font-text);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-top: 2px;
+    visibility: hidden;
+}
+
+.atlas-card-mark-on {
+    visibility: visible;
+}
+
 .atlas-facets {
     display: flex;
     justify-content: center;
@@ -1664,9 +1733,10 @@ button:disabled {
 /* --- сцепка: полоска из пяти клеток ----------------------------------------- */
 
 .achv-row-tiles {
+    --tile-gap: 6px;
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
+    gap: var(--tile-gap);
     margin-top: 7px;
 }
 
@@ -1714,19 +1784,28 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* Готова прижать: сургучная рамка, тот же жест, что у ежедневной марки. */
+/* U-20: готова прижать — сургуч заливкой, единственное закрашенное пятно
+   среди волосяных линеек страницы (было кольцо-рамка, на бумаге не читалось
+   как «нажми»). Дышит ровно эта клетка (K-03: яркость 0.8…1.0, период 5–9 с,
+   геометрия неподвижна — двигать нельзя, марка не должна елозить под пальцем).
+   z-index обязателен: opacity/filter дыхания создают контекст наложения, и без
+   него растянутая .achv-tile-hit уходит под соседние клетки ниже по DOM. */
 .achv-tile-ready {
+    z-index: 2;
+    background: var(--wax);
     box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    animation: achvTileBreathe 6.4s ease-in-out infinite alternate;
 }
 
 .achv-tile-ready::before {
-    border-color: rgba(var(--wax-rgb), 0.45);
+    border-color: rgba(var(--gold-light-rgb), 0.35);
 }
 
 .achv-tile-ready .achv-tile-amt {
     color: var(--gold-light);
+    font-weight: 650;
 }
 
 .achv-tile-ready:hover,
@@ -1735,11 +1814,24 @@ button:disabled {
     outline: none;
 }
 
-/* Зона касания шире марки на 6 pt с каждой стороны — марка мелкая, палец
-   крупный. Реальный узел (не псевдоэлемент): надёжнее ловит тап в WebView. */
+@keyframes achvTileBreathe {
+    from { opacity: 0.82; }
+    to   { opacity: 1; }
+}
+
+/* U-20: по вертикали зона касания заметно шире марки (48 px — под полоской
+   ~20 px мёртвого поля, отнять не у кого). По горизонтали растягивается до
+   краёв полоски через --hit-l/--hit-r (шаг клетки задаёт createAchievementTile,
+   потолок сетки всегда 5 — createAchievementTiles): вторая марка в строке не
+   активируется, пока не прижата первая (K-22), так что мишени соседних строк
+   не пересекаются. Реальный узел (не псевдоэлемент): надёжнее ловит тап в
+   WebView. */
 .achv-tile-hit {
     position: absolute;
-    inset: -6px;
+    top: -8px;
+    bottom: -8px;
+    left: calc(-1 * var(--hit-l, 0) * (100% + var(--tile-gap)) - 6px);
+    right: calc(-1 * var(--hit-r, 0) * (100% + var(--tile-gap)) - 6px);
     z-index: 1;
 }
 
@@ -1871,7 +1963,8 @@ button:disabled {
     .claim-coin-y,
     .claim-coin-pill,
     .ribbon-tail.score-pulse,
-    .book-gauge-flag.score-pulse {
+    .book-gauge-flag.score-pulse,
+    .achv-tile-ready {
         animation: none;
     }
 }

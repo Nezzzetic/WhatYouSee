@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="72" height="72" viewBox="18 18 72 72">
+  <defs>
+    <radialGradient id="sky" cx="50%" cy="44%" r="70%">
+      <stop offset="0" stop-color="#0E2137"/>
+      <stop offset="1" stop-color="#05090F"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="47%" r="46%">
+      <stop offset="0" stop-color="#142A46" stop-opacity=".62"/>
+      <stop offset=".55" stop-color="#0E2137" stop-opacity=".30"/>
+      <stop offset="1" stop-color="#0E2137" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h0">
+      <stop offset="0" stop-color="#EDEFF5" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#EDEFF5" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#EDEFF5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h1">
+      <stop offset="0" stop-color="#86C8F2" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#86C8F2" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#86C8F2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h2">
+      <stop offset="0" stop-color="#F2C965" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F2C965" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F2C965" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h3">
+      <stop offset="0" stop-color="#86C8F2" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#86C8F2" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#86C8F2" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h4">
+      <stop offset="0" stop-color="#F2A254" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F2A254" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F2A254" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="0" y="0" width="108" height="108" fill="url(#sky)"/>
+  <circle cx="54" cy="51" r="33" fill="url(#glow)"/>
+  <g fill="none" stroke="#D9A441" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M54 27.6 L73.36 43.2 L54 58.8 L34.64 43.2 Z"/>
+    <path d="M54 58.8 L54 80.4"/>
+  </g>
+  <circle cx="54" cy="27.6" r="13" fill="url(#h0)"/>
+  <circle cx="73.36" cy="43.2" r="10" fill="url(#h1)"/>
+  <circle cx="54" cy="58.8" r="10" fill="url(#h2)"/>
+  <circle cx="34.64" cy="43.2" r="10" fill="url(#h3)"/>
+  <circle cx="54" cy="80.4" r="8" fill="url(#h4)"/>
+  <circle cx="54" cy="27.6" r="5.2" fill="#EDEFF5"/>
+  <circle cx="73.36" cy="43.2" r="4.4" fill="#86C8F2"/>
+  <circle cx="54" cy="58.8" r="4.4" fill="#F2C965"/>
+  <circle cx="34.64" cy="43.2" r="4.4" fill="#86C8F2"/>
+  <circle cx="54" cy="80.4" r="3.5" fill="#F2A254"/>
+</svg>

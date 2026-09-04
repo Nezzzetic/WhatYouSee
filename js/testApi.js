@@ -540,6 +540,21 @@
     }
 
     /**
+     * V-16: срез баннера разреза главы — узкое исключение из K-15. Без него
+     * браузерный слой умеет только ловить скриншот в произвольный момент.
+     * `chapterCutBannerIndices` — script-level let из ui.js, виден по имени.
+     */
+    function chapterCutBannerState() {
+        const el = document.getElementById('chapterCutBanner');
+        const titleEl = document.getElementById('chapterCutBannerTitle');
+        return {
+            active: !!(el && !el.hidden),
+            indices: typeof chapterCutBannerIndices !== 'undefined' ? [...chapterCutBannerIndices] : [],
+            text: titleEl ? titleEl.textContent : ''
+        };
+    }
+
+    /**
      * K-11: булавка-закладка на карточке разворота атласа — настоящий клик
      * по `.atlas-pin`, а не прямой вызов `toggleShapeBookmark`. Требует, чтобы
      * книга уже была открыта на главе, где лежит эта фигура (см. `book()`).
@@ -870,9 +885,8 @@
             pending: false,
             canUndo: canUndoLastConstellation(),
             startsInMs: Math.round(undoMark.startMs - millis()),
-            label: layout.label,
             alpha: layout.alpha,
-            below: layout.below,
+            right: layout.right,
             rect: {
                 left: layout.left,
                 top: layout.top,
@@ -1036,6 +1050,7 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
+        chapterCutBanner: chapterCutBannerState,
         proof: proofState,
         tutorial: tutorialState,
         setZoom,
