@@ -721,8 +721,12 @@ button:disabled {
     inset: 0;
     display: flex;
     flex-direction: column;
-    padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px) 10px
-        max(var(--page-pad-left), 24px);
+    /* P-02 (регрессия найдена в P-09): страница книги — edge-to-edge, и без
+       --safe-bottom подвал с пейджером (.book-foot) уходит под нав-панель
+       Android целиком — в браузере env(...) = 0, поэтому баг был не виден
+       ни разу до сборки APK. */
+    padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px)
+        calc(var(--safe-bottom) + 10px) max(var(--page-pad-left), 24px);
     background:
         radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%),
         repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.006) 2px 3px);
