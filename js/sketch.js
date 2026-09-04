@@ -335,6 +335,30 @@ function setup() {
     document.getElementById("zoomOutButton")?.addEventListener("click", () => zoomByStep(-1));
 
     window.addEventListener("keydown", onGlobalPopupKeydown);
+
+    // M-08: небо, ушедшее в фон на сутки, иначе остаётся вчерашним до жёсткой
+    // перезагрузки — isSavedSkyDateStale() до этой задачи проверялась только
+    // при загрузке страницы. Регистрируем после первого неба (loadGame()/
+    // startNewDailySky() выше), чтобы не сравнивать до готовности состояния.
+    if (typeof document !== 'undefined' && document.addEventListener) {
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') checkSkyDateOnResume();
+        });
+    }
+}
+
+/**
+ * M-08: та же смена дня, что при обычной загрузке — `startNewDailySky()`
+ * закрывает книгу, чистит сейв, пересчитывает суточные квесты и обновляет UI
+ * штатным путём (как dev-кнопка «Новый день» и харнесс-`newDay()`). Несёт
+ * риска потери прогресса нет: `autoSave()` уже пишет в localStorage после
+ * каждого коммита/отката/забора, так что сохранённые сутки не отстают от
+ * реально показанных, пока вкладка не ушла в фон.
+ */
+function checkSkyDateOnResume() {
+    if (!hasSavedGame()) {
+        startNewDailySky({ saveAfter: true });
+    }
 }
 
 // =============================================================================
