@@ -433,8 +433,13 @@ function computeUndoMarkAlpha(elapsed, inMs, holdMs, outMs) {
  * Разъехались бы они, и тап уезжал бы от того, что видно.
  *
  * Якорь мировой (подпись фигуры), пересчёт в экран каждый кадр: пометка ходит
- * за фигурой при зуме и панораме и остаётся одного кегля. У края экрана
- * разворачивается внутрь — и вбок, и, если внизу не помещается, вверх.
+ * за фигурой при зуме и панораме и остаётся одного кегля. U-19: пометка стоит
+ * не под подписью, а сбоку от неё — по умолчанию справа, слева, если справа
+ * не помещается (разворот внутрь по X); по вертикали её просто держит в кадре
+ * (разворот внутрь по Y). Зазор от подписи считается по её реальной ширине
+ * (`measureSmallCapsWidth`, тот же алгоритм, что рисует саму подпись) —
+ * короткое имя не тянет пометку в пустоту, длинное не даёт знаку наползти
+ * на буквы.
  */
 function computeUndoMarkLayout() {
     const mark = getLiveUndoMark();
@@ -462,50 +467,41 @@ function computeUndoMarkLayout() {
     const ax = (fw.x - camX) * zoomLevel;
     const ay = (fw.y - camY) * zoomLevel;
 
-    const label = getUndoMarkLabel(c);
-    push();
-    textSize(UNDO_MARK_TEXT_PX);
-    const textW = textWidth(label);
-    pop();
+    const w = UNDO_MARK_SIGN_PX;
+    const h = UNDO_MARK_SIGN_PX;
+    const nameLabel = getConstellationDisplayName(c);
+    const nameHalfW = (typeof measureSmallCapsWidth === 'function'
+        ? measureSmallCapsWidth(nameLabel, COLLECTED_ATLAS_LABEL_SIZE)
+        : Math.max(72, nameLabel.length * 9)) / 2;
+    const clearance = nameHalfW + UNDO_MARK_SIDE_GAP_PX + w / 2;
+    const slide = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_SLIDE_PX;
 
-    const w = UNDO_MARK_SIGN_PX + UNDO_MARK_SIGN_GAP_PX + textW;
-    const h = Math.max(UNDO_MARK_SIGN_PX, UNDO_MARK_TEXT_PX) + 4;
-    const rise = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_RISE_PX;
-
-    // Внизу не помещается — уходит над подписью; волосок разворачивается вместе с ней.
-    let below = true;
-    let cy = ay + UNDO_MARK_DROP_PX + rise;
-    if (cy + h / 2 > height - UNDO_MARK_EDGE_PAD_PX) {
-        below = false;
-        cy = ay - UNDO_MARK_DROP_PX - rise;
+    // Справа не помещается — уходит влево от подписи.
+    let right = true;
+    let cx = ax + clearance + slide;
+    if (cx + w / 2 + UNDO_MARK_EDGE_PAD_PX > width) {
+        right = false;
+        cx = ax - clearance - slide;
     }
+    cx = Math.max(UNDO_MARK_EDGE_PAD_PX + w / 2,
+                  Math.min(width - UNDO_MARK_EDGE_PAD_PX - w / 2, cx));
+
+    let cy = ay;
     cy = Math.max(UNDO_MARK_EDGE_PAD_PX + h / 2,
                   Math.min(height - UNDO_MARK_EDGE_PAD_PX - h / 2, cy));
 
-    let left = ax - w / 2;
-    left = Math.max(UNDO_MARK_EDGE_PAD_PX,
-                    Math.min(width - UNDO_MARK_EDGE_PAD_PX - w, left));
-
     return {
-        label, alpha, below, w, h,
-        left,
+        alpha, right, w, h,
+        left: cx - w / 2,
         top: cy - h / 2,
-        cx: left + w / 2,
+        cx,
         cy,
         anchorX: ax,
         anchorY: ay
     };
 }
 
-/**
- * Что именно сотрёт пометка. V-14: имя видно на поле сразу после коммита у любого
- * созвездия, включая fallback вне каталога, — пометка показывает то же имя.
- */
-function getUndoMarkLabel(constellation) {
-    return getConstellationDisplayName(constellation);
-}
-
-/** Попал ли тап в пометку. Зона касания шире надписи — как у ленты K-05. */
+/** Попал ли тап в пометку. Зона касания шире знака — как у ленты K-05. */
 function hitUndoMark(screenX, screenY) {
     const m = computeUndoMarkLayout();
     if (!m) return false;
