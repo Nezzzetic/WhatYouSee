@@ -384,11 +384,15 @@ function clearMusicGapTimer() {
 function onMusicTrackEnded() {
     releaseMusicElement();
     clearMusicGapTimer();
+    // Очередь двигается сразу, а не в момент срабатывания таймера: выключенный
+    // посреди паузы тумблер обрывает таймер, и при включении обратно
+    // `startMusic()` обязан взять следующую вещь, а не повторить отыгравшую.
+    _musicIndex = (_musicIndex + 1) % MUSIC_TRACKS.length;
     if (!_musicEnabled) return;
     _musicGapTimer = setTimeout(() => {
         _musicGapTimer = null;
         if (!_musicEnabled) return;
-        playMusicTrackAt((_musicIndex + 1) % MUSIC_TRACKS.length);
+        playMusicTrackAt(_musicIndex);
     }, MUSIC_GAP_MS);
 }
 
