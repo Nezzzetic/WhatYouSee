@@ -10,9 +10,9 @@
       <stop offset="1" stop-color="#0E2137" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="h0">
-      <stop offset="0" stop-color="#EDEFF5" stop-opacity=".50"/>
-      <stop offset=".45" stop-color="#EDEFF5" stop-opacity=".18"/>
-      <stop offset="1" stop-color="#EDEFF5" stop-opacity="0"/>
+      <stop offset="0" stop-color="#86C8F2" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#86C8F2" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#86C8F2" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="h1">
       <stop offset="0" stop-color="#86C8F2" stop-opacity=".50"/>
@@ -20,9 +20,9 @@
       <stop offset="1" stop-color="#86C8F2" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="h2">
-      <stop offset="0" stop-color="#F2C965" stop-opacity=".50"/>
-      <stop offset=".45" stop-color="#F2C965" stop-opacity=".18"/>
-      <stop offset="1" stop-color="#F2C965" stop-opacity="0"/>
+      <stop offset="0" stop-color="#F07A67" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F07A67" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F07A67" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="h3">
       <stop offset="0" stop-color="#86C8F2" stop-opacity=".50"/>
@@ -30,25 +30,65 @@
       <stop offset="1" stop-color="#86C8F2" stop-opacity="0"/>
     </radialGradient>
     <radialGradient id="h4">
-      <stop offset="0" stop-color="#F2A254" stop-opacity=".50"/>
-      <stop offset=".45" stop-color="#F2A254" stop-opacity=".18"/>
-      <stop offset="1" stop-color="#F2A254" stop-opacity="0"/>
+      <stop offset="0" stop-color="#F07A67" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F07A67" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F07A67" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h5">
+      <stop offset="0" stop-color="#F2C965" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F2C965" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F2C965" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h6">
+      <stop offset="0" stop-color="#F07A67" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F07A67" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F07A67" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h7">
+      <stop offset="0" stop-color="#F2C965" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#F2C965" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#F2C965" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="h8">
+      <stop offset="0" stop-color="#EDEFF5" stop-opacity=".50"/>
+      <stop offset=".45" stop-color="#EDEFF5" stop-opacity=".18"/>
+      <stop offset="1" stop-color="#EDEFF5" stop-opacity="0"/>
     </radialGradient>
   </defs>
   <rect x="0" y="0" width="108" height="108" fill="url(#sky)"/>
-  <circle cx="54" cy="51" r="33" fill="url(#glow)"/>
-  <g fill="none" stroke="#D9A441" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M54 27.6 L73.36 43.2 L54 58.8 L34.64 43.2 Z"/>
-    <path d="M54 58.8 L54 80.4"/>
+  <circle cx="54" cy="54" r="33" fill="url(#glow)"/>
+  <g id="outline" fill="none" stroke="#D9A441" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M25.5 54.62 L38.58 43.45 L53.86 39.92 L67.8 43.45 L82.5 54.53 L67.99 66.65 L53.86 68.08 L38.2 65.31 Z"/>
   </g>
-  <circle cx="54" cy="27.6" r="13" fill="url(#h0)"/>
-  <circle cx="73.36" cy="43.2" r="10" fill="url(#h1)"/>
-  <circle cx="54" cy="58.8" r="10" fill="url(#h2)"/>
-  <circle cx="34.64" cy="43.2" r="10" fill="url(#h3)"/>
-  <circle cx="54" cy="80.4" r="8" fill="url(#h4)"/>
-  <circle cx="54" cy="27.6" r="5.2" fill="#EDEFF5"/>
-  <circle cx="73.36" cy="43.2" r="4.4" fill="#86C8F2"/>
-  <circle cx="54" cy="58.8" r="4.4" fill="#F2C965"/>
-  <circle cx="34.64" cy="43.2" r="4.4" fill="#86C8F2"/>
-  <circle cx="54" cy="80.4" r="3.5" fill="#F2A254"/>
+  <g id="halos">
+    <circle cx="25.5" cy="54.62" r="9" fill="url(#h0)"/>
+    <circle cx="38.58" cy="43.45" r="9" fill="url(#h1)"/>
+    <circle cx="53.86" cy="39.92" r="9" fill="url(#h2)"/>
+    <circle cx="67.8" cy="43.45" r="9" fill="url(#h3)"/>
+    <circle cx="82.5" cy="54.53" r="9" fill="url(#h4)"/>
+    <circle cx="67.99" cy="66.65" r="9" fill="url(#h5)"/>
+    <circle cx="53.86" cy="68.08" r="9" fill="url(#h6)"/>
+    <circle cx="38.2" cy="65.31" r="9" fill="url(#h7)"/>
+    <circle cx="53.86" cy="54.24" r="14" fill="url(#h8)"/>
+  </g>
+  <g id="stars">
+    <path d="M25.5 50.22 Q25.5 54.62 29.9 54.62 Q25.5 54.62 25.5 59.02 Q25.5 54.62 21.1 54.62 Q25.5 54.62 25.5 50.22 Z" fill="#86C8F2"/>
+    <circle cx="25.5" cy="54.62" r="1.32" fill="#86C8F2"/>
+    <path d="M38.58 39.05 Q38.58 43.45 42.98 43.45 Q38.58 43.45 38.58 47.85 Q38.58 43.45 34.18 43.45 Q38.58 43.45 38.58 39.05 Z" fill="#86C8F2"/>
+    <circle cx="38.58" cy="43.45" r="1.32" fill="#86C8F2"/>
+    <path d="M53.86 35.52 Q53.86 39.92 58.26 39.92 Q53.86 39.92 53.86 44.32 Q53.86 39.92 49.46 39.92 Q53.86 39.92 53.86 35.52 Z" fill="#F07A67"/>
+    <circle cx="53.86" cy="39.92" r="1.32" fill="#F07A67"/>
+    <path d="M67.8 39.05 Q67.8 43.45 72.2 43.45 Q67.8 43.45 67.8 47.85 Q67.8 43.45 63.4 43.45 Q67.8 43.45 67.8 39.05 Z" fill="#86C8F2"/>
+    <circle cx="67.8" cy="43.45" r="1.32" fill="#86C8F2"/>
+    <path d="M82.5 50.13 Q82.5 54.53 86.9 54.53 Q82.5 54.53 82.5 58.93 Q82.5 54.53 78.1 54.53 Q82.5 54.53 82.5 50.13 Z" fill="#F07A67"/>
+    <circle cx="82.5" cy="54.53" r="1.32" fill="#F07A67"/>
+    <path d="M67.99 62.25 Q67.99 66.65 72.39 66.65 Q67.99 66.65 67.99 71.05 Q67.99 66.65 63.59 66.65 Q67.99 66.65 67.99 62.25 Z" fill="#F2C965"/>
+    <circle cx="67.99" cy="66.65" r="1.32" fill="#F2C965"/>
+    <path d="M53.86 63.68 Q53.86 68.08 58.26 68.08 Q53.86 68.08 53.86 72.48 Q53.86 68.08 49.46 68.08 Q53.86 68.08 53.86 63.68 Z" fill="#F07A67"/>
+    <circle cx="53.86" cy="68.08" r="1.32" fill="#F07A67"/>
+    <path d="M38.2 60.91 Q38.2 65.31 42.6 65.31 Q38.2 65.31 38.2 69.71 Q38.2 65.31 33.8 65.31 Q38.2 65.31 38.2 60.91 Z" fill="#F2C965"/>
+    <circle cx="38.2" cy="65.31" r="1.32" fill="#F2C965"/>
+    <path d="M53.86 47.24 Q53.86 54.24 60.86 54.24 Q53.86 54.24 53.86 61.24 Q53.86 54.24 46.86 54.24 Q53.86 54.24 53.86 47.24 Z" fill="#EDEFF5"/>
+    <circle cx="53.86" cy="54.24" r="2.1" fill="#EDEFF5"/>
+  </g>
 </svg>
