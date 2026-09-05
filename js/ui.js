@@ -560,6 +560,18 @@ function createAtlasEntryCard(entry) {
     });
     card.appendChild(pin);
 
+    // U-22: состояние закладки словом — тем же самым, что стоит подписью под
+    // чертежом в углу неба (`sky.bookmarkLabel`, K-11/K-32). Одна подпись на
+    // двух экранах и есть недостающее объяснение: точка здесь — чертёж там.
+    // Новых ключей локали задача не заводит. Слово стоит в шапке карточки
+    // напротив булавки (правка заказчика с устройства 2026-09-04) — абсолютом
+    // в отведённой сверху полосе, поэтому K-23 держится по построению: полоса
+    // есть у каждой карточки всегда, а слово только показывается и прячется.
+    const mark = document.createElement('div');
+    mark.className = 'atlas-card-mark' + (bookmarked ? ' atlas-card-mark-on' : '');
+    mark.textContent = t('sky.bookmarkLabel');
+    card.appendChild(mark);
+
     const canvas = document.createElement('canvas');
     canvas.className = 'atlas-card-canvas';
     sizeGlyphCanvas(canvas, GLYPH_SIZES.spread, false);
@@ -582,18 +594,6 @@ function createAtlasEntryCard(entry) {
         // K-18: искра тем же контуром, что звезда на небе, а не ромбик.
         card.appendChild(createFacetsRow(entry.name));
     }
-
-    // U-22: состояние закладки словом — тем же самым, что стоит подписью под
-    // чертежом в углу неба (`sky.bookmarkLabel`, K-11/K-32). Одна подпись на
-    // двух экранах и есть недостающее объяснение: точка здесь — чертёж там.
-    // Новых ключей локали задача не заводит.
-    // K-23: жёлоб резервируется у КАЖДОЙ карточки, а не только у заложенной, —
-    // прячет слово `visibility`, а не отсутствие узла: сетка не должна ехать
-    // под пальцем в момент постановки закладки.
-    const mark = document.createElement('div');
-    mark.className = 'atlas-card-mark' + (bookmarked ? ' atlas-card-mark-on' : '');
-    mark.textContent = t('sky.bookmarkLabel');
-    card.appendChild(mark);
 
     // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
     if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
@@ -1475,12 +1475,29 @@ function refreshBookIfOpen() {
  * потягивание, Enter, — они зовут openBook() без аргумента; харнесс с явным
  * разделом первое открытие не съедает.
  */
-function consumeFirstBookOpenCut() {
-    if (typeof achievementCounters === 'undefined' || !achievementCounters) return null;
-    if (achievementCounters.bookFirstOpenDone) return null;
+function isFirstBookOpenPending() {
+    return typeof achievementCounters !== 'undefined' && !!achievementCounters
+        && !achievementCounters.bookFirstOpenDone;
+}
+
+/**
+ * Ставит раздел, но флага НЕ тратит: зовётся в момент, когда книга только
+ * становится видимой (потягивание ленты за палец), — иначе игрок тянет вверх
+ * «Сегодня», а по приезде страница на его глазах подменяется атласом. Если
+ * жест бросили на полпути, флаг цел, а `bookCut` уже атлас — следующее
+ * открытие приведёт туда же, и подмены снова не будет.
+ */
+function applyFirstBookOpenCut() {
+    if (!isFirstBookOpenPending()) return false;
+    bookCut = 'atlas';
+    return true;
+}
+
+/** Книга действительно открылась — первое открытие израсходовано. */
+function markFirstBookOpenDone() {
+    if (!isFirstBookOpenPending()) return;
     achievementCounters.bookFirstOpenDone = true;
     if (typeof saveProgression === 'function') saveProgression();
-    return 'atlas';
 }
 
 function openBook(cut) {
@@ -1488,8 +1505,8 @@ function openBook(cut) {
     if (BOOK_CUT_LIST.includes(cut)) {
         bookCut = cut;
     } else {
-        const firstCut = consumeFirstBookOpenCut();
-        if (firstCut) bookCut = firstCut;
+        applyFirstBookOpenCut();
+        markFirstBookOpenDone();
     }
     bookOpen = true;
     const book = document.getElementById('book');
@@ -1876,6 +1893,9 @@ function setupRibbonPullGesture(ribbon) {
         pulled = true; // жест пошёл — тап после него не должен сработать отдельно
         book.style.transition = '';
         book.hidden = false;
+        // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
+        // уже атласом, а не подменяется им по приезде.
+        applyFirstBookOpenCut();
         renderBook();
         book.style.transform = `translateY(${bookTravelPx()}px)`;
     };
