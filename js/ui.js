@@ -1363,6 +1363,39 @@ function renderBookSettings() {
     // U-14: второй тумблер на готовое место — раздельно от звука (требование
     // заказчика 2026-08-23), тем же конструктором строки.
     el.appendChild(createSettingsToggleRow('settings.haptic', isHapticEnabled, toggleHapticSetting));
+    // A-07: третий тумблер тем же конструктором. Музыка гасится отдельно от
+    // звука по той же причине, по которой U-14 отделила вибро: её глушат,
+    // чтобы слушать своё, не трогая отклик интерфейса.
+    el.appendChild(createSettingsToggleRow('settings.music', isMusicEnabled, toggleMusicSetting));
+    el.appendChild(createSettingsCredits());
+}
+
+/**
+ * A-07: указание авторства музыки — требование лицензии CC BY 4.0, под которой
+ * отданы оба трека. Страница настроек выбрана как место, где кредит найдут,
+ * не ища: другого экрана «о программе» в книге нет.
+ *
+ * Адрес остаётся текстом, а не ссылкой: в WebView нативной сборки (P-02)
+ * внешний href открылся бы в том же окне, и вернуться в игру было бы нечем.
+ * CC-BY требует указать адрес, а не сделать его кликабельным.
+ */
+function createSettingsCredits() {
+    const box = document.createElement('div');
+    box.className = 'settings-credits';
+
+    const head = document.createElement('div');
+    head.className = 'settings-credits-head';
+    head.textContent = t('settings.credits');
+    box.appendChild(head);
+
+    (typeof MUSIC_CREDITS !== 'undefined' ? MUSIC_CREDITS : []).forEach(line => {
+        const row = document.createElement('div');
+        row.className = 'settings-credits-line';
+        row.textContent = line;
+        box.appendChild(row);
+    });
+
+    return box;
 }
 
 // U-14: включение тумблера вибро обязано само себя подтвердить — короткий
@@ -1375,6 +1408,15 @@ function toggleHapticSetting(on) {
     if (typeof initAudio === 'function') initAudio();
     setHapticEnabled(on);
     if (on && typeof hapticPulse === 'function') hapticPulse(HAPTIC_TOGGLE_MS);
+}
+
+// A-07: та же оговорка, что у вибро, и по той же причине — клик по DOM-кнопке
+// мимо канваса p5, `_interacted` сам по себе не встанет. Без `initAudio()`
+// первый в жизни игрока тап по этому тумблеру включил бы настройку, но не
+// музыку: `startMusic()` молчит, пока жеста не было.
+function toggleMusicSetting(on) {
+    if (typeof initAudio === 'function') initAudio();
+    setMusicEnabled(on);
 }
 
 // =============================================================================

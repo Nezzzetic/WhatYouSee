@@ -1876,6 +1876,40 @@ button:disabled {
     outline: none;
 }
 
+/* --- A-07: авторство музыки под тумблерами. Форма — колофон, а не строка
+   списка: волосяная линейка сверху вместо рамки (K-18 снял подложки у строк
+   разворота), надзаголовок разрядкой, сам кредит бледнее тумблеров — его
+   читают один раз, а не возвращаются к нему. Адрес не ссылка: в WebView
+   нативной сборки (P-02) внешний href открылся бы в том же окне. */
+
+.settings-credits {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--paper-edge);
+}
+
+.settings-credits-head {
+    font-family: var(--font-text);
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 6px;
+}
+
+.settings-credits-line {
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--ink-muted);
+    /* Строки подобраны так, чтобы влезать без переноса (см. MUSIC_CREDITS):
+       рвать «CC-BY 4.0» по дефису нельзя, код лицензии перестаёт читаться.
+       `break-word` — страховка на случай узкого экрана и другого шрифта:
+       рвёт адрес, а не выпускает его за поле страницы. */
+    overflow-wrap: break-word;
+}
+
 /* --- A-03: перелёт награды от кнопки забора к счётчику ✦ --- */
 
 /* Три вложенных узла — это не украшательство, а способ получить дугу без
