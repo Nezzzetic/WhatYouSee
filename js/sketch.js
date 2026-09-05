@@ -424,7 +424,7 @@ function hideDevControls() {
     if (el) el.hidden = true;
 }
 
-/** Невидимая кнопка в левом нижнем углу: тройной быстрый тап — показать/скрыть панель. */
+/** Невидимая кнопка в левом верхнем углу: тройной быстрый тап — показать/скрыть панель. */
 function setupDevToggleButton() {
     const btn = document.getElementById("devToggleBtn");
     if (!btn) return;
