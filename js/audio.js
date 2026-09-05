@@ -328,35 +328,32 @@ function musicStartIndex() {
 }
 
 /**
- * Ведёт громкость текущего элемента к `target` за `ms`. Отдельный таймер, а не
- * ramp Web Audio: у HTMLAudioElement громкость — обычное свойство, и вести её
- * больше нечем. Новый вызов отменяет предыдущий — два фейда навстречу друг
- * другу оставили бы громкость там, где успел последний тик.
+ * Вплывание: ведёт громкость текущего элемента от нынешней до `MUSIC_VOLUME`.
+ * Отдельный таймер, а не ramp Web Audio — у HTMLAudioElement громкость обычное
+ * свойство, и вести её больше нечем. Новый вызов отменяет предыдущий.
+ *
+ * Обратной функции нет намеренно: выключение мгновенное, см. `stopMusic()`.
  */
-function fadeMusicTo(target, ms, done) {
+function fadeMusicIn() {
+    cancelMusicFade();
+    const el = _musicEl;
+    if (!el) return;
+    const from = el.volume;
+    const started = Date.now();
+    _musicFadeTimer = setInterval(() => {
+        const k = Math.min(1, (Date.now() - started) / MUSIC_FADE_IN_MS);
+        try {
+            el.volume = Math.max(0, Math.min(1, from + (MUSIC_VOLUME - from) * k));
+        } catch (e) {}
+        if (k >= 1) cancelMusicFade();
+    }, MUSIC_FADE_TICK_MS);
+}
+
+function cancelMusicFade() {
     if (_musicFadeTimer) {
         clearInterval(_musicFadeTimer);
         _musicFadeTimer = null;
     }
-    const el = _musicEl;
-    if (!el) {
-        if (done) done();
-        return;
-    }
-    const from = el.volume;
-    const dur = Math.max(1, typeof ms === 'number' ? ms : MUSIC_FADE_MS);
-    const started = Date.now();
-    _musicFadeTimer = setInterval(() => {
-        const k = Math.min(1, (Date.now() - started) / dur);
-        try {
-            el.volume = Math.max(0, Math.min(1, from + (target - from) * k));
-        } catch (e) {}
-        if (k >= 1) {
-            clearInterval(_musicFadeTimer);
-            _musicFadeTimer = null;
-            if (done) done();
-        }
-    }, MUSIC_FADE_TICK_MS);
 }
 
 /** Снимает текущий элемент вместе с его слушателями — иначе `ended` от уже
@@ -420,7 +417,7 @@ function playMusicTrackAt(index) {
         _musicEl = el;
         const p = el.play();
         if (p && typeof p.catch === 'function') p.catch(() => {});
-        fadeMusicTo(MUSIC_VOLUME);
+        fadeMusicIn();
     } catch (e) {
         _musicEl = null;
     }
@@ -436,26 +433,34 @@ function startMusic() {
     if (typeof MUSIC_TRACKS === 'undefined' || !MUSIC_TRACKS.length) return;
     if (_musicGapTimer) return; // идёт пауза между вещами — это тоже «играет»
     if (_musicEl) {
-        // Возобновление: та же секунда, откуда сняли.
+        // Возобновление: та же секунда, откуда сняли, и та же мягкая подача —
+        // громкость лежит в нуле после мгновенного выключения.
         const p = _musicEl.play();
         if (p && typeof p.catch === 'function') p.catch(() => {});
-        fadeMusicTo(MUSIC_VOLUME);
+        fadeMusicIn();
         return;
     }
     playMusicTrackAt(_musicIndex >= 0 ? _musicIndex : musicStartIndex());
 }
 
-/** `keepPosition === false` — элемент снимается совсем; иначе пауза на той же
- *  секунде (тумблер, уход в фон). */
+/**
+ * Глушит музыку **мгновенно** — уплывания нет (требование заказчика 2026-09-05).
+ * Громкость сбрасывается в ноль до паузы: возобновление читает её как точку
+ * старта вплывания, и включённый обратно тумблер подаёт вещь так же мягко,
+ * как в первый раз.
+ *
+ * `keepPosition === false` снимает элемент совсем; иначе пауза на той же
+ * секунде — и тумблер, и уход в фон продолжают вещь, а не начинают заново.
+ */
 function stopMusic(keepPosition) {
     clearMusicGapTimer();
+    cancelMusicFade();
     if (!_musicEl) return;
-    const el = _musicEl;
-    fadeMusicTo(0, MUSIC_FADE_MS, () => {
-        if (_musicEl !== el) return; // за время уплывания успели переключить трек
-        if (keepPosition === false) releaseMusicElement();
-        else { try { el.pause(); } catch (e) {} }
-    });
+    try {
+        _musicEl.volume = 0;
+        _musicEl.pause();
+    } catch (e) {}
+    if (keepPosition === false) releaseMusicElement();
 }
 
 // Уход в фон. HTMLAudioElement сам не замолкает, когда сворачивают приложение
@@ -463,14 +468,8 @@ function stopMusic(keepPosition) {
 // поднимает музыку обратно тем же `startMusic()` — если её не выключили.
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            // Без фейда: вкладка уже не отрисовывается, таймер громкости в фоне
-            // тикает как попало, и «мягкое» уплывание вышло бы рваным.
-            if (_musicFadeTimer) { clearInterval(_musicFadeTimer); _musicFadeTimer = null; }
-            if (_musicEl) { try { _musicEl.pause(); } catch (e) {} }
-        } else {
-            startMusic();
-        }
+        if (document.hidden) stopMusic();
+        else startMusic();
     });
 }
 
