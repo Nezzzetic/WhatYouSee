@@ -29,8 +29,21 @@
 // идентификатор, что игра генерит себе с самого начала (`ensurePlayerId`).
 // Список полей — источник истины для страницы политики (P-06).
 //
-// ВЫКЛЮЧАТЕЛЬ: страница настроек книги (K-14). Выключен — не уходит ничего,
-// включая ошибки, и очередь не копится.
+// ВЫКЛЮЧАТЕЛЬ — СБОРОЧНЫЙ, А НЕ ИГРОВОЙ. В интерфейсе аналитики нет вовсе:
+// ни тумблера, ни строки, ни слова в локали. Управляется она из кода:
+//
+//   • нет `analytics.local.json` → `build-www.js` (ветка `capacitor`) вообще
+//     НЕ КЛАДЁТ этот файл в `www/` и вычёркивает его <script> из index.html.
+//     В APK не уезжает ни строки аналитики — это и есть «билд без неё»;
+//   • есть файл → адрес подставляется в блок CONFIG ниже, модуль оживает.
+//
+// УБРАТЬ ИЗ ПРОЕКТА СОВСЕМ — три точки касания, больше нигде ничего не лежит:
+//   1. этот файл;
+//   2. строка <script src="js/analytics.js"> в index.html;
+//   3. строка `if (typeof startAnalytics === 'function') startAnalytics();`
+//      в setup() (sketch.js) — она под `typeof`, поэтому даже её удаление
+//      не обязательно: без файла вызов и так не сработает.
+// Плюс `injectAnalyticsConfig()` в scripts/build-www.js на ветке `capacitor`.
 
 (function () {
     'use strict';
@@ -64,19 +77,12 @@
     // ГОТОВНОСТЬ
     // =========================================================================
 
-    /** Настроен ли модуль вообще. Пустой host — штатное состояние `main`. */
+    /**
+     * Настроен ли модуль. Пустой host — штатное состояние `main` и
+     * единственный выключатель: тумблера в интерфейсе у аналитики нет.
+     */
     function configured() {
         return !!(CONFIG.host && CONFIG.key);
-    }
-
-    /** Настроен И разрешён игроком. Второе условие живёт на странице настроек. */
-    function allowed() {
-        if (!configured()) return false;
-        try {
-            return typeof isAnalyticsEnabled !== 'function' || isAnalyticsEnabled();
-        } catch (e) {
-            return false;
-        }
     }
 
     // =========================================================================
@@ -225,7 +231,7 @@
     ];
 
     function checkMilestones() {
-        if (!allowed() || !state) return;
+        if (!configured() || !state) return;
         const ac = counters();
         if (!ac) return;
         let hit = false;
@@ -280,7 +286,7 @@
     }
 
     function enqueue(name, extra) {
-        if (!allowed() || !state) return null;
+        if (!configured() || !state) return null;
         let ev = null;
         try { ev = buildEvent(name, extra); } catch (e) { return null; }
         state.queue.push(ev);
@@ -291,7 +297,7 @@
     }
 
     function flush() {
-        if (!allowed() || !state || sending || !state.queue.length) return;
+        if (!configured() || !state || sending || !state.queue.length) return;
         const batch = state.queue.slice();
         sending = true;
         let done = false;
@@ -324,7 +330,7 @@
      * потеряна одна цифра, а не данные.
      */
     function sendClose() {
-        if (!allowed() || !state) return;
+        if (!configured() || !state) return;
         let body = '';
         try {
             const dur = Math.max(0, Math.round((Date.now() - sessionStartMs) / 1000));
@@ -348,7 +354,7 @@
     // =========================================================================
 
     function reportError(msg, src, line, stack) {
-        if (!allowed()) return;
+        if (!configured()) return;
         if (errorsSent >= ERRORS_PER_SESSION_MAX) return;
         const key = String(msg).slice(0, 120) + '|' + String(line || '');
         if (errorSeen.has(key)) return;
@@ -412,7 +418,7 @@
         if (state.last !== d) { state.days += 1; state.last = d; }
         saveState();
 
-        if (!allowed()) return;
+        if (!configured()) return;
 
         // Очередь прошлых заходов уезжает вместе с первым событием этого.
         enqueue('night_open');
