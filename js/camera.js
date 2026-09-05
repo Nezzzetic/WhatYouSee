@@ -357,18 +357,18 @@ function drawUndoSignScreen(cx, cy, size, rgb, alpha) {
 }
 
 /**
- * K-04: корректорская пометка — «↺ Heron» под подписью только что созданной
- * фигуры. Единственное, что игра говорит поверх неба, и единственный вход
- * в отмену. Плашки под ней нет намеренно: концепт снял с неба кнопки, а не
- * перекрасил их. Геометрию (включая разворот от края) считает
- * `computeUndoMarkLayout` — она же отвечает за попадание пальцем.
+ * K-04: корректорская пометка — единственный вход в отмену. U-19 (правка
+ * после устройства): зафиксирована в левом нижнем углу экрана, а не рядом
+ * с подписью фигуры — своего мирового якоря и выноски к нему больше нет,
+ * геометрию угла считает `computeUndoMarkLayout` — она же отвечает за
+ * попадание пальцем.
  */
 function drawUndoMarkScreen() {
     const m = typeof computeUndoMarkLayout === 'function' ? computeUndoMarkLayout() : null;
     if (!m) return;
 
     const a = m.alpha;
-    // K-20: рамка — карточка на бумаге вокруг знака и текста (Табл. II концепта).
+    // K-20: рамка — карточка на бумаге вокруг знака (Табл. II концепта).
     // Геометрия содержимого не меняется (её всё ещё считает computeUndoMarkLayout —
     // и для отрисовки, и для попадания пальцем), рамка просто шире на паддинг.
     const frameLeft = m.left - UNDO_MARK_FRAME_PAD_X_PX;
@@ -378,22 +378,13 @@ function drawUndoMarkScreen() {
 
     push();
     try {
-        // U-19: волосок-выноска теперь горизонтальный — от подписи к рамке
-        // сбоку, а не вниз. Разворачивается вместе с рамкой.
-        const fromX = m.anchorX + (m.right ? UNDO_MARK_LEADER_GAP_PX : -UNDO_MARK_LEADER_GAP_PX);
-        const toX = m.right ? frameLeft : frameLeft + frameW;
-        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 150 * a);
-        strokeWeight(1);
-        line(fromX, m.anchorY, toX, m.cy);
-
         noFill();
         stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 165 * a);
         strokeWeight(1);
         rect(frameLeft, frameTop, frameW, frameH, UNDO_MARK_FRAME_RADIUS_PX);
 
-        // U-19: пометка — один знак, без имени. Читалась как подпись к находке;
-        // единственная живая пометка на небе не нуждается в тексте, чтобы
-        // сказать, что именно сотрёт.
+        // U-19: пометка — один знак, без имени. Единственная живая пометка
+        // на небе не нуждается в тексте, чтобы сказать, что именно сотрёт.
         drawUndoSignScreen(m.cx, m.cy, UNDO_MARK_SIGN_PX, INK_MUTED_RGB, 235 * a);
     } finally {
         pop();

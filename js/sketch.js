@@ -282,6 +282,9 @@ function setup() {
     }
 
     loadProgression();
+    // P-05: строго ПОСЛЕ loadProgression() — снимку нужны и playerId, и
+    // счётчики достижений. На main функция инертна (адрес приёма пуст).
+    if (typeof startAnalytics === 'function') startAnalytics();
     // B-02: холст живёт своим ключом и переживает смену дня — поднимаем его
     // сразу после прогрессии (нужен playerId) и до генерации поля.
     initObservatory();
@@ -424,7 +427,7 @@ function hideDevControls() {
     if (el) el.hidden = true;
 }
 
-/** Невидимая кнопка в левом нижнем углу: тройной быстрый тап — показать/скрыть панель. */
+/** Невидимая кнопка в левом верхнем углу: тройной быстрый тап — показать/скрыть панель. */
 function setupDevToggleButton() {
     const btn = document.getElementById("devToggleBtn");
     if (!btn) return;

@@ -432,14 +432,13 @@ function computeUndoMarkAlpha(elapsed, inMs, holdMs, outMs) {
  * Экранная геометрия пометки — одна на отрисовку и на попадание пальцем.
  * Разъехались бы они, и тап уезжал бы от того, что видно.
  *
- * Якорь мировой (подпись фигуры), пересчёт в экран каждый кадр: пометка ходит
- * за фигурой при зуме и панораме и остаётся одного кегля. U-19: пометка стоит
- * не под подписью, а сбоку от неё — по умолчанию справа, слева, если справа
- * не помещается (разворот внутрь по X); по вертикали её просто держит в кадре
- * (разворот внутрь по Y). Зазор от подписи считается по её реальной ширине
- * (`measureSmallCapsWidth`, тот же алгоритм, что рисует саму подпись) —
- * короткое имя не тянет пометку в пустоту, длинное не даёт знаку наползти
- * на буквы.
+ * U-19 (правка после проверки на устройстве): пометка стоящая рядом с подписью
+ * фигуры читалась хуже, чем прежняя — заказчик попросил зафиксировать её в
+ * левом нижнем углу экрана, вне мира (не идёт за фигурой при зуме и панораме).
+ * Угол левый, а не правый, — там уже лента-закладка (K-05). Следующая правка
+ * увеличила знак и зону касания вдвое и увела угол к самому краю экрана —
+ * невидимая зона тройного тапа дев-панели (`#devToggleBtn`), которая раньше
+ * делила этот угол, переехала в левый верхний по тому же фидбеку.
  */
 function computeUndoMarkLayout() {
     const mark = getLiveUndoMark();
@@ -456,48 +455,35 @@ function computeUndoMarkLayout() {
         return null;
     }
 
-    const c = mark.constellation;
-    const anchor = c.labelAnchor || c.center;
-    if (!anchor) return null;
-
-    // Ближайшая по горизонтали копия — то же, что у флоатеров: поле заворачивается.
-    const viewW = width / zoomLevel;
-    const viewH = height / zoomLevel;
-    const fw = nearestHorizontalCopy(anchor.x, anchor.y, camX + viewW / 2, camY + viewH / 2);
-    const ax = (fw.x - camX) * zoomLevel;
-    const ay = (fw.y - camY) * zoomLevel;
-
     const w = UNDO_MARK_SIGN_PX;
     const h = UNDO_MARK_SIGN_PX;
-    const nameLabel = getConstellationDisplayName(c);
-    const nameHalfW = (typeof measureSmallCapsWidth === 'function'
-        ? measureSmallCapsWidth(nameLabel, COLLECTED_ATLAS_LABEL_SIZE)
-        : Math.max(72, nameLabel.length * 9)) / 2;
-    const clearance = nameHalfW + UNDO_MARK_SIDE_GAP_PX + w / 2;
-    const slide = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_SLIDE_PX;
+    // P-02: тот же приём, что резервирует камеру над лентой (K-05) — меряет
+    // настоящий инсет по ленте, а не читает --safe-bottom (кастомное
+    // свойство с env() из JS не разворачивается).
+    const bottomInset = typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : 0;
+    const rise = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_RISE_PX;
 
-    // Справа не помещается — уходит влево от подписи.
-    let right = true;
-    let cx = ax + clearance + slide;
-    if (cx + w / 2 + UNDO_MARK_EDGE_PAD_PX > width) {
-        right = false;
-        cx = ax - clearance - slide;
-    }
-    cx = Math.max(UNDO_MARK_EDGE_PAD_PX + w / 2,
-                  Math.min(width - UNDO_MARK_EDGE_PAD_PX - w / 2, cx));
+    // U-19 (найдено на живом Redmi): канвас p5 (`height`) может быть выше, чем
+    // реально видимая область мобильного браузера (`window.innerHeight`) —
+    // канвас сразу подстроен под «полный» размер, а тулбар браузера ещё не
+    // свернулся и физически перекрывает низ. Лента (DOM, `position: fixed`)
+    // от этого не страдает — её позицию относительно видимой области считает
+    // сам браузер; канвасной пометке то же ограничение нужно вручную, иначе
+    // она рисуется ниже настоящего низа экрана и невидима, хотя с точки
+    // зрения кода «на месте».
+    const visibleH = (typeof window !== 'undefined' && window.innerHeight)
+        ? Math.min(height, window.innerHeight)
+        : height;
 
-    let cy = ay;
-    cy = Math.max(UNDO_MARK_EDGE_PAD_PX + h / 2,
-                  Math.min(height - UNDO_MARK_EDGE_PAD_PX - h / 2, cy));
+    const cx = UNDO_MARK_CORNER_LEFT_PX + w / 2;
+    const cy = visibleH - bottomInset - UNDO_MARK_CORNER_BOTTOM_PX - h / 2 + rise;
 
     return {
-        alpha, right, w, h,
+        alpha, w, h,
         left: cx - w / 2,
         top: cy - h / 2,
         cx,
-        cy,
-        anchorX: ax,
-        anchorY: ay
+        cy
     };
 }
 
