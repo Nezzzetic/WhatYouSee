@@ -463,8 +463,20 @@ function computeUndoMarkLayout() {
     const bottomInset = typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : 0;
     const rise = (1 - Math.min(1, inMs > 0 ? elapsed / inMs : 1)) * UNDO_MARK_RISE_PX;
 
+    // U-19 (найдено на живом Redmi): канвас p5 (`height`) может быть выше, чем
+    // реально видимая область мобильного браузера (`window.innerHeight`) —
+    // канвас сразу подстроен под «полный» размер, а тулбар браузера ещё не
+    // свернулся и физически перекрывает низ. Лента (DOM, `position: fixed`)
+    // от этого не страдает — её позицию относительно видимой области считает
+    // сам браузер; канвасной пометке то же ограничение нужно вручную, иначе
+    // она рисуется ниже настоящего низа экрана и невидима, хотя с точки
+    // зрения кода «на месте».
+    const visibleH = (typeof window !== 'undefined' && window.innerHeight)
+        ? Math.min(height, window.innerHeight)
+        : height;
+
     const cx = UNDO_MARK_CORNER_LEFT_PX + w / 2;
-    const cy = height - bottomInset - UNDO_MARK_CORNER_BOTTOM_PX - h / 2 + rise;
+    const cy = visibleH - bottomInset - UNDO_MARK_CORNER_BOTTOM_PX - h / 2 + rise;
 
     return {
         alpha, w, h,
