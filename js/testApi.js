@@ -499,6 +499,8 @@
             // как язык и версии сейва рядом. U-14: вибро — тот же ключ, второе поле.
             soundEnabled: typeof isSoundEnabled === 'function' ? isSoundEnabled() : true,
             hapticEnabled: typeof isHapticEnabled === 'function' ? isHapticEnabled() : true,
+            // A-07: музыка — третье поле того же ключа настроек.
+            musicEnabled: typeof isMusicEnabled === 'function' ? isMusicEnabled() : true,
             saveVersion: {
                 achievements: ACHIEVEMENTS_SAVE_VERSION,
                 catalog: CATALOG_SAVE_VERSION
@@ -1056,6 +1058,10 @@
         setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
+        /** A-07: срез фонового слоя — что играет, с какой громкостью, не идёт ли
+         *  пауза между вещами. Без него «музыка включилась» не отличить от
+         *  «тумблер переключился». */
+        music: () => (typeof musicState === 'function' ? musicState() : null),
         errors,
         clearErrors,
         // Служебное: открыть/закрыть книгу без жеста (жесты — уровень MobAI).

@@ -20,6 +20,7 @@ const SETTINGS_SAVE_KEY = 'starsReborn_settings_v01';
 
 let _soundEnabled = true;
 let _hapticEnabled = true; // A-05: своя настройка, гасится независимо от звука
+let _musicEnabled = true;  // A-07: третья настройка на тот же ключ, см. блок музыки ниже
 
 function loadSoundSetting() {
     try {
@@ -28,12 +29,17 @@ function loadSoundSetting() {
         const data = JSON.parse(raw);
         if (typeof data.sound === 'boolean') _soundEnabled = data.sound;
         if (typeof data.haptic === 'boolean') _hapticEnabled = data.haptic;
+        if (typeof data.music === 'boolean') _musicEnabled = data.music;
     } catch (e) { /* ignore */ }
 }
 
 function saveSoundSetting() {
     try {
-        localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({ sound: _soundEnabled, haptic: _hapticEnabled }));
+        localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({
+            sound: _soundEnabled,
+            haptic: _hapticEnabled,
+            music: _musicEnabled
+        }));
     } catch (e) { /* ignore */ }
 }
 
@@ -93,10 +99,15 @@ function hapticPulse(pattern) {
 
 function initAudio() {
     _interacted = true;
-    if (_audioCtx) return;
-    try {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch (e) {}
+    if (!_audioCtx) {
+        try {
+            _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch (e) {}
+    }
+    // A-07: тот же жест, что будит контекст, запускает музыку — другого
+    // легального момента для play() у браузера нет. Ранний выход по _audioCtx
+    // убран именно поэтому: со второго тапа он съедал бы этот вызов.
+    startMusic();
 }
 
 // A-02: восходящая лестница цепочки — заметно 1→10 звёзд, слабо 10→20, плато дальше
@@ -265,4 +276,212 @@ function playLevelComplete() {
             osc.stop(start + 0.35);
         });
     } catch (e) {}
+}
+
+// =============================================================================
+// A-07: ЭМБИЕНТ-МУЗЫКА
+// =============================================================================
+//
+// Единственный звук в игре, идущий не через Web Audio, а через <audio>.
+// Причина арифметическая: `decodeAudioData` на «Unraveling» (7:24 стерео)
+// развернёт в памяти ~160 МБ PCM — на телефоне это неприемлемо, а стримить
+// с диска HTMLAudioElement умеет сам. Заодно музыка не зависит от того,
+// создался ли `_audioCtx`: у неё своя цепочка и свой выключатель.
+//
+// Треки не лупятся по одному, а чередуются: стартовый выбирается по дате неба
+// (`getEffectiveSkyDateInt`), как и само небо, дальше по кругу с паузой
+// `MUSIC_GAP_MS`. Два дня подряд не начинаются одинаково.
+
+let _musicEl = null;        // играющий сейчас HTMLAudioElement (или пауза на нём)
+let _musicIndex = -1;       // индекс текущего трека в MUSIC_TRACKS
+let _musicGapTimer = null;  // таймер паузы между вещами
+let _musicFadeTimer = null; // таймер вплывания/уплывания громкости
+
+function isMusicEnabled() {
+    return _musicEnabled;
+}
+
+/**
+ * Тумблер музыки (K-14/U-14 — третья строка настроек). Включение подхватывает
+ * трек с той секунды, где его прервали: игрок глушил фон, а не начинал ночь
+ * заново.
+ */
+function setMusicEnabled(on) {
+    _musicEnabled = !!on;
+    saveSoundSetting();
+    if (_musicEnabled) startMusic();
+    else stopMusic();
+}
+
+/** Стартовый трек дня — тем же числом, что и небо. */
+function musicStartIndex() {
+    try {
+        if (typeof MUSIC_TRACKS === 'undefined' || !MUSIC_TRACKS.length) return 0;
+        if (typeof getEffectiveSkyDateInt === 'function') {
+            const d = getEffectiveSkyDateInt();
+            if (typeof d === 'number' && isFinite(d)) {
+                return ((d % MUSIC_TRACKS.length) + MUSIC_TRACKS.length) % MUSIC_TRACKS.length;
+            }
+        }
+    } catch (e) {}
+    return 0;
+}
+
+/**
+ * Ведёт громкость текущего элемента к `target` за `ms`. Отдельный таймер, а не
+ * ramp Web Audio: у HTMLAudioElement громкость — обычное свойство, и вести её
+ * больше нечем. Новый вызов отменяет предыдущий — два фейда навстречу друг
+ * другу оставили бы громкость там, где успел последний тик.
+ */
+function fadeMusicTo(target, ms, done) {
+    if (_musicFadeTimer) {
+        clearInterval(_musicFadeTimer);
+        _musicFadeTimer = null;
+    }
+    const el = _musicEl;
+    if (!el) {
+        if (done) done();
+        return;
+    }
+    const from = el.volume;
+    const dur = Math.max(1, typeof ms === 'number' ? ms : MUSIC_FADE_MS);
+    const started = Date.now();
+    _musicFadeTimer = setInterval(() => {
+        const k = Math.min(1, (Date.now() - started) / dur);
+        try {
+            el.volume = Math.max(0, Math.min(1, from + (target - from) * k));
+        } catch (e) {}
+        if (k >= 1) {
+            clearInterval(_musicFadeTimer);
+            _musicFadeTimer = null;
+            if (done) done();
+        }
+    }, MUSIC_FADE_TICK_MS);
+}
+
+/** Снимает текущий элемент вместе с его слушателями — иначе `ended` от уже
+ *  забытого трека дёрнул бы очередь второй раз. */
+function releaseMusicElement() {
+    if (!_musicEl) return;
+    const el = _musicEl;
+    _musicEl = null;
+    try {
+        el.pause();
+        el.removeEventListener('ended', onMusicTrackEnded);
+        el.removeEventListener('error', onMusicTrackFailed);
+        el.removeAttribute('src');
+    } catch (e) {}
+}
+
+function clearMusicGapTimer() {
+    if (_musicGapTimer) {
+        clearTimeout(_musicGapTimer);
+        _musicGapTimer = null;
+    }
+}
+
+/** Трек кончился — тишина `MUSIC_GAP_MS`, потом следующий по кругу. */
+function onMusicTrackEnded() {
+    releaseMusicElement();
+    clearMusicGapTimer();
+    if (!_musicEnabled) return;
+    _musicGapTimer = setTimeout(() => {
+        _musicGapTimer = null;
+        if (!_musicEnabled) return;
+        playMusicTrackAt((_musicIndex + 1) % MUSIC_TRACKS.length);
+    }, MUSIC_GAP_MS);
+}
+
+/** Файл не открылся (нет сети на Pages, битая раздача) — молча живём без
+ *  музыки. Городить ретраи вокруг фонового слоя незачем: игре он не нужен. */
+function onMusicTrackFailed() {
+    releaseMusicElement();
+    clearMusicGapTimer();
+}
+
+function playMusicTrackAt(index) {
+    if (typeof MUSIC_TRACKS === 'undefined' || !MUSIC_TRACKS.length) return;
+    releaseMusicElement();
+    _musicIndex = index;
+    try {
+        const el = new Audio();
+        // preload='none': 7,4 МБ не должны качаться у игрока, который сейчас
+        // выключит музыку первым же тапом. Файл идёт по сети только с play().
+        el.preload = 'none';
+        el.loop = false;
+        el.volume = 0;
+        el.addEventListener('ended', onMusicTrackEnded);
+        el.addEventListener('error', onMusicTrackFailed);
+        el.src = MUSIC_TRACKS[index];
+        _musicEl = el;
+        const p = el.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+        fadeMusicTo(MUSIC_VOLUME);
+    } catch (e) {
+        _musicEl = null;
+    }
+}
+
+/**
+ * Играть, если можно и нужно. Зовётся из `initAudio()` (жест игрока уже был),
+ * из тумблера и из возврата вкладки — все три пути идут сюда, чтобы условие
+ * «жест был И музыка включена» жило в одном месте.
+ */
+function startMusic() {
+    if (!_musicEnabled || !_interacted) return;
+    if (typeof MUSIC_TRACKS === 'undefined' || !MUSIC_TRACKS.length) return;
+    if (_musicGapTimer) return; // идёт пауза между вещами — это тоже «играет»
+    if (_musicEl) {
+        // Возобновление: та же секунда, откуда сняли.
+        const p = _musicEl.play();
+        if (p && typeof p.catch === 'function') p.catch(() => {});
+        fadeMusicTo(MUSIC_VOLUME);
+        return;
+    }
+    playMusicTrackAt(_musicIndex >= 0 ? _musicIndex : musicStartIndex());
+}
+
+/** `keepPosition === false` — элемент снимается совсем; иначе пауза на той же
+ *  секунде (тумблер, уход в фон). */
+function stopMusic(keepPosition) {
+    clearMusicGapTimer();
+    if (!_musicEl) return;
+    const el = _musicEl;
+    fadeMusicTo(0, MUSIC_FADE_MS, () => {
+        if (_musicEl !== el) return; // за время уплывания успели переключить трек
+        if (keepPosition === false) releaseMusicElement();
+        else { try { el.pause(); } catch (e) {} }
+    });
+}
+
+// Уход в фон. HTMLAudioElement сам не замолкает, когда сворачивают приложение
+// (P-02: WebView), и медитативный фон играл бы поверх чужого плеера. Возврат
+// поднимает музыку обратно тем же `startMusic()` — если её не выключили.
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            // Без фейда: вкладка уже не отрисовывается, таймер громкости в фоне
+            // тикает как попало, и «мягкое» уплывание вышло бы рваным.
+            if (_musicFadeTimer) { clearInterval(_musicFadeTimer); _musicFadeTimer = null; }
+            if (_musicEl) { try { _musicEl.pause(); } catch (e) {} }
+        } else {
+            startMusic();
+        }
+    });
+}
+
+/** T-01: срез для харнесса. Играющий трек, громкость и фаза паузы — всё, чем
+ *  сценарий может отличить «музыка идёт» от «музыка выключена». */
+function musicState() {
+    return {
+        enabled: _musicEnabled,
+        index: _musicIndex,
+        src: _musicEl ? (_musicEl.getAttribute('src') || null) : null,
+        playing: !!(_musicEl && !_musicEl.paused),
+        inGap: !!_musicGapTimer,
+        volume: _musicEl ? Number(_musicEl.volume.toFixed(3)) : 0,
+        // Секунда, на которой стоит трек: по ней видно, что включённый обратно
+        // тумблер продолжил вещь, а не начал её заново.
+        time: _musicEl ? Number(_musicEl.currentTime.toFixed(2)) : 0
+    };
 }
