@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- V-15: ресурс шаблона Capacitor — на него больше ничто не ссылается
+         (фон иконки растровый, см. mipmap-anydpi-v26/ic_launcher.xml), но
+         `cap sync` заводит его заново, поэтому проще держать перекрашенным
+         в ночь, чем удалять и каждый раз получать обратно белый. -->
+    <color name="ic_launcher_background">#05090F</color>
 </resources>

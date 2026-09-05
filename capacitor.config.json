@@ -1,6 +1,6 @@
 {
-  "appId": "com.nezzzetic.starsreborn",
-  "appName": "Stars Reborn",
+  "appId": "com.nezzzetic.whatyousee",
+  "appName": "What You See",
   "webDir": "www",
   "android": {
     "backgroundColor": "#000000"

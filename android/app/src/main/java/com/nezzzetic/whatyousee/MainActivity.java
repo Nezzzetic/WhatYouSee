@@ -1,4 +1,4 @@
-package com.nezzzetic.starsreborn;
+package com.nezzzetic.whatyousee;
 
 import android.os.Bundle;
 

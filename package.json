@@ -1,5 +1,5 @@
 {
-  "name": "stars-reborn",
+  "name": "what-you-see",
   "version": "0.1.0",
   "private": true,
   "description": "Нативная Android-обёртка (Capacitor) над браузерной игрой. Живёт только в ветке capacitor, в main не мёржится — см. dev/docs/tasks/P-02.",
