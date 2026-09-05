@@ -1367,25 +1367,7 @@ function renderBookSettings() {
     // звука по той же причине, по которой U-14 отделила вибро: её глушат,
     // чтобы слушать своё, не трогая отклик интерфейса.
     el.appendChild(createSettingsToggleRow('settings.music', isMusicEnabled, toggleMusicSetting));
-    // P-05: четвёртый тумблер — обезличенная статистика. В отличие от трёх
-    // предыдущих он требует объяснения: игрок не может услышать или
-    // почувствовать, что именно этот переключатель делает, — поэтому под ним
-    // стоит абзац «что уходит», а не только слово.
-    el.appendChild(createSettingsToggleRow('settings.analytics', isAnalyticsEnabled, setAnalyticsEnabled));
-    el.appendChild(createSettingsNote('settings.analyticsNote'));
     el.appendChild(createSettingsCredits());
-}
-
-/**
- * P-05: пояснение под тумблером. Отдельный элемент, а не второй ряд текста
- * внутри `.settings-row`: строка настройки везде в книге выглядит одинаково
- * («слово — оттиск»), и ломать этот ритм ради одного случая не стоит.
- */
-function createSettingsNote(textKey) {
-    const note = document.createElement('div');
-    note.className = 'settings-note';
-    note.textContent = t(textKey);
-    return note;
 }
 
 /**

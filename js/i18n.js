@@ -298,19 +298,12 @@ en: {
     'book.cutSettings': 'Settings',
     'book.headSettings': 'Settings',
 
-    // --- Настройки (K-14, U-14, A-07, P-05) ---------------------------------------
+    // --- Настройки (K-14, U-14, A-07) ---------------------------------------------
     'settings.sound': 'Sound',
     'settings.haptic': 'Vibration',
     'settings.music': 'Music',
     'settings.toggleOn': 'on',
     'settings.toggleOff': 'off',
-    // P-05: обещание, а не юридическая формула. Перечислено ровно то, что
-    // действительно уходит (`snapshot()` в analytics.js), теми же словами,
-    // какими это опишет страница политики (P-06).
-    'settings.analytics': 'Anonymous statistics',
-    'settings.analyticsNote': 'Helps me see how far the first night gets, how often players come back, '
-        + 'and how the atlas fills up. Numbers only — no names, no drawings, nothing you type. '
-        + 'Turned off, nothing leaves this device.',
     // A-07: заголовок блока авторства. Сами строки кредита не локализуются —
     // имя автора, названия вещей и код лицензии переводить нечем (MUSIC_CREDITS).
     'settings.credits': 'Credits',
@@ -614,19 +607,12 @@ ru: {
     'book.cutSettings': 'Настройки',
     'book.headSettings': 'Настройки',
 
-    // --- Настройки (K-14, U-14, A-07, P-05) ---------------------------------------
+    // --- Настройки (K-14, U-14, A-07) ---------------------------------------------
     'settings.sound': 'Звук',
     'settings.haptic': 'Вибрация',
     'settings.music': 'Музыка',
     'settings.toggleOn': 'вкл',
     'settings.toggleOff': 'выкл',
-    // P-05: обещание, а не юридическая формула. Перечислено ровно то, что
-    // действительно уходит (`snapshot()` в analytics.js), теми же словами,
-    // какими это опишет страница политики (P-06).
-    'settings.analytics': 'Обезличенная статистика',
-    'settings.analyticsNote': 'Помогает мне видеть, докуда доходит первая ночь, как часто игроки '
-        + 'возвращаются и как заполняется атлас. Только числа — ни имён, ни рисунков, ни того, '
-        + 'что ты вводишь. Выключено — с этого устройства не уходит ничего.',
     // A-07: заголовок блока авторства. Сами строки кредита не локализуются —
     // имя автора, названия вещей и код лицензии переводить нечем (MUSIC_CREDITS).
     'settings.credits': 'Авторство',

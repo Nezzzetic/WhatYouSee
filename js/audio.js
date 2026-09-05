@@ -21,14 +21,6 @@ const SETTINGS_SAVE_KEY = 'starsReborn_settings_v01';
 let _soundEnabled = true;
 let _hapticEnabled = true; // A-05: своя настройка, гасится независимо от звука
 let _musicEnabled = true;  // A-07: третья настройка на тот же ключ, см. блок музыки ниже
-// P-05: четвёртая настройка тут же, и не из лени — ключ обязан быть один.
-// Двое пишущих в `starsReborn_settings_v01` затирали бы поля друг друга при
-// каждом сохранении, поэтому владелец ключа остаётся один, а analytics.js
-// только читает `isAnalyticsEnabled()`.
-// По умолчанию включена (решение заказчика 2026-09-05): APK уходит конкретным
-// людям, согласившимся тестировать, и при opt-in по умолчанию данных не было бы
-// вовсе. На `main` это ни на что не влияет — там адрес приёма пуст.
-let _analyticsEnabled = true;
 
 function loadSoundSetting() {
     try {
@@ -38,7 +30,6 @@ function loadSoundSetting() {
         if (typeof data.sound === 'boolean') _soundEnabled = data.sound;
         if (typeof data.haptic === 'boolean') _hapticEnabled = data.haptic;
         if (typeof data.music === 'boolean') _musicEnabled = data.music;
-        if (typeof data.analytics === 'boolean') _analyticsEnabled = data.analytics;
     } catch (e) { /* ignore */ }
 }
 
@@ -47,8 +38,7 @@ function saveSoundSetting() {
         localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({
             sound: _soundEnabled,
             haptic: _hapticEnabled,
-            music: _musicEnabled,
-            analytics: _analyticsEnabled
+            music: _musicEnabled
         }));
     } catch (e) { /* ignore */ }
 }
@@ -68,18 +58,6 @@ function setSoundEnabled(on) {
 // и желание игрока (_soundEnabled) в одной точке.
 function isSoundOn() {
     return _soundEnabled && !!_audioCtx;
-}
-
-// P-05: настройка живёт здесь (владелец ключа), смысл — в analytics.js.
-// Выключено значит «не уходит ничего»: ни снимок, ни веха, ни ошибка,
-// и очередь не копится — не отложенная отправка, а её отсутствие.
-function isAnalyticsEnabled() {
-    return _analyticsEnabled;
-}
-
-function setAnalyticsEnabled(on) {
-    _analyticsEnabled = !!on;
-    saveSoundSetting();
 }
 
 function isHapticEnabled() {
