@@ -282,6 +282,9 @@ function setup() {
     }
 
     loadProgression();
+    // P-05: строго ПОСЛЕ loadProgression() — снимку нужны и playerId, и
+    // счётчики достижений. На main функция инертна (адрес приёма пуст).
+    if (typeof startAnalytics === 'function') startAnalytics();
     // B-02: холст живёт своим ключом и переживает смену дня — поднимаем его
     // сразу после прогрессии (нужен playerId) и до генерации поля.
     initObservatory();
