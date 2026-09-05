@@ -305,6 +305,12 @@
     <script src="js/achievements.js"></script>
     <script src="js/save.js"></script>
     <script src="js/tutorial.js"></script>
+    <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после
+         loadProgression() (startAnalytics() зовётся из setup()). Раннее
+         подключение нужно ради перехвата ошибок с самой загрузки — как у
+         харнесса T-01. На main адрес приёма пуст, поэтому здесь не
+         подключается ничего внешнего и не уходит ни одного запроса. -->
+    <script src="js/analytics.js"></script>
     <script src="js/sketch.js"></script>
 </body>
 </html>
