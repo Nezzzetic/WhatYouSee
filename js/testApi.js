@@ -888,15 +888,13 @@
             canUndo: canUndoLastConstellation(),
             startsInMs: Math.round(undoMark.startMs - millis()),
             alpha: layout.alpha,
-            right: layout.right,
             rect: {
                 left: layout.left,
                 top: layout.top,
                 width: layout.w,
                 height: layout.h
             },
-            center: { x: layout.cx, y: layout.cy },
-            anchor: { x: layout.anchorX, y: layout.anchorY }
+            center: { x: layout.cx, y: layout.cy }
         };
     }
 
