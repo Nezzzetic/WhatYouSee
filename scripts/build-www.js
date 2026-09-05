@@ -35,6 +35,81 @@ function isExcluded(src) {
     return EXCLUDED.some(ex => rel === ex || rel.startsWith(ex + path.sep));
 }
 
+// =============================================================================
+// P-05: адрес приёма аналитики
+// =============================================================================
+//
+// На `main` блок CONFIG в js/analytics.js пуст, и модуль там инертен целиком —
+// у Pages и itch внешних запросов ноль, это утверждение стерегут
+// verify-book-system.js и verify-analytics.js. Настоящий адрес живёт ТОЛЬКО в
+// сборке APK и подставляется здесь, в www/, а не в исходнике.
+//
+// Ключ проекта PostHog по замыслу публичный (пишет события, читать данные им
+// нельзя), но в репозиторий он всё равно не кладётся: репозиторий публичный,
+// а лишний повод его туда занести — не повод. Он лежит в `analytics.local.json`
+// рядом со сборкой, под .gitignore.
+//
+// ⚠ Отсутствие файла сборку НЕ валит, в отличие от охран p5 и музыки: собрать
+// APK без аналитики — законный случай (свежий клон, чужая машина). Но молчать
+// об этом нельзя — APK без аналитики выглядит точно так же, как с ней, и его
+// легко раздать, ожидая данных. Поэтому строка в логе печатается ВСЕГДА, в обе
+// стороны. Испорченный файл — уже не выбор, а ошибка, и он сборку валит.
+const ANALYTICS_LOCAL = path.join(ROOT, 'analytics.local.json');
+
+function readAppVersion() {
+    try {
+        const gradle = fs.readFileSync(
+            path.join(ROOT, 'android', 'app', 'build.gradle'), 'utf8');
+        const name = gradle.match(/versionName\s+"([^"]+)"/);
+        const code = gradle.match(/versionCode\s+(\d+)/);
+        if (name && code) return `${name[1]} (${code[1]})`;
+    } catch (e) { /* сборка без android/ — версии просто не будет */ }
+    return 'unknown';
+}
+
+function injectAnalyticsConfig() {
+    const target = path.join(WWW, 'js', 'analytics.js');
+    const marker = /(\/\/ >>> P-05 CONFIG)[\s\S]*?(\/\/ <<< P-05 CONFIG)/;
+    const src = fs.readFileSync(target, 'utf8');
+    if (!marker.test(src)) {
+        console.error('[build-www] в js/analytics.js нет маркеров P-05 CONFIG — подставить адрес некуда');
+        process.exit(1);
+    }
+
+    if (!fs.existsSync(ANALYTICS_LOCAL)) {
+        console.log('[build-www] [analytics] ВЫКЛЮЧЕНА: нет analytics.local.json — APK не пришлёт ни одного события');
+        return;
+    }
+
+    let cfg;
+    try {
+        cfg = JSON.parse(fs.readFileSync(ANALYTICS_LOCAL, 'utf8'));
+    } catch (e) {
+        console.error('[build-www] analytics.local.json не читается как JSON: ' + e.message);
+        process.exit(1);
+    }
+
+    // Значения не экранируются, а ПРОВЕРЯЮТСЯ: строгий формат надёжнее любого
+    // экранирования — в JS-литерал попадает только то, что не может его сломать.
+    const host = String(cfg.host || '');
+    const key = String(cfg.key || '');
+    if (!/^https:\/\/[A-Za-z0-9.-]+$/.test(host)) {
+        console.error(`[build-www] analytics.local.json: host должен быть https-адресом без пути, получено "${host}"`);
+        process.exit(1);
+    }
+    if (!/^phc_[A-Za-z0-9_-]+$/.test(key)) {
+        console.error('[build-www] analytics.local.json: key должен быть ключом проекта PostHog (phc_…)');
+        process.exit(1);
+    }
+
+    const build = readAppVersion();
+    const block = `$1
+    const CONFIG = { host: '${host}', key: '${key}', channel: 'apk', build: '${build}' };
+    $2`;
+    fs.writeFileSync(target, src.replace(marker, block), 'utf8');
+    console.log(`[build-www] [analytics] включена: ${host}, канал apk, сборка ${build}`);
+}
+
 function main() {
     // www/ пересобирается с нуля: иначе удалённый в репозитории файл остаётся
     // жить в сборке и APK расходится с исходниками.
@@ -52,6 +127,8 @@ function main() {
         }
         fs.cpSync(src, path.join(WWW, item), { recursive: true, filter: from => !isExcluded(from) });
     }
+
+    injectAnalyticsConfig();
 
     // Считаем то, что реально легло, — цифра ловит и пустую копию, и раздувшийся
     // images/ раньше, чем это заметит вес APK.
