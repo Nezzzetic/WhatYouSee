@@ -50,10 +50,12 @@ function isExcluded(src) {
 // рядом со сборкой, под .gitignore.
 //
 // ⚠ Отсутствие файла сборку НЕ валит, в отличие от охран p5 и музыки: собрать
-// APK без аналитики — законный случай (свежий клон, чужая машина). Но молчать
-// об этом нельзя — APK без аналитики выглядит точно так же, как с ней, и его
-// легко раздать, ожидая данных. Поэтому строка в логе печатается ВСЕГДА, в обе
-// стороны. Испорченный файл — уже не выбор, а ошибка, и он сборку валит.
+// APK без аналитики — законный случай и штатный рычаг. Убрал файл — получил
+// сборку, в которой аналитики нет ФИЗИЧЕСКИ: js/analytics.js не уезжает в www/,
+// его <script> вычёркивается из index.html. Но молчать об этом нельзя — APK без
+// аналитики выглядит точно так же, как с ней, и его легко раздать, ожидая
+// данных. Поэтому строка в логе печатается ВСЕГДА, в обе стороны.
+// Испорченный файл — уже не выбор, а ошибка, и он сборку валит.
 const ANALYTICS_LOCAL = path.join(ROOT, 'analytics.local.json');
 
 function readAppVersion() {
@@ -67,18 +69,40 @@ function readAppVersion() {
     return 'unknown';
 }
 
+/**
+ * Сборка БЕЗ аналитики: файл не уезжает в www/ вовсе, его <script> вычёркивается
+ * из index.html вместе с комментарием. Не «модуль молчит», а «модуля нет» —
+ * в APK не попадает ни строки. Игра этого не замечает: вызов в setup() стоит
+ * под `typeof startAnalytics === 'function'`.
+ */
+function stripAnalyticsFromBuild() {
+    fs.rmSync(path.join(WWW, 'js', 'analytics.js'), { force: true });
+
+    const indexPath = path.join(WWW, 'index.html');
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const withoutTag = html.replace(/[ \t]*<script src="js\/analytics\.js"><\/script>\r?\n/, '');
+    if (withoutTag === html) {
+        console.error('[build-www] не нашёл <script src="js/analytics.js"> в index.html — вычёркивать нечего');
+        process.exit(1);
+    }
+    // Комментарий над тегом — необязательный: если его сняли, ругаться не на что.
+    const cleaned = withoutTag.replace(/[ \t]*<!-- P-05:[\s\S]*?-->\r?\n/, '');
+    fs.writeFileSync(indexPath, cleaned, 'utf8');
+}
+
 function injectAnalyticsConfig() {
+    if (!fs.existsSync(ANALYTICS_LOCAL)) {
+        stripAnalyticsFromBuild();
+        console.log('[build-www] [analytics] ВЫКЛЮЧЕНА: нет analytics.local.json — в APK не уехало ни строки аналитики');
+        return;
+    }
+
     const target = path.join(WWW, 'js', 'analytics.js');
     const marker = /(\/\/ >>> P-05 CONFIG)[\s\S]*?(\/\/ <<< P-05 CONFIG)/;
     const src = fs.readFileSync(target, 'utf8');
     if (!marker.test(src)) {
         console.error('[build-www] в js/analytics.js нет маркеров P-05 CONFIG — подставить адрес некуда');
         process.exit(1);
-    }
-
-    if (!fs.existsSync(ANALYTICS_LOCAL)) {
-        console.log('[build-www] [analytics] ВЫКЛЮЧЕНА: нет analytics.local.json — APK не пришлёт ни одного события');
-        return;
     }
 
     let cfg;
