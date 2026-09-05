@@ -19,7 +19,21 @@ const WWW = path.join(ROOT, 'www');
 
 // Всё, что нужно игре в рантайме. Список явный, а не «всё кроме» — иначе любой
 // новый служебный файл в корне молча уедет в APK.
-const ITEMS = ['index.html', 'css', 'js', 'images'];
+const ITEMS = ['index.html', 'css', 'js', 'images', 'music'];
+
+// A-07: из music/ едут только пережатые треки. Рядом с ними лежит masters/ —
+// оригиналы 320 kbps на 25 МБ, втрое тяжелее всей остальной сборки. В git их
+// нет (.gitignore), но cpSync ходит по файловой системе, а не по индексу, и без
+// явного отсева они уехали бы в APK у любого, кто скачал их себе для пережатия.
+// CREDITS.md отсеивается по тому же правилу «ровно то, что нужно игре»: это
+// док разработчика (адреса скачивания, рецепт пережатия), а видимое игроку
+// указание авторства живёт на странице настроек, а не файлом в пакете.
+const EXCLUDED = [path.join('music', 'masters'), path.join('music', 'CREDITS.md')];
+
+function isExcluded(src) {
+    const rel = path.relative(ROOT, src);
+    return EXCLUDED.some(ex => rel === ex || rel.startsWith(ex + path.sep));
+}
 
 function main() {
     // www/ пересобирается с нуля: иначе удалённый в репозитории файл остаётся
@@ -36,7 +50,7 @@ function main() {
             console.error(`[build-www] НЕТ ИСХОДНИКА: ${item}`);
             process.exit(1);
         }
-        fs.cpSync(src, path.join(WWW, item), { recursive: true });
+        fs.cpSync(src, path.join(WWW, item), { recursive: true, filter: from => !isExcluded(from) });
     }
 
     // Считаем то, что реально легло, — цифра ловит и пустую копию, и раздувшийся
@@ -54,6 +68,19 @@ function main() {
     const p5 = path.join(WWW, 'js', 'vendor', 'p5.min.js');
     if (!fs.existsSync(p5)) {
         console.error('[build-www] НЕТ js/vendor/p5.min.js — офлайн игра не запустится');
+        process.exit(1);
+    }
+
+    // A-07: страница настроек обещает музыку и называет авторов — пакет без
+    // треков не падает, он просто молча врёт. На глаз в APK это не видно.
+    const musicDir = path.join(WWW, 'music');
+    const tracks = fs.existsSync(musicDir) ? fs.readdirSync(musicDir).filter(f => f.endsWith('.mp3')) : [];
+    if (tracks.length === 0) {
+        console.error('[build-www] НЕТ music/*.mp3 — настройки обещают музыку, которой в APK не будет');
+        process.exit(1);
+    }
+    if (fs.existsSync(path.join(musicDir, 'masters'))) {
+        console.error('[build-www] в www/ уехали мастера 320 kbps — APK потяжелел на 25 МБ впустую');
         process.exit(1);
     }
 
