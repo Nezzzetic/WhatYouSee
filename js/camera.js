@@ -309,24 +309,24 @@ function drawConstellationSkeletonLinesWorld(tiles) {
 }
 
 /** Мини-книга рядом со счётчиком: намёк на фигуру из открытого атласа. */
-function drawDraftAtlasBookIconScreen(x, y, canCollect) {
+function drawDraftAtlasBookIconScreen(x, y, canCollect, alphaMul = 1) {
     const h = typeof DRAFT_ATLAS_HINT_BOOK_PX === 'number' ? DRAFT_ATLAS_HINT_BOOK_PX : 10;
     const w = h * 0.9;
     const pageW = w * 0.44;
 
     noStroke();
     if (canCollect) {
-        fill(GOLD_RGB[0], GOLD_RGB[1], GOLD_RGB[2], 235);
+        fill(GOLD_RGB[0], GOLD_RGB[1], GOLD_RGB[2], 235 * alphaMul);
     } else {
-        fill(INK_MUTED_RGB[0], INK_MUTED_RGB[1], INK_MUTED_RGB[2], 235);
+        fill(INK_MUTED_RGB[0], INK_MUTED_RGB[1], INK_MUTED_RGB[2], 235 * alphaMul);
     }
     rect(x, y, pageW, h);
     rect(x + w - pageW, y, pageW, h);
 
     if (canCollect) {
-        stroke(GOLD_LIGHT_RGB[0], GOLD_LIGHT_RGB[1], GOLD_LIGHT_RGB[2], 210);
+        stroke(GOLD_LIGHT_RGB[0], GOLD_LIGHT_RGB[1], GOLD_LIGHT_RGB[2], 210 * alphaMul);
     } else {
-        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 210);
+        stroke(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 210 * alphaMul);
     }
     strokeWeight(1);
     line(x + w * 0.5, y + 1, x + w * 0.5, y + h - 1);
@@ -391,7 +391,39 @@ function drawUndoMarkScreen() {
     }
 }
 
-/** Счётчик звёзд у последней точки цепочки — в экранных px (зум и wrap). */
+/**
+ * U-23: чистое ядро анимации счётчика черновика — появление → пауза → угасание,
+ * плюс лёгкий подъём на появлении. Все параметры приходят аргументами, включая
+ * амплитуду подъёма (`risePx`) — функция не читает ни millis(), ни констант
+ * из camera.js/constants.js сама, чтобы верификатор вынул её текстом и прогнал
+ * на границах без p5. `reduced` — ступенька 1/0 без обеих кривых, как у
+ * корректорской пометки (K-04): доступность важнее эффекта.
+ * @returns {{alpha: number, rise: number}}
+ */
+function computeDraftCountLabelAnim(sinceAppearMs, sinceChangeMs, inMs, holdMs, outMs, reduced, risePx) {
+    if (sinceAppearMs < 0 || sinceChangeMs < 0) return { alpha: 0, rise: 0 };
+    if (reduced) {
+        return { alpha: sinceChangeMs < holdMs ? 1 : 0, rise: 0 };
+    }
+    const inFrac = inMs > 0 ? Math.min(1, sinceAppearMs / inMs) : 1;
+    const outFrac = sinceChangeMs < holdMs
+        ? 1
+        : (outMs > 0 ? Math.max(0, 1 - (sinceChangeMs - holdMs) / outMs) : 0);
+    const eased = inFrac * inFrac * (3 - 2 * inFrac); // smoothstep — без рывка на приходе
+    return {
+        alpha: inFrac * outFrac,
+        rise: (1 - eased) * risePx
+    };
+}
+
+/**
+ * Счётчик звёзд у последней точки цепочки — в экранных px (зум и wrap).
+ * U-23: поднят над пальцем фиксированными px (не зависит от зума — палец
+ * физический объект), без легаси-цвета от отменённой экономики (был признак
+ * `claimedStarCounts` — единственный носитель смысла в цвете), гаснет через
+ * ~2 с после последнего изменения черновика. Самолечение состояния показа —
+ * прямо здесь, из кадра: отдельных хуков в mousePressed/mouseDragged не заводим.
+ */
 function drawDraftStarCountLabelScreen() {
     if (!currentLines || currentLines.length === 0) return;
     if (!visitedStars || visitedStars.length === 0) return;
@@ -401,6 +433,34 @@ function drawDraftStarCountLabelScreen() {
     if (!star) return;
 
     const n = visitedStars.length;
+
+    let atlasHint = null;
+    try {
+        if (typeof getDraftUnlockedAtlasShapeHint === 'function') {
+            atlasHint = getDraftUnlockedAtlasShapeHint();
+        }
+    } catch (_) {
+        atlasHint = null;
+    }
+
+    // Ключ показа: смена визитов, рёбер (замыкание кольца в уже посещённую
+    // звезду меняет фигуру, не n) или подсказки атласа — любая зажигает показ заново.
+    const key = n + '|' + currentLines.length + '|' + (atlasHint || '');
+    if (typeof noteDraftCountLabelChange === 'function'
+        && (!draftCountLabel || draftCountLabel.key !== key)) {
+        noteDraftCountLabelChange(key, n);
+    }
+    if (!draftCountLabel) return;
+
+    const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+    const anim = computeDraftCountLabelAnim(
+        millis() - draftCountLabel.appearMs,
+        millis() - draftCountLabel.changeMs,
+        DRAFT_COUNT_LABEL_IN_MS, DRAFT_COUNT_LABEL_HOLD_MS, DRAFT_COUNT_LABEL_OUT_MS,
+        reduced, DRAFT_COUNT_LABEL_RISE_PX
+    );
+    if (anim.alpha <= 0) return;
+
     const viewW = width / zoomLevel;
     const viewH = height / zoomLevel;
     const refX = (typeof mouseX === 'number' && mouseX >= 0 && mouseX <= width)
@@ -413,41 +473,34 @@ function drawDraftStarCountLabelScreen() {
 
     const screenX = (fw.x - camX) * zoomLevel;
     const screenY = (fw.y - camY) * zoomLevel;
-    const offsetPx = 14;
-
-    if (n <= 1) {
-        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 235);
-    } else if (claimedStarCounts.has(n)) {
-        fill(INK_FAINT_RGB[0], INK_FAINT_RGB[1], INK_FAINT_RGB[2], 215);
-    } else {
-        fill(GOLD_LIGHT_RGB[0], GOLD_LIGHT_RGB[1], GOLD_LIGHT_RGB[2], 250);
-    }
-
-    const labelX = screenX + offsetPx;
-    const labelY = screenY - offsetPx;
 
     push();
     try {
         noStroke();
         textAlign(LEFT, BOTTOM);
-        textSize(15);
-        text(String(n), labelX, labelY);
+        textSize(DRAFT_COUNT_LABEL_SIZE);
 
-        let atlasHint = null;
-        try {
-            if (typeof getDraftUnlockedAtlasShapeHint === 'function') {
-                atlasHint = getDraftUnlockedAtlasShapeHint();
-            }
-        } catch (_) {
-            atlasHint = null;
-        }
+        const nStr = String(n);
+        const numW = textWidth(nStr);
+        const bookH = typeof DRAFT_ATLAS_HINT_BOOK_PX === 'number' ? DRAFT_ATLAS_HINT_BOOK_PX : 10;
+        const bookW = bookH * 0.9;
+        const hasIcon = !!atlasHint;
+        const totalW = numW + (hasIcon ? DRAFT_COUNT_LABEL_ICON_GAP_PX + bookW : 0);
 
-        if (atlasHint) {
+        // Группа «число + иконка» центрируется над звездой (не число само по
+        // себе) — иначе иконка уезжала бы от цифры при переходе 9 → 10.
+        const startX = screenX - totalW / 2;
+        let labelY = screenY - DRAFT_COUNT_LABEL_LIFT_PX + anim.rise;
+        labelY = Math.max(labelY, DRAFT_COUNT_LABEL_MIN_TOP_PX + DRAFT_COUNT_LABEL_SIZE);
+
+        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 235 * anim.alpha);
+        text(nStr, startX, labelY);
+
+        if (hasIcon) {
             const canCollect = typeof canCollectAtlasShapeOnField === 'function'
                 && canCollectAtlasShapeOnField(atlasHint);
-            const bookH = typeof DRAFT_ATLAS_HINT_BOOK_PX === 'number' ? DRAFT_ATLAS_HINT_BOOK_PX : 10;
-            const bookX = labelX + textWidth(String(n)) + 5;
-            drawDraftAtlasBookIconScreen(bookX, labelY - bookH, canCollect);
+            const bookX = startX + numW + DRAFT_COUNT_LABEL_ICON_GAP_PX;
+            drawDraftAtlasBookIconScreen(bookX, labelY - bookH, canCollect, anim.alpha);
         }
     } finally {
         pop();

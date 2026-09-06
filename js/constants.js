@@ -144,6 +144,24 @@ const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
 const COLLECTED_ATLAS_LABEL_SIZE = 16;
 /** Иконка «из атласа» у черновика созвездия (экранные px, без названия фигуры). */
 const DRAFT_ATLAS_HINT_BOOK_PX = 10;
+
+/**
+ * U-23: счётчик звёзд у пальца — поднят над точкой касания, без легаси-цвета
+ * от отменённой экономики (было: цвет как единственный носитель смысла —
+ * золото за первый размер на поле, размер уже есть — размер и книжная
+ * подсказка атласа остаются единственными сигналами). Показ живёт циклом
+ * появление → пауза → угасание, тайминги — как у корректорской пометки (K-04),
+ * чтобы всё, что живёт поверх неба, тухло одинаково.
+ */
+const DRAFT_COUNT_LABEL_LIFT_PX = 42;      // подъём над звездой — фиксированные экранные px, палец от зума не зависит
+const DRAFT_COUNT_LABEL_MIN_TOP_PX = 12;   // кламп у верхней кромки экрана (не переворот — переворот вернул бы число под палец)
+const DRAFT_COUNT_LABEL_RISE_PX = 5;       // путь всплытия на появлении
+const DRAFT_COUNT_LABEL_SIZE = 15;
+const DRAFT_COUNT_LABEL_ICON_GAP_PX = 5;
+const DRAFT_COUNT_LABEL_IN_MS = MOTION_MICRO_MS;  // всплывает: микро-отклик
+const DRAFT_COUNT_LABEL_HOLD_MS = 2000;           // держится
+const DRAFT_COUNT_LABEL_OUT_MS = 400;             // тает
+
 const LOCKED_STAR_GLOW_ALPHA = 88;
 const LOCKED_STAR_HALO_WHITE_ALPHA = 34;
 const SUPPRESSED_STAR_COLOR = [100, 128, 157];
