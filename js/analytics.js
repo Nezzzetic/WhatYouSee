@@ -1,4 +1,7 @@
 // analytics.js — P-05: минимальная продуктовая аналитика.
+// P-11: воронка новичка расширена до девяти шагов и заведены пять
+// повторяющихся событий (см. блок «ПОВТОРЯЮЩИЕСЯ СОБЫТИЯ» ниже) — заказчик
+// задал свой состав воронки и список событий отдельно от P-05.
 //
 // ГЛАВНОЕ ПРАВИЛО: с сетью и без сети игра ведёт себя одинаково. Отсюда всё
 // устройство модуля:
@@ -55,18 +58,37 @@
     // <<< P-05 CONFIG
 
     const STATE_KEY = 'starsReborn_analytics_v01';
-    // Очередь — страховка от офлайна, а не архив: двадцати записей хватает на
-    // несколько несетевых дней, а localStorage делится с небом (200–280 звёзд).
-    const QUEUE_MAX = 20;
+    // Очередь — страховка от офлайна, а не архив: P-11 подняла её с 20 до 30 —
+    // событий за ночь стало больше (night_start + заборы + огранка), а
+    // вытеснение выбрасывает самые старые, и веха воронки, помеченная
+    // отправленной, второй раз уже не сформируется. ~18 КБ в localStorage,
+    // который делится с небом (200–280 звёзд).
+    const QUEUE_MAX = 30;
     // Исключение внутри draw() повторяется 60 раз в секунду. Кап и дедуп по
     // тексту — главная защита эндпоинта и трафика игрока.
     const ERRORS_PER_SESSION_MAX = 3;
+    // P-11: общий кап на «поток» повторяющихся событий (claim/shape_created/
+    // shape_faceted) за сессию — те же соображения, что у ERRORS_PER_SESSION_MAX,
+    // но своим числом: их источник не баг, а нормальная игра.
+    const EVENTS_PER_SESSION_MAX = 40;
     const MILESTONE_POLL_MS = 10000;
     const STACK_MAX = 500;
+
+    // P-11: белый список ASCII-ID фигур атласа — СВОЯ копия, а не чтение
+    // DEMO_ACTIVE_BUILTIN_SHAPES. Если каталог вырастет (C-01, пятая глава),
+    // этот список не подхватит новые ID сам — придётся править его и
+    // SNAPSHOT_SHAPE_IDS в verify-analytics.js одним и тем же коммитом,
+    // как страницу политики. Так и задумано: расширение состава отправки —
+    // решение, а не побочный эффект роста каталога.
+    const ATLAS_SHAPE_IDS = ['toothpick', 'checkmark', 'chip', 'chicken-foot', 'cookie', 'earthworm',
+        'diamond', 'spatula', 'banana', 'envelope', 'fan', 'radish',
+        'donut', 'flag', 'tadpole', 'bunny', 'bull', 'bow',
+        'house', 'mace', 'kite', 'lantern', 'hand-fan', 'origami'];
 
     let state = null;
     let sessionStartMs = 0;
     let errorsSent = 0;
+    let repeatEventsSent = 0;
     const errorSeen = new Set();
     const pendingErrors = [];
     let sending = false;
@@ -90,19 +112,36 @@
     // =========================================================================
 
     function defaultState() {
-        return { first: 0, last: 0, days: 0, sess: 0, sent: [], queue: [] };
+        // nc — последний известный levelsCompleted; ap — снимок {ID цепочки:
+        // stepIndex}; cs/fs — ID фигур, о создании/огранке которых уже
+        // отправлено (P-11). Списками, а не счётчиками: откат умеет и
+        // создание, и огранку УМЕНЬШАТЬ (revertShapeCreated,
+        // recordShapeUndoForFacets), и по счётчику пара «откат → повтор» дала
+        // бы дубль, а по списку — нет.
+        return { first: 0, last: 0, days: 0, sess: 0, sent: [], queue: [],
+            nc: 0, ap: {}, cs: [], fs: [] };
     }
 
     /**
      * ⚠ Этот блок НЕ гасится ни полным сбросом прогресса, ни `__test.reset()`.
      * Иначе один тестер, сбросивший прогресс трижды, выглядел бы тремя
      * новичками, и удержание считалось бы по выдумке.
+     *
+     * Возвращает `{ state, needsBaseline }`. `needsBaseline` истинно ровно
+     * тогда, когда в localStorage уже лежал блок аналитики (не первый запуск),
+     * но БЕЗ полей nc/ap/cs/fs — то есть это апгрейд с P-05, у игрока за
+     * плечами реальный прогресс. Разводить это со «свежего профиля и так все
+     * базы нулевые» обязательно: иначе первый тик после обновления прочитал
+     * бы весь накопленный прогресс как «только что случившееся» и одним
+     * заходом отправил бы фальшивый `claim` на всю сумму ✦, `night_completed`
+     * за все прошлые ночи и до 24 `shape_created` подряд.
      */
     function loadState() {
         const s = defaultState();
+        let needsBaseline = false;
         try {
             const raw = localStorage.getItem(STATE_KEY);
-            if (!raw) return s;
+            if (!raw) return { state: s, needsBaseline: false };
             const d = JSON.parse(raw) || {};
             s.first = Math.max(0, Number(d.first) || 0);
             s.last = Math.max(0, Number(d.last) || 0);
@@ -110,8 +149,45 @@
             s.sess = Math.max(0, Number(d.sess) || 0);
             s.sent = Array.isArray(d.sent) ? d.sent.filter(x => typeof x === 'string') : [];
             s.queue = Array.isArray(d.queue) ? d.queue.slice(-QUEUE_MAX) : [];
+            needsBaseline = !('nc' in d) && !('ap' in d) && !('cs' in d) && !('fs' in d);
+            s.nc = Math.max(0, Number(d.nc) || 0);
+            s.ap = (d.ap && typeof d.ap === 'object' && !Array.isArray(d.ap)) ? d.ap : {};
+            s.cs = Array.isArray(d.cs) ? d.cs.filter(x => typeof x === 'string') : [];
+            s.fs = Array.isArray(d.fs) ? d.fs.filter(x => typeof x === 'string') : [];
         } catch (e) { /* повреждённый блок — начинаем заново, игре это безразлично */ }
-        return s;
+        return { state: s, needsBaseline };
+    }
+
+    /**
+     * Заводит базовые значения nc/ap/cs/fs от текущего реального прогресса,
+     * ничего не отправляя, — единственная защита от фальшивого залпа при
+     * апгрейде с P-05 (см. `loadState`). Дальше повторяющиеся события шлются
+     * обычным сравнением снимок/база в `pollEvents`.
+     */
+    function establishRepeatBaseline() {
+        const ac = counters();
+        state.nc = ac ? int(ac.levelsCompleted) : 0;
+        state.ap = {};
+        if (typeof ACHIEVEMENT_CHAINS !== 'undefined' && Array.isArray(ACHIEVEMENT_CHAINS)
+            && typeof achievementProgress !== 'undefined' && achievementProgress) {
+            for (const chain of ACHIEVEMENT_CHAINS) {
+                const p = achievementProgress[chain.id];
+                state.ap[chain.id] = p ? int(p.stepIndex) : 0;
+            }
+        }
+        state.cs = [];
+        state.fs = [];
+        if (typeof createdShapes !== 'undefined' && createdShapes) {
+            for (const id of createdShapes) {
+                if (ATLAS_SHAPE_IDS.indexOf(id) !== -1) state.cs.push(id);
+            }
+        }
+        for (const id of ATLAS_SHAPE_IDS) {
+            try {
+                if (typeof isShapeFaceted === 'function' && isShapeFaceted(id)) state.fs.push(id);
+            } catch (e) { /* ignore */ }
+        }
+        saveState();
     }
 
     function saveState() {
@@ -214,23 +290,97 @@
     // =========================================================================
 
     /**
-     * Семь шагов пути новичка, каждый — один раз за всю жизнь игрока.
-     * Все выводятся из уже существующего состояния, своих счётчиков не заводят.
-     * Порядок в массиве = порядок в воронке.
+     * Девять шагов пути новичка (P-11, заказчик задал свой состав), каждый —
+     * один раз за всю жизнь игрока. Все выводятся из уже существующего
+     * состояния, своих счётчиков не заводят. Порядок в массиве = порядок в
+     * воронке, `f` — номер шага: своё значение не для PostHog (там воронка
+     * строится по именам событий), а чтобы порядок нельзя было потерять при
+     * чтении сырых событий и чтобы развести метки времени вех, ушедших одним
+     * тиком (см. `pollEvents`).
      */
     const MILESTONES = [
-        { id: 'first_line', reached: ac => (ac.totalConstellations || 0) >= 1 },
-        { id: 'tutorial_done', reached: () => typeof isTutorialDone === 'function' && isTutorialDone() },
-        { id: 'night_completed', reached: ac => (ac.levelsCompleted || 0) >= 1 },
-        { id: 'book_opened', reached: ac => !!ac.bookFirstOpenDone },
-        { id: 'first_claim', reached: () => typeof getLifetimeMetaEarned === 'function' && getLifetimeMetaEarned() > 0 },
+        { id: 'first_open', f: 1, reached: () => true },
+        { id: 'first_line', f: 2, reached: ac => (ac.totalConstellations || 0) >= 1 },
+        { id: 'camera_zoom_out', f: 3, reached: () => typeof isTutorialDone === 'function' && isTutorialDone() },
+        { id: 'book_opened', f: 4, reached: ac => !!ac.bookFirstOpenDone },
+        { id: 'first_claim', f: 5, reached: () => typeof getLifetimeMetaEarned === 'function' && getLifetimeMetaEarned() > 0 },
         // Глава I бесплатна и открыта с первого запуска (B-04), поэтому разрез
         // засчитывается со ВТОРОЙ страницы — первая ничего не говорит об игроке.
-        { id: 'page_cut', reached: () => typeof unlockedPageIndices !== 'undefined' && !!unlockedPageIndices && unlockedPageIndices.size >= 2 },
-        { id: 'observatory', reached: () => typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked() }
+        { id: 'atlas_page_2', f: 6, reached: () => typeof unlockedPageIndices !== 'undefined' && !!unlockedPageIndices && unlockedPageIndices.size >= 2 },
+        { id: 'observatory', f: 7, reached: () => typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked() },
+        { id: 'atlas_page_3', f: 8, reached: () => typeof unlockedPageIndices !== 'undefined' && !!unlockedPageIndices && unlockedPageIndices.size >= 3 },
+        { id: 'atlas_page_4', f: 9, reached: () => typeof unlockedPageIndices !== 'undefined' && !!unlockedPageIndices && unlockedPageIndices.size >= 4 }
     ];
 
-    function checkMilestones() {
+    /**
+     * Повторяющиеся события (P-11) — в отличие от вех воронки, шлются
+     * столько раз, сколько случились. `night_completed`/`shape_created`/
+     * `shape_faceted`/`claim` читают готовые геттеры и сравнивают со снимком
+     * в состоянии; `night_start` в этот список не входит — он шлётся только
+     * из `startAnalytics()` на смену суток неба, не опросом (см. там же).
+     */
+    function pollRepeatingEvents() {
+        const ac = counters();
+        if (!ac) return false;
+        let hit = false;
+
+        const nc = int(ac.levelsCompleted);
+        if (nc > state.nc) {
+            enqueue('night_completed', { n: nc });
+            hit = true;
+        }
+        state.nc = nc;
+
+        if (typeof createdShapes !== 'undefined' && createdShapes) {
+            for (const id of createdShapes) {
+                if (ATLAS_SHAPE_IDS.indexOf(id) === -1) continue; // fb*/unknown наружу не идут
+                if (state.cs.indexOf(id) !== -1) continue;
+                state.cs.push(id);
+                if (repeatEventsSent < EVENTS_PER_SESSION_MAX) {
+                    enqueue('shape_created', { s: id });
+                    repeatEventsSent++;
+                    hit = true;
+                }
+            }
+        }
+
+        for (const id of ATLAS_SHAPE_IDS) {
+            if (state.fs.indexOf(id) !== -1) continue;
+            let faceted = false;
+            try { faceted = typeof isShapeFaceted === 'function' && isShapeFaceted(id); } catch (e) { /* ignore */ }
+            if (!faceted) continue;
+            state.fs.push(id);
+            if (repeatEventsSent < EVENTS_PER_SESSION_MAX) {
+                enqueue('shape_faceted', { s: id, n: state.fs.length });
+                repeatEventsSent++;
+                hit = true;
+            }
+        }
+
+        if (typeof ACHIEVEMENT_CHAINS !== 'undefined' && Array.isArray(ACHIEVEMENT_CHAINS)
+            && typeof achievementProgress !== 'undefined' && achievementProgress) {
+            for (const chain of ACHIEVEMENT_CHAINS) {
+                const p = achievementProgress[chain.id];
+                if (!p) continue;
+                const prev = int(state.ap[chain.id]);
+                const cur = int(p.stepIndex);
+                // Уменьшение (суточный сброс K-22, миграция каталога) молча
+                // переставляет базу — не отправка отрицательного шага.
+                for (let st = prev; st < cur && repeatEventsSent < EVENTS_PER_SESSION_MAX; st++) {
+                    let d = 0;
+                    try { d = getAchievementChainStepReward(chain, st); } catch (e) { /* ignore */ }
+                    enqueue('claim', { a: chain.id, st: st, d: d });
+                    repeatEventsSent++;
+                    hit = true;
+                }
+                state.ap[chain.id] = cur;
+            }
+        }
+
+        return hit;
+    }
+
+    function pollEvents() {
         if (!configured() || !state) return;
         const ac = counters();
         if (!ac) return;
@@ -241,9 +391,13 @@
             try { ok = !!m.reached(ac); } catch (e) { ok = false; }
             if (!ok) continue;
             state.sent.push(m.id);
-            enqueue(m.id);
+            // Вехи, ушедшие одним тиком (профиль с готовым прогрессом),
+            // разводятся на f мс — иначе PostHog, строящий воронку по
+            // времени, мог бы посчитать порядок нарушенным.
+            enqueue(m.id, { f: m.f }, m.f);
             hit = true;
         }
+        if (pollRepeatingEvents()) hit = true;
         if (hit) { saveState(); flush(); }
     }
 
@@ -265,7 +419,7 @@
         return 'unknown';
     }
 
-    function buildEvent(name, extra) {
+    function buildEvent(name, extra, tsOffsetMs) {
         const props = snapshot();
         if (extra) Object.assign(props, extra);
         // Person properties: последнее известное состояние игрока. Отсюда
@@ -281,14 +435,14 @@
             event: name,
             distinct_id: distinctId(),
             properties: props,
-            timestamp: new Date().toISOString()
+            timestamp: new Date(Date.now() + (tsOffsetMs || 0)).toISOString()
         };
     }
 
-    function enqueue(name, extra) {
+    function enqueue(name, extra, tsOffsetMs) {
         if (!configured() || !state) return null;
         let ev = null;
-        try { ev = buildEvent(name, extra); } catch (e) { return null; }
+        try { ev = buildEvent(name, extra, tsOffsetMs); } catch (e) { return null; }
         state.queue.push(ev);
         // Переполнение выбрасывает САМЫЕ СТАРЫЕ: свежее состояние игрока
         // ценнее позавчерашнего, а вехи всё равно продублируются снимком.
@@ -408,14 +562,20 @@
         if (started || !configured()) return;
         started = true;
         sessionStartMs = Date.now();
-        state = loadState();
+        repeatEventsSent = 0;
+        const loaded = loadState();
+        state = loaded.state;
 
         const d = today();
         state.sess += 1;
         if (!state.first) state.first = d;
         // «Сколько разных суток игрок открывал игру» — из этого и `first`
-        // считается удержание, без серверной склейки сессий.
-        if (state.last !== d) { state.days += 1; state.last = d; }
+        // считается удержание, без серверной склейки сессий. Она же — «сутки
+        // неба» для night_start: игра меняет небо только на перезапуске, пока
+        // не закрыта M-08, так что сравнение с `state.last` уже есть и
+        // отдельного поля под это не нужно.
+        const isNewSkyDay = state.last !== d;
+        if (isNewSkyDay) { state.days += 1; state.last = d; }
         saveState();
 
         if (!configured()) return;
@@ -426,13 +586,23 @@
             const r = pendingErrors.shift();
             reportError(r.msg, r.src, r.line, r.stack);
         }
-        // Вехи, взятые до этого запуска, уходят разом — иначе игрок с
-        // прогрессом никогда бы не попал в воронку.
-        checkMilestones();
+
+        // P-11: апгрейд с P-05 — заводим базу повторяющихся событий молча,
+        // до первого поллинга (см. `establishRepeatBaseline`).
+        if (loaded.needsBaseline) establishRepeatBaseline();
+
+        // «Начало ночи» — сутки неба, а не сессия и не опрос: посреди уже
+        // открытого приложения небо не меняется (M-08), так что событие
+        // достоверно только на запуске.
+        if (isNewSkyDay) enqueue('night_start');
+
+        // Вехи и повторяющиеся события, взятые до этого запуска, уходят
+        // разом — иначе игрок с прогрессом никогда бы не попал в воронку.
+        pollEvents();
         saveState();
         flush();
 
-        pollTimer = setInterval(checkMilestones, MILESTONE_POLL_MS);
+        pollTimer = setInterval(pollEvents, MILESTONE_POLL_MS);
 
         document.addEventListener('visibilitychange', function () {
             if (document.visibilityState === 'hidden') sendClose();
@@ -458,7 +628,7 @@
                 errorsSent: function () { return errorsSent; },
                 flush: flush,
                 close: sendClose,
-                poll: checkMilestones,
+                poll: pollEvents,
                 start: startAnalytics,
                 /** Подменяет адрес приёма, чтобы проверить отправку без живого эндпоинта. */
                 configure: function (next) {
@@ -470,6 +640,25 @@
                     state = null;
                     started = false;
                     errorsSent = 0;
+                    repeatEventsSent = 0;
+                    errorSeen.clear();
+                    pendingErrors.length = 0;
+                    if (pollTimer) { clearInterval(pollTimer); pollTimer = 0; }
+                },
+                /**
+                 * P-11: то же самое, что живой перезапуск процесса — сбрасывает
+                 * сессионные переменные модуля, но НЕ трогает `localStorage`.
+                 * Нужен ровно один тест: night_start дедуплен по суткам неба,
+                 * а не по сессии — без реальной перезагрузки страницы (CONFIG
+                 * всё равно не переживает `Page.navigate`, его пришлось бы
+                 * настраивать заново) это единственный способ сымитировать
+                 * «то же устройство, следующий запуск».
+                 */
+                restartSession: function () {
+                    state = null;
+                    started = false;
+                    errorsSent = 0;
+                    repeatEventsSent = 0;
                     errorSeen.clear();
                     pendingErrors.length = 0;
                     if (pollTimer) { clearInterval(pollTimer); pollTimer = 0; }
