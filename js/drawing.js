@@ -28,23 +28,29 @@ function resetDraftCountLabelState() {
 /**
  * Ключ показа изменился (визиты / рёбра / подсказка атласа). `changeMs` двигается
  * всегда — он держит паузу до угасания. `appearMs` (старт fade-in) переезжает на
- * `now` только если группа к этому моменту уже погасла — иначе быстрый drag
- * перезапускал бы всплытие с нуля на каждой звезде, и число мигало бы вместо
- * того, чтобы просто обновиться.
+ * `now` — то есть анимация появления переигрывается — при смене самой цифры
+ * (по прямому фидбеку заказчика 2026-09-06: каждая новая звезда должна быть
+ * видна как отдельное появление числа). Если цифра та же, а поменялось что-то
+ * ещё (замыкание кольца, подсказка атласа) — `appearMs` не трогаем, пока группа
+ * ещё видна, иначе такая смена мигала бы с нуля вместо простого обновления.
  */
 function noteDraftCountLabelChange(key, n) {
     const now = millis();
     let appearMs = now;
     if (draftCountLabel) {
-        const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
-        // risePx = 0: только alpha важна здесь, подъём эта ветка не рисует.
-        const anim = computeDraftCountLabelAnim(
-            now - draftCountLabel.appearMs,
-            now - draftCountLabel.changeMs,
-            DRAFT_COUNT_LABEL_IN_MS, DRAFT_COUNT_LABEL_HOLD_MS, DRAFT_COUNT_LABEL_OUT_MS,
-            reduced, 0
-        );
-        if (anim.alpha > 0) appearMs = draftCountLabel.appearMs; // ещё видна — fade-in не перезапускаем
+        const nChanged = draftCountLabel.n !== n;
+        if (!nChanged) {
+            const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+            // risePx = 0: только alpha важна здесь, подъём эта ветка не рисует.
+            const anim = computeDraftCountLabelAnim(
+                now - draftCountLabel.appearMs,
+                now - draftCountLabel.changeMs,
+                DRAFT_COUNT_LABEL_IN_MS, DRAFT_COUNT_LABEL_HOLD_MS, DRAFT_COUNT_LABEL_OUT_MS,
+                reduced, 0
+            );
+            if (anim.alpha > 0) appearMs = draftCountLabel.appearMs; // ещё видна — fade-in не перезапускаем
+        }
+        // nChanged === true: appearMs остаётся now — цифра переигрывает появление.
     }
     draftCountLabel = { key, n, appearMs, changeMs: now };
 }
