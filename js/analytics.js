@@ -488,7 +488,7 @@
         let body = '';
         try {
             const dur = Math.max(0, Math.round((Date.now() - sessionStartMs) / 1000));
-            body = JSON.stringify({ api_key: CONFIG.key, batch: [buildEvent('night_close', { dur: dur })] });
+            body = JSON.stringify({ api_key: CONFIG.key, batch: [buildEvent('session_end', { dur: dur })] });
         } catch (e) {
             return;
         }
@@ -581,7 +581,7 @@
         if (!configured()) return;
 
         // Очередь прошлых заходов уезжает вместе с первым событием этого.
-        enqueue('night_open');
+        enqueue('session_start');
         while (pendingErrors.length) {
             const r = pendingErrors.shift();
             reportError(r.msg, r.src, r.line, r.stack);
