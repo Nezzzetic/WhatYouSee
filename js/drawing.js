@@ -13,6 +13,42 @@ let visitedStars = [];
 let attachFlashStarId = null;
 let attachFlashStartTime = 0;
 
+/**
+ * U-23: показ счётчика звёзд у пальца. Живёт вне сейва, как commitWave/undoMark —
+ * состояние черновика не переживает перезагрузку по построению (drag её не
+ * переживает), поэтому версии у поля нет и не будет.
+ * null | { key, n, appearMs, changeMs }
+ */
+let draftCountLabel = null;
+
+function resetDraftCountLabelState() {
+    draftCountLabel = null;
+}
+
+/**
+ * Ключ показа изменился (визиты / рёбра / подсказка атласа). `changeMs` двигается
+ * всегда — он держит паузу до угасания. `appearMs` (старт fade-in) переезжает на
+ * `now` только если группа к этому моменту уже погасла — иначе быстрый drag
+ * перезапускал бы всплытие с нуля на каждой звезде, и число мигало бы вместо
+ * того, чтобы просто обновиться.
+ */
+function noteDraftCountLabelChange(key, n) {
+    const now = millis();
+    let appearMs = now;
+    if (draftCountLabel) {
+        const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+        // risePx = 0: только alpha важна здесь, подъём эта ветка не рисует.
+        const anim = computeDraftCountLabelAnim(
+            now - draftCountLabel.appearMs,
+            now - draftCountLabel.changeMs,
+            DRAFT_COUNT_LABEL_IN_MS, DRAFT_COUNT_LABEL_HOLD_MS, DRAFT_COUNT_LABEL_OUT_MS,
+            reduced, 0
+        );
+        if (anim.alpha > 0) appearMs = draftCountLabel.appearMs; // ещё видна — fade-in не перезапускаем
+    }
+    draftCountLabel = { key, n, appearMs, changeMs: now };
+}
+
 let undoFloor = 0; // min constellations count below which undo is blocked
 
 function getDraftChainColorRgb() {
@@ -1095,6 +1131,7 @@ function resetDragState() {
     visitedStars = [];
     currentLine = null;
     clearDraftAtlasHintCache();
+    resetDraftCountLabelState();
     attachFlashStarId = null;
 }
 
