@@ -618,11 +618,16 @@ function renderAtlasList() {
         lockedText.textContent = t('atlas.pageLocked', { n: cost });
         locked.appendChild(lockedText);
 
+        // V-17: прогресс — «всего заработано по жизни» против «сколько всего
+        // нужно было заработать к этой главе» (кумулятивная сумма), а не
+        // текущий (уже уменьшенный прошлыми покупками) баланс против цены
+        // одной главы — иначе число прыгает вниз после покупки предыдущей.
+        const cumulativeCost = getAtlasCumulativeCost(pageIndex);
         const progressText = document.createElement('p');
         progressText.className = 'atlas-page-locked-progress';
         progressText.textContent = t('atlas.pageLockedProgress', {
-            current: Math.min(getMetaScore(), cost),
-            target: cost
+            current: Math.min(getLifetimeMetaEarned(), cumulativeCost),
+            target: cumulativeCost
         });
         locked.appendChild(progressText);
 
