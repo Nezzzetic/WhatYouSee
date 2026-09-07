@@ -609,20 +609,21 @@ function renderAtlasList() {
     const pageIndex = getBookPageIndex('atlas');
 
     if (!isAtlasPageUnlocked(pageIndex)) {
-        // Страницы открываются автоматически при накоплении ✦
+        // Страницы открываются автоматически при накоплении ✦. V-17: порог и
+        // прогресс — оба в одной системе отсчёта, «всего заработано по жизни»
+        // против «сколько всего нужно было заработать к этой главе»
+        // (кумулятивная сумма), а не текущий (уже уменьшенный прошлыми
+        // покупками) баланс против цены одной главы — иначе цифры расходятся
+        // между собой (было 260 в пороге и 19/260 в прогрессе одновременно) и
+        // прогресс прыгает вниз после покупки предыдущей главы.
         const locked = document.createElement('div');
         locked.className = 'atlas-page-locked';
-        const cost = getAtlasPageUnlockCost(pageIndex);
+        const cumulativeCost = getAtlasCumulativeCost(pageIndex);
 
         const lockedText = document.createElement('p');
-        lockedText.textContent = t('atlas.pageLocked', { n: cost });
+        lockedText.textContent = t('atlas.pageLocked', { n: cumulativeCost });
         locked.appendChild(lockedText);
 
-        // V-17: прогресс — «всего заработано по жизни» против «сколько всего
-        // нужно было заработать к этой главе» (кумулятивная сумма), а не
-        // текущий (уже уменьшенный прошлыми покупками) баланс против цены
-        // одной главы — иначе число прыгает вниз после покупки предыдущей.
-        const cumulativeCost = getAtlasCumulativeCost(pageIndex);
         const progressText = document.createElement('p');
         progressText.className = 'atlas-page-locked-progress';
         progressText.textContent = t('atlas.pageLockedProgress', {
