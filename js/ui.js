@@ -896,6 +896,7 @@ function renderBookToday() {
             list.appendChild(createAchievementRow(chain));
         }
     }
+    renderBookTodayDawn();
     renderBookTodayNews();
     renderBookTodayState();
 }
@@ -944,8 +945,14 @@ function renderBookTodayState() {
         el.appendChild(row);
     };
 
-    const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
-    addRow(tp('book.todayStarsLeft', free));
+    // O-03: на доигранной ночи звёзды остаются (часть подавлена, часть погашена —
+    // M-07), просто пар для них больше нет; «ещё не соединено N звёзд» про такое
+    // небо врёт, поэтому строка снимается, а не дополняется.
+    const nightComplete = typeof isLevelComplete === 'function' && isLevelComplete();
+    if (!nightComplete) {
+        const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
+        addRow(tp('book.todayStarsLeft', free));
+    }
 
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
@@ -960,6 +967,86 @@ function renderBookTodayState() {
     } else {
         addRow(t('book.todayBookmarkPlain', { name }));
     }
+}
+
+// =============================================================================
+// O-03: КОНЕЦ НОЧИ — ТОЛЬКО КНИГА, «СЕГОДНЯ»
+// =============================================================================
+// Небо молчит (решение заказчика: K-15 не отменяется, тоста не будет). Блок
+// стоит на «Сегодня» сразу после ежедневки и виден только на доигранной ночи —
+// F5 на уже завершённом небе его не прячет (это состояние, а не сцена V-13).
+
+/** Чистая: ms до ближайшей местной полуночи. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, `new Date(y, m, d+1)` сама переживает переход на летнее время. */
+function msUntilNextSkyDay() {
+    const now = new Date();
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    return next.getTime() - now.getTime();
+}
+
+/** Чистая: ms → «ЧЧ:ММ:СС», округление вверх — экран не показывает 00:00:00, пока секунда не истекла целиком. */
+function formatCountdown(ms) {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+    const h = Math.floor(totalSeconds / 3600);
+    const m = Math.floor((totalSeconds % 3600) / 60);
+    const s = totalSeconds % 60;
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+}
+
+let bookTodayDawnTimer = null;
+
+function stopBookTodayDawnTimer() {
+    if (bookTodayDawnTimer) {
+        clearInterval(bookTodayDawnTimer);
+        bookTodayDawnTimer = null;
+    }
+}
+
+/** Тик и первая отрисовка. На нуле сам закрывает себя и дёргает штатную смену дня — только на доигранном поле, где терять нечего. */
+function updateBookTodayDawnText() {
+    const clockEl = document.getElementById('bookTodayDawnClock');
+    if (!clockEl) return;
+    const ms = msUntilNextSkyDay();
+    if (ms <= 0) {
+        stopBookTodayDawnTimer();
+        if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
+        return;
+    }
+    clockEl.textContent = formatCountdown(ms);
+}
+
+/**
+ * Идемпотентна: `refreshBookIfOpen()` зовут из мест, не связанных с концом
+ * ночи (забор марки, `afterAchievementStateChanged`), и повторный вызов не
+ * должен ни ронять уже идущий интервал, ни плодить второй — только менять
+ * видимость блока при смене состояния (например, откат последнего созвездия
+ * вернул ночь из «доиграна» в «играется»).
+ */
+function renderBookTodayDawn() {
+    const el = document.getElementById('bookTodayDawn');
+    if (!el) return;
+    const complete = typeof isLevelComplete === 'function' && isLevelComplete();
+    el.hidden = !complete;
+    if (!complete) {
+        stopBookTodayDawnTimer();
+        return;
+    }
+    updateBookTodayDawnText();
+    if (!bookTodayDawnTimer) {
+        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, 1000);
+    }
+}
+
+// Вкладка ушла в фон — тик посекундно не нужен, пока его не видно; страница
+// вернулась — досчитать заново тем же путём, что и обычный рендер книги.
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopBookTodayDawnTimer();
+        } else {
+            refreshBookIfOpen();
+        }
+    });
 }
 
 /**
@@ -1435,6 +1522,9 @@ function renderBook() {
     for (const cut in sections) {
         if (sections[cut]) sections[cut].hidden = cut !== bookCut;
     }
+    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
+    // (renderBookToday() его при надобности заведёт заново).
+    if (bookCut !== 'today') stopBookTodayDawnTimer();
 
     recomputeAchievementsClaimable();
 
@@ -1520,6 +1610,7 @@ function closeBook() {
     if (!bookOpen) return;
     closeObservatoryRenameField();
     dismissChapterCutBanner(true); // V-16: баннер не переживает закрытие книги
+    stopBookTodayDawnTimer(); // O-03: закрыли книгу — тик посекундно никому не нужен
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {

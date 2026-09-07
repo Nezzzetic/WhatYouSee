@@ -637,6 +637,17 @@
         };
     }
 
+    /** O-03: срез блока «конец ночи» на «Сегодня» — виден ли, сколько осталось, что написано. */
+    function todayDawnState() {
+        const el = document.getElementById('bookTodayDawn');
+        const clock = document.getElementById('bookTodayDawnClock');
+        return {
+            visible: !!(el && !el.hidden),
+            ms: typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : null,
+            text: clock ? clock.textContent : null
+        };
+    }
+
     // =========================================================================
     // ОБСЕРВАТОРИЯ (B-02)
     // =========================================================================
@@ -1047,6 +1058,7 @@
         press,
         pin,
         book,
+        todayDawn: todayDawnState,
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,

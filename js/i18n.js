@@ -294,6 +294,11 @@ en: {
     },
     'book.todayBookmarkPlain': 'Bookmarked: {name}.',
 
+    // O-03: блок появляется только на доигранной ночи — единственное место,
+    // где игра проговаривает конец ночи (небо само не говорит ничего).
+    'book.nightDone': 'The night is done',
+    'book.dawnIn': 'New sky in',
+
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Settings',
     'book.headSettings': 'Settings',
@@ -602,6 +607,10 @@ ru: {
         many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
     },
     'book.todayBookmarkPlain': 'Закладка: «{name}».',
+
+    // O-03: блок появляется только на доигранной ночи.
+    'book.nightDone': 'Ночь закончена',
+    'book.dawnIn': 'Небо обновится через',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Настройки',
