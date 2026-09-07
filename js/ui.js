@@ -1150,7 +1150,10 @@ function renderBookIndex() {
             : createBookIndexRow(
                 title,
                 getAtlasChapterFolio(i),
-                t('book.indexOpensAt', { n: getAtlasPageUnlockCost(i) }),
+                // V-17: та же кумулятивная сумма, что и на самой запертой
+                // странице атласа (atlas.pageLocked) — иначе оглавление и
+                // разворот показывают разные числа для одной главы.
+                t('book.indexOpensAt', { n: getAtlasCumulativeCost(i) }),
                 { locked: true }
             );
         row.addEventListener('click', () => {
