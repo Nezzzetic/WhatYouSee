@@ -961,6 +961,34 @@ button:disabled {
     color: var(--ink-faint);
 }
 
+/* O-03: конец ночи проговаривает только книга — единственное число на всём
+   развороте, отсюда потолок кегля выше баннера главы (24px) и титула
+   страницы (21px). `tabular-nums`, чтобы посекундный тик не дёргал ширину
+   строки. */
+
+.book-dawn {
+    flex: none;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: 6px;
+}
+
+.book-dawn-label {
+    font-family: var(--font-text);
+    font-size: 12.5px;
+    line-height: 1.4;
+    color: var(--ink-muted);
+}
+
+.book-dawn-clock {
+    font-family: var(--font-title);
+    font-size: 28px;
+    font-variant-numeric: tabular-nums;
+    color: var(--gold-light);
+    margin-top: 2px;
+}
+
 /* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
 
 .book-btn {
