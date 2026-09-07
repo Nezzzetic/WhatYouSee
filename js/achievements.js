@@ -1447,6 +1447,29 @@ function createAchievementTiles(chain, p) {
     return tiles;
 }
 
+/**
+ * U-24: заливка прогресса внутри текущего шага — «N из target» очков до
+ * следующей марки, а не «шаг K из 5» (то уже видно клетками ниже). Короткая
+ * полоска встаёт в конце строки описания, под счётом (два предыдущих места —
+ * отдельной строкой под описанием, затем в шапке рядом со счётом — заказчик
+ * поправил дважды по живому экрану до этой раскладки).
+ *
+ * Считается от того же чек-условия, что и `claimable` (`evaluateAchievementCheck`),
+ * поэтому в момент готовности ratio сам приходит к 1 без отдельной ветки —
+ * строка не дёргается, когда марка становится готова прижать (тот же принцип,
+ * что уже чинила K-23 для другого сигнала).
+ */
+function createAchievementProgressBar(prog) {
+    const bar = document.createElement('div');
+    bar.className = 'achv-row-bar';
+    const fill = document.createElement('div');
+    fill.className = 'achv-row-bar-fill';
+    const ratio = prog.target > 0 ? Math.max(0, Math.min(1, prog.current / prog.target)) : 0;
+    fill.style.width = (ratio * 100).toFixed(1) + '%';
+    bar.appendChild(fill);
+    return bar;
+}
+
 /** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
 function createAchievementLockedRow(reason) {
     const row = document.createElement('div');
@@ -1497,6 +1520,11 @@ function createAchievementRow(chain) {
         + (p.claimable ? ' achv-row-claimable' : '');
     row.dataset.chainId = chain.id;
 
+    // U-24: текущий шаг читается один раз — бар в шапке и описание ниже
+    // берут один и тот же stepEntry/prog, не пересчитывают их порознь.
+    const stepEntry = chain.steps[p.stepIndex];
+    const prog = stepEntry ? getAchievementStepProgress(stepEntry.check) : null;
+
     const head = document.createElement('div');
     head.className = 'achv-row-head';
 
@@ -1520,10 +1548,18 @@ function createAchievementRow(chain) {
     // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
     // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
     // steps) описания не показывает — печатать нечего.
+    //
+    // U-24: бар — в одной строке с описанием, под счётом (первая версия
+    // ставила его в шапку рядом со счётом — по следующему фидбеку заказчика
+    // перенесён сюда); только у цепочек с числовым прогрессом (суточный
+    // квест и одношаговые условия дают null).
     const desc = document.createElement('div');
     desc.className = 'achv-row-desc';
-    const stepEntry = chain.steps[p.stepIndex];
-    desc.textContent = stepEntry ? stepEntry.desc : '';
+    const descText = document.createElement('span');
+    descText.className = 'achv-row-desc-text';
+    descText.textContent = stepEntry ? stepEntry.desc : '';
+    desc.appendChild(descText);
+    if (prog) desc.appendChild(createAchievementProgressBar(prog));
     row.appendChild(desc);
 
     row.appendChild(createAchievementTiles(chain, p));
