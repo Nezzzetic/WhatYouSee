@@ -130,8 +130,6 @@ en: {
     'chain.kaleidoscope.title': 'Kaleidoscope',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
-    'chain.minimalism.title': 'Minimalism',
-    'chain.unite_all.title': 'All-in-One',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
     'chain.evening_rite.title': 'Evening Rite',
@@ -191,9 +189,6 @@ en: {
         other: '{n} constellations created in total'
     },
     'chain.constellations.desc': 'Constellations drawn, across all nights',
-    'chain.minimalism.step': 'Finish a night with a single constellation',
-    'chain.unite_all.step': 'Join every star on the field into one constellation',
-    'chain.unite_all.desc': 'All field stars in one constellation',
     'chain.razvedka.step': {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
@@ -449,8 +444,6 @@ ru: {
     'chain.kaleidoscope.title': 'Калейдоскоп',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
-    'chain.minimalism.title': 'Минимализм',
-    'chain.unite_all.title': 'Созвездие-всё',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
     'chain.evening_rite.title': 'Вечерний обряд',
@@ -519,9 +512,6 @@ ru: {
         many: '{n} созвездий создано всего'
     },
     'chain.constellations.desc': 'Созвездия за все ночи вместе',
-    'chain.minimalism.step': 'Заверши ночь одним созвездием',
-    'chain.unite_all.step': 'Объедини все звёзды поля в одно созвездие',
-    'chain.unite_all.desc': 'Все звёзды поля — одно созвездие',
     'chain.razvedka.step': {
         one: '{n} открытая фигура атласа',
         few: '{n} открытые фигуры атласа',
