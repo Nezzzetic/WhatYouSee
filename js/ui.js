@@ -983,14 +983,13 @@ function msUntilNextSkyDay() {
     return next.getTime() - now.getTime();
 }
 
-/** Чистая: ms → «ЧЧ:ММ:СС», округление вверх — экран не показывает 00:00:00, пока секунда не истекла целиком. */
+/** Чистая: ms → «ЧЧ:ММ» без секунд, округление вверх — экран не показывает 00:00, пока минута не истекла целиком. */
 function formatCountdown(ms) {
-    const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
-    const h = Math.floor(totalSeconds / 3600);
-    const m = Math.floor((totalSeconds % 3600) / 60);
-    const s = totalSeconds % 60;
+    const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
     const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+    return `${pad(h)}:${pad(m)}`;
 }
 
 let bookTodayDawnTimer = null;
@@ -1033,12 +1032,12 @@ function renderBookTodayDawn() {
     }
     updateBookTodayDawnText();
     if (!bookTodayDawnTimer) {
-        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, 1000);
+        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, BOOK_DAWN_TICK_MS);
     }
 }
 
-// Вкладка ушла в фон — тик посекундно не нужен, пока его не видно; страница
-// вернулась — досчитать заново тем же путём, что и обычный рендер книги.
+// Вкладка ушла в фон — тик не нужен, пока его не видно; страница вернулась —
+// досчитать заново тем же путём, что и обычный рендер книги.
 if (typeof document !== 'undefined' && document.addEventListener) {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {

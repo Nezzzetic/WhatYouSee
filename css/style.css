@@ -961,34 +961,35 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* O-03: конец ночи проговаривает только книга — единственное число на всём
-   развороте, отсюда потолок кегля выше баннера главы (24px) и титула
-   страницы (21px). `tabular-nums`, чтобы посекундный тик не дёргал ширину
-   строки. */
+/* O-03: конец ночи проговаривает только книга — одна строка, без секунд
+   (правка по живому фидбеку: было три строки, потом две — обе версии
+   читались как подпись под таймером, а не как одно высказывание).
+   `tabular-nums`, чтобы смена минуты не дёргала ширину строки. */
 
 .book-dawn {
     flex: none;
     display: flex;
-    flex-direction: column;
-    gap: 2px;
+    align-items: baseline;
+    flex-wrap: nowrap;
+    gap: 7px;
     margin-top: 6px;
 }
 
 .book-dawn-label {
     font-family: var(--font-title);
     font-weight: 500;
-    font-size: 15px;
-    line-height: 1.3;
+    font-size: 18px;
     color: var(--ink);
     white-space: nowrap;
 }
 
 .book-dawn-clock {
     font-family: var(--font-title);
-    font-size: 28px;
+    font-weight: 600;
+    font-size: 22px;
     font-variant-numeric: tabular-nums;
     color: var(--gold-light);
-    margin-top: 2px;
+    white-space: nowrap;
 }
 
 /* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
