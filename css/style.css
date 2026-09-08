@@ -961,16 +961,18 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* O-03: конец ночи проговаривает только книга — одна строка, без секунд
-   (правка по живому фидбеку: было три строки, потом две — обе версии
-   читались как подпись под таймером, а не как одно высказывание).
-   `tabular-nums`, чтобы смена минуты не дёргала ширину строки. */
+/* O-03: конец ночи проговаривает только книга — одна строка, часы словами
+   («New sky in 10 hours» / «меньше часа»), а не циферблат: правка по живому
+   фидбеку прошла три круга — было три строки, потом ЧЧ:ММ:СС в одну строку,
+   потом ЧЧ:ММ, и наконец слова вместо чисел. Текст переменной длины
+   («less than an hour» длиннее «10 hours») — строка переносится, а не
+   обрезается, поэтому `flex-wrap: wrap`, без `nowrap` на самой фразе. */
 
 .book-dawn {
     flex: none;
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
-    flex-wrap: nowrap;
     gap: 7px;
     margin-top: 6px;
 }
@@ -980,14 +982,12 @@ button:disabled {
     font-weight: 500;
     font-size: 18px;
     color: var(--ink);
-    white-space: nowrap;
 }
 
 .book-dawn-clock {
     font-family: var(--font-title);
     font-weight: 600;
     font-size: 22px;
-    font-variant-numeric: tabular-nums;
     color: var(--gold-light);
     white-space: nowrap;
 }
