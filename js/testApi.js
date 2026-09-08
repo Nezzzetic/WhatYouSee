@@ -492,6 +492,12 @@
             // к каким суткам они относятся, а не только claimable у цепочки.
             daily: Object.assign({}, (achievementCounters && achievementCounters.daily) || {}),
             undoFloor,
+            // M-10: словарь «набор рёбер → поэтичное имя» отменённых созвездий.
+            // Сценарию нужно утверждать саму память (в т.ч. что она пережила
+            // перезагрузку), а не только совпадение двух имён подряд.
+            undoneNames: typeof dumpUndoneNameMemory === 'function'
+                ? dumpUndoneNameMemory().map(([key, name]) => ({ key, name }))
+                : [],
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.

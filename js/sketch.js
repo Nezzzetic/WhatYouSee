@@ -473,6 +473,9 @@ function resetFieldSessionState() {
     fieldGoalRewardsClaimed = [false, false, false];
     floatingScores = [];
     if (typeof cancelUndoMark === 'function') cancelUndoMark(); // K-04: окна отмены у нового неба нет
+    // M-10: память имён отменённых созвездий привязана к id звёзд этого поля —
+    // после перегенерации её ключи ни на что не указывают.
+    if (typeof resetUndoneNameMemory === 'function') resetUndoneNameMemory();
     bestScore = 0;
     resetStarCountBonusState();
     resetRecordScoreBadge();
