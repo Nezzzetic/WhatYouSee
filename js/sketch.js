@@ -251,9 +251,47 @@ function updateExLibrisEmbedding() {
         container.style.top = '';
         container.style.width = '';
         container.style.height = '';
-        if (overlay) overlay.classList.remove('exlibris-frame-on');
+        // K-35: сдвиг, которым холст ехал за книгой, снимается вместе со
+        // встраиванием — иначе полноэкранный канвас остался бы уехавшим вниз.
+        container.style.transform = '';
+        container.style.transition = '';
+        if (overlay) {
+            overlay.classList.remove('exlibris-frame-on');
+            overlay.style.transform = '';
+            overlay.style.transition = '';
+        }
     }
     resizeGameCanvasToContainer();
+}
+
+// =============================================================================
+// K-35: ХОЛСТ ЕДЕТ ЗА КНИГОЙ
+// =============================================================================
+//
+// Встроенный холст и рамка гравюры — не дети `.book`, а собственные fixed-узлы
+// поверх неё (иначе локальный стек-контекст страницы прижал бы их под бумагу,
+// см. комментарий K-13 выше). Значит, transform книги их не двигает: жест
+// закрытия уводил лист вниз, а прямоугольник неба висел на месте до самого
+// конца хода. Лечится повтором: ui.js ставит встроенному виду тот же transform
+// и ту же доводку, что и книге (setBookTransform / setBookTransition).
+
+/** Узлы встроенного вида, которым есть смысл повторять ход книги. */
+function exLibrisFollowNodes() {
+    const nodes = [];
+    const container = document.getElementById('canvas-container');
+    const overlay = document.getElementById('exLibrisFrameOverlay');
+    // Полноэкранный холст двигать нечему и незачем — только встроенный.
+    if (container && container.classList.contains('canvas-embedded')) nodes.push(container);
+    if (overlay && overlay.classList.contains('exlibris-frame-on')) nodes.push(overlay);
+    return nodes;
+}
+
+function setExLibrisFollowTransform(transform) {
+    for (const node of exLibrisFollowNodes()) node.style.transform = transform;
+}
+
+function setExLibrisFollowTransition(transition) {
+    for (const node of exLibrisFollowNodes()) node.style.transition = transition;
 }
 
 function setup() {

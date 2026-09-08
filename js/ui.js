@@ -1624,7 +1624,7 @@ function closeBook() {
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {
-        book.style.transform = '';
+        setBookTransform(book, '');
         book.hidden = true;
     }
     if (document.body) document.body.classList.remove('book-open-body');
@@ -1802,6 +1802,22 @@ function bookTravelPx() {
 }
 
 /**
+ * K-35: книге ставят transform только через это. Встроенный холст экслибриса
+ * лежит поверх книги отдельным fixed-узлом (K-13) и за ней сам не поедет — ход
+ * книги повторяется на нём и на рамке гравюры. Вне экслибриса обе функции
+ * работают ровно как прежняя присвоенная строка.
+ */
+function setBookTransform(book, transform) {
+    if (book) book.style.transform = transform;
+    if (typeof setExLibrisFollowTransform === 'function') setExLibrisFollowTransform(transform);
+}
+
+function setBookTransition(book, transition) {
+    if (book) book.style.transition = transition;
+    if (typeof setExLibrisFollowTransition === 'function') setExLibrisFollowTransition(transition);
+}
+
+/**
  * K-26: довод жеста книги — от текущей позиции translateY плавно к цели
  * (или мгновенно при «уменьшить движение»), потом зовёт onSettled. Общая
  * точка для открытия и закрытия: раньше на отпускании transform сбрасывался
@@ -1811,8 +1827,8 @@ function settleBookTransform(book, targetPx, onSettled) {
     if (!book) { onSettled(); return; }
     const finalTransform = targetPx ? `translateY(${targetPx}px)` : '';
     if (prefersReducedMotion()) {
-        book.style.transition = '';
-        book.style.transform = finalTransform;
+        setBookTransition(book, '');
+        setBookTransform(book, finalTransform);
         onSettled();
         return;
     }
@@ -1822,19 +1838,19 @@ function settleBookTransform(book, targetPx, onSettled) {
         done = true;
         book.removeEventListener('transitionend', onEnd);
         clearTimeout(timer);
-        book.style.transition = '';
+        setBookTransition(book, '');
         onSettled();
     };
     const onEnd = (event) => { if (event.target === book && event.propertyName === 'transform') finish(); };
     book.addEventListener('transitionend', onEnd);
     const timer = setTimeout(finish, BOOK_SETTLE_MS + 120);
-    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
+    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
     // Форсированный рефлоу — браузер обязан зафиксировать стартовую (тянутую
     // пальцем) позицию до смены на целевую, иначе переход схлопнется в один
     // кадр без анимации. rAF для этого не годится — в фоновой/скрытой вкладке
     // кадров нет вовсе, и жест завис бы там намертво.
     void book.offsetHeight;
-    book.style.transform = finalTransform;
+    setBookTransform(book, finalTransform);
 }
 
 /**
@@ -1846,19 +1862,23 @@ function settleBookTransform(book, targetPx, onSettled) {
 function openBookAnimated(cut) {
     const book = document.getElementById('book');
     const canAnimate = !!book && !prefersReducedMotion();
-    if (canAnimate) {
-        book.style.transition = 'none';
-        book.style.transform = `translateY(${bookTravelPx()}px)`;
-    }
+    // K-35: открываем ДО подстановки стартовой позиции — раньше было наоборот.
+    // Внутри openBook() холст экслибриса встраивается по замеру прямоугольника
+    // страницы, и замер обязан пройти по книге в покое: с уже подставленным
+    // сдвигом слот мерялся уехавшим вниз на целый экран, и небо оставалось за
+    // нижним краем до ближайшего ресайза. Кадра между открытием и сдвигом не
+    // будет — обе строки в одном тике, до первой отрисовки.
     openBook(cut);
     if (!canAnimate) return;
+    setBookTransition(book, 'none');
+    setBookTransform(book, `translateY(${bookTravelPx()}px)`);
     void book.offsetHeight; // рефлоу теперь, когда книга уже видима — фиксирует старт
-    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
-    book.style.transform = '';
+    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
+    setBookTransform(book, '');
     const onEnd = (event) => {
         if (event.target !== book || event.propertyName !== 'transform') return;
         book.removeEventListener('transitionend', onEnd);
-        book.style.transition = '';
+        setBookTransition(book, '');
     };
     book.addEventListener('transitionend', onEnd);
 }
@@ -1930,7 +1950,7 @@ function setupBookCloseGesture() {
         }
         if (!closing) return;
         if (event.cancelable) event.preventDefault();
-        book.style.transform = `translateY(${Math.max(0, dy)}px)`;
+        setBookTransform(book, `translateY(${Math.max(0, dy)}px)`);
     };
 
     const onEnd = (event) => {
@@ -1954,7 +1974,7 @@ function setupBookCloseGesture() {
             // ниже порога — страница падает обратно тем же доводом
             settleBookTransform(book, 0, () => {});
         } else {
-            book.style.transform = '';
+            setBookTransform(book, '');
         }
         closing = false;
         axis = null;
@@ -1992,13 +2012,13 @@ function setupRibbonPullGesture(ribbon) {
         if (!book) return;
         dragging = true;
         pulled = true; // жест пошёл — тап после него не должен сработать отдельно
-        book.style.transition = '';
+        setBookTransition(book, '');
         book.hidden = false;
         // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
         // уже атласом, а не подменяется им по приезде.
         applyFirstBookOpenCut();
         renderBook();
-        book.style.transform = `translateY(${bookTravelPx()}px)`;
+        setBookTransform(book, `translateY(${bookTravelPx()}px)`);
     };
 
     const start = (event) => {
@@ -2030,7 +2050,7 @@ function setupRibbonPullGesture(ribbon) {
 
         if (!dragging) return;
         if (event.cancelable) event.preventDefault();
-        book.style.transform = `translateY(${Math.max(0, bookTravelPx() - dy)}px)`;
+        setBookTransform(book, `translateY(${Math.max(0, bookTravelPx() - dy)}px)`);
     };
 
     const end = (event) => {
