@@ -96,8 +96,15 @@ function hashStringToSeed(str) {
     return Math.abs(h);
 }
 
+// M-09: сутки неба начинаются в SKY_DAY_START_HOUR (5 утра) по местному времени,
+// а не в полночь: до этого часа идёт ночь предыдущего дня. Считается по стенным
+// часам (`getHours()` + `setDate(-1)`), а не вычитанием пяти часов от эпохи, —
+// вычитание в день перевода стрелок промахивается на час и в окне у границы
+// возвращает не те сутки; календарная арифметика этого не умеет.
 function getLocalCalendarSkyDateInt() {
     const d = new Date();
+    const startHour = typeof SKY_DAY_START_HOUR === 'number' ? SKY_DAY_START_HOUR : 0;
+    if (d.getHours() < startHour) d.setDate(d.getDate() - 1);
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
 }
 

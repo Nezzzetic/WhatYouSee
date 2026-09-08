@@ -982,10 +982,12 @@ function renderBookTodayState() {
 // стоит на «Сегодня» сразу после ежедневки и виден только на доигранной ночи —
 // F5 на уже завершённом небе его не прячет (это состояние, а не сцена V-13).
 
-/** Чистая: ms до ближайшей местной полуночи. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, `new Date(y, m, d+1)` сама переживает переход на летнее время. */
+/** Чистая: ms до ближайшего начала суток неба — M-09, местные 05:00 (`SKY_DAY_START_HOUR`), а не полночь. До этого часа цель сегодняшняя, после — завтрашняя, ровно как у `getLocalCalendarSkyDateInt()`. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, локальный конструктор `new Date(y, m, d, h)` сам переживает переход на летнее время. */
 function msUntilNextSkyDay() {
     const now = new Date();
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    const startHour = typeof SKY_DAY_START_HOUR === 'number' ? SKY_DAY_START_HOUR : 0;
+    const dayShift = now.getHours() < startHour ? 0 : 1;
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayShift, startHour);
     return next.getTime() - now.getTime();
 }
 
