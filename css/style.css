@@ -1373,6 +1373,26 @@ button:disabled {
     box-shadow: 0 12px 26px -16px rgba(var(--night-rgb), 0.9);
 }
 
+/* K-36: подложка-стоп-кадр поля. Лежит между небом и книгой: выше всех предметов
+   неба (лента — 40), ниже полноэкранной `.book` (1200), поэтому видна ровно в
+   той полосе, которую открывает уезжающая страница. Пиксели кладёт
+   captureFieldBackdrop() (sketch.js) — backing-store у неё тот же, что у канваса,
+   иначе кадр мылился бы на HiDPI. */
+#skyBackdrop {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1100;
+    display: none;
+    background: var(--night);
+    pointer-events: none;
+}
+
+#skyBackdrop.sky-backdrop-on {
+    display: block;
+}
+
 /* Двойная рамка гравюры — тот же приём, что у концепта (Табл. VII):
    внешняя линия по краю, внутренняя с отступом 5px. pointer-events: none —
    рамка ничего не ловит, жесты идут прямо в канвас под ней. */
