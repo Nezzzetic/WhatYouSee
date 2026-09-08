@@ -991,13 +991,21 @@ function msUntilNextSkyDay() {
     return next.getTime() - now.getTime();
 }
 
-/** Чистая: ms → «ЧЧ:ММ» без секунд, округление вверх — экран не показывает 00:00, пока минута не истекла целиком. */
-function formatCountdown(ms) {
-    const totalMinutes = Math.max(0, Math.ceil(ms / 60000));
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(h)}:${pad(m)}`;
+/**
+ * Чистая: ms → целые часы до границы, округление ВНИЗ — не обещать больше
+ * времени, чем реально осталось (1ч59м не станет «2 часа»). `lessThanHour`
+ * отдельным флагом, а не проверкой `hours === 0`, чтобы вызывающий код читался
+ * как решение о тексте, а не как арифметика.
+ */
+function computeDawnHours(ms) {
+    const hours = Math.max(0, Math.floor(ms / 3600000));
+    return { hours, lessThanHour: hours < 1 };
+}
+
+/** ms → локализованная фраза «N hours» / «1 hour» / «less than an hour» (правка по живому фидбеку — было ЧЧ:ММ). */
+function formatDawnDuration(ms) {
+    const { hours, lessThanHour } = computeDawnHours(ms);
+    return lessThanHour ? t('book.dawnLessHour') : tp('book.dawnHours', hours, { n: hours });
 }
 
 let bookTodayDawnTimer = null;
@@ -1019,7 +1027,7 @@ function updateBookTodayDawnText() {
         if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
         return;
     }
-    clockEl.textContent = formatCountdown(ms);
+    clockEl.textContent = formatDawnDuration(ms);
 }
 
 /**
