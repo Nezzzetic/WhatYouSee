@@ -17,12 +17,20 @@
 // «ни один шаг не запирает игру насмерть».
 //
 // ЧТО ЛЕЖИТ В СЕЙВЕ: один бит `achievementCounters.tutorial.done`. Шаг
-// соединения не хранится вовсе — он выводится из `constellations.length`, и
-// поэтому откат единственного созвездия корректно возвращает игрока на шаг 1.
+// соединения не хранится вовсе — он выводится из `constellations.length`.
 //
 // ⚠ Открывающий кадр НЕ зашит в centerCamera(): её же зовёт
 // updateLevelFinaleCamera() (camera.js) как цель отъезда финала V-13 — камера
 // финала уехала бы в тот же close-up, и раскрытие кота было бы потеряно.
+//
+// O-04 (правка постановки после первого показа): на шаге 1 играбельна только
+// пара тутора — остальные звёзды гашены (camera.js, тем же видом, что suppressed)
+// и не берутся ни пальцем (field.js getStarAt), ни ребром (drawing.js
+// canAddConstellationEdge — тот же путь у __test.connect()). И первое созвездие
+// тутора необратимо: undoFloor поднимается сразу на его коммите, поэтому окно
+// отмены (K-04) для него не встаёт, а откат созвездия на шаг 1 (прежнее
+// поведение O-01) больше не работает — это единственный коммит игры, который
+// нельзя откатить кнопкой.
 
 const TUTOR_STEP_NONE = 0;
 const TUTOR_STEP_CONNECT = 1;
@@ -152,6 +160,19 @@ function isTutorialCameraLocked() {
 /** Оба шага: ленты (входа в книгу) на небе нет. */
 function isTutorialBookLocked() {
     return isTutorialActive();
+}
+
+/**
+ * O-04: на шаге «соединение» играбельна только пара тутора — остальные звёзды
+ * не берутся ни касанием (getStarAt, field.js), ни ребром (canAddConstellationEdge,
+ * drawing.js), ни харнессом (оба пути ведут в canAddConstellationEdge). На шаге
+ * «отзум» ограничения уже нет: игра открыта, звезда просто отдельно взятая.
+ */
+function isTutorialAllowedStar(starId) {
+    if (getTutorialStep() !== TUTOR_STEP_CONNECT) return true;
+    const pair = getTutorialPair();
+    if (!pair) return true; // аварийный случай — не запираем игру своей же блокировкой
+    return starId === pair[0].id || starId === pair[1].id;
 }
 
 function finishTutorial() {
