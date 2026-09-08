@@ -104,6 +104,9 @@ function setAppMode(mode) {
         // в свою интерполяцию. Доигранная сцена кладёт в слот честный обзор поля.
         if (typeof finishLevelFinaleNow === 'function') finishLevelFinaleNow();
         fieldCameraSlot = captureCameraSlot();
+        // K-36: пиксели поля — последним отрисованным кадром, пока канвас ещё
+        // полноэкранный и живёт полем. Ниже по коду он ужмётся в страницу.
+        captureFieldBackdrop();
     } else {
         observatoryCameraSlot = captureCameraSlot();
         // U-18: тот же кадр, но нормированный, уходит в сейв холста — чтобы
@@ -212,6 +215,45 @@ function resizeGameCanvasToContainer() {
 // координаты мыши) продолжает работать без единой правки — она и так считает
 // от фактического размера канваса, а не от размера окна.
 
+// K-36: пока страница едет за пальцем, из-под неё видно то, что лежит позади
+// книги, — а живой холст в этот момент вклеен в саму страницу и уезжает вместе
+// с ней. Рисовать позади нечем: канвас в игре один. Кладём туда стоп-кадр поля,
+// снятый ровно в момент встраивания: это то самое небо, на которое игрок
+// вернётся, поэтому подмена на живой канвас в конце хода незаметна.
+//
+// Принятая цена: кадр статичен — мерцание звёзд (K-03) на нём стоит. Видно
+// только если задержать палец на полпути.
+
+let fieldBackdropReady = false;
+
+/** Копия пикселей поля в подложку. Зовётся при уходе из режима поля. */
+function captureFieldBackdrop() {
+    const backdrop = document.getElementById('skyBackdrop');
+    const source = document.querySelector('#canvas-container canvas');
+    if (!backdrop || !source || !source.width || !source.height) return;
+    const ctx = backdrop.getContext('2d');
+    if (!ctx) return;
+    // Тот же backing-store, что у канваса (на телефоне это ×3 по плотности),
+    // а CSS растягивает подложку на экран — ровно как сам канвас.
+    if (backdrop.width !== source.width || backdrop.height !== source.height) {
+        backdrop.width = source.width;
+        backdrop.height = source.height;
+    }
+    ctx.clearRect(0, 0, backdrop.width, backdrop.height);
+    ctx.drawImage(source, 0, 0);
+    fieldBackdropReady = true;
+}
+
+/** Кадр больше не нужен — буфер размером с экран не должен висеть просто так. */
+function releaseFieldBackdrop() {
+    const backdrop = document.getElementById('skyBackdrop');
+    if (!backdrop) return;
+    backdrop.classList.remove('sky-backdrop-on');
+    backdrop.width = 1;
+    backdrop.height = 1;
+    fieldBackdropReady = false;
+}
+
 /** Встроенный вид активен, когда страница «Ex Libris» открыта и небо — второе. */
 function isExLibrisEmbedActive() {
     return typeof bookOpen !== 'undefined' && bookOpen && bookCut === 'exlibris'
@@ -230,9 +272,12 @@ function updateExLibrisEmbedding() {
     const slot = document.getElementById('exLibrisCanvasSlot');
     if (!container) return;
 
+    const backdrop = document.getElementById('skyBackdrop');
     const embed = isExLibrisEmbedActive() && slot && slot.offsetParent !== null;
     if (embed) {
         const rect = slot.getBoundingClientRect();
+        // K-36: под книгу — стоп-кадр поля; без снятого кадра подложка не нужна.
+        if (backdrop) backdrop.classList.toggle('sky-backdrop-on', fieldBackdropReady);
         container.classList.add('canvas-embedded');
         container.style.left = Math.round(rect.left) + 'px';
         container.style.top = Math.round(rect.top) + 'px';
@@ -246,6 +291,8 @@ function updateExLibrisEmbedding() {
             overlay.style.height = container.style.height;
         }
     } else {
+        // K-36: холст вернулся на весь экран — кадр отыграл своё.
+        releaseFieldBackdrop();
         container.classList.remove('canvas-embedded');
         container.style.left = '';
         container.style.top = '';
