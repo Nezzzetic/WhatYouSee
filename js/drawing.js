@@ -57,6 +57,92 @@ function noteDraftCountLabelChange(key, n) {
 
 let undoFloor = 0; // min constellations count below which undo is blocked
 
+/**
+ * M-10: память имён отменённых созвездий на текущую ночь.
+ * Ключ — набор рёбер (см. `constellationEdgeKey`), значение — ID поэтичного
+ * имени из пула (`fb12`). Собрал те же звёзды теми же линиями после отката —
+ * получил то же имя, в каком бы порядке ни рисовал.
+ *
+ * Живёт ночь: сбрасывается в `resetFieldSessionState()` вместе с полем и едет
+ * в сейве (`save.js`), который сам протухает по `skyDate`. В отличие от
+ * `commitWave`/`undoMark` персист здесь нужен — F5 посреди ночи обычное дело,
+ * и без него откат + перезагрузка снова превращали бы имя в лотерею.
+ */
+let undoneNameMemory = new Map();
+
+function resetUndoneNameMemory() {
+    undoneNameMemory = new Map();
+}
+
+/**
+ * Канонический ключ набора рёбер: каждое ребро — `min-max` (направление
+ * рисования не важно), рёбра отсортированы (порядок рисования не важен).
+ * Ключом взят именно набор рёбер, а не набор звёзд: те же звёзды, соединённые
+ * иначе, — другая фигура, и имя у неё своё.
+ */
+function constellationEdgeKey(lines) {
+    if (!Array.isArray(lines) || lines.length === 0) return '';
+    const parts = [];
+    for (const seg of lines) {
+        if (!seg) continue;
+        const a = Number(seg.startId);
+        const b = Number(seg.endId);
+        if (!Number.isFinite(a) || !Number.isFinite(b)) return '';
+        parts.push(Math.min(a, b) + '-' + Math.max(a, b));
+    }
+    if (parts.length === 0) return '';
+    parts.sort();
+    return parts.join('|');
+}
+
+/**
+ * Запомнить имя отменённого созвездия. Только поэтичные имена пула: у фигуры
+ * каталога имя — это её ID, оно вернётся после отката само, а подменять его
+ * запомненным нельзя (за ночь могла открыться страница атласа, и та же связка
+ * теперь законно называется иначе).
+ */
+function rememberUndoneConstellationName(constellation) {
+    if (!constellation || !isFallbackNameId(constellation.name)) return;
+    const key = constellationEdgeKey(constellation.lines);
+    if (!key) return;
+    // Перевставка держит запись свежей в порядке вытеснения.
+    undoneNameMemory.delete(key);
+    undoneNameMemory.set(key, constellation.name);
+    while (undoneNameMemory.size > UNDONE_NAME_MEMORY_MAX) {
+        undoneNameMemory.delete(undoneNameMemory.keys().next().value);
+    }
+}
+
+/**
+ * Имя для нераспознанного созвездия: запомненное за этим набором рёбер, если
+ * оно свободно, иначе обычная лотерея пула. Занятое имя не переиспользуется —
+ * между откатом и повтором мог случиться коммит, которому пул выдал именно его,
+ * а два одинаковых имени на одном небе игрок видит, в отличие от лотереи.
+ */
+function pickConstellationFallbackName(lines) {
+    const used = constellations.map(c => c.name);
+    const remembered = undoneNameMemory.get(constellationEdgeKey(lines));
+    if (remembered && !used.includes(remembered)) return remembered;
+    return pickFallbackName(used);
+}
+
+/** Для сейва: `[[key, name], …]`. JSON `Map` не умеет. */
+function dumpUndoneNameMemory() {
+    return [...undoneNameMemory];
+}
+
+function restoreUndoneNameMemory(pairs) {
+    undoneNameMemory = new Map();
+    if (!Array.isArray(pairs)) return;
+    for (const pair of pairs) {
+        if (!Array.isArray(pair) || pair.length !== 2) continue;
+        const [key, name] = pair;
+        if (typeof key !== 'string' || key.length === 0) continue;
+        if (!isFallbackNameId(name)) continue;
+        undoneNameMemory.set(key, name);
+    }
+}
+
 function getDraftChainColorRgb() {
     if (!Array.isArray(visitedStars) || visitedStars.length === 0) {
         return LINE_COLOR.slice();
@@ -1412,8 +1498,11 @@ function commitConstellationFromPayload(payload) {
     const labelAnchor = computeConstellationLabelAnchor(lines, starIds, finalShape);
     const isAtlasCollect = canCollectAtlasShapeOnField(finalShape);
     const { isSpecial: isFirstStarCountOnField } = registerStarCountOnCommit(starCount);
+    // M-10: у поэтичного имени есть память на ночь — тот же набор рёбер после
+    // отката получает то же имя. У фигуры каталога имя детерминировано и памяти
+    // не требует.
     const displayName = finalShape === SHAPE_UNRECOGNIZED
-        ? pickFallbackName(constellations.map(c => c.name))
+        ? pickConstellationFallbackName(lines)
         : finalShape;
     const constellation = {
         lines,
@@ -1511,6 +1600,10 @@ function raiseUndoFloor() {
 function undoLastConstellation() {
     if (constellations.length <= undoFloor) return;
     const last = constellations.pop();
+
+    // M-10: имя остаётся за набором рёбер до конца ночи — собранная заново
+    // та же связка звёзд назовётся так же.
+    rememberUndoneConstellationName(last);
 
     // V-12: иначе волна продолжила бы бежать по созвездию, которого уже нет.
     cancelCommitWave();

@@ -32,7 +32,13 @@ function saveGame() {
             bestScore,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
-            dailyTargetShapes: getDailyTargetShapes()
+            dailyTargetShapes: getDailyTargetShapes(),
+            // M-10: память имён отменённых созвездий. Поле необязательное —
+            // версия сейва из-за него не поднимается: сохранение без него
+            // читается как ночь, в которой ещё ничего не отменяли.
+            undoneConstellationNames: typeof dumpUndoneNameMemory === 'function'
+                ? dumpUndoneNameMemory()
+                : []
             // M-05: `levelCompletePointsAwarded` убран вместе с выплатой за ночь.
             // «Ночь уже оплачена» теперь живёт в блоке суток достижений и привязано
             // к дате, а не к сессии поля: дев-сброс неба больше не позволяет
@@ -96,6 +102,13 @@ function loadGame() {
             : [false, false, false];
         bestScore = Math.max(state.bestScore || 0, getFieldScore());
         resetRecordScoreBadge();
+
+        // M-10: память имён отменённых созвездий переживает F5 — сейв тех же
+        // суток, значит и поле, и id звёзд те же, и ключи всё ещё указывают
+        // на настоящие связки.
+        if (typeof restoreUndoneNameMemory === 'function') {
+            restoreUndoneNameMemory(state.undoneConstellationNames);
+        }
 
         rebuildStarCountStateFromConstellations();
 
