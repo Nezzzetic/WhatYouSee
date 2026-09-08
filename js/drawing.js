@@ -877,6 +877,10 @@ function canAddConstellationEdge(startId, endId, draftLines) {
     const start = getStarById(startId);
     const end = getStarById(endId);
     if (!start || !end) return false;
+    // O-04: шаг 1 тутора — ребро мимо его пары нельзя провести и в обход
+    // пиксельного хит-теста (__test.connect() идёт этим же путём).
+    if (typeof isTutorialAllowedStar === 'function'
+        && (!isTutorialAllowedStar(startId) || !isTutorialAllowedStar(endId))) return false;
     if (!isEdgeLengthValid(start, end)) return false;
     if (wouldEdgeCrossExisting(startId, endId, draftLines)) return false;
     return true;
@@ -1463,6 +1467,15 @@ function commitConstellationFromPayload(payload) {
     // Сам шаг выводится из constellations.length — здесь только досылаем это
     // в строку на небе, чтобы текст сменился в тот же момент, что и состояние.
     if (typeof updateTutorialUI === 'function') updateTutorialUI();
+
+    // O-04: у самого первого созвездия игры (тьюторное соединение) окна отмены
+    // нет вовсе — тем же приёмом, что мгновенный клейм шага 1 цепочки (S-01,
+    // achievements.js:1209). undoFloor поднят раньше, чем getLiveUndoMark()
+    // успеет отрисовать пометку живым тиком, поэтому она не мелькает и гаснет.
+    if (typeof isTutorialNight === 'function' && isTutorialNight() && constellations.length === 1
+        && typeof raiseUndoFloor === 'function') {
+        raiseUndoFloor();
+    }
 
     autoSave();
 

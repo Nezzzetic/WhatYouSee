@@ -625,6 +625,8 @@ function getStarAt(fieldX, fieldY, options) {
     let bestD = CLICK_RADIUS;
     for (let star of fieldStars) {
         if (!star || star.locked || star.suppressed || star.extinguished) continue;
+        // O-04: шаг 1 тутора — вне пары звёзд нет вовсе, палец их не находит.
+        if (typeof isTutorialAllowedStar === 'function' && !isTutorialAllowedStar(star.id)) continue;
         if (anchorStar && horizontalWrapDist(anchorStar.x, anchorStar.y, star.x, star.y) > maxEdge + 1e-6) {
             continue;
         }
