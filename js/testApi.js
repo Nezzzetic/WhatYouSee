@@ -108,6 +108,10 @@
             suppressed: !!star.suppressed,
             extinguished: !!star.extinguished,
             free: !star.locked && !star.suppressed && !star.extinguished,
+            // O-04: шаг 1 тутора гасит всё, кроме своей пары — визуально
+            // (camera.js рисует её как suppressed) и по хиту (field.js/drawing.js).
+            // Данных звезды это не трогает, поэтому отдельный флаг, не suppressed.
+            dimmed: typeof isTutorialAllowedStar === 'function' ? !isTutorialAllowedStar(star.id) : false,
             // K-03: дышит ли звезда прямо сейчас (крупный узел, свободна и не в фигуре)
             twinkles: typeof isTwinklingStar === 'function' ? isTwinklingStar(star) : false,
             twinklePeriodMs: typeof star.twinklePeriodMs === 'number' ? star.twinklePeriodMs : 0
@@ -488,6 +492,12 @@
             // к каким суткам они относятся, а не только claimable у цепочки.
             daily: Object.assign({}, (achievementCounters && achievementCounters.daily) || {}),
             undoFloor,
+            // M-10: словарь «набор рёбер → поэтичное имя» отменённых созвездий.
+            // Сценарию нужно утверждать саму память (в т.ч. что она пережила
+            // перезагрузку), а не только совпадение двух имён подряд.
+            undoneNames: typeof dumpUndoneNameMemory === 'function'
+                ? dumpUndoneNameMemory().map(([key, name]) => ({ key, name }))
+                : [],
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.
@@ -634,6 +644,17 @@
                 const c = document.getElementById('canvas-container');
                 return !!(c && c.classList.contains('canvas-embedded'));
             })()
+        };
+    }
+
+    /** O-03: срез блока «конец ночи» на «Сегодня» — виден ли, сколько осталось, что написано. */
+    function todayDawnState() {
+        const el = document.getElementById('bookTodayDawn');
+        const clock = document.getElementById('bookTodayDawnClock');
+        return {
+            visible: !!(el && !el.hidden),
+            ms: typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : null,
+            text: clock ? clock.textContent : null
         };
     }
 
@@ -1047,6 +1068,7 @@
         press,
         pin,
         book,
+        todayDawn: todayDawnState,
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,

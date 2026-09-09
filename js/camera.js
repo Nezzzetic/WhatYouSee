@@ -1225,7 +1225,10 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
         );
 
         const sizeFactor = typeof star.sizeFactor === 'number' ? star.sizeFactor : 1;
-        const isSuppressed = !!star.suppressed && !star.locked;
+        // O-04: шаг 1 тутора рисует всё, что не пара тутора, ровно как suppressed —
+        // тот же приглушённый цвет и масштаб, никакой новой визуальной формы.
+        const isTutorialDimmed = typeof isTutorialAllowedStar === 'function' && !isTutorialAllowedStar(star.id);
+        const isSuppressed = (!!star.suppressed || isTutorialDimmed) && !star.locked;
         const isExtinguished = !!star.extinguished && !star.locked;
         let starDrawSize = baseStarDrawSize * sizeFactor;
         if (isExtinguished) {

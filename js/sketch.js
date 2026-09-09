@@ -104,6 +104,9 @@ function setAppMode(mode) {
         // в свою интерполяцию. Доигранная сцена кладёт в слот честный обзор поля.
         if (typeof finishLevelFinaleNow === 'function') finishLevelFinaleNow();
         fieldCameraSlot = captureCameraSlot();
+        // K-36: пиксели поля — последним отрисованным кадром, пока канвас ещё
+        // полноэкранный и живёт полем. Ниже по коду он ужмётся в страницу.
+        captureFieldBackdrop();
     } else {
         observatoryCameraSlot = captureCameraSlot();
         // U-18: тот же кадр, но нормированный, уходит в сейв холста — чтобы
@@ -212,6 +215,45 @@ function resizeGameCanvasToContainer() {
 // координаты мыши) продолжает работать без единой правки — она и так считает
 // от фактического размера канваса, а не от размера окна.
 
+// K-36: пока страница едет за пальцем, из-под неё видно то, что лежит позади
+// книги, — а живой холст в этот момент вклеен в саму страницу и уезжает вместе
+// с ней. Рисовать позади нечем: канвас в игре один. Кладём туда стоп-кадр поля,
+// снятый ровно в момент встраивания: это то самое небо, на которое игрок
+// вернётся, поэтому подмена на живой канвас в конце хода незаметна.
+//
+// Принятая цена: кадр статичен — мерцание звёзд (K-03) на нём стоит. Видно
+// только если задержать палец на полпути.
+
+let fieldBackdropReady = false;
+
+/** Копия пикселей поля в подложку. Зовётся при уходе из режима поля. */
+function captureFieldBackdrop() {
+    const backdrop = document.getElementById('skyBackdrop');
+    const source = document.querySelector('#canvas-container canvas');
+    if (!backdrop || !source || !source.width || !source.height) return;
+    const ctx = backdrop.getContext('2d');
+    if (!ctx) return;
+    // Тот же backing-store, что у канваса (на телефоне это ×3 по плотности),
+    // а CSS растягивает подложку на экран — ровно как сам канвас.
+    if (backdrop.width !== source.width || backdrop.height !== source.height) {
+        backdrop.width = source.width;
+        backdrop.height = source.height;
+    }
+    ctx.clearRect(0, 0, backdrop.width, backdrop.height);
+    ctx.drawImage(source, 0, 0);
+    fieldBackdropReady = true;
+}
+
+/** Кадр больше не нужен — буфер размером с экран не должен висеть просто так. */
+function releaseFieldBackdrop() {
+    const backdrop = document.getElementById('skyBackdrop');
+    if (!backdrop) return;
+    backdrop.classList.remove('sky-backdrop-on');
+    backdrop.width = 1;
+    backdrop.height = 1;
+    fieldBackdropReady = false;
+}
+
 /** Встроенный вид активен, когда страница «Ex Libris» открыта и небо — второе. */
 function isExLibrisEmbedActive() {
     return typeof bookOpen !== 'undefined' && bookOpen && bookCut === 'exlibris'
@@ -230,9 +272,12 @@ function updateExLibrisEmbedding() {
     const slot = document.getElementById('exLibrisCanvasSlot');
     if (!container) return;
 
+    const backdrop = document.getElementById('skyBackdrop');
     const embed = isExLibrisEmbedActive() && slot && slot.offsetParent !== null;
     if (embed) {
         const rect = slot.getBoundingClientRect();
+        // K-36: под книгу — стоп-кадр поля; без снятого кадра подложка не нужна.
+        if (backdrop) backdrop.classList.toggle('sky-backdrop-on', fieldBackdropReady);
         container.classList.add('canvas-embedded');
         container.style.left = Math.round(rect.left) + 'px';
         container.style.top = Math.round(rect.top) + 'px';
@@ -246,14 +291,54 @@ function updateExLibrisEmbedding() {
             overlay.style.height = container.style.height;
         }
     } else {
+        // K-36: холст вернулся на весь экран — кадр отыграл своё.
+        releaseFieldBackdrop();
         container.classList.remove('canvas-embedded');
         container.style.left = '';
         container.style.top = '';
         container.style.width = '';
         container.style.height = '';
-        if (overlay) overlay.classList.remove('exlibris-frame-on');
+        // K-35: сдвиг, которым холст ехал за книгой, снимается вместе со
+        // встраиванием — иначе полноэкранный канвас остался бы уехавшим вниз.
+        container.style.transform = '';
+        container.style.transition = '';
+        if (overlay) {
+            overlay.classList.remove('exlibris-frame-on');
+            overlay.style.transform = '';
+            overlay.style.transition = '';
+        }
     }
     resizeGameCanvasToContainer();
+}
+
+// =============================================================================
+// K-35: ХОЛСТ ЕДЕТ ЗА КНИГОЙ
+// =============================================================================
+//
+// Встроенный холст и рамка гравюры — не дети `.book`, а собственные fixed-узлы
+// поверх неё (иначе локальный стек-контекст страницы прижал бы их под бумагу,
+// см. комментарий K-13 выше). Значит, transform книги их не двигает: жест
+// закрытия уводил лист вниз, а прямоугольник неба висел на месте до самого
+// конца хода. Лечится повтором: ui.js ставит встроенному виду тот же transform
+// и ту же доводку, что и книге (setBookTransform / setBookTransition).
+
+/** Узлы встроенного вида, которым есть смысл повторять ход книги. */
+function exLibrisFollowNodes() {
+    const nodes = [];
+    const container = document.getElementById('canvas-container');
+    const overlay = document.getElementById('exLibrisFrameOverlay');
+    // Полноэкранный холст двигать нечему и незачем — только встроенный.
+    if (container && container.classList.contains('canvas-embedded')) nodes.push(container);
+    if (overlay && overlay.classList.contains('exlibris-frame-on')) nodes.push(overlay);
+    return nodes;
+}
+
+function setExLibrisFollowTransform(transform) {
+    for (const node of exLibrisFollowNodes()) node.style.transform = transform;
+}
+
+function setExLibrisFollowTransition(transition) {
+    for (const node of exLibrisFollowNodes()) node.style.transition = transition;
 }
 
 function setup() {
@@ -473,6 +558,9 @@ function resetFieldSessionState() {
     fieldGoalRewardsClaimed = [false, false, false];
     floatingScores = [];
     if (typeof cancelUndoMark === 'function') cancelUndoMark(); // K-04: окна отмены у нового неба нет
+    // M-10: память имён отменённых созвездий привязана к id звёзд этого поля —
+    // после перегенерации её ключи ни на что не указывают.
+    if (typeof resetUndoneNameMemory === 'function') resetUndoneNameMemory();
     bestScore = 0;
     resetStarCountBonusState();
     resetRecordScoreBadge();

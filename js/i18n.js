@@ -130,8 +130,6 @@ en: {
     'chain.kaleidoscope.title': 'Kaleidoscope',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
-    'chain.minimalism.title': 'Minimalism',
-    'chain.unite_all.title': 'All-in-One',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
     'chain.evening_rite.title': 'Evening Rite',
@@ -191,9 +189,6 @@ en: {
         other: '{n} constellations created in total'
     },
     'chain.constellations.desc': 'Constellations drawn, across all nights',
-    'chain.minimalism.step': 'Finish a night with a single constellation',
-    'chain.unite_all.step': 'Join every star on the field into one constellation',
-    'chain.unite_all.desc': 'All field stars in one constellation',
     'chain.razvedka.step': {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
@@ -293,6 +288,18 @@ en: {
         other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
     },
     'book.todayBookmarkPlain': 'Bookmarked: {name}.',
+
+    // O-03: блок появляется только на доигранной ночи — единственное место,
+    // где игра проговаривает конец ночи (небо само не говорит ничего). Одна
+    // строка — «ночь закончена» снято отдельной правкой заказчика, осталось
+    // только само ожидание нового неба. Часы словами, а не циферблатом
+    // (ещё одна правка по живому фидбеку): круглое число или «меньше часа».
+    'book.dawnIn': 'New sky in',
+    'book.dawnHours': {
+        one: '{n} hour',
+        other: '{n} hours'
+    },
+    'book.dawnLessHour': 'less than an hour',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Settings',
@@ -443,8 +450,6 @@ ru: {
     'chain.kaleidoscope.title': 'Калейдоскоп',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
-    'chain.minimalism.title': 'Минимализм',
-    'chain.unite_all.title': 'Созвездие-всё',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
     'chain.evening_rite.title': 'Вечерний обряд',
@@ -513,9 +518,6 @@ ru: {
         many: '{n} созвездий создано всего'
     },
     'chain.constellations.desc': 'Созвездия за все ночи вместе',
-    'chain.minimalism.step': 'Заверши ночь одним созвездием',
-    'chain.unite_all.step': 'Объедини все звёзды поля в одно созвездие',
-    'chain.unite_all.desc': 'Все звёзды поля — одно созвездие',
     'chain.razvedka.step': {
         one: '{n} открытая фигура атласа',
         few: '{n} открытые фигуры атласа',
@@ -602,6 +604,16 @@ ru: {
         many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
     },
     'book.todayBookmarkPlain': 'Закладка: «{name}».',
+
+    // O-03: одна строка — «ночь закончена» снято отдельной правкой заказчика,
+    // осталось только само ожидание. Часы словами, а не циферблатом.
+    'book.dawnIn': 'Новое небо через',
+    'book.dawnHours': {
+        one: '{n} час',
+        few: '{n} часа',
+        many: '{n} часов'
+    },
+    'book.dawnLessHour': 'меньше часа',
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Настройки',
@@ -735,6 +747,15 @@ function tp(key, n, params) {
 
 /** Fallback-имена живут отдельным пространством ключей: 'fb12' → t('fallback.12'). */
 const FALLBACK_NAME_ID_RE = /^fb(\d+)$/;
+
+/**
+ * M-10: `fb12` — да; `banana` (ID фигуры каталога), `unknown` и имя, введённое
+ * игроком, — нет. Отделяет поэтичное имя, выданное лотереей пула, от имени,
+ * которое у созвездия было бы и без неё.
+ */
+function isFallbackNameId(id) {
+    return typeof id === 'string' && FALLBACK_NAME_ID_RE.test(id);
+}
 
 /**
  * Имя фигуры на экран. Принимает ID фигуры ('banana'), ID fallback-имени ('fb7')

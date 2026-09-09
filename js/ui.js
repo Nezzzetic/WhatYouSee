@@ -609,20 +609,26 @@ function renderAtlasList() {
     const pageIndex = getBookPageIndex('atlas');
 
     if (!isAtlasPageUnlocked(pageIndex)) {
-        // Страницы открываются автоматически при накоплении ✦
+        // Страницы открываются автоматически при накоплении ✦. V-17: порог и
+        // прогресс — оба в одной системе отсчёта, «всего заработано по жизни»
+        // против «сколько всего нужно было заработать к этой главе»
+        // (кумулятивная сумма), а не текущий (уже уменьшенный прошлыми
+        // покупками) баланс против цены одной главы — иначе цифры расходятся
+        // между собой (было 260 в пороге и 19/260 в прогрессе одновременно) и
+        // прогресс прыгает вниз после покупки предыдущей главы.
         const locked = document.createElement('div');
         locked.className = 'atlas-page-locked';
-        const cost = getAtlasPageUnlockCost(pageIndex);
+        const cumulativeCost = getAtlasCumulativeCost(pageIndex);
 
         const lockedText = document.createElement('p');
-        lockedText.textContent = t('atlas.pageLocked', { n: cost });
+        lockedText.textContent = t('atlas.pageLocked', { n: cumulativeCost });
         locked.appendChild(lockedText);
 
         const progressText = document.createElement('p');
         progressText.className = 'atlas-page-locked-progress';
         progressText.textContent = t('atlas.pageLockedProgress', {
-            current: Math.min(getMetaScore(), cost),
-            target: cost
+            current: Math.min(getLifetimeMetaEarned(), cumulativeCost),
+            target: cumulativeCost
         });
         locked.appendChild(progressText);
 
@@ -896,6 +902,7 @@ function renderBookToday() {
             list.appendChild(createAchievementRow(chain));
         }
     }
+    renderBookTodayDawn();
     renderBookTodayNews();
     renderBookTodayState();
 }
@@ -944,8 +951,14 @@ function renderBookTodayState() {
         el.appendChild(row);
     };
 
-    const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
-    addRow(tp('book.todayStarsLeft', free));
+    // O-03: на доигранной ночи звёзды остаются (часть подавлена, часть погашена —
+    // M-07), просто пар для них больше нет; «ещё не соединено N звёзд» про такое
+    // небо врёт, поэтому строка снимается, а не дополняется.
+    const nightComplete = typeof isLevelComplete === 'function' && isLevelComplete();
+    if (!nightComplete) {
+        const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
+        addRow(tp('book.todayStarsLeft', free));
+    }
 
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
@@ -960,6 +973,95 @@ function renderBookTodayState() {
     } else {
         addRow(t('book.todayBookmarkPlain', { name }));
     }
+}
+
+// =============================================================================
+// O-03: КОНЕЦ НОЧИ — ТОЛЬКО КНИГА, «СЕГОДНЯ»
+// =============================================================================
+// Небо молчит (решение заказчика: K-15 не отменяется, тоста не будет). Блок
+// стоит на «Сегодня» сразу после ежедневки и виден только на доигранной ночи —
+// F5 на уже завершённом небе его не прячет (это состояние, а не сцена V-13).
+
+/** Чистая: ms до ближайшего начала суток неба — M-09, местные 05:00 (`SKY_DAY_START_HOUR`), а не полночь. До этого часа цель сегодняшняя, после — завтрашняя, ровно как у `getLocalCalendarSkyDateInt()`. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, локальный конструктор `new Date(y, m, d, h)` сам переживает переход на летнее время. */
+function msUntilNextSkyDay() {
+    const now = new Date();
+    const startHour = typeof SKY_DAY_START_HOUR === 'number' ? SKY_DAY_START_HOUR : 0;
+    const dayShift = now.getHours() < startHour ? 0 : 1;
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayShift, startHour);
+    return next.getTime() - now.getTime();
+}
+
+/**
+ * Чистая: ms → целые часы до границы, округление ВНИЗ — не обещать больше
+ * времени, чем реально осталось (1ч59м не станет «2 часа»). `lessThanHour`
+ * отдельным флагом, а не проверкой `hours === 0`, чтобы вызывающий код читался
+ * как решение о тексте, а не как арифметика.
+ */
+function computeDawnHours(ms) {
+    const hours = Math.max(0, Math.floor(ms / 3600000));
+    return { hours, lessThanHour: hours < 1 };
+}
+
+/** ms → локализованная фраза «N hours» / «1 hour» / «less than an hour» (правка по живому фидбеку — было ЧЧ:ММ). */
+function formatDawnDuration(ms) {
+    const { hours, lessThanHour } = computeDawnHours(ms);
+    return lessThanHour ? t('book.dawnLessHour') : tp('book.dawnHours', hours, { n: hours });
+}
+
+let bookTodayDawnTimer = null;
+
+function stopBookTodayDawnTimer() {
+    if (bookTodayDawnTimer) {
+        clearInterval(bookTodayDawnTimer);
+        bookTodayDawnTimer = null;
+    }
+}
+
+/** Тик и первая отрисовка. На нуле сам закрывает себя и дёргает штатную смену дня — только на доигранном поле, где терять нечего. */
+function updateBookTodayDawnText() {
+    const clockEl = document.getElementById('bookTodayDawnClock');
+    if (!clockEl) return;
+    const ms = msUntilNextSkyDay();
+    if (ms <= 0) {
+        stopBookTodayDawnTimer();
+        if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
+        return;
+    }
+    clockEl.textContent = formatDawnDuration(ms);
+}
+
+/**
+ * Идемпотентна: `refreshBookIfOpen()` зовут из мест, не связанных с концом
+ * ночи (забор марки, `afterAchievementStateChanged`), и повторный вызов не
+ * должен ни ронять уже идущий интервал, ни плодить второй — только менять
+ * видимость блока при смене состояния (например, откат последнего созвездия
+ * вернул ночь из «доиграна» в «играется»).
+ */
+function renderBookTodayDawn() {
+    const el = document.getElementById('bookTodayDawn');
+    if (!el) return;
+    const complete = typeof isLevelComplete === 'function' && isLevelComplete();
+    el.hidden = !complete;
+    if (!complete) {
+        stopBookTodayDawnTimer();
+        return;
+    }
+    updateBookTodayDawnText();
+    if (!bookTodayDawnTimer) {
+        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, BOOK_DAWN_TICK_MS);
+    }
+}
+
+// Вкладка ушла в фон — тик не нужен, пока его не видно; страница вернулась —
+// досчитать заново тем же путём, что и обычный рендер книги.
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            stopBookTodayDawnTimer();
+        } else {
+            refreshBookIfOpen();
+        }
+    });
 }
 
 /**
@@ -1058,7 +1160,10 @@ function renderBookIndex() {
             : createBookIndexRow(
                 title,
                 getAtlasChapterFolio(i),
-                t('book.indexOpensAt', { n: getAtlasPageUnlockCost(i) }),
+                // V-17: та же кумулятивная сумма, что и на самой запертой
+                // странице атласа (atlas.pageLocked) — иначе оглавление и
+                // разворот показывают разные числа для одной главы.
+                t('book.indexOpensAt', { n: getAtlasCumulativeCost(i) }),
                 { locked: true }
             );
         row.addEventListener('click', () => {
@@ -1435,6 +1540,9 @@ function renderBook() {
     for (const cut in sections) {
         if (sections[cut]) sections[cut].hidden = cut !== bookCut;
     }
+    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
+    // (renderBookToday() его при надобности заведёт заново).
+    if (bookCut !== 'today') stopBookTodayDawnTimer();
 
     recomputeAchievementsClaimable();
 
@@ -1520,10 +1628,11 @@ function closeBook() {
     if (!bookOpen) return;
     closeObservatoryRenameField();
     dismissChapterCutBanner(true); // V-16: баннер не переживает закрытие книги
+    stopBookTodayDawnTimer(); // O-03: закрыли книгу — тик посекундно никому не нужен
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {
-        book.style.transform = '';
+        setBookTransform(book, '');
         book.hidden = true;
     }
     if (document.body) document.body.classList.remove('book-open-body');
@@ -1701,6 +1810,22 @@ function bookTravelPx() {
 }
 
 /**
+ * K-35: книге ставят transform только через это. Встроенный холст экслибриса
+ * лежит поверх книги отдельным fixed-узлом (K-13) и за ней сам не поедет — ход
+ * книги повторяется на нём и на рамке гравюры. Вне экслибриса обе функции
+ * работают ровно как прежняя присвоенная строка.
+ */
+function setBookTransform(book, transform) {
+    if (book) book.style.transform = transform;
+    if (typeof setExLibrisFollowTransform === 'function') setExLibrisFollowTransform(transform);
+}
+
+function setBookTransition(book, transition) {
+    if (book) book.style.transition = transition;
+    if (typeof setExLibrisFollowTransition === 'function') setExLibrisFollowTransition(transition);
+}
+
+/**
  * K-26: довод жеста книги — от текущей позиции translateY плавно к цели
  * (или мгновенно при «уменьшить движение»), потом зовёт onSettled. Общая
  * точка для открытия и закрытия: раньше на отпускании transform сбрасывался
@@ -1710,8 +1835,8 @@ function settleBookTransform(book, targetPx, onSettled) {
     if (!book) { onSettled(); return; }
     const finalTransform = targetPx ? `translateY(${targetPx}px)` : '';
     if (prefersReducedMotion()) {
-        book.style.transition = '';
-        book.style.transform = finalTransform;
+        setBookTransition(book, '');
+        setBookTransform(book, finalTransform);
         onSettled();
         return;
     }
@@ -1721,19 +1846,19 @@ function settleBookTransform(book, targetPx, onSettled) {
         done = true;
         book.removeEventListener('transitionend', onEnd);
         clearTimeout(timer);
-        book.style.transition = '';
+        setBookTransition(book, '');
         onSettled();
     };
     const onEnd = (event) => { if (event.target === book && event.propertyName === 'transform') finish(); };
     book.addEventListener('transitionend', onEnd);
     const timer = setTimeout(finish, BOOK_SETTLE_MS + 120);
-    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
+    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
     // Форсированный рефлоу — браузер обязан зафиксировать стартовую (тянутую
     // пальцем) позицию до смены на целевую, иначе переход схлопнется в один
     // кадр без анимации. rAF для этого не годится — в фоновой/скрытой вкладке
     // кадров нет вовсе, и жест завис бы там намертво.
     void book.offsetHeight;
-    book.style.transform = finalTransform;
+    setBookTransform(book, finalTransform);
 }
 
 /**
@@ -1745,19 +1870,23 @@ function settleBookTransform(book, targetPx, onSettled) {
 function openBookAnimated(cut) {
     const book = document.getElementById('book');
     const canAnimate = !!book && !prefersReducedMotion();
-    if (canAnimate) {
-        book.style.transition = 'none';
-        book.style.transform = `translateY(${bookTravelPx()}px)`;
-    }
+    // K-35: открываем ДО подстановки стартовой позиции — раньше было наоборот.
+    // Внутри openBook() холст экслибриса встраивается по замеру прямоугольника
+    // страницы, и замер обязан пройти по книге в покое: с уже подставленным
+    // сдвигом слот мерялся уехавшим вниз на целый экран, и небо оставалось за
+    // нижним краем до ближайшего ресайза. Кадра между открытием и сдвигом не
+    // будет — обе строки в одном тике, до первой отрисовки.
     openBook(cut);
     if (!canAnimate) return;
+    setBookTransition(book, 'none');
+    setBookTransform(book, `translateY(${bookTravelPx()}px)`);
     void book.offsetHeight; // рефлоу теперь, когда книга уже видима — фиксирует старт
-    book.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
-    book.style.transform = '';
+    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
+    setBookTransform(book, '');
     const onEnd = (event) => {
         if (event.target !== book || event.propertyName !== 'transform') return;
         book.removeEventListener('transitionend', onEnd);
-        book.style.transition = '';
+        setBookTransition(book, '');
     };
     book.addEventListener('transitionend', onEnd);
 }
@@ -1829,7 +1958,7 @@ function setupBookCloseGesture() {
         }
         if (!closing) return;
         if (event.cancelable) event.preventDefault();
-        book.style.transform = `translateY(${Math.max(0, dy)}px)`;
+        setBookTransform(book, `translateY(${Math.max(0, dy)}px)`);
     };
 
     const onEnd = (event) => {
@@ -1853,7 +1982,7 @@ function setupBookCloseGesture() {
             // ниже порога — страница падает обратно тем же доводом
             settleBookTransform(book, 0, () => {});
         } else {
-            book.style.transform = '';
+            setBookTransform(book, '');
         }
         closing = false;
         axis = null;
@@ -1891,13 +2020,13 @@ function setupRibbonPullGesture(ribbon) {
         if (!book) return;
         dragging = true;
         pulled = true; // жест пошёл — тап после него не должен сработать отдельно
-        book.style.transition = '';
+        setBookTransition(book, '');
         book.hidden = false;
         // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
         // уже атласом, а не подменяется им по приезде.
         applyFirstBookOpenCut();
         renderBook();
-        book.style.transform = `translateY(${bookTravelPx()}px)`;
+        setBookTransform(book, `translateY(${bookTravelPx()}px)`);
     };
 
     const start = (event) => {
@@ -1929,7 +2058,7 @@ function setupRibbonPullGesture(ribbon) {
 
         if (!dragging) return;
         if (event.cancelable) event.preventDefault();
-        book.style.transform = `translateY(${Math.max(0, bookTravelPx() - dy)}px)`;
+        setBookTransform(book, `translateY(${Math.max(0, bookTravelPx() - dy)}px)`);
     };
 
     const end = (event) => {

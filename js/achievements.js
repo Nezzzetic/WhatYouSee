@@ -4,30 +4,28 @@
 // КОНСТАНТЫ
 // =============================================================================
 
-// B-04: общая лестница шага ужата вместе со всей экономикой окна «первая
-// сессия → третий день» (масштаб ×¼ от B-01, решение заказчика). Кто задаёт
+// B-05: ряд из dev/docs/concepts/balance1.csv, применён как есть (заказчик прямо
+// отменил пересчёт моделью — сравнение с B-04 см. в task-доке B-05). Кто задаёт
 // свою шкалу через chain.stepRewards (ниже) — общую не использует.
-const ACHIEVEMENT_STEP_REWARDS = [3, 6, 10, 16, 25];
+const ACHIEVEMENT_STEP_REWARDS = [3, 5, 10, 15, 25];
 // Запасное значение для цепочек короче/длиннее пяти шагов (сейчас таких нет).
 const ACHIEVEMENT_STEP_REWARD_FALLBACK = 3;
 
 // B-04: объёмные цепочки (цвета и размеры) больше не делят один ряд порогов —
 // у цветов и у каждого размерного бакета свой, потому что бакеты наполняются
-// с принципиально разной скоростью (см. B-04 task-док, шаг 3, замер моделью:
-// четыре профиля × 800 прогонов × 26 ночей). Награда за шаг — общая лестница
-// выше, если явно не сказано иное.
-// Правка заказчика 2026-08-30: 20 на второй ступени было слишком жёстко для
-// редких цветов (красный/голубой — единицы процентов созвездий) — снижено до 5.
-const ACHIEVEMENT_COLOR_TIERS = [1, 5, 60, 150, 350];
-const ACHIEVEMENT_SIZE_2_4_TIERS = [1, 25, 90, 250, 600];
-const ACHIEVEMENT_SIZE_5_7_TIERS = [1, 12, 45, 130, 320];
-// 8★+ реже остальных бакетов сам по себе — своя шкала наград, а не общая.
-const ACHIEVEMENT_SIZE_8PLUS_TIERS = [1, 3, 8, 20, 50];
-const ACHIEVEMENT_SIZE_8PLUS_STEP_REWARDS = [8, 14, 20, 30, 45];
-// «Первооткрыватель» — на 24 фигуры атласа (было 29 до B-04, 5 фигур в резерве).
-const RAZVEDKA_TIERS = [1, 4, 8, 14, 24];
-const RAZVEDKA_STEP_REWARDS = [15, 25, 40, 65, 100];
-// «Огранщик» — тоже на 24 фигуры, общая лестница.
+// с принципиально разной скоростью. Награда за шаг — общая лестница выше,
+// если явно не сказано иное.
+// B-05: пороги — ряд balance1.csv, у всех пяти цветов один и тот же.
+const ACHIEVEMENT_COLOR_TIERS = [1, 5, 10, 50, 100];
+const ACHIEVEMENT_SIZE_2_4_TIERS = [1, 10, 20, 50, 100];
+const ACHIEVEMENT_SIZE_5_7_TIERS = [1, 5, 10, 20, 50];
+// B-05: своя шкала наград снята — CSV даёт 8★+ ту же общую лестницу, что остальным.
+const ACHIEVEMENT_SIZE_8PLUS_TIERS = [1, 2, 5, 10, 25];
+// «Первооткрыватель» — на 24 фигуры атласа. B-05: тир 5 из CSV был 25 (недостижим
+// при 24 фигурах атласа) — заказчик поправил на 20, награды — ряд CSV как есть.
+const RAZVEDKA_TIERS = [1, 5, 10, 15, 20];
+const RAZVEDKA_STEP_REWARDS = [3, 20, 40, 75, 100];
+// «Огранщик» — тоже на 24 фигуры, общая лестница. B-05: пороги не изменились.
 const OGRANSHCHIK_TIERS = [1, 3, 6, 12, 24];
 
 // M-05/B-04: суточные квесты. Раздача 5/10 — тот же принцип, что и в M-05
@@ -185,14 +183,14 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.size8plus.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.size8plus.desc'),
-        // Своя шкала: 8★+ созвездия редки сами по себе, и в каталоге нет фигур
-        // больше пяти звёзд — эта цепочка не приносит атласных находок никогда.
+        // 8★+ созвездия редки сами по себе, и в каталоге нет фигур больше пяти
+        // звёзд — эта цепочка не приносит атласных находок никогда. B-05: своя
+        // шкала наград снята — CSV даёт общую лестницу, как остальным.
         steps: ACHIEVEMENT_SIZE_8PLUS_TIERS.map(n => ({
             id: `size_8plus_${n}`,
             desc: tp('chain.size8plus.step', n),
             check: { type: 'starCountTotal', mode: 'gte', bucket: 's8plus', size: 8, n }
-        })),
-        stepRewards: ACHIEVEMENT_SIZE_8PLUS_STEP_REWARDS
+        }))
     },
     {
         id: 'rainbow',
@@ -242,22 +240,7 @@ const ACHIEVEMENT_CHAINS = [
     },
     // atlas-pages-graph: особые достижения страниц 2–6
     ...ATLAS_PAGE_SPECIALS.map(buildPageSpecialChain),
-    {
-        id: 'minimalism',
-        title: t('chain.minimalism.title'),
-        sign: 'loz',
-        // K-08: единственный шаг цепочки уже сформулирован без числа — он же
-        // и есть описание сцепки.
-        desc: t('chain.minimalism.step'),
-        steps: [{ id: 'minimalism_1', desc: t('chain.minimalism.step'), check: { type: 'singleConstellation' } }]
-    },
-    {
-        id: 'unite_all',
-        title: t('chain.unite_all.title'),
-        sign: 'arc',
-        desc: t('chain.unite_all.desc'),
-        steps: [{ id: 'unite_all_1', desc: t('chain.unite_all.step'), check: { type: 'uniteAll' } }]
-    },
+    // B-05: цепочки «Минимализм»/«Созвездие-всё» сняты по правке заказчика.
     // Разведка атласа: награда за первое создание фигуры переехала сюда из разового
     // начисления в markShapeCreated. Раньше каждое открытие молча капало ✦ — событие
     // было, а следа в Наградах не оставалось. Теперь это видимая цель с прогрессом.
@@ -385,7 +368,7 @@ let announcedSpecialChains = new Set();
 // сведены к трём диапазонам (ключи starCountTotals и id цепочек — другие),
 // «Первооткрыватель»/«Огранщик» пересчитаны под 24 фигуры вместо 29 — мигрировать
 // нечего, полный сброс прогресса, версия сейва объявляется отдельно до релиза).
-const ACHIEVEMENTS_SAVE_VERSION = 7;
+const ACHIEVEMENTS_SAVE_VERSION = 8;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -803,6 +786,9 @@ let achievementsMigrationNeedsFullReset = false;
  *   сведены к трём диапазонам вместо шести точных размеров (id цепочек и ключи
  *   starCountTotals другие), «Первооткрыватель»/«Огранщик» пересчитаны под 24
  *   фигуры вместо 29. Пересчитывать нечего — полный сброс.
+ * - v<8 (B-05): ряд balance1.csv применён на пороги/награды цветов, размеров,
+ *   «Первооткрывателя» и цену страниц атласа разом; цепочки «Минимализм»/
+ *   «Созвездие-всё» сняты. Пересчитывать нечего — полный сброс (решение заказчика).
  *
  * Home Demo, живых игроков нет — честный старт с нуля дешевле пересчёта.
  */
@@ -810,7 +796,7 @@ function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (version < 7) {
+    if (version < 8) {
         // Сбрасывать по шагам смысла нет — обнуляем всё разом.
         initAchievementState();
         achievementsMigrationNeedsFullReset = true;
@@ -882,7 +868,6 @@ function applyConstellationToCounters(constellation, sign) {
 /** Текущее состояние поля для field/терминальных проверок. */
 function getFieldAchievementSnapshot() {
     const list = Array.isArray(constellations) ? constellations : [];
-    const starCounts = list.map(c => (typeof c.starCount === 'number' ? c.starCount : 0));
     const colorsPresent = new Set();
     const sizeBucketsPresent = new Set();
     // atlas-pages-graph: присутствие и цвета атласных фигур по страницам
@@ -905,17 +890,7 @@ function getFieldAchievementSnapshot() {
         if (!pageColorBuckets[pageIdx]) pageColorBuckets[pageIdx] = new Set();
         pageColorBuckets[pageIdx].add(bucket);
     }
-    const totalFieldStars = Array.isArray(fieldStars) ? fieldStars.length : 0;
-    return {
-        count: list.length,
-        starCounts,
-        colorsPresent,
-        sizeBucketsPresent,
-        pageShapesOnField,
-        pageColorBuckets,
-        totalFieldStars,
-        revealed: !!constellationArtRevealed
-    };
+    return { colorsPresent, sizeBucketsPresent, pageShapesOnField, pageColorBuckets };
 }
 
 function isMosaicComplete(snap) {
@@ -946,7 +921,7 @@ function isPageSpecialNightSatisfied(spec, snap) {
     }
 }
 
-function evaluateAchievementCheck(check, snap) {
+function evaluateAchievementCheck(check) {
     if (!check || !achievementCounters) return false;
     const c = achievementCounters;
     switch (check.type) {
@@ -976,10 +951,6 @@ function evaluateAchievementCheck(check, snap) {
             return c.levelsCompleted >= check.n;
         case 'totalConstellations':
             return c.totalConstellations >= check.n;
-        case 'singleConstellation':
-            return snap.revealed && snap.count === 1;
-        case 'uniteAll':
-            return snap.totalFieldStars > 0 && snap.starCounts.some(n => n === snap.totalFieldStars);
         default:
             return false;
     }
@@ -1010,7 +981,6 @@ function getAchievementStepProgress(check) {
 
 /** K-15: тостов больше нет — переход в claimable виден маркой и каплей на ленте. */
 function recomputeAchievementsClaimable() {
-    const snap = getFieldAchievementSnapshot();
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
         if (!p) continue;
@@ -1028,7 +998,7 @@ function recomputeAchievementsClaimable() {
             continue;
         }
         const step = chain.steps[p.stepIndex];
-        p.claimable = evaluateAchievementCheck(step.check, snap);
+        p.claimable = evaluateAchievementCheck(step.check);
     }
 }
 
@@ -1296,7 +1266,7 @@ const REWARD_PAGES = [
     {
         // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations', 'minimalism', 'unite_all'],
+        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations'],
         unlockAtIndex: null
     },
     {
@@ -1447,6 +1417,29 @@ function createAchievementTiles(chain, p) {
     return tiles;
 }
 
+/**
+ * U-24: заливка прогресса внутри текущего шага — «N из target» очков до
+ * следующей марки, а не «шаг K из 5» (то уже видно клетками ниже). Короткая
+ * полоска встаёт в конце строки описания, под счётом (два предыдущих места —
+ * отдельной строкой под описанием, затем в шапке рядом со счётом — заказчик
+ * поправил дважды по живому экрану до этой раскладки).
+ *
+ * Считается от того же чек-условия, что и `claimable` (`evaluateAchievementCheck`),
+ * поэтому в момент готовности ratio сам приходит к 1 без отдельной ветки —
+ * строка не дёргается, когда марка становится готова прижать (тот же принцип,
+ * что уже чинила K-23 для другого сигнала).
+ */
+function createAchievementProgressBar(prog) {
+    const bar = document.createElement('div');
+    bar.className = 'achv-row-bar';
+    const fill = document.createElement('div');
+    fill.className = 'achv-row-bar-fill';
+    const ratio = prog.target > 0 ? Math.max(0, Math.min(1, prog.current / prog.target)) : 0;
+    fill.style.width = (ratio * 100).toFixed(1) + '%';
+    bar.appendChild(fill);
+    return bar;
+}
+
 /** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
 function createAchievementLockedRow(reason) {
     const row = document.createElement('div');
@@ -1497,6 +1490,11 @@ function createAchievementRow(chain) {
         + (p.claimable ? ' achv-row-claimable' : '');
     row.dataset.chainId = chain.id;
 
+    // U-24: текущий шаг читается один раз — бар в шапке и описание ниже
+    // берут один и тот же stepEntry/prog, не пересчитывают их порознь.
+    const stepEntry = chain.steps[p.stepIndex];
+    const prog = stepEntry ? getAchievementStepProgress(stepEntry.check) : null;
+
     const head = document.createElement('div');
     head.className = 'achv-row-head';
 
@@ -1520,10 +1518,18 @@ function createAchievementRow(chain) {
     // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
     // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
     // steps) описания не показывает — печатать нечего.
+    //
+    // U-24: бар — в одной строке с описанием, под счётом (первая версия
+    // ставила его в шапку рядом со счётом — по следующему фидбеку заказчика
+    // перенесён сюда); только у цепочек с числовым прогрессом (суточный
+    // квест и одношаговые условия дают null).
     const desc = document.createElement('div');
     desc.className = 'achv-row-desc';
-    const stepEntry = chain.steps[p.stepIndex];
-    desc.textContent = stepEntry ? stepEntry.desc : '';
+    const descText = document.createElement('span');
+    descText.className = 'achv-row-desc-text';
+    descText.textContent = stepEntry ? stepEntry.desc : '';
+    desc.appendChild(descText);
+    if (prog) desc.appendChild(createAchievementProgressBar(prog));
     row.appendChild(desc);
 
     row.appendChild(createAchievementTiles(chain, p));
