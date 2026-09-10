@@ -589,6 +589,24 @@ function createAtlasEntryCard(entry) {
     return card;
 }
 
+/**
+ * S-03: строка замка с выделенным уровнем — «…at [level 4].» Слово и число
+ * красятся золотом (`.book-lock-level`, правка заказчика 2026-09-10), остальное
+ * остаётся текстом строки. Шаблон держит плейсхолдер {level}, а форма «уровень N»
+ * — свой ключ `book.lockLevel` (в русском это падеж: «на уровне 4»).
+ */
+function fillLevelLockText(el, templateKey, level) {
+    const MARK = '\u0000';
+    const parts = t(templateKey, { level: MARK }).split(MARK);
+    el.textContent = '';
+    el.appendChild(document.createTextNode(parts[0] || ''));
+    const span = document.createElement('span');
+    span.className = 'book-lock-level';
+    span.textContent = t('book.lockLevel', { n: level });
+    el.appendChild(span);
+    el.appendChild(document.createTextNode(parts.slice(1).join('')));
+}
+
 function renderAtlasList() {
     const list = document.getElementById('atlasList');
     if (!list) return;
@@ -605,7 +623,7 @@ function renderAtlasList() {
         locked.className = 'atlas-page-locked';
 
         const lockedText = document.createElement('p');
-        lockedText.textContent = t('atlas.pageLocked', { n: getAtlasChapterLevel(pageIndex) });
+        fillLevelLockText(lockedText, 'atlas.pageLocked', getAtlasChapterLevel(pageIndex));
         locked.appendChild(lockedText);
 
         list.appendChild(locked);
@@ -1298,17 +1316,12 @@ function renderBookExLibris() {
 
     if (!unlocked) {
         closeObservatoryRenameField();
-        const current = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
-        const target = OBSERVATORY_UNLOCK_COST;
         const titleEl = document.getElementById('exLibrisLockTitle');
-        const fillEl = document.getElementById('exLibrisLockBarFill');
         const progressEl = document.getElementById('exLibrisLockProgress');
         if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
-        if (fillEl) {
-            const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
-            fillEl.style.width = (ratio * 100).toFixed(1) + '%';
-        }
-        if (progressEl) progressEl.textContent = t('observatory.lockedProgress', { current, target, n: OBSERVATORY_UNLOCK_LEVEL });
+        // S-03 (правка заказчика 2026-09-10): как и на атласе — только уровень,
+        // ни полосы, ни чисел ✦; сколько осталось, показывает шкала у корешка.
+        if (progressEl) fillLevelLockText(progressEl, 'observatory.lockedLevel', OBSERVATORY_UNLOCK_LEVEL);
     }
 }
 
