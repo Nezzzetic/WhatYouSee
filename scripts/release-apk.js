@@ -155,6 +155,11 @@ function verifyApk(version, tools, trustCert) {
         fail(`в APK ${pkg[3]} (${pkg[2]}), в build.gradle ${version.name} (${version.code})`);
     }
     if (/application-debuggable/.test(badging.out)) fail('APK debuggable — это не release');
+    // A-08: без VIBRATE WebView отказывает navigator.vibrate() молча (isTrusted=true,
+    // игра узнать не может) — регенерация android/ (P-02) может стереть правку манифеста.
+    if (!/uses-permission:\s*name='android\.permission\.VIBRATE'/.test(badging.out)) {
+        fail('в APK нет android.permission.VIBRATE — вибро в релизе не будет работать (A-08)');
+    }
 
     // В APK упаковывается то, что cap sync положил сюда, а не www/.
     const packaged = fs.readFileSync(PACKAGED_INDEX, 'utf8');

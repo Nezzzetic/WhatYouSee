@@ -39,4 +39,7 @@
     <!-- Permissions -->
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- A-08: normal-разрешение, выдаётся при установке без диалога; без него WebView
+         отказывает navigator.vibrate() молча (isTrusted=true), а игра узнать не может -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>
