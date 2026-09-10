@@ -466,6 +466,8 @@
     function state() {
         return {
             score: getMetaScore(),
+            // S-03: уровень по лестнице (от lifetimeMetaEarned)
+            level: getPlayerLevel(),
             fieldScore: typeof getFieldScore === 'function' ? getFieldScore() : 0,
             skyDate: getEffectiveSkyDateInt(),
             playerId,
@@ -588,14 +590,13 @@
         const wax = document.getElementById('ribbonWax');
         const ribbon = document.getElementById('skyRibbon');
         const waxOn = !!(wax && !wax.hidden);
-        const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
-        const floor = Math.floor(earned / BOOK_GAUGE_WINDOW) * BOOK_GAUGE_WINDOW;
         return {
             open: bookOpen,
             cut: bookCut,
             page: bookCut === 'stamps' ? getBookPageIndex('rewards') : getBookPageIndex('atlas'),
             pageCount: bookCut === 'stamps' ? getBookPageCount('rewards') : getBookPageCount('atlas'),
-            gauge: { earned, floor, ceil: floor + BOOK_GAUGE_WINDOW, ratio: (earned - floor) / BOOK_GAUGE_WINDOW },
+            // S-03: окно шкалы — ступень лестницы уровней, та же функция, что рисует шкалу.
+            gauge: getLevelProgress(),
             wax: waxOn,
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
@@ -690,6 +691,7 @@
             mode: getObservatoryMode(),
             lifetimeEarned: getLifetimeMetaEarned(),
             unlockCost: OBSERVATORY_UNLOCK_COST,
+            unlockLevel: OBSERVATORY_UNLOCK_LEVEL,
             starCost: OBSERVATORY_STAR_COST,
             starsDue: getObservatoryStarsDue(),
             starCount: observatoryStars.length,

@@ -123,8 +123,8 @@ function getClaimFlightTargetRect() {
  *        хвост забора зовёт `refreshBookIfOpen()`, и к моменту полёта самого
  *        узла кнопки уже не существует.
  * @param {number} amount — размер награды. Летит именно она; счётчик на прилёте
- *        покажет реальный `getMetaScore()`, который после списания за страницу
- *        атласа бывает и меньше прежнего.
+ *        покажет реальный `getMetaScore()` (S-03: ✦ больше не списываются —
+ *        число только растёт).
  * @returns {boolean} — взят ли зажим счётчика (false → число обновляется сразу).
  */
 function flyClaimReward(fromRect, amount) {
@@ -188,14 +188,6 @@ if (typeof document !== 'undefined' && document.addEventListener) {
 
 function updateMetaPageProgressUI() {
     /* progress to atlas pages shown only inside atlas overlay */
-}
-
-function updateFieldGoalsUI() {
-    /* legacy — field goals disabled */
-}
-
-function renderFieldGoalClaimButtons() {
-    /* legacy — field goals disabled */
 }
 
 // =============================================================================
@@ -478,10 +470,6 @@ function getCustomPattern(customType) {
     return getFallbackPatternFromSignature(customType?.signature);
 }
 
-function getShapeXP(shapeName) {
-    return SHAPE_XP[shapeName] !== undefined ? SHAPE_XP[shapeName] : CUSTOM_TYPE_XP;
-}
-
 function getAtlasEntryForShape(name) {
     const pattern = SHAPE_PATTERNS[name];
     const created = isShapeCreated(name);
@@ -620,8 +608,9 @@ function renderAtlasList() {
         locked.className = 'atlas-page-locked';
         const cumulativeCost = getAtlasCumulativeCost(pageIndex);
 
+        // S-03: порог назван уровнем; ✦-прогресс ниже — добор до этой ступени.
         const lockedText = document.createElement('p');
-        lockedText.textContent = t('atlas.pageLocked', { n: cumulativeCost });
+        lockedText.textContent = t('atlas.pageLocked', { n: getAtlasChapterLevel(pageIndex) });
         locked.appendChild(lockedText);
 
         const progressText = document.createElement('p');
@@ -803,11 +792,11 @@ function renderBookHead() {
 }
 
 /**
- * Шкала света у корешка (риск 3 дока K-06): окно из двух засечек-сотен вокруг
- * `lifetimeMetaEarned` — пройденная сотня и ближайшая, а не вся дорога.
- * Нож у засечки (глава режется здесь) в шкалу пока не идёт: порог такой главы
- * в игре не существует (страницы атласа открываются по своим неровным ценам,
- * не по сотням) — решение остаётся за K-10/K-15, когда появится сама механика.
+ * Шкала света у корешка (риск 3 дока K-06). S-03: окно — ступень лестницы
+ * уровней: нижняя засечка — порог текущего уровня, верхняя — следующего,
+ * флажок — `lifetimeMetaEarned`. Засечка сама и есть порог, поэтому знаков на
+ * шкале нет ни одного — нож у засечки (открытый вопрос K-06) снят решением
+ * заказчика 2026-09-10.
  */
 function renderBookGauge() {
     const el = document.getElementById('bookGauge');
@@ -815,10 +804,7 @@ function renderBookGauge() {
     const trackH = el.getBoundingClientRect().height;
     el.innerHTML = '';
 
-    const earned = typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0;
-    const floor = Math.floor(earned / BOOK_GAUGE_WINDOW) * BOOK_GAUGE_WINDOW;
-    const ceil = floor + BOOK_GAUGE_WINDOW;
-    const ratio = (earned - floor) / BOOK_GAUGE_WINDOW;
+    const { earned, floor, ceil, ratio } = getLevelProgress();
 
     const fill = document.createElement('div');
     fill.className = 'book-gauge-fill';
@@ -930,8 +916,8 @@ function renderBookTodayNews() {
 }
 
 /**
- * K-17: две строки состояния страницы — сколько звёзд на небе ещё не соединено
- * и что заложено закладкой. В концепте они стоят на «Сегодня» рядом с событиями
+ * K-17: строки состояния страницы — сколько звёзд на небе ещё не соединено
+ * и что заложено закладкой (S-03 добавила третью — уровень). В концепте они стоят на «Сегодня» рядом с событиями
  * ночи, но событиями не являются: в `newsLog` не пишутся, в сейв не идут и
  * считаются заново на каждом рендере — поэтому и блок у них свой.
  *
@@ -961,18 +947,29 @@ function renderBookTodayState() {
     }
 
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
-    if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
+    // Закладки нет — строки тоже нет, пустой строкой не занимаем.
+    if (shapeId) addRow(formatTodayBookmarkRow(shapeId));
+
+    // S-03: уровень — последней строкой: не про эту ночь, а про весь путь.
+    // Потолка у лестницы нет, поэтому «до уровня N+1» есть всегда.
+    const lp = getLevelProgress();
+    addRow(t('book.todayLevel', { n: lp.level, name: lp.name, left: lp.left, next: lp.level + 1 }));
+}
+
+/**
+ * K-17: строка закладки на «Сегодня». Закладку ставят с карточки разворота,
+ * то есть у фигуры всегда есть и чертёж, и глава; страховка — на случай
+ * закладки из будущего источника.
+ */
+function formatTodayBookmarkRow(shapeId) {
     const name = getDisplayShapeName(shapeId);
     const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
     const starCount = pattern && Array.isArray(pattern.stars) ? pattern.stars.length : 0;
     const chapter = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(shapeId) : -1;
-    // Закладку ставят с карточки разворота, то есть у фигуры всегда есть и
-    // чертёж, и глава; страховка — на случай закладки из будущего источника.
     if (starCount > 0 && chapter >= 0) {
-        addRow(tp('book.todayBookmark', starCount, { name, ch: chapter + 1 }));
-    } else {
-        addRow(t('book.todayBookmarkPlain', { name }));
+        return tp('book.todayBookmark', starCount, { name, ch: chapter + 1 });
     }
+    return t('book.todayBookmarkPlain', { name });
 }
 
 // =============================================================================
@@ -1160,10 +1157,10 @@ function renderBookIndex() {
             : createBookIndexRow(
                 title,
                 getAtlasChapterFolio(i),
-                // V-17: та же кумулятивная сумма, что и на самой запертой
-                // странице атласа (atlas.pageLocked) — иначе оглавление и
-                // разворот показывают разные числа для одной главы.
-                t('book.indexOpensAt', { n: getAtlasCumulativeCost(i) }),
+                // V-17 / S-03: тот же уровень, что и на самой запертой странице
+                // атласа (atlas.pageLocked) — иначе оглавление и разворот
+                // называют разные пороги для одной главы.
+                t('book.indexOpensAtLevel', { n: getAtlasChapterLevel(i) }),
                 { locked: true }
             );
         row.addEventListener('click', () => {
@@ -1201,7 +1198,7 @@ function renderBookIndex() {
             row = createBookIndexRow(
                 title,
                 getStampsChapterFolio(i),
-                t('book.indexOpensAt', { n: getRewardPageUnlockCost(i) }),
+                t('book.indexOpensAtLevel', { n: getRewardPageUnlockLevel(i) }),
                 { locked: true }
             );
         }
@@ -1219,7 +1216,7 @@ function renderBookIndex() {
     const exRow = createBookIndexRow(
         t('book.cutExLibris'),
         getExLibrisFolio(),
-        exUnlocked ? '' : t('book.indexOpensAt', { n: OBSERVATORY_UNLOCK_COST }),
+        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
         exUnlocked ? { countSign: 'crescent' } : undefined
     );
     exRow.addEventListener('click', () => switchBookCut('exlibris'));
@@ -1324,7 +1321,7 @@ function renderBookExLibris() {
             const ratio = target > 0 ? Math.max(0, Math.min(1, current / target)) : 0;
             fillEl.style.width = (ratio * 100).toFixed(1) + '%';
         }
-        if (progressEl) progressEl.textContent = t('observatory.lockedProgress', { current, target });
+        if (progressEl) progressEl.textContent = t('observatory.lockedProgress', { current, target, n: OBSERVATORY_UNLOCK_LEVEL });
     }
 }
 
