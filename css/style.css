@@ -830,6 +830,26 @@ button:disabled {
     align-items: center;
 }
 
+/* S-03: уровень — рядом с брендом в подвале, на любой странице (правка
+   заказчика 2026-09-10). Золото — цвет пути, тот же, что у заливки шкалы.
+   Точка-разделитель — псевдоэлемент: в узле остаётся только сам текст. */
+.book-foot-level {
+    color: var(--gold);
+    text-transform: uppercase;
+}
+
+/* S-03: уровень в строке замка (атлас, Экслибрис) — тем же золотом, что и
+   уровень в подвале: слово и число, остальная строка своим цветом. */
+.book-lock-level {
+    color: var(--gold);
+}
+
+.book-foot-level::before {
+    content: '·';
+    margin: 0 0.5em;
+    color: var(--ink-faint);
+}
+
 /* --- K-18: листание глав атласа/штампов переехало в подвал (было отдельной
    строкой-пейджером над сеткой) — правая половина `.book-foot` вместо голой
    колонцифры несёт «‹ p. N ▸». Кнопки те же узлы, что раньше жили в
@@ -1166,6 +1186,19 @@ button:disabled {
     transform: translateY(-50%);
 }
 
+/* S-03: над верхней засечкой — номер следующего уровня словом (правка
+   заказчика 2026-09-10: «указать про следующий уровень вверху шкалы»).
+   Знаков на шкале нет по-прежнему — только текст. */
+.book-gauge-next {
+    position: absolute;
+    left: 8px;
+    bottom: 100%;
+    margin-bottom: 10px;
+    font-size: 10px;
+    color: var(--gold);
+    white-space: nowrap;
+}
+
 .book-gauge-tick-bottom {
     bottom: 0;
     transform: translateY(50%);
@@ -1289,29 +1322,12 @@ button:disabled {
     color: var(--ink);
 }
 
-.obs-lock-bar {
-    position: relative;
-    margin: 16px auto 0;
-    max-width: 200px;
-    height: 1px;
-    background: var(--paper-edge);
-}
-
-.obs-lock-bar-fill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    height: 100%;
-    width: 0;
-    background: var(--gold);
-    box-shadow: 0 0 4px rgba(var(--gold-rgb), 0.5);
-}
-
+/* S-03: полосы прогресса и чисел ✦ здесь больше нет — строка называет только
+   уровень открытия (правка заказчика 2026-09-10), поэтому она и крупнее. */
 .obs-lock-progress {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--ink-faint);
-    font-variant-numeric: tabular-nums;
+    margin-top: 12px;
+    font-size: 13px;
+    color: var(--ink-muted);
 }
 
 /* =============================================================================

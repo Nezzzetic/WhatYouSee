@@ -118,12 +118,27 @@ function getTutorialPair() {
  * Ребро может не пройти по длине на низком канвасе: maxEdgeLength = canvasH·2/5
  * в world-units, то есть при высоте канваса меньше ~363 px пара в 145 world
  * перестаёт соединяться. Тогда тутор молча объявляет себя пройденным.
+ *
+ * O-05: проверка ребра писалась под шаг 1, когда пара ещё не соединена. На
+ * шаге 2 пара уже в первом созвездии тутора и обе звезды locked по построению
+ * (коммит необратим, O-04) — тем же условием «locked» она читалась как
+ * недоступная, и перезагрузка посреди шага 2 аварийно снимала тутор на каждом
+ * F5. Соединять на шаге 2 уже нечего, поэтому там проверяется только то, что
+ * сама пара нашлась.
  */
 function ensureTutorialViable() {
     if (isTutorialDone() || !isTutorialNight()) return false;
     const pair = getTutorialPair();
-    const ok = !!pair
-        && !pair[0].locked && !pair[0].suppressed && !pair[0].extinguished
+    if (!pair) {
+        finishTutorial();
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[tutor] Пара недоступна или ребро невалидно — тутор снят, чтобы не запереть игру.');
+        }
+        return false;
+    }
+    if (getTutorialStep() === TUTOR_STEP_ZOOM) return true;
+
+    const ok = !pair[0].locked && !pair[0].suppressed && !pair[0].extinguished
         && !pair[1].locked && !pair[1].suppressed && !pair[1].extinguished
         && typeof isValidEdgeBetweenStars === 'function'
         && isValidEdgeBetweenStars(pair[0], pair[1]);

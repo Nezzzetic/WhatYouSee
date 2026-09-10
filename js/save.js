@@ -27,8 +27,6 @@ function saveGame() {
             fieldStars,
             fieldBackgroundStars,
             customTypes,
-            fieldGoalsAchieved,
-            fieldGoalRewardsClaimed,
             bestScore,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
@@ -94,12 +92,6 @@ function loadGame() {
         constellationArtRevealed =
             state.constellationArtRevealed !== undefined ? !!state.constellationArtRevealed : true;
         customTypes = state.customTypes || [];
-        fieldGoalsAchieved = Array.isArray(state.fieldGoalsAchieved)
-            ? state.fieldGoalsAchieved
-            : [false, false, false];
-        fieldGoalRewardsClaimed = Array.isArray(state.fieldGoalRewardsClaimed)
-            ? state.fieldGoalRewardsClaimed
-            : [false, false, false];
         bestScore = Math.max(state.bestScore || 0, getFieldScore());
         resetRecordScoreBadge();
 

@@ -9,8 +9,6 @@ let uniqueShapesFound = new Set();
 let bonusAwardedClasses = new Set();
 let floatingScores = [];
 let constellations = [];
-let fieldGoalsAchieved = [false, false, false];
-let fieldGoalRewardsClaimed = [false, false, false];
 let bestScore = 0;
 let recordScoreBadgeActive = false;
 let claimedStarCounts = new Set();
@@ -78,42 +76,4 @@ function updateBestScoreFromFieldScore() {
 
 function resetRecordScoreBadge() {
     recordScoreBadgeActive = false;
-}
-
-function checkFieldGoals() {
-    const fieldScore = getFieldScore();
-    const result = { newlyAchievedGoals: [] };
-
-    for (let i = 0; i < FIELD_GOAL_THRESHOLDS.length; i++) {
-        if (fieldScore >= FIELD_GOAL_THRESHOLDS[i] && !fieldGoalsAchieved[i]) {
-            fieldGoalsAchieved[i] = true;
-            result.newlyAchievedGoals.push(i);
-        }
-    }
-
-    return result;
-}
-
-function getFieldGoalRewardXP(goalIndex) {
-    return FIELD_GOAL_XP_REWARDS[goalIndex] || 0;
-}
-
-function canClaimFieldGoalReward(goalIndex) {
-    if (goalIndex < 0 || goalIndex >= FIELD_GOAL_THRESHOLDS.length) return false;
-    return !!fieldGoalsAchieved[goalIndex] && !fieldGoalRewardsClaimed[goalIndex];
-}
-
-function claimFieldGoalReward(goalIndex) {
-    const result = { xpGained: 0, goalIndex, leveledUp: false, newLevel: playerLevel };
-    if (!canClaimFieldGoalReward(goalIndex)) return result;
-
-    const rewardXP = getFieldGoalRewardXP(goalIndex);
-    if (rewardXP <= 0) return result;
-
-    const xpResult = awardXPForFieldGoal(rewardXP);
-    fieldGoalRewardsClaimed[goalIndex] = true;
-    result.xpGained = xpResult.xpGained;
-    result.leveledUp = xpResult.leveledUp;
-    result.newLevel = xpResult.newLevel;
-    return result;
 }

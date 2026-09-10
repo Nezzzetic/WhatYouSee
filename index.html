@@ -207,7 +207,6 @@
                         <div id="exLibrisLocked" class="obs-lock-hint" hidden>
                             <div class="obs-lock-icon" aria-hidden="true"><svg class="ic" width="20" height="20" focusable="false"><use href="#i-lock"/></svg></div>
                             <div class="obs-lock-title" id="exLibrisLockTitle"></div>
-                            <div class="obs-lock-bar"><div id="exLibrisLockBarFill" class="obs-lock-bar-fill"></div></div>
                             <div class="obs-lock-progress" id="exLibrisLockProgress"></div>
                         </div>
 
@@ -270,7 +269,9 @@
                      стрелок нет — страница вне сквозного порядка. Кнопки сохраняют
                      data-pager/data-dir (смотрит verify-atlas-spread.js). -->
                 <div class="book-foot">
-                    <span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span>
+                    <!-- S-03: уровень — рядом с брендом (или прогрессом главы штампов)
+                         на любой странице книги, правка заказчика 2026-09-10. -->
+                    <span class="book-foot-left"><span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span><span id="bookFootLevel" class="book-foot-level"></span></span>
                     <span class="book-foot-nav">
                         <button type="button" id="bookFootPrev" class="book-foot-nav-btn" data-dir="-1" data-i18n-aria="book.pagerPrev" hidden>‹</button>
                         <span id="bookFolio"></span>

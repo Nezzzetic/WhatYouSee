@@ -1302,6 +1302,13 @@ function getRewardPageUnlockCost(pageIndex) {
     return getAtlasCumulativeCost(page.unlockAtIndex);
 }
 
+/** S-03: уровень, на котором режется глава штампов (тот же, что у главы атласа). */
+function getRewardPageUnlockLevel(pageIndex) {
+    const page = REWARD_PAGES[pageIndex];
+    if (!page || typeof page.unlockAtIndex !== 'number') return 1;
+    return getAtlasChapterLevel(page.unlockAtIndex);
+}
+
 /** U-09: бейдж на иконке рельса — на этой странице есть что забрать. */
 function rewardPageHasClaimable(pageIndex) {
     return getRewardPageChains(pageIndex).some(chain => {
@@ -1544,7 +1551,7 @@ function createRewardPageLockedNotice(pageIndex) {
     const cost = getRewardPageUnlockCost(pageIndex);
 
     const lockedText = document.createElement('p');
-    lockedText.textContent = t('stamps.chapterLocked', { n: cost });
+    lockedText.textContent = t('stamps.chapterLocked', { n: getRewardPageUnlockLevel(pageIndex) });
     locked.appendChild(lockedText);
 
     const progressText = document.createElement('p');
