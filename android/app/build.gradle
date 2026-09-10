@@ -1,5 +1,32 @@
 apply plugin: 'com.android.application'
 
+// P-04: release-подпись. Ключ и пароли живут в android/keystore.properties — файл
+// под .gitignore: репозиторий публичный, секреты в него не попадают ни при каких
+// условиях. Сам .jks лежит вне репозитория (и вне синхронизируемых папок).
+// Формат, пути прямыми слэшами:
+//   storeFile=C:/Users/<user>/.keys/whatyousee-release.jks
+//   storePassword=…
+//   keyAlias=whatyousee
+//   keyPassword=…
+// ⚠ Потеря ключа необратима: APK, подписанный другим ключом, не встанет поверх
+// установленного — ни у игроков, ни в сторах (P-07/P-08). Бэкап .jks и паролей обязателен.
+def keystorePropsFile = rootProject.file('keystore.properties')
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) {
+    keystorePropsFile.withInputStream { keystoreProps.load(it) }
+}
+def releaseSigningProblem = null
+if (!keystorePropsFile.exists()) {
+    releaseSigningProblem = "нет ${keystorePropsFile}"
+} else {
+    def missing = ['storeFile', 'storePassword', 'keyAlias', 'keyPassword'].findAll { !keystoreProps[it] }
+    if (missing) {
+        releaseSigningProblem = "в keystore.properties не заполнено: ${missing.join(', ')}"
+    } else if (!file(keystoreProps['storeFile']).exists()) {
+        releaseSigningProblem = "keystore не найден по пути storeFile=${keystoreProps['storeFile']}"
+    }
+}
+
 android {
     namespace = "com.nezzzetic.whatyousee"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -16,11 +43,43 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
-    buildTypes {
+    signingConfigs {
         release {
+            if (releaseSigningProblem == null) {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
+    buildTypes {
+        // P-04: debug ставится рядом с release отдельным приложением, а не поверх:
+        // подписи разные, и поверх Android не пустит. У debug свой прогресс и своя
+        // подпись под иконкой (src/debug/res/values/strings.xml).
+        debug {
+            applicationIdSuffix ".debug"
+            versionNameSuffix "-debug"
+        }
+        release {
+            // P-04: R8 не включаем осознанно — dex ~3 МБ из ~16 МБ APK, а Capacitor
+            // находит плагины рефлексией, и без keep-правил мост ломается молча.
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            if (releaseSigningProblem == null) {
+                signingConfig signingConfigs.release
+            }
         }
+    }
+}
+
+// P-04: без ключа release-сборка падает, а не выдаёт молча app-release-unsigned.apk —
+// такой файл не ставится вовсе, но выглядит как готовый результат.
+gradle.taskGraph.whenReady { graph ->
+    def wantsRelease = graph.allTasks.any { it.project == project && it.name ==~ /(package|assemble|bundle)Release/ }
+    if (wantsRelease && releaseSigningProblem != null) {
+        throw new GradleException("P-04: release-сборка без ключа подписи — ${releaseSigningProblem}. " +
+                "Формат файла — в комментарии в начале android/app/build.gradle.")
     }
 }
 

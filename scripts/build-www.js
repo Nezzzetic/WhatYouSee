@@ -7,7 +7,11 @@
 //
 // Никаких зависимостей: голый node, как и вся остальная сборка проекта.
 //
-//   node scripts/build-www.js
+//   node scripts/build-www.js                  debug-сборка (npm run apk)
+//   node scripts/build-www.js --release        release (P-04): без dev-панели, аналитика обязательна
+//   node scripts/build-www.js --no-analytics   явно без аналитики, даже если analytics.local.json есть
+//
+// Release-сборку отсюда руками не зовут — её ведёт scripts/release-apk.js.
 
 'use strict';
 
@@ -16,6 +20,18 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const WWW = path.join(ROOT, 'www');
+
+// P-04: флаги сборки. Незнакомый флаг валит сборку: опечатка в `--release`
+// иначе молча дала бы debug-www с dev-панелью внутри раздаваемого APK.
+const KNOWN_FLAGS = ['--release', '--no-analytics'];
+const FLAGS = process.argv.slice(2);
+const unknownFlag = FLAGS.find(f => !KNOWN_FLAGS.includes(f));
+if (unknownFlag) {
+    console.error(`[build-www] незнакомый флаг ${unknownFlag}; знаю: ${KNOWN_FLAGS.join(', ')}`);
+    process.exit(1);
+}
+const RELEASE = FLAGS.includes('--release');
+const NO_ANALYTICS = FLAGS.includes('--no-analytics');
 
 // Всё, что нужно игре в рантайме. Список явный, а не «всё кроме» — иначе любой
 // новый служебный файл в корне молча уедет в APK.
@@ -91,7 +107,19 @@ function stripAnalyticsFromBuild() {
 }
 
 function injectAnalyticsConfig() {
+    if (NO_ANALYTICS) {
+        stripAnalyticsFromBuild();
+        console.log('[build-www] [analytics] ВЫКЛЮЧЕНА явно (--no-analytics) — в APK не уехало ни строки аналитики');
+        return;
+    }
     if (!fs.existsSync(ANALYTICS_LOCAL)) {
+        // P-04: раздаваемый APK без аналитики — ровно та ошибка, от которой
+        // предупреждает комментарий выше: его раздали, ждут данных, а данных нет.
+        // Для release отсутствие файла — не рычаг, а забытый файл; рычаг — флаг.
+        if (RELEASE) {
+            console.error('[build-www] release без analytics.local.json: положи файл или собери явно с --no-analytics');
+            process.exit(1);
+        }
         stripAnalyticsFromBuild();
         console.log('[build-www] [analytics] ВЫКЛЮЧЕНА: нет analytics.local.json — в APK не уехало ни строки аналитики');
         return;
@@ -126,12 +154,33 @@ function injectAnalyticsConfig() {
         process.exit(1);
     }
 
-    const build = readAppVersion();
+    // P-04: debug- и release-сборка несут один versionName/versionCode, а в PostHog
+    // данные игроков не должны смешиваться с прогонами исполнителя на своём телефоне.
+    const build = readAppVersion() + (RELEASE ? '' : ' debug');
     const block = `$1
     const CONFIG = { host: '${host}', key: '${key}', channel: 'apk', build: '${build}' };
     $2`;
     fs.writeFileSync(target, src.replace(marker, block), 'utf8');
     console.log(`[build-www] [analytics] включена: ${host}, канал apk, сборка ${build}`);
+}
+
+/**
+ * P-04: release-сборка без dev-панели. Панель скрыта в разметке (D-02), но
+ * открывается тройным тапом по невидимой кнопке в левом верхнем углу — и в
+ * раздаваемом APK любой игрок получил бы «+100 ✦», полный сброс и смену дня.
+ * Вычёркивается только кнопка: без неё setupDevToggleButton() выходит сразу,
+ * а второй путь к панели, `?dev=1`, в приложение не передать. Код игры не тронут.
+ */
+function stripDevToggleFromBuild() {
+    const indexPath = path.join(WWW, 'index.html');
+    const html = fs.readFileSync(indexPath, 'utf8');
+    const cleaned = html.replace(/[ \t]*<button[^>]*\bid="devToggleBtn"[^>]*><\/button>\r?\n/, '');
+    if (cleaned === html) {
+        console.error('[build-www] не нашёл кнопку #devToggleBtn в index.html — dev-панель уехала бы в release');
+        process.exit(1);
+    }
+    fs.writeFileSync(indexPath, cleaned, 'utf8');
+    console.log('[build-www] release: кнопка dev-панели вычеркнута');
 }
 
 function main() {
@@ -153,6 +202,7 @@ function main() {
     }
 
     injectAnalyticsConfig();
+    if (RELEASE) stripDevToggleFromBuild();
 
     // Считаем то, что реально легло, — цифра ловит и пустую копию, и раздувшийся
     // images/ раньше, чем это заметит вес APK.

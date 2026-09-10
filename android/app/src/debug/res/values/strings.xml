@@ -1,0 +1,8 @@
+<?xml version='1.0' encoding='utf-8'?>
+<!-- P-04: debug-сборка ставится рядом с release (applicationIdSuffix ".debug").
+     Иконка у них одна, поэтому различает их только подпись под иконкой. Короткая
+     намеренно: MIUI режет и «What You See» до «What Yo…» (V-15). -->
+<resources>
+    <string name="app_name">WYS dev</string>
+    <string name="title_activity_main">WYS dev</string>
+</resources>
