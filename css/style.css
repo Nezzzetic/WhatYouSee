@@ -830,6 +830,20 @@ button:disabled {
     align-items: center;
 }
 
+/* S-03: уровень — рядом с брендом в подвале, на любой странице (правка
+   заказчика 2026-09-10). Золото — цвет пути, тот же, что у заливки шкалы.
+   Точка-разделитель — псевдоэлемент: в узле остаётся только сам текст. */
+.book-foot-level {
+    color: var(--gold);
+    text-transform: uppercase;
+}
+
+.book-foot-level::before {
+    content: '·';
+    margin: 0 0.5em;
+    color: var(--ink-faint);
+}
+
 /* --- K-18: листание глав атласа/штампов переехало в подвал (было отдельной
    строкой-пейджером над сеткой) — правая половина `.book-foot` вместо голой
    колонцифры несёт «‹ p. N ▸». Кнопки те же узлы, что раньше жили в
@@ -1164,6 +1178,19 @@ button:disabled {
 .book-gauge-tick-top {
     top: 0;
     transform: translateY(-50%);
+}
+
+/* S-03: над верхней засечкой — номер следующего уровня словом (правка
+   заказчика 2026-09-10: «указать про следующий уровень вверху шкалы»).
+   Знаков на шкале нет по-прежнему — только текст. */
+.book-gauge-next {
+    position: absolute;
+    left: 8px;
+    bottom: 100%;
+    margin-bottom: 10px;
+    font-size: 10px;
+    color: var(--gold);
+    white-space: nowrap;
 }
 
 .book-gauge-tick-bottom {

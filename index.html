@@ -270,7 +270,9 @@
                      стрелок нет — страница вне сквозного порядка. Кнопки сохраняют
                      data-pager/data-dir (смотрит verify-atlas-spread.js). -->
                 <div class="book-foot">
-                    <span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span>
+                    <!-- S-03: уровень — рядом с брендом (или прогрессом главы штампов)
+                         на любой странице книги, правка заказчика 2026-09-10. -->
+                    <span class="book-foot-left"><span id="bookFootLeft" data-i18n="book.brand">ALMANAC</span><span id="bookFootLevel" class="book-foot-level"></span></span>
                     <span class="book-foot-nav">
                         <button type="button" id="bookFootPrev" class="book-foot-nav-btn" data-dir="-1" data-i18n-aria="book.pagerPrev" hidden>‹</button>
                         <span id="bookFolio"></span>
