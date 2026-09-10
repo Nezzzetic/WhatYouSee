@@ -1,11 +1,9 @@
-// progression.js — meta score, atlas pages, created shapes, XP (legacy)
+// progression.js — meta score, atlas pages, created shapes, levels (S-03)
 
 // =============================================================================
 // STATE
 // =============================================================================
 
-let totalXP = 0;
-let playerLevel = 1;
 let metaScore = 0;
 let unlockedPageIndices = new Set();
 let createdShapes = new Set();
@@ -22,6 +20,11 @@ let devDayOffset = 0;
 // Счётчика «сколько звёзд уже выдано» здесь намеренно НЕТ: он считается по
 // самому холсту (см. getObservatoryStarsDue).
 let lifetimeMetaEarned = 0;
+
+// S-03: последняя ступень лестницы уровней, о которой уже сказано в ленте
+// «Сегодня» (maybeAnnounceLevelUp). Нужна только затем, чтобы ступень хвоста
+// объявлялась ровно один раз и не задним числом.
+let levelAnnounced = 1;
 
 // Legacy (migration only)
 let globalDiscoveredShapes = new Set();
@@ -85,11 +88,12 @@ function awardMetaScore(amount) {
     const n = Math.max(0, Math.floor(amount));
     if (n <= 0) return 0;
     metaScore += n;
-    // B-02: копилку наращиваем ДО автосписания страниц — иначе те же ✦, что
-    // молча ушли на страницу атласа, до накопителя бы не доехали.
+    // B-02: накопитель «за всё время». S-03: по нему меряется уровень — им
+    // открываются и главы атласа, и Экслибрис; баланс не тратится вовсе.
     lifetimeMetaEarned += n;
     const wasObservatoryUnlocked = observatoryUnlockedNotified;
     maybeAutoUnlockAtlasPages();
+    maybeAnnounceLevelUp();
     if (typeof grantObservatoryStarsDue === 'function') grantObservatoryStarsDue();
     if (!wasObservatoryUnlocked) notifyObservatoryUnlockedIfNeeded();
     saveProgression();
@@ -107,9 +111,9 @@ function getLifetimeMetaEarned() {
     return lifetimeMetaEarned;
 }
 
-/** Порог — условие, а не цена: ✦ за него не списываются. */
+/** S-03: Экслибрис открывается уровнем (OBSERVATORY_UNLOCK_LEVEL), а не своим числом. */
 function isObservatoryUnlocked() {
-    return lifetimeMetaEarned >= OBSERVATORY_UNLOCK_COST;
+    return getPlayerLevel() >= OBSERVATORY_UNLOCK_LEVEL;
 }
 
 /**
@@ -156,24 +160,28 @@ function notifyObservatoryUnlockedIfNeeded() {
 
 /**
  * Реконструкция накопителя для сейва, где поля ещё нет (миграции не будет).
- * ✦ покидают баланс единственным путём — оплатой страницы атласа
- * (`metaScore -=` встречается в коде дважды, оба раза это цена страницы),
- * поэтому сумма восстанавливается точно.
+ * Такой сейв записан до B-02, когда ✦ покидали баланс единственным путём —
+ * оплатой страницы атласа, поэтому сумма восстанавливается точно. S-03
+ * списание сняло вовсе, но старые сейвы по-прежнему описывают ту модель.
  */
 function reconstructLifetimeMetaEarned() {
     let sum = metaScore;
     for (const pageIndex of unlockedPageIndices) {
-        sum += getAtlasPageUnlockCost(pageIndex);
+        sum += ATLAS_PAGE_COSTS[pageIndex] || 0;
     }
     return sum;
 }
 
-/** S-01: страницы атласа открываются автоматически, как только хватает ✦. */
+/**
+ * S-01: главы атласа открываются автоматически. S-03: по уровню, а не по
+ * балансу — глава с индексом i открывается на уровне i + 1, то есть когда
+ * `lifetimeMetaEarned` проходит её ступень лестницы. ✦ при этом больше не
+ * списываются: `metaScore` стал просто счётчиком заработанного.
+ */
 function maybeAutoUnlockAtlasPages() {
     let unlockedAny = false;
     let next = getNextLockedAtlasPageIndex();
-    while (next >= 0 && metaScore >= getAtlasPageUnlockCost(next)) {
-        metaScore -= getAtlasPageUnlockCost(next);
+    while (next >= 0 && lifetimeMetaEarned >= getAtlasCumulativeCost(next)) {
         unlockedPageIndices.add(next);
         unlockedAny = true;
         // K-09/K-15: разрезанная глава — обязательное событие ленты «Сегодня», без тоста.
@@ -200,21 +208,18 @@ function isAtlasPageUnlocked(pageIndex) {
     return unlockedPageIndices.has(pageIndex);
 }
 
-function getAtlasPageUnlockCost(pageIndex) {
-    if (pageIndex < 0 || pageIndex >= ATLAS_PAGE_COSTS.length) return 9999;
-    return ATLAS_PAGE_COSTS[pageIndex];
-}
-
 /**
- * K-12: кумулятивная сумма ATLAS_PAGE_COSTS[0..index] — те же засечки, на
- * которых режутся страницы атласа (см. reconstructLifetimeMetaEarned выше:
- * lifetimeMetaEarned проходит их в те же моменты). Главы штампов режутся на
- * подмножестве этого ряда — общего числового ряда, а не своего собственного.
+ * K-12 / S-03: порог главы атласа в ✦ за всё время — ступень лестницы уровней,
+ * на которой глава открывается (кумулятивная сумма ATLAS_PAGE_COSTS[0..index]).
+ * Главы штампов режутся на том же ряду — общем, а не своём собственном.
  */
 function getAtlasCumulativeCost(index) {
-    let sum = 0;
-    for (let i = 0; i <= index && i < ATLAS_PAGE_COSTS.length; i++) sum += ATLAS_PAGE_COSTS[i];
-    return sum;
+    return getLevelThreshold(getAtlasChapterLevel(index));
+}
+
+/** S-03: глава с индексом i открывается на уровне i + 1. */
+function getAtlasChapterLevel(index) {
+    return Math.max(0, Math.floor(index)) + 1;
 }
 
 function getNextLockedAtlasPageIndex() {
@@ -222,21 +227,6 @@ function getNextLockedAtlasPageIndex() {
         if (!isAtlasPageUnlocked(i)) return i;
     }
     return -1;
-}
-
-function canUnlockAtlasPage(pageIndex) {
-    if (pageIndex < 0 || pageIndex >= ATLAS_PAGE_COUNT) return false;
-    if (isAtlasPageUnlocked(pageIndex)) return false;
-    return metaScore >= getAtlasPageUnlockCost(pageIndex);
-}
-
-function unlockAtlasPage(pageIndex) {
-    if (!canUnlockAtlasPage(pageIndex)) return false;
-    const cost = getAtlasPageUnlockCost(pageIndex);
-    metaScore -= cost;
-    unlockedPageIndices.add(pageIndex);
-    saveProgression();
-    return true;
 }
 
 function getAtlasPageForShape(shapeName) {
@@ -341,63 +331,77 @@ function incrementDevDayOffset() {
 }
 
 // =============================================================================
-// LEGACY XP (atlas claim — UI removed; kept for saves)
+// LEVELS (S-03)
 // =============================================================================
 
-function isAtlasXpClaimed(shapeName) {
-    const normalized = normalizeShapeName(shapeName);
-    if (!normalized) return false;
-    return atlasClaimedShapes.has(normalized);
+/**
+ * Порог уровня в ✦ за всё время. Уровень 1 — с нуля; первые ступени —
+ * кумулятив цен глав атласа (уровень N открывает главу N), дальше каждые
+ * LEVEL_TAIL_STEP без потолка. Единственное место, где считается лестница:
+ * шкала у корешка, замки книги, Экслибрис и лента читают её отсюда.
+ */
+function getLevelThreshold(level) {
+    const n = Math.max(1, Math.floor(level));
+    const chapters = ATLAS_PAGE_COSTS.length;
+    let sum = 0;
+    for (let i = 0; i < Math.min(n, chapters); i++) sum += ATLAS_PAGE_COSTS[i];
+    if (n > chapters) sum += (n - chapters) * LEVEL_TAIL_STEP;
+    return sum;
 }
 
-function canClaimAtlasXP(shapeName) {
-    return false;
-}
-
-function hasClaimableAtlasXP() {
-    return false;
-}
-
-function claimAtlasXP(shapeName) {
-    return { xpGained: 0, leveledUp: false, newLevel: playerLevel };
-}
-
-function awardXP(shapeName) {
-    return claimAtlasXP(shapeName);
-}
-
-function awardXPForFieldGoal(amount) {
-    const result = { xpGained: 0, leveledUp: false, newLevel: playerLevel };
-    if (amount <= 0) return result;
-    totalXP += amount;
-    result.xpGained = amount;
-    const newLevel = computeLevel(totalXP);
-    if (newLevel > playerLevel) {
-        playerLevel = newLevel;
-        result.leveledUp = true;
-        result.newLevel = newLevel;
-    }
-    saveProgression();
-    return result;
-}
-
-function computeLevel(xp) {
+/** Уровень, который дают `earned` ✦ за всё время. */
+function getLevelForEarned(earned) {
+    const e = Math.max(0, Math.floor(Number(earned) || 0));
+    const chapters = ATLAS_PAGE_COSTS.length;
+    const lastChapter = getLevelThreshold(chapters);
+    if (e >= lastChapter) return chapters + Math.floor((e - lastChapter) / LEVEL_TAIL_STEP);
     let level = 1;
-    for (let i = 0; i < LEVEL_THRESHOLDS.length; i++) {
-        if (xp >= LEVEL_THRESHOLDS[i]) {
-            level = i + 1;
-        }
-    }
+    while (level < chapters && e >= getLevelThreshold(level + 1)) level++;
     return level;
 }
 
-function getNextLevelThreshold() {
-    if (playerLevel >= LEVEL_THRESHOLDS.length) return LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-    return LEVEL_THRESHOLDS[playerLevel];
+function getPlayerLevel() {
+    return getLevelForEarned(lifetimeMetaEarned);
 }
 
-function getCurrentLevelThreshold() {
-    return LEVEL_THRESHOLDS[playerLevel - 1] || 0;
+/** Ступень хвоста — уровень, у которого нет своей главы атласа. */
+function isTailLevel(level) {
+    return Math.floor(level) > ATLAS_PAGE_COSTS.length;
+}
+
+/**
+ * Снимок для шкалы у корешка и строки «Сегодня»: пороги текущего и следующего
+ * уровня и доля добора между ними. Потолка нет — следующий уровень есть всегда.
+ */
+function getLevelProgress() {
+    const earned = lifetimeMetaEarned;
+    const level = getLevelForEarned(earned);
+    const floor = getLevelThreshold(level);
+    const ceil = getLevelThreshold(level + 1);
+    const span = ceil - floor;
+    return {
+        earned, level, name: getLevelName(level),
+        floor, ceil, left: Math.max(0, ceil - earned),
+        ratio: span > 0 ? Math.max(0, Math.min(1, (earned - floor) / span)) : 0
+    };
+}
+
+/**
+ * S-03: ступень хвоста объявляется одной строкой ленты «Сегодня» — у неё нет
+ * разреза главы и баннера V-16, которые объявили бы её иначе, а без строки
+ * опустевшая шкала читалась бы как потерянный прогресс. Ступени глав здесь
+ * молчат: их объявляет `book.newsAtlasCut`. Каждая ступень — ровно один раз.
+ */
+function maybeAnnounceLevelUp() {
+    const level = getPlayerLevel();
+    if (level <= levelAnnounced) return false;
+    for (let lv = levelAnnounced + 1; lv <= level; lv++) {
+        if (isTailLevel(lv) && typeof addDailyNewsEvent === 'function') {
+            addDailyNewsEvent('book.newsLevelUp', { n: lv, name: getLevelName(lv) });
+        }
+    }
+    levelAnnounced = level;
+    return true;
 }
 
 function getLevelName(level) {
@@ -461,8 +465,6 @@ function migrateSaveToCatalog29() {
 }
 
 function resetProgressionForFullReset() {
-    totalXP = 0;
-    playerLevel = 1;
     metaScore = 0;
     unlockedPageIndices = new Set();
     createdShapes = new Set();
@@ -475,6 +477,7 @@ function resetProgressionForFullReset() {
     // Ключ хранения удаляет performFullReset (sketch.js).
     lifetimeMetaEarned = 0;
     observatoryUnlockedNotified = false;
+    levelAnnounced = 1;
     if (typeof resetAchievementsForFullReset === 'function') resetAchievementsForFullReset();
 }
 
@@ -487,8 +490,6 @@ const PROGRESSION_SAVE_KEY = 'starsReborn_progression';
 function saveProgression() {
     try {
         const state = {
-            totalXP,
-            playerLevel,
             metaScore,
             unlockedPageIndices: [...unlockedPageIndices],
             createdShapes: [...createdShapes],
@@ -501,7 +502,10 @@ function saveProgression() {
             // отсутствие полей чинится реконструкцией, а не миграцией.
             // observatoryStarsGranted здесь больше нет: выданное считается по холсту.
             lifetimeMetaEarned,
-            observatoryUnlockedNotified
+            observatoryUnlockedNotified,
+            // S-03: последняя объявленная ступень лестницы. Поле аддитивное —
+            // версия сейва не поднимается.
+            levelAnnounced
         };
         if (typeof getAchievementSaveData === 'function') {
             Object.assign(state, getAchievementSaveData());
@@ -528,8 +532,6 @@ function loadProgression() {
         }
 
         const state = JSON.parse(raw);
-        totalXP = state.totalXP || 0;
-        playerLevel = state.playerLevel || 1;
         metaScore = state.metaScore || 0;
         devDayOffset = state.devDayOffset || 0;
 
@@ -560,6 +562,11 @@ function loadProgression() {
         observatoryUnlockedNotified = state.observatoryUnlockedNotified !== undefined
             ? !!state.observatoryUnlockedNotified
             : isObservatoryUnlocked();
+        // S-03: сейв до уровней — всё, что уже взято, считаем объявленным:
+        // строки «новый уровень» в ленту задним числом не пишем.
+        levelAnnounced = Number.isFinite(Number(state.levelAnnounced))
+            ? Math.max(1, Math.floor(Number(state.levelAnnounced)))
+            : getPlayerLevel();
 
         if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(state);
 
@@ -578,7 +585,6 @@ function loadProgression() {
             migrateSaveToCatalog29();
         }
 
-        playerLevel = computeLevel(totalXP);
         ensurePlayerId();
 
         // M-05: сутки сверяем после того, как устоялся devDayOffset — от него
