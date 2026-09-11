@@ -164,10 +164,10 @@ en: {
     },
     'chain.size8plus.desc': 'Constellations of 8 stars or more',
     'chain.rainbow.step': {
-        one: '{n} night with a full rainbow (all 5 colors in one night)',
-        other: '{n} nights with a full rainbow (all 5 colors in one night)'
+        one: '{n} night with a full rainbow (constellations of all 5 colors on one field)',
+        other: '{n} nights with a full rainbow (constellations of all 5 colors on one field)'
     },
-    'chain.rainbow.desc': 'Nights finished using all five colors',
+    'chain.rainbow.desc': 'Nights with constellations of all five colors on the field',
     'chain.mosaic.step': {
         one: '{n} night with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
         other: '{n} nights with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
@@ -177,7 +177,7 @@ en: {
         one: '{n} night: {desc}',
         other: '{n} nights: {desc}'
     },
-    'chain.vitrazh.desc': 'page 3 shapes on the field in all 5 colors',
+    'chain.vitrazh.desc': 'five colors among page 3 shapes on the field',
     'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
     'chain.nights.step': {
         one: '{n} completed night',
@@ -497,11 +497,11 @@ ru: {
     },
     'chain.size8plus.desc': 'Созвездия от 8 звёзд и больше',
     'chain.rainbow.step': {
-        one: '{n} ночь с полной радугой (все 5 цветов за ночь)',
-        few: '{n} ночи с полной радугой (все 5 цветов за ночь)',
-        many: '{n} ночей с полной радугой (все 5 цветов за ночь)'
+        one: '{n} ночь с полной радугой (созвездия всех 5 цветов на одном поле)',
+        few: '{n} ночи с полной радугой (созвездия всех 5 цветов на одном поле)',
+        many: '{n} ночей с полной радугой (созвездия всех 5 цветов на одном поле)'
     },
-    'chain.rainbow.desc': 'Ночи, где были все пять цветов',
+    'chain.rainbow.desc': 'Ночи с созвездиями всех пяти цветов на поле',
     'chain.mosaic.step': {
         one: '{n} ночь с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
         few: '{n} ночи с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
@@ -513,7 +513,7 @@ ru: {
         few: '{n} ночи: {desc}',
         many: '{n} ночей: {desc}'
     },
-    'chain.vitrazh.desc': 'фигуры стр. 3 на поле во всех 5 цветах',
+    'chain.vitrazh.desc': 'пять цветов среди фигур страницы 3 на поле',
     'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
