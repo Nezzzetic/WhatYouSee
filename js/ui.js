@@ -871,13 +871,14 @@ function stampsHaveClaimable() {
 }
 
 /**
- * K-17: второй раздел с настоящим «взять» — «Сегодня». Готовая суточная марка
- * (REWARD_PAGES[0]) и непрочитанное событие мира — те же два условия, что
- * поднимают каплю на ленте (`hasSkyWaxSignal`), но теперь видно и где именно.
+ * K-17: второй раздел с настоящим «взять» — «Сегодня». U-25: точка только за
+ * готовую суточную марку (REWARD_PAGES[0]) — непрочитанное событие мира больше
+ * её не зажигает (иначе она горела почти после каждой новой фигуры и переставала
+ * что-то значить). Капля на ленте (`hasSkyWaxSignal`) по-прежнему держит оба
+ * условия — это два разных сигнала с U-25.
  */
 function todayHasSignal() {
-    return (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(0))
-        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
+    return typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(0);
 }
 
 /**
