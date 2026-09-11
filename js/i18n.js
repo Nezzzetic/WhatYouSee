@@ -242,6 +242,8 @@ en: {
     'book.pagerPrev': 'Previous page',
     'book.pagerNext': 'Next page',
     'book.openRibbon': 'Open the almanac',
+    // O-07: постоянный знак закрытия — второй хвост ленты, висит сверху страницы.
+    'book.closeRibbon': 'Close the almanac',
     'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
@@ -577,6 +579,7 @@ ru: {
     'book.pagerPrev': 'Предыдущая страница',
     'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',
+    'book.closeRibbon': 'Закрыть альманах',
     'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',

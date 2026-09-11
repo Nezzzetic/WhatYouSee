@@ -1292,6 +1292,39 @@ button:disabled {
     box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
 }
 
+/* --- O-07: постоянный знак закрытия книги -----------------------------------
+   Единственный видимый способ выйти из книги без жеста и без Escape — до
+   этой задачи их не было вовсе (K-26 сняла «RETURN TO THE SKY» как второй
+   вход в тот же жест закрытия, но новичок жеста не знал). Тот же хвост, что
+   у ленты-закладки на небе (K-05), только висит СВЕРХУ страницы — уголковый
+   вырез снизу вместо сверху, зеркально. Живёт углом, свободным от высечек
+   (`.book-tabs` начинается заметно ниже) и от заголовка (по центру). */
+
+.book-close-ribbon {
+    position: absolute;
+    top: 0;
+    right: 22px;
+    z-index: 1215;
+    width: 34px;
+    height: 32px;
+    padding: 4px 0 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    border: none;
+    background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+    box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.book-close-ribbon:hover,
+.book-close-ribbon:focus-visible {
+    filter: brightness(1.12);
+}
+
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
    не поповером над подвалом шторки (той больше нет).
    K-34: рамка/заливка/12px-радиус сняты — та же карточка-плашка, которую
