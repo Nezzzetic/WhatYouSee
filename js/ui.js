@@ -1890,6 +1890,16 @@ function openBookAnimated(cut) {
 }
 
 /**
+ * O-07: тап по постоянному знаку закрытия — тот же довод, что у потягивания
+ * страницы вниз (settleBookTransform в setupBookCloseGesture), а не мгновенный
+ * closeBook(): жест и знак обязаны выглядеть одним и тем же движением.
+ */
+function closeBookAnimated() {
+    const book = document.getElementById('book');
+    settleBookTransform(book, bookTravelPx(), () => closeBook());
+}
+
+/**
  * Два жеста книги на одном обработчике, разведённые по оси (BOOK_AXIS_DECIDE_PX,
  * риск 1 дока K-28 — тот же приём, что уже развёл закрытие книги (вниз) и
  * потягивание ленты (вверх), см. setupRibbonPullGesture):
@@ -2108,6 +2118,9 @@ function setupBookControls() {
         event.preventDefault();
         openBookAnimated();
     });
+
+    // O-07: постоянный знак закрытия — тот же довод, что у потягивания вниз.
+    document.getElementById('bookCloseRibbon')?.addEventListener('click', closeBookAnimated);
 
     document.querySelectorAll('.book-tab').forEach(btn => {
         btn.addEventListener('click', () => switchBookCut(btn.dataset.cut));
