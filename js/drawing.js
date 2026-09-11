@@ -1089,16 +1089,15 @@ function mousePressed(event) {
     if (isBlockingOverlayOpen()) return;
 
     // V-13: тап посреди финала ночи доигрывает сцену мгновенно и съедается
-    // целиком — иначе тот же тап тут же откроет переименование (U-04): оно висит
-    // на первой же проверке после constellationArtRevealed, а он уже выставлен.
+    // целиком — иначе он попал бы на голое звёздное поле сцены раньше, чем
+    // созвездия успели родиться заново.
     if (isLevelFinaleActive()) {
         finishLevelFinaleNow();
         return;
     }
 
-    // K-04: пометка корректора — единственный вход в отмену. Проверяется РАНЬШЕ
-    // переименования (U-04) и раньше звёзд: она висит поверх неба четыре секунды,
-    // и тап по ней ничей больше. Порядок ветвей здесь и есть приоритет.
+    // K-04: пометка корректора — единственный вход в отмену. Проверяется раньше
+    // звёзд: она висит поверх неба четыре секунды, и тап по ней ничей больше.
     if (hitUndoMark(mouseX, mouseY)) {
         undoLastConstellation();
         return;
@@ -1106,15 +1105,6 @@ function mousePressed(event) {
 
     const fieldMouseX = mouseX / zoomLevel + camX;
     const fieldMouseY = mouseY / zoomLevel + camY;
-
-    // U-04: тап по созвездию после раскрытия → переименование
-    if (constellationArtRevealed) {
-        const tapped = getConstellationAtFieldPoint(fieldMouseX, fieldMouseY);
-        if (tapped) {
-            openConstellationRenamePrompt(tapped);
-            return;
-        }
-    }
 
     const clickedStar = getStarAt(fieldMouseX, fieldMouseY);
     if (clickedStar && !clickedStar.locked) {
@@ -1507,7 +1497,7 @@ function commitConstellationFromPayload(payload) {
     const constellation = {
         lines,
         name: displayName,
-        customName: null,   // U-04: пользовательское имя (перекрывает name при отображении)
+        customName: null,   // всегда null на новых созвездиях — поле живо только ради старых сейвов (U-27 сняла ввод)
         center,
         labelAnchor,
         starCount,
@@ -1817,45 +1807,10 @@ function evaluateLabelCandidate(cx, y, labelHalfW, labelHalfH, segments) {
  * Возвращает созвездие, чей labelAnchor ближе всего к точке (fx, fy)
  * в пределах HIT_RADIUS world units.
  */
-const CONSTELLATION_LABEL_HIT_RADIUS = 40;
-
-function getConstellationAtFieldPoint(fx, fy) {
-    let best = null;
-    let bestDist = CONSTELLATION_LABEL_HIT_RADIUS;
-    for (const c of constellations) {
-        if (!c || !c.labelAnchor) continue;
-        const dist = horizontalWrapDist(fx, fy, c.labelAnchor.x, c.labelAnchor.y);
-        if (dist < bestDist) {
-            bestDist = dist;
-            best = c;
-        }
-    }
-    return best;
-}
-
-function openConstellationRenamePrompt(constellation) {
-    const current = constellation.customName || getConstellationDisplayName(constellation);
-    // Промпт переводится, введённое игроком имя — нет (решение исполнителя L-01).
-    const result = prompt(t('field.renamePrompt'), current);
-    if (result === null || result.trim() === '') return;
-    constellation.customName = result.trim();
-    autoSave();
-}
-
 function mouseMoved() {
-    // B-02: в обсерватории переименовывать нечего — курсор всегда обычный
-    if (typeof isObservatoryMode === 'function' && isObservatoryMode()) {
-        cursor(ARROW);
-        return;
-    }
-    if (!constellationArtRevealed) {
-        cursor(ARROW);
-        return;
-    }
-    const fieldMouseX = mouseX / zoomLevel + camX;
-    const fieldMouseY = mouseY / zoomLevel + camY;
-    const hit = getConstellationAtFieldPoint(fieldMouseX, fieldMouseY);
-    cursor(hit ? 'text' : ARROW);
+    // U-27: на поле переименовывать нечего — курсор всегда обычный (в обсерватории
+    // тоже, там переименование своё, книжное, K-21).
+    cursor(ARROW);
 }
 
 function computeConstellationLabelAnchor(lines, starIds, shapeName) {
