@@ -1239,10 +1239,13 @@ function claimAchievementStep(chainId) {
  * включительно (getAtlasCumulativeCost) — тот же нож, что и у атласа, на том
  * же ряду чисел. `null` — глава открыта всегда, порог не существует.
  *
- * B-04: все главы Штампов открыты сразу (unlockAtIndex → null везде) — при
- * четырёх главах атласа прежние индексы 1/3/5 либо совпали бы с самим окном
- * первых дней, либо ушли за пределы ряда. Замки особых достижений
- * (requiresPageComplete/getChainLockReason) это решение не трогает.
+ * O-08: три главы вместо четырёх — заперты уровнями S-03, а не все сразу.
+ * «Первый свет» получил размерные плюс Trailblazer/Sky Architect (переехали
+ * с «Долгого пути») и остаётся открытым всегда — это единственная глава,
+ * доступная новичку до уровня 2. «Рука гранильщика» (цветовые) заперта до
+ * уровня 2, «Долгий путь» (остаток + вся бывшая Odd Nights, 6 цепочек) — до
+ * уровня 3. Собственные замки особых (requiresPageComplete/getChainLockReason)
+ * это решение не трогает — они внутри главы и замок главы не дублируют.
  */
 const REWARD_PAGES = [
     {
@@ -1252,31 +1255,31 @@ const REWARD_PAGES = [
         chainIds: ['evening_rite']
     },
     {
+        // O-08: Trailblazer и Sky Architect переехали сюда с «Долгого пути» —
+        // порядок: сначала три размерные (как раньше), следом они (решение
+        // исполнителя, заказчик порядок не задавал).
         id: 'first_light', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.firstLight'),
-        chainIds: ['size_2_4', 'size_5_7', 'size_8plus'],
+        chainIds: ['size_2_4', 'size_5_7', 'size_8plus', 'razvedka', 'constellations'],
         unlockAtIndex: null
     },
     {
         // U-17: «Рука гранильщика» переехала на вторую страницу Штампов (после
         // «Первого света», перед «Долгим путём») — решение заказчика.
+        // O-08: заперта целиком до уровня 2 (unlockAtIndex: 1 → getAtlasChapterLevel = 2).
         id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
-        unlockAtIndex: null
+        unlockAtIndex: 1
     },
     {
-        // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
+        // O-08: «Долгий путь» вобрал остаток старой страницы (Огранщик, Странник
+        // ночей) и всю бывшую Odd Nights (Радуга/Мозаика/Витраж/Калейдоскоп) —
+        // четвёртой главы штампов больше нет. Заперта целиком до уровня 3
+        // (unlockAtIndex: 2 → getAtlasChapterLevel = 3). Одноразовые вызовы
+        // держат свой отдельный замок requiresPageComplete/getChainLockReason
+        // независимо от замка самой главы.
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations'],
-        unlockAtIndex: null
-    },
-    {
-        // Особые достижения страниц атласа: у каждой уже есть свой замок
-        // (requiresPageComplete/getChainLockReason) — этот порог лишь решает,
-        // видна ли сама глава на оглавлении и в пейджере, замка не дублирует.
-        // B-04: gobelen/orchestra/symphony сняты вместе с бывшими главами V/VI/VII.
-        id: 'odd_nights', sign: 'comet', title: t('rewardPage.oddNights'),
-        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
-        unlockAtIndex: null
+        chainIds: ['ogranshchik', 'nights', 'rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
+        unlockAtIndex: 2
     }
 ];
 
