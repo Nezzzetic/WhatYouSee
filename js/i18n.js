@@ -214,7 +214,6 @@ en: {
     'rewardPage.firstLight': 'First Light',
     'rewardPage.longWalk': 'The Long Walk',
     'rewardPage.cuttersHand': "The Cutter's Hand",
-    'rewardPage.oddNights': 'Odd Nights',
 
     // --- Награды: строки и замки ---------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -236,7 +235,6 @@ en: {
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
-    'book.footStampsProgress': '{current} of {total} pressed',
     // K-28: пейджер в подвале — сквозной по всей книге, не только внутри
     // атласа/штампов (swipeBookPage).
     'book.pagerPrev': 'Previous page',
@@ -553,7 +551,6 @@ ru: {
     'rewardPage.firstLight': 'Первый свет',
     'rewardPage.longWalk': 'Долгий путь',
     'rewardPage.cuttersHand': 'Рука гранильщика',
-    'rewardPage.oddNights': 'Странные ночи',
 
     // --- Награды --------------------------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -575,7 +572,6 @@ ru: {
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
-    'book.footStampsProgress': 'прижато {current} из {total}',
     'book.pagerPrev': 'Предыдущая страница',
     'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',

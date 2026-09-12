@@ -768,8 +768,8 @@ function renderBookHead() {
         eyebrow = t('book.eyebrowStampsChapter', { n: toRoman(idx) });
         title = page ? page.title : '';
         folioN = getStampsChapterFolio(idx);
-        const { pressed, total } = getRewardPagePressedStamps(idx);
-        footLeft = t('book.footStampsProgress', { current: pressed, total });
+        // O-08: «N of M pressed» снято — подвал падает на бренд ALMANAC, как
+        // на остальных страницах книги. Счёт главы остался в оглавлении (K-19).
     } else if (bookCut === 'exlibris') {
         eyebrow = t('book.eyebrowExLibris');
         title = t('book.headExLibris');
