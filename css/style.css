@@ -464,9 +464,16 @@ button {
     transition: border-color var(--t-micro) var(--ease), background var(--t-micro) var(--ease);
 }
 
-button:hover {
-    border-color: var(--ink-faint);
-    background: var(--paper-edge);
+/* U-28: на тач-экране тап навсегда «залипает» в :hover (mouseleave не наступает,
+   пока палец не коснётся чего-то другого) — без media кнопка без своего :hover
+   (например, высечка книги .book-tab) оставалась подсвеченной этим правилом и
+   после ухода с раздела свайпом. Тот же диагноз, что уже чинил O-07 у знака
+   закрытия книги, только здесь источник — общее правило, а не собственное. */
+@media (hover: hover) {
+    button:hover {
+        border-color: var(--ink-faint);
+        background: var(--paper-edge);
+    }
 }
 
 button:disabled {
@@ -1288,6 +1295,7 @@ button:disabled {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .book-tab-on {
