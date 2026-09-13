@@ -1363,15 +1363,16 @@ function getRewardPagePressedStamps(pageIndex) {
 
 /**
  * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
- * цепочка пройдена целиком. У шагов суточного квеста прогресса нет (условие
- * бинарное) — вместо числа тире (K-22: тот же общий путь, `getAchievementStepProgress`
- * не знает проверок `dailyEntry`/`dailyNight` и честно отдаёт null).
+ * цепочка пройдена целиком. У шагов суточного квеста считать нечего (условие
+ * бинарное, K-22: `getAchievementStepProgress` не знает проверок `dailyEntry`/
+ * `dailyNight` и честно отдаёт null) — слот остаётся пустым, а не прочерком
+ * (U-30: прочерк читался как отдельная лишняя полоска).
  */
 function buildAchievementHeadCount(chain, p, done) {
     if (done) return { text: t('rewards.headDone'), ready: false };
     if (p.claimable) return { text: t('rewards.headReady'), ready: true };
     const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
-    if (!prog) return { text: '—', ready: false };
+    if (!prog) return { text: '', ready: false };
     return { text: t('rewards.headProgress', { current: Math.min(prog.current, prog.target), target: prog.target }), ready: false };
 }
 
