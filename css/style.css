@@ -895,21 +895,21 @@ button:disabled {
 #bookFootPrev { padding-left: 20px; margin-left: -20px; }
 #bookFootNext { padding-right: 20px; margin-right: -20px; }
 
-/* --- V-16: баннер разреза главы — единственный тост в игре, узкое исключение
-   из K-15 («тостов нет вовсе»). Решение заказчика 2026-09-04: разрез главы —
-   один из важнейших этапов игры, ради него можно позволить себе яркий отклик
-   прямо поверх открытой книги, а не только строку в ленте новостей ниже.
+/* --- U-29 (выросло из V-16): баннер уровня — единственный тост в игре, узкое
+   исключение из K-15 («тостов нет вовсе»). Решение заказчика: баннер разреза
+   главы стал баннером уровня, шире и с составом того, что открылось (глава
+   атласа, глава Штампов, Экслибрис) — то же одно окно, только больше.
    Ребёнок .book-page (не .book-body) — плавает над текущим разделом, лист под
    него не выделяет отдельного места в раскладке. Слой между страницей книги
    (1200) и перелётом монеты (1300, A-03) — по смыслу «под» жестом забора. --- */
 
-.chapter-cut-banner {
+.level-banner {
     position: absolute;
     left: 50%;
     top: calc(var(--safe-top) + 58px);
     z-index: 1220;
-    max-width: min(84%, 340px);
-    padding: 13px 20px;
+    max-width: min(88%, 380px);
+    padding: 14px 22px 16px;
     text-align: center;
     border: 1px solid var(--wax);
     border-radius: var(--r-lg);
@@ -921,28 +921,46 @@ button:disabled {
     transition: opacity var(--t-scene) var(--ease), transform var(--t-scene) var(--ease);
 }
 
-.chapter-cut-banner-on {
+.level-banner-on {
     opacity: 1;
     transform: translate(-50%, 0);
 }
 
-.chapter-cut-banner-eyebrow {
+.level-banner-eyebrow {
     font-size: 10px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
     color: var(--wax-soft);
 }
 
-.chapter-cut-banner-title {
+.level-banner-title {
     font-family: var(--font-title);
-    font-size: 16.5px;
+    font-size: 17px;
     line-height: 1.3;
     color: var(--gold-light);
     margin-top: 5px;
 }
 
+/* Список того, что открылось на этой ступени — пусто и скрыто на хвосте
+   лестницы (уровень 5+), где баннер несёт только поздравление. */
+.level-banner-unlocks {
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(var(--wax-rgb), 0.3);
+}
+
+.level-banner-unlock-row {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink);
+}
+
+.level-banner-unlock-row + .level-banner-unlock-row {
+    margin-top: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .chapter-cut-banner { transition: none; }
+    .level-banner { transition: none; }
 }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */

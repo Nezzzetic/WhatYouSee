@@ -1176,18 +1176,18 @@ function claimAchievementStep(chainId) {
     if (typeof playClaim === 'function') playClaim(reward);
     if (typeof flyClaimReward === 'function') flyClaimReward(fromRect, reward);
 
-    // V-16: разрез главы атласа — узкое исключение из K-15, решение заказчика
-    // 2026-09-04. Забор марки — единственный live-путь к maybeAutoUnlockAtlasPages
-    // (в отличие от загрузки сейва и дев-вайпа), поэтому достаточно сверить
-    // unlockedPageIndices до/после — без изменения сигнатур awardMetaScore
-    // и maybeAutoUnlockAtlasPages.
-    const atlasPagesBeforeClaim = new Set(unlockedPageIndices);
+    // U-29 (выросло из V-16): баннер уровня — узкое исключение из K-15, решение
+    // заказчика. Забор марки — единственный live-путь к росту `getPlayerLevel()`
+    // (в отличие от загрузки сейва и дев-кнопки «+100 ✦», которая зовёт
+    // awardMetaScore напрямую), поэтому достаточно сверить уровень до/после —
+    // без изменения сигнатуры awardMetaScore.
+    const levelBeforeClaim = getPlayerLevel();
     awardMetaScore(reward);
-    if (typeof showChapterCutBanner === 'function') {
-        const newlyCutPages = [...unlockedPageIndices]
-            .filter(i => !atlasPagesBeforeClaim.has(i))
-            .sort((a, b) => a - b);
-        if (newlyCutPages.length) showChapterCutBanner(newlyCutPages);
+    const levelAfterClaim = getPlayerLevel();
+    if (typeof showLevelBanner === 'function' && levelAfterClaim > levelBeforeClaim) {
+        const newLevels = [];
+        for (let lv = levelBeforeClaim + 1; lv <= levelAfterClaim; lv++) newLevels.push(lv);
+        showLevelBanner(newLevels, getLevelUnlockKeys(levelBeforeClaim, levelAfterClaim));
     }
 
     if (chain.daily) {
@@ -1310,6 +1310,30 @@ function getRewardPageUnlockLevel(pageIndex) {
     const page = REWARD_PAGES[pageIndex];
     if (!page || typeof page.unlockAtIndex !== 'number') return 1;
     return getAtlasChapterLevel(page.unlockAtIndex);
+}
+
+/**
+ * U-29: что открыл проход уровней (fromLevel, toLevel] — главы атласа, главы
+ * штампов, Экслибрис. Атлас и уровень заперты на одном ряду по построению
+ * (`getAtlasChapterLevel`: глава i открывается уровнем i+1) — используется
+ * напрямую, без сверки unlockedPageIndices до/после, как делал V-16.
+ * Ключи — `atlas:<idx>` / `stamps:<idx>` / `exlibris`, порядок внутри уровня
+ * фиксирован (атлас → штампы → Экслибрис), уровни по возрастанию.
+ */
+function getLevelUnlockKeys(fromLevel, toLevel) {
+    const keys = [];
+    for (let lv = fromLevel + 1; lv <= toLevel; lv++) {
+        const atlasIdx = lv - 1;
+        if (atlasIdx < ATLAS_PAGE_COSTS.length) keys.push('atlas:' + atlasIdx);
+        for (let i = 0; i < REWARD_PAGES.length; i++) {
+            if (typeof REWARD_PAGES[i].unlockAtIndex === 'number'
+                && getRewardPageUnlockLevel(i) === lv) {
+                keys.push('stamps:' + i);
+            }
+        }
+        if (lv === OBSERVATORY_UNLOCK_LEVEL) keys.push('exlibris');
+    }
+    return keys;
 }
 
 /** U-09: бейдж на иконке рельса — на этой странице есть что забрать. */

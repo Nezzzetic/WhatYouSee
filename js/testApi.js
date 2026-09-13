@@ -554,16 +554,18 @@
     }
 
     /**
-     * V-16: срез баннера разреза главы — узкое исключение из K-15. Без него
-     * браузерный слой умеет только ловить скриншот в произвольный момент.
-     * `chapterCutBannerIndices` — script-level let из ui.js, виден по имени.
+     * U-29 (выросло из V-16): срез баннера уровня — узкое исключение из K-15.
+     * Без него браузерный слой умеет только ловить скриншот в произвольный
+     * момент. `levelBannerLevels`/`levelBannerUnlockKeys` — script-level let
+     * из ui.js, видны по имени.
      */
-    function chapterCutBannerState() {
-        const el = document.getElementById('chapterCutBanner');
-        const titleEl = document.getElementById('chapterCutBannerTitle');
+    function levelBannerState() {
+        const el = document.getElementById('levelBanner');
+        const titleEl = document.getElementById('levelBannerTitle');
         return {
             active: !!(el && !el.hidden),
-            indices: typeof chapterCutBannerIndices !== 'undefined' ? [...chapterCutBannerIndices] : [],
+            levels: typeof levelBannerLevels !== 'undefined' ? [...levelBannerLevels] : [],
+            unlocks: typeof levelBannerUnlockKeys !== 'undefined' ? [...levelBannerUnlockKeys] : [],
             text: titleEl ? titleEl.textContent : ''
         };
     }
@@ -1061,7 +1063,7 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
-        chapterCutBanner: chapterCutBannerState,
+        levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,
         setZoom,
