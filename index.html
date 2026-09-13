@@ -87,6 +87,9 @@
         <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/></symbol>
         <!-- лазурные · волна -->
         <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 9C5.5 6 8.5 6 11 9 13.5 12 16.5 12 19 9M3 16C5.5 13 8.5 13 11 16 13.5 19 16.5 19 19 16"/></symbol>
+        <!-- O-07: закрыть книгу — крестик, единственный знак кассы с золотом
+             вместо цвета строки (см. .book-close-sign, style.css) -->
+        <symbol id="i-cross" viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></symbol>
       </defs>
     </svg>
 
@@ -297,14 +300,16 @@
             <!-- O-07: постоянный знак закрытия — новичок без подсказок со
                  стороны не понимал, как выйти из книги (K-26 сняла кнопку
                  «RETURN TO THE SKY», оставив только жест и Escape). Хвост той
-                 же ленты, что открывает книгу с неба (K-05), только висит
-                 сверху страницы — знак «ribbon» кассы K-02 уже был в спрайте,
-                 но нигде не использовался. Тап закрывает тем же доводом
-                 (settleBookTransform → closeBook), что и потягивание вниз. -->
+                 же ширины, что у ленты-закладки на небе (K-05, --ribbon-w),
+                 только висит сверху страницы, а не снизу экрана; знак —
+                 золотой крестик «cross» (единственный знак кассы K-02 со
+                 своим цветом, а не цветом строки — см. .book-close-sign).
+                 Тап закрывает тем же доводом (settleBookTransform →
+                 closeBook), что и потягивание вниз. -->
             <button type="button" id="bookCloseRibbon" class="book-close-ribbon"
                     data-i18n-aria="book.closeRibbon">
                 <span class="book-close-ribbon-tail" aria-hidden="true">
-                    <svg class="ic" width="15" height="15" focusable="false"><use href="#i-ribbon"/></svg>
+                    <svg class="ic ic-sm book-close-sign" width="14" height="14" focusable="false"><use href="#i-cross"/></svg>
                 </span>
             </button>
         </div>
