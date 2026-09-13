@@ -321,6 +321,11 @@ function sizeGlyphCanvas(canvas, cssPx, forceCssSize = true) {
  * Отступ/толщина/радиус считаются от **логической** стороны (CSS px), иначе
  * порог читаемости K-02 (мин. 1.4 px точки на строке) на большом DPR съезжает
  * вниз — контекст масштабируется один раз, дальше формулы не меняются.
+ *
+ * V-19: `color` — либо один RGB (как раньше), либо массив из 2–4 RGB — тогда
+ * штрихи и точки красятся линейным градиентом слева направо через canvas
+ * `createLinearGradient`, цвета в переданном порядке. `blueprint` игнорирует
+ * `color` целиком, как и раньше.
  */
 function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const ctx = canvas.getContext('2d');
@@ -336,7 +341,17 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const halo = Math.max(2.6, side * 0.066);
     const iw = w - pad * 2;
     const ih = h - pad * 2;
-    const inkFaint = blueprint ? INK_FAINT_RGB : color;
+
+    const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    let paintStyle;
+    if (blueprint) {
+        paintStyle = solidStyle(INK_FAINT_RGB);
+    } else if (Array.isArray(color[0])) {
+        paintStyle = ctx.createLinearGradient(0, 0, w, 0);
+        color.forEach((rgb, i) => paintStyle.addColorStop(color.length > 1 ? i / (color.length - 1) : 0, solidStyle(rgb)));
+    } else {
+        paintStyle = solidStyle(color);
+    }
 
     ctx.clearRect(0, 0, w, h);
 
@@ -345,7 +360,8 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
     // K-31: контур чертежа неразгаданной был бледен дважды — здесь и через
     // `.atlas-card-unknown` (снята). Альфа поднята с 0.7 до 0.85, вровень
     // с контуром точки ниже — сам чертёж теперь несёт весь контраст.
-    ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},${blueprint ? 0.85 : 0.7})`;
+    ctx.strokeStyle = paintStyle;
+    ctx.globalAlpha = blueprint ? 0.85 : 0.7;
     ctx.lineWidth = Math.max(1, side * 0.02);
     ctx.lineCap = 'round';
     ctx.setLineDash(blueprint ? [dot * 1.4, dot * 1.4] : []);
@@ -356,25 +372,30 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
         ctx.stroke();
     }
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     for (const [px, py] of pts) {
         if (blueprint) {
             ctx.beginPath();
             ctx.arc(px, py, dot, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},0.85)`;
+            ctx.strokeStyle = paintStyle;
+            ctx.globalAlpha = 0.85;
             ctx.lineWidth = Math.max(0.8, side * 0.013);
             ctx.stroke();
+            ctx.globalAlpha = 1;
             continue;
         }
         ctx.beginPath();
         ctx.arc(px, py, dot, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+        ctx.fillStyle = paintStyle;
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(px, py, halo, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.15)`;
+        ctx.fillStyle = paintStyle;
+        ctx.globalAlpha = 0.15;
         ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -496,6 +517,60 @@ function getAtlasPageEntries(pageIndex) {
 const ATLAS_FACETED_COLOR = [255, 211, 92];
 
 /**
+ * V-19: цвета граней для глифа — те же RGB, что несёт CSS `.atlas-facet-*`
+ * (K-01: канвас переменные не читает, дублируем числом). Ключи и их порядок
+ * совпадают с `ACHIEVEMENT_COLOR_KEYS` (achievements.js) — красный/оранжевый/
+ * жёлтый/белый/синий — порядок и определяет порядок цветов в градиенте.
+ */
+const ATLAS_FACET_GLYPH_COLORS = {
+    red: [240, 122, 103],    // --star-garnet
+    orange: [242, 162, 84],  // --star-amber
+    yellow: [242, 201, 101], // --star-copper
+    white: [237, 239, 245],  // --star-opal
+    blue: [134, 200, 242]    // --star-ice
+};
+
+/**
+ * V-19: цвет глифа фигуры по её огранке. Полная огранка (5 граней) — золото,
+ * как и раньше. Одна зажжённая грань — цвет этой грани. 2–4 грани — массив
+ * цветов в фиксированном порядке `ACHIEVEMENT_COLOR_KEYS`, `drawShapeGlyph`
+ * рисует его линейным градиентом. Фигура без единой грани (не должно
+ * случаться у созданной — коммит зажигает грань всегда) откатывается на
+ * декоративный цвет `SHAPES`, чтобы карточка не осталась совсем без цвета.
+ */
+function getShapeGlyphColor(shapeName) {
+    if (typeof isShapeFaceted === 'function' && isShapeFaceted(shapeName)) return ATLAS_FACETED_COLOR;
+    const keys = typeof ACHIEVEMENT_COLOR_KEYS !== 'undefined' ? ACHIEVEMENT_COLOR_KEYS : [];
+    const lit = keys
+        .filter(color => typeof isShapeFacetLit === 'function' && isShapeFacetLit(shapeName, color))
+        .map(color => ATLAS_FACET_GLYPH_COLORS[color]);
+    if (lit.length === 1) return lit[0];
+    if (lit.length > 1) return lit;
+    return getShapeColor(shapeName);
+}
+
+/**
+ * V-19: подпись карточки красится тем же цветом/градиентом, что и глиф —
+ * решённый заказчиком открытый вопрос дока («красить так же»). Градиент на
+ * тексте — `background-clip: text`, та же ось и порядок цветов, что у канваса.
+ */
+function paintGlyphTextColor(el, color) {
+    if (Array.isArray(color[0])) {
+        const n = color.length;
+        const stops = color
+            .map((rgb, i) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]}) ${n > 1 ? Math.round(i / (n - 1) * 100) : 0}%`)
+            .join(', ');
+        el.style.background = `linear-gradient(90deg, ${stops})`;
+        el.style.webkitBackgroundClip = 'text';
+        el.style.backgroundClip = 'text';
+        el.style.color = 'transparent';
+        el.style.webkitTextFillColor = 'transparent';
+        return;
+    }
+    el.style.color = `rgb(${color[0]},${color[1]},${color[2]})`;
+}
+
+/**
  * K-11: разворот-определитель — карточка `???` больше не существует.
  * Неразгаданная фигура рисуется тем же глифом, что и разгаданная — чертежом
  * (K-18). K-31: подпись «not yet traced» и число звёзд убраны совсем — на их
@@ -503,7 +578,9 @@ const ATLAS_FACETED_COLOR = [255, 211, 92];
  */
 function createAtlasEntryCard(entry) {
     const faceted = entry.isCreated && typeof isShapeFaceted === 'function' && isShapeFaceted(entry.name);
-    const drawColor = faceted ? ATLAS_FACETED_COLOR : entry.color;
+    // V-19: у неразгаданной фигуры цвет всё равно не используется — рисуется
+    // чертежом (blueprint), decorative-цвет остаётся только его формальным входом.
+    const glyphColor = entry.isCreated ? getShapeGlyphColor(entry.name) : entry.color;
     const bookmarked = typeof getBookmarkedShape === 'function' && getBookmarkedShape() === entry.name;
 
     const card = document.createElement('div');
@@ -572,7 +649,7 @@ function createAtlasEntryCard(entry) {
     if (entry.isCreated) {
         title.className = 'atlas-card-title';
         title.textContent = getDisplayShapeName(entry.name);
-        title.style.color = `rgb(${drawColor[0]},${drawColor[1]},${drawColor[2]})`;
+        paintGlyphTextColor(title, glyphColor);
     } else {
         // Имя фигуры — сюрприз до первого создания; вместо него — «?».
         title.className = 'atlas-card-title atlas-card-title-unknown';
@@ -587,7 +664,7 @@ function createAtlasEntryCard(entry) {
     }
 
     // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
-    if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
+    if (entry.pattern) drawHintPattern(canvas, entry.pattern, glyphColor, !entry.isCreated);
 
     return card;
 }
@@ -1783,9 +1860,12 @@ function renderSkyBookmark() {
     // когерентность одного состояния «не разгадано» на разных узлах.
     // K-30: CSS уже пиннит видимый размер (.sky-bookmark-canvas), но буфер
     // нужно досчитать под DPR — иначе чертёж в углу неба мылится сильнее всего.
+    // V-19: тот же цвет/градиент огранки, что на карточке атласа (открытый
+    // вопрос дока решён в пользу «менять заодно» — иначе чертёж на небе
+    // и карточка одной и той же фигуры расходились бы цветом).
     if (canvas && pattern) {
         sizeGlyphCanvas(canvas, 60);
-        drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !created);
+        drawShapeGlyph(canvas, pattern, created ? getShapeGlyphColor(shapeId) : getShapeColor(shapeId), !created);
     }
 }
 
