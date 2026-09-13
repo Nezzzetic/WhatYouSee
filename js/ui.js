@@ -1705,7 +1705,7 @@ function openBook(cut) {
 function closeBook() {
     if (!bookOpen) return;
     closeObservatoryRenameField();
-    dismissChapterCutBanner(true); // V-16: баннер не переживает закрытие книги
+    dismissLevelBanner(true); // V-16/U-29: баннер не переживает закрытие книги
     stopBookTodayDawnTimer(); // O-03: закрыли книгу — тик посекундно никому не нужен
     bookOpen = false;
     const book = document.getElementById('book');
@@ -1728,52 +1728,87 @@ function switchBookCut(cut) {
 // =============================================================================
 // V-16 — БАННЕР РАЗРЕЗА ГЛАВЫ: УЗКОЕ ИСКЛЮЧЕНИЕ ИЗ K-15
 // =============================================================================
-// Единственный тост в игре — решение заказчика 2026-09-04: разрез главы атласа
+// Единственный тост в игре — вырос из V-16 (разрез главы атласа) в баннер
+// уровня (U-29, решение заказчика): забор марки, поднявший `getPlayerLevel()`,
 // достаточно важен, чтобы получить яркий отклик прямо в момент забора марки,
-// внутри уже открытой книги. Остальные события (огранка, особые цепочки,
-// обсерватория) по-прежнему идут только строкой в ленте «Сегодня» + каплей
-// сургуча (K-15) — это исключение их не отменяет.
+// внутри уже открытой книги. Одно окно на всё, что уровень открыл разом —
+// главу атласа, главу Штампов, Экслибрис, — а на ступенях хвоста (5+, ничего
+// не открывающих) то же окно несёт только поздравление с уровнем. Остальные
+// события (огранка, особые цепочки) по-прежнему идут только строкой в ленте
+// «Сегодня» + каплей сургуча (K-15) — это исключение их не отменяет.
 //
 // Состояние сессионное, вне сейва: узел — ребёнок #bookPage (не переживает
 // закрытие книги, не трогается перерисовкой конкретных разделов renderBook()).
 // Триггер — только claimAchievementStep (achievements.js): забор марки
 // физически невозможен вне открытой книги и никогда не случается на путях
-// загрузки сейва/дев-вайпа, поэтому отдельный announce-флаг не нужен.
+// загрузки сейва/дев-вайпа/дев-кнопки «+100 ✦» (та зовёт awardMetaScore
+// напрямую), поэтому отдельный announce-флаг не нужен — прецедент V-16.
 
-let chapterCutBannerIndices = [];
-let chapterCutBannerTimer = null;
+let levelBannerLevels = [];
+let levelBannerUnlockKeys = [];
+let levelBannerTimer = null;
 
-/** Заголовок главы(-ав) — та же форма, что в оглавлении (K-19), без «Ch.»/римской в начале. */
-function chapterCutBannerText(indices) {
-    if (indices.length === 1) {
-        const idx = indices[0];
-        return t('book.chapterCutBanner', {
+/** Заголовок уровня(-ей) — одна ступень или список через запятую при мёрдже. */
+function levelBannerTitleText(levels) {
+    if (levels.length === 1) {
+        const lv = levels[0];
+        return t('book.levelBannerTitle', { n: lv, name: getLevelName(lv) });
+    }
+    const names = levels.map(lv => lv + ' — ' + getLevelName(lv)).join(', ');
+    return t('book.levelBannerTitleMultiple', { names });
+}
+
+/** Строка одной разблокировки по ключу вида `atlas:<idx>`/`stamps:<idx>`/`exlibris`. */
+function levelBannerUnlockText(key) {
+    if (key.indexOf('atlas:') === 0) {
+        const idx = Number(key.slice('atlas:'.length));
+        return t('book.levelBannerUnlockAtlas', {
             n: toRoman(idx + 1),
             name: t('atlas.chapterTitle' + idx)
         });
     }
-    const names = indices.map(idx => t('atlas.chapterTitle' + idx)).join(', ');
-    return t('book.chapterCutBannerMultiple', { names });
+    if (key.indexOf('stamps:') === 0) {
+        const idx = Number(key.slice('stamps:'.length));
+        return t('book.levelBannerUnlockStamps', { name: REWARD_PAGES[idx].title });
+    }
+    if (key === 'exlibris') return t('book.levelBannerUnlockExLibris');
+    return '';
 }
 
 /**
- * Показать баннер. Батч: несколько порогов в одном заборе — один вызов с
- * массивом индексов, а не несколько подряд. Повторный клейм, пока баннер ещё
- * виден, — мёрджит список глав и продлевает таймер вместо второго баннера.
+ * Показать баннер. Батч: несколько уровней в одном заборе — один вызов с
+ * массивом. Повторный клейм, пока баннер ещё виден, — мёрджит уровни и их
+ * разблокировки в тот же баннер и продлевает таймер вместо второго баннера.
  */
-function showChapterCutBanner(newIndices) {
-    if (!Array.isArray(newIndices) || newIndices.length === 0) return;
+function showLevelBanner(newLevels, newUnlockKeys) {
+    if (!Array.isArray(newLevels) || newLevels.length === 0) return;
     // Баннер — поверх ОТКРЫТОЙ книги; в реальной игре забор вне книги
     // невозможен физически, а __test.claim() умеет забирать и мимо DOM (K-07).
     if (!bookOpen) return;
-    const el = document.getElementById('chapterCutBanner');
-    const titleEl = document.getElementById('chapterCutBannerTitle');
-    if (!el || !titleEl) return;
+    const el = document.getElementById('levelBanner');
+    const titleEl = document.getElementById('levelBannerTitle');
+    const unlocksEl = document.getElementById('levelBannerUnlocks');
+    if (!el || !titleEl || !unlocksEl) return;
 
-    const merged = new Set(chapterCutBannerIndices);
-    for (const i of newIndices) merged.add(i);
-    chapterCutBannerIndices = [...merged].sort((a, b) => a - b);
-    titleEl.textContent = chapterCutBannerText(chapterCutBannerIndices);
+    const mergedLevels = new Set(levelBannerLevels);
+    for (const lv of newLevels) mergedLevels.add(lv);
+    levelBannerLevels = [...mergedLevels].sort((a, b) => a - b);
+
+    const mergedUnlocks = new Set(levelBannerUnlockKeys);
+    for (const key of (newUnlockKeys || [])) mergedUnlocks.add(key);
+    levelBannerUnlockKeys = [...mergedUnlocks];
+
+    titleEl.textContent = levelBannerTitleText(levelBannerLevels);
+    unlocksEl.innerHTML = '';
+    for (const key of levelBannerUnlockKeys) {
+        const row = document.createElement('div');
+        row.className = 'level-banner-unlock-row';
+        row.textContent = levelBannerUnlockText(key);
+        unlocksEl.appendChild(row);
+    }
+    // Ступень хвоста ничего не открывает — список пуст и скрыт, баннер несёт
+    // только поздравление с уровнем в заголовке.
+    unlocksEl.hidden = levelBannerUnlockKeys.length === 0;
 
     el.hidden = false;
     // Форсированный рефлоу — тот же приём, что у книжных доводок K-26
@@ -1781,24 +1816,25 @@ function showChapterCutBanner(newIndices) {
     // которая не рендерится (свёрнута/не в фокусе), rAF может не выстрелить
     // вовсе, и переход застрянет с classList без -on навсегда.
     void el.offsetHeight;
-    el.classList.add('chapter-cut-banner-on');
+    el.classList.add('level-banner-on');
 
-    if (chapterCutBannerTimer) clearTimeout(chapterCutBannerTimer);
-    chapterCutBannerTimer = setTimeout(
-        () => dismissChapterCutBanner(false), CHAPTER_CUT_BANNER_HOLD_MS
+    if (levelBannerTimer) clearTimeout(levelBannerTimer);
+    levelBannerTimer = setTimeout(
+        () => dismissLevelBanner(false), LEVEL_BANNER_HOLD_MS
     );
 }
 
 /** immediate=true — обрыв без доигрывания (закрытие книги); false — гаснет плавно. */
-function dismissChapterCutBanner(immediate) {
-    if (chapterCutBannerTimer) {
-        clearTimeout(chapterCutBannerTimer);
-        chapterCutBannerTimer = null;
+function dismissLevelBanner(immediate) {
+    if (levelBannerTimer) {
+        clearTimeout(levelBannerTimer);
+        levelBannerTimer = null;
     }
-    chapterCutBannerIndices = [];
-    const el = document.getElementById('chapterCutBanner');
+    levelBannerLevels = [];
+    levelBannerUnlockKeys = [];
+    const el = document.getElementById('levelBanner');
     if (!el || el.hidden) return;
-    el.classList.remove('chapter-cut-banner-on');
+    el.classList.remove('level-banner-on');
     if (immediate || prefersReducedMotion()) {
         el.hidden = true;
         return;

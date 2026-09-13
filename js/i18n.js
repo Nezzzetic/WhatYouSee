@@ -267,18 +267,22 @@ en: {
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
-    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15,
-    // строка в ленте новостей (book.newsAtlasCut) выше остаётся отдельно.
-    'book.chapterCutBannerEyebrow': 'A new chapter',
-    'book.chapterCutBanner': 'Chapter {n} — {name} has opened.',
-    'book.chapterCutBannerMultiple': 'New chapters have opened: {names}.',
+    // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из
+    // K-15, строки в ленте новостей (book.newsAtlasCut/newsLevelUp) остаются
+    // отдельной постоянной записью дня независимо от баннера.
+    'book.levelBannerEyebrow': 'New level',
+    'book.levelBannerTitle': 'Level {n} — {name}',
+    'book.levelBannerTitleMultiple': 'Levels reached: {names}',
+    'book.levelBannerUnlockAtlas': 'Atlas — Chapter {n}: {name}',
+    'book.levelBannerUnlockStamps': 'Stamps — {name}',
+    'book.levelBannerUnlockExLibris': 'Ex Libris',
     'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Ex Libris has opened — {n} stars are waiting.',
-    // S-03: ступень хвоста лестницы (после последней главы) — у неё нет ни
-    // разреза, ни баннера; без строки опустевшая шкала читалась бы как потеря.
+    // S-03: постоянная запись дня для любого уровня, включая ступени хвоста
+    // (после последней главы), где баннер (U-29) несёт только поздравление.
     'book.newsLevelUp': 'Level {n} — {name}.',
     // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
     // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
@@ -589,10 +593,13 @@ ru: {
     'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
-    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15.
-    'book.chapterCutBannerEyebrow': 'Новая глава',
-    'book.chapterCutBanner': 'Глава {n} — «{name}» открыта.',
-    'book.chapterCutBannerMultiple': 'Открыты новые главы: {names}.',
+    // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из K-15.
+    'book.levelBannerEyebrow': 'Новый уровень',
+    'book.levelBannerTitle': 'Уровень {n} — {name}',
+    'book.levelBannerTitleMultiple': 'Новые уровни: {names}',
+    'book.levelBannerUnlockAtlas': 'Атлас — глава {n}: «{name}»',
+    'book.levelBannerUnlockStamps': 'Штампы — «{name}»',
+    'book.levelBannerUnlockExLibris': 'Экслибрис',
     'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
     'book.newsChainOpen': '«{title}» — новое достижение открыто.',
