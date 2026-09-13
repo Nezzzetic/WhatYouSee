@@ -244,12 +244,15 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все двадцать четыре имени кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все двадцать пять имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
-    'drop', 'flame', 'ring', 'ball', 'wave'
+    'drop', 'flame', 'ring', 'ball', 'wave',
+    // O-07: крестик закрытия книги — единственный знак со своим (золотым)
+    // цветом вместо цвета строки, см. .book-close-sign в style.css
+    'cross'
 ];
 
 /**
