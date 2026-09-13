@@ -1320,7 +1320,16 @@ button:disabled {
     -webkit-tap-highlight-color: transparent;
 }
 
-.book-close-ribbon:hover,
+/* Только устройства с настоящим курсором — на тачскрине тап навсегда «залипает»
+   в :hover (снять его нечем, mouseleave не наступает никогда), и после закрытия
+   книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
+   media — клавиатурный фокус не залипает так же и должен подсвечиваться всегда. */
+@media (hover: hover) {
+    .book-close-ribbon:hover {
+        filter: brightness(1.12);
+    }
+}
+
 .book-close-ribbon:focus-visible {
     filter: brightness(1.12);
 }
