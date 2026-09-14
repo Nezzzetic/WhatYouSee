@@ -1758,20 +1758,24 @@ function levelBannerTitleText(levels) {
     return t('book.levelBannerTitleMultiple', { names });
 }
 
-/** Строка одной разблокировки по ключу вида `atlas:<idx>`/`stamps:<idx>`/`exlibris`. */
-function levelBannerUnlockText(key) {
-    if (key.indexOf('atlas:') === 0) {
-        const idx = Number(key.slice('atlas:'.length));
-        return t('book.levelBannerUnlockAtlas', {
-            n: toRoman(idx + 1),
-            name: t('atlas.chapterTitle' + idx)
-        });
-    }
-    if (key.indexOf('stamps:') === 0) {
-        const idx = Number(key.slice('stamps:'.length));
-        return t('book.levelBannerUnlockStamps', { name: REWARD_PAGES[idx].title });
-    }
-    if (key === 'exlibris') return t('book.levelBannerUnlockExLibris');
+/**
+ * Категория разблокировки по ключу вида `atlas:<idx>`/`stamps:<idx>`/`exlibris` —
+ * решение заказчика 2026-09-14: строка общая («доступна новая страница атласа»/
+ * «доступны новые достижения»), без названия конкретной главы. Несколько глав
+ * атласа или штампов в одном мёрдже (span в несколько уровней) схлопываются
+ * в одну строку категории, а не повторяются.
+ */
+function levelBannerUnlockCategory(key) {
+    if (key.indexOf('atlas:') === 0) return 'atlas';
+    if (key.indexOf('stamps:') === 0) return 'stamps';
+    if (key === 'exlibris') return 'exlibris';
+    return null;
+}
+
+function levelBannerCategoryText(category) {
+    if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
+    if (category === 'stamps') return t('book.levelBannerUnlockStamps');
+    if (category === 'exlibris') return t('book.levelBannerUnlockExLibris');
     return '';
 }
 
@@ -1800,15 +1804,20 @@ function showLevelBanner(newLevels, newUnlockKeys) {
 
     titleEl.textContent = levelBannerTitleText(levelBannerLevels);
     unlocksEl.innerHTML = '';
+    const categories = [];
     for (const key of levelBannerUnlockKeys) {
+        const cat = levelBannerUnlockCategory(key);
+        if (cat && !categories.includes(cat)) categories.push(cat);
+    }
+    for (const cat of categories) {
         const row = document.createElement('div');
         row.className = 'level-banner-unlock-row';
-        row.textContent = levelBannerUnlockText(key);
+        row.textContent = levelBannerCategoryText(cat);
         unlocksEl.appendChild(row);
     }
     // Ступень хвоста ничего не открывает — список пуст и скрыт, баннер несёт
     // только поздравление с уровнем в заголовке.
-    unlocksEl.hidden = levelBannerUnlockKeys.length === 0;
+    unlocksEl.hidden = categories.length === 0;
 
     el.hidden = false;
     // Форсированный рефлоу — тот же приём, что у книжных доводок K-26

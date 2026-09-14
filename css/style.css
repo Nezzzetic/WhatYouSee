@@ -915,7 +915,10 @@ button:disabled {
     left: 50%;
     top: calc(var(--safe-top) + 58px);
     z-index: 1220;
-    max-width: min(88%, 380px);
+    /* U-29 (2026-09-14, решение заказчика): фиксированная width, а не max-width —
+       с общей формулировкой (без имени главы) содержимое короче, и по одной
+       max-width коробка сжималась бы обратно до узкой, а не читалась шире. */
+    width: min(94%, 420px);
     padding: 14px 22px 16px;
     text-align: center;
     border: 1px solid var(--wax);
