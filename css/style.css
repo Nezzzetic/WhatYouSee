@@ -280,118 +280,6 @@ body {
     touch-action: none;
 }
 
-.field-goals-progress-fill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 0%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-    transition: width var(--t-micro) var(--ease);
-}
-
-.field-goal-claim-buttons {
-    margin-top: 6px;
-    width: 80%;
-    max-width: 80%;
-    align-self: center;
-    height: 28px;
-    position: relative;
-    min-height: 28px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.field-goal-claim-btn {
-    position: absolute;
-    top: 0;
-    transform: translateX(-50%);
-    padding: 4px 10px;
-    border-radius: 999px;
-    border-color: var(--paper-edge);
-    color: var(--ink-muted);
-    background: var(--paper-deep);
-    font-size: 11px;
-    min-width: 74px;
-}
-
-.field-goal-claim-btn:hover {
-    border-color: var(--wax);
-    background: var(--paper-raised);
-}
-
-.field-goal-claim-btn.ready {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: var(--paper-raised);
-}
-
-.field-goal-claim-btn.claimed {
-    border-color: var(--paper-edge);
-    color: var(--ink-faint);
-    background: var(--paper-deep);
-}
-
-.resource-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.resource-item-bar {
-    flex-wrap: wrap;
-    min-width: 120px;
-}
-
-.resource-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--ink-faint);
-    font-weight: 600;
-}
-
-.resource-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ink);
-}
-
-.score-value {
-    color: var(--gold);
-    font-size: 18px;
-}
-
-.bar-container {
-    width: 100%;
-    height: 4px;
-    background: var(--paper-deep);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.bar-fill {
-    height: 100%;
-    width: 0%;
-    border-radius: 2px;
-    transition: width var(--t-micro) var(--ease);
-}
-
-.xp-bar-fill {
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-}
-
-.token-bar-fill {
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-}
-
-.bar-text {
-    font-size: 10px;
-    color: var(--ink-faint);
-    width: 100%;
-}
-
 .btn-danger {
     border-color: var(--wax);
     color: var(--wax-soft);
@@ -402,45 +290,12 @@ body {
     background: var(--paper-raised);
 }
 
-#atlasBtn.atlas-btn-claimable {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.32);
-}
-
-#achievementsBtn.achv-btn-claimable {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.35);
-}
-
 /* --- Canvas --- */
 
 #canvas-container {
     position: absolute;
     inset: 0;
     overflow: hidden;
-}
-
-.field-goal-dot {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    transform: translate(-50%, -50%);
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--night);
-    border: 1px solid var(--ink-faint);
-    z-index: 2;
-}
-
-.field-goal-dot.achieved {
-    background: var(--gold);
-    border-color: var(--gold-light);
-    box-shadow: 0 0 8px rgba(var(--gold-rgb), 0.5);
 }
 
 /* --- Buttons --- */
@@ -481,26 +336,6 @@ button:disabled {
     cursor: default;
 }
 
-/* V-13: блок тоста завершения ночи снят вместе с самим тостом.
-   .toast-close-btn ниже — общий класс, его используют тосты достижений. */
-
-.toast-close-btn {
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    background: none;
-    border: none;
-    color: var(--ink-muted);
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 2px;
-}
-
-.toast-close-btn:hover {
-    color: var(--ink);
-}
-
 .atlas-page-locked-progress {
     color: var(--ink-muted);
     font-size: 12px;
@@ -537,8 +372,7 @@ button:disabled {
     flex: none;
 }
 
-/* Запертая глава: нож приглушён — «ещё не разрезана», а не «нельзя». */
-.rail-uncut,
+/* Запертая глава: знак приглушён — «ещё не разрезана», а не «нельзя». */
 .achv-row-icon-uncut {
     opacity: 0.4;
 }
@@ -1041,25 +875,7 @@ button:disabled {
     white-space: nowrap;
 }
 
-/* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
-
-.book-btn {
-    align-self: center;
-    margin-top: 12px;
-    padding: 9px 18px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.05);
-    color: var(--ink);
-    font-family: var(--font-text);
-    font-size: 13.5px;
-    cursor: pointer;
-}
-
-.book-btn:hover {
-    border-color: var(--ink-faint);
-    background: rgba(var(--ink-rgb), 0.09);
-}
+/* --- сетка оглавления книги (Index) --- */
 
 .book-index-sec {
     display: flex;
@@ -1534,12 +1350,6 @@ button:disabled {
     font-size: 13px;
     color: var(--ink-faint);
     cursor: pointer;
-}
-
-.exlibris-tool-on {
-    color: var(--gold);
-    background: rgba(var(--gold-rgb), 0.1);
-    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.5);
 }
 
 /* K-21: поле переименования — строка на бумаге рядом с подписью «ex libris»,
