@@ -4,13 +4,11 @@
 // GLOBAL GAME STATE
 // =============================================================================
 
-let totalScore = 0;
-let uniqueShapesFound = new Set();
-let bonusAwardedClasses = new Set();
+// R-03: старый подсчёт очков (totalScore, bestScore и значок рекорда,
+// uniqueShapesFound, bonusAwardedClasses) снят — после S-01/M-05 он только
+// пополнялся и уменьшался при откате, но ни во что не превращался.
 let floatingScores = [];
 let constellations = [];
-let bestScore = 0;
-let recordScoreBadgeActive = false;
 let claimedStarCounts = new Set();
 
 function resetStarCountBonusState() {
@@ -60,20 +58,7 @@ function registerStarCountOnCommit(starCount) {
 // тоже убрана. Закрытая ночь теперь взводит защёлку суточного квеста
 // «Ночь закрыта», а ✦ игрок забирает кнопкой в Наградах.
 
+/** Созвездий на поле. Живёт ради харнесса (`__test.state().fieldScore`). */
 function getFieldScore() {
     return constellations.length;
-}
-
-function updateBestScoreFromFieldScore() {
-    const fieldScore = getFieldScore();
-    if (fieldScore > bestScore) {
-        bestScore = fieldScore;
-        recordScoreBadgeActive = true;
-        return true;
-    }
-    return false;
-}
-
-function resetRecordScoreBadge() {
-    recordScoreBadgeActive = false;
 }

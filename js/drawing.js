@@ -1437,11 +1437,6 @@ function commitConstellationFromPayload(payload) {
         if (s) s.locked = true;
     }
 
-    if (!uniqueShapesFound.has(scoreClass)) {
-        uniqueShapesFound.add(scoreClass);
-    }
-    bonusAwardedClasses.add(scoreClass);
-
     // S-01: первое создание фигуры фиксируется на коммите (сюрприз-имя,
     // первая копия сразу становится atlas-collected)
     if (finalShape !== SHAPE_UNRECOGNIZED && isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)) {
@@ -1466,8 +1461,6 @@ function commitConstellationFromPayload(payload) {
         starCount,
         shape: finalShape,
         recognizedClass: scoreClass,
-        score: 0,
-        isUniqueDiscovery: false,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
         lineColor: colorValueToRgb(getMeanColorValue([...starIds]))
@@ -1495,7 +1488,7 @@ function commitConstellationFromPayload(payload) {
     constellation.orphanExtinguishedIds = extinguishOrphanStars();
     recomputeAtlasCollectedStarColors();
 
-    updateScoreUI(0, finalShape, starCount);
+    updateScoreUI();
     updateProgressionUI();
     onConstellationCreated(finalShape);
 
@@ -1530,18 +1523,6 @@ function collectStarIdsFromLines(lines) {
     return ids;
 }
 
-function rebuildFieldShapeRewardsFromConstellations() {
-    uniqueShapesFound.clear();
-    bonusAwardedClasses.clear();
-    for (const c of constellations) {
-        const sc = c.recognizedClass || c.shape;
-        if (sc) {
-            uniqueShapesFound.add(sc);
-            bonusAwardedClasses.add(sc);
-        }
-    }
-}
-
 function raiseUndoFloor() {
     undoFloor = Math.max(undoFloor, constellations.length);
 }
@@ -1573,12 +1554,8 @@ function undoLastConstellation() {
         if (s) s.extinguished = false;
     }
 
-    totalScore -= (last.score || 0);
-    if (totalScore < 0) totalScore = 0;
-
     if (typeof recordAchievementUndo === 'function') recordAchievementUndo(last);
 
-    rebuildFieldShapeRewardsFromConstellations();
     normalizeAtlasCollectedOnField();
     rebuildStarCountStateFromConstellations();
     recomputeSuppressedStars();
@@ -1598,8 +1575,7 @@ function undoLastConstellation() {
         tryRevealConstellationArtIfComplete();
     }
 
-    updateBestScoreFromFieldScore();
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     // O-01: снял единственное созвездие тьюторной ночи — вернулись на шаг
     // «соединение». Тутор пройденный этим не воскрешается: у него свой флаг.
@@ -1646,7 +1622,7 @@ function revealConstellationArt(animate = true) {
     // защёлку суточного квеста, ✦ приходят обычным забором в Наградах.
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,

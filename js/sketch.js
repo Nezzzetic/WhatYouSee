@@ -371,7 +371,7 @@ function setup() {
     // centerCamera() и отдельно от неё — её же зовёт камера финала V-13.
     if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     closeBook();
     recomputeAchievementsClaimable();
@@ -531,18 +531,13 @@ function resetFieldSessionState() {
     revealTime = 0;
     undoFloor = 0;
 
-    totalScore = 0;
     constellations = [];
-    uniqueShapesFound = new Set();
-    bonusAwardedClasses = new Set();
     floatingScores = [];
     if (typeof cancelUndoMark === 'function') cancelUndoMark(); // K-04: окна отмены у нового неба нет
     // M-10: память имён отменённых созвездий привязана к id звёзд этого поля —
     // после перегенерации её ключи ни на что не указывают.
     if (typeof resetUndoneNameMemory === 'function') resetUndoneNameMemory();
-    bestScore = 0;
     resetStarCountBonusState();
-    resetRecordScoreBadge();
     atlasCollectedStarColors = new Map();
     if (typeof connectFeedbackState !== 'undefined' && connectFeedbackState instanceof Map) connectFeedbackState.clear();
     if (typeof cancelCommitWave === 'function') cancelCommitWave();
@@ -581,7 +576,7 @@ function startNewDailySky(options) {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
@@ -611,7 +606,7 @@ function onResetSky() {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
@@ -769,7 +764,7 @@ function performFullReset(options) {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();

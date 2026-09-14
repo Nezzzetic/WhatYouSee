@@ -539,41 +539,8 @@ const SHAPES = {
 // SCORING
 // =============================================================================
 
-const SHAPE_BASE_POINTS = {
-    'banana': 20,
-    // Каталог-29 (топологический режим)
-    'toothpick': 6,
-    'checkmark': 10,
-    'chip': 12,
-    'cookie': 16,
-    'chicken-foot': 14,
-    'earthworm': 16,
-    // Каталог-29 (недемо-фигуры, страницы 2–6) — по числу линий/★
-    'spatula': 16,
-    'diamond': 18,
-    'envelope': 22,
-    'fan': 16,
-    'radish': 16,
-    'donut': 20,
-    'flag': 18,
-    'tadpole': 18,
-    'bunny': 18,
-    'bull': 18,
-    'bow': 22,
-    'house': 22,
-    'mace': 22,
-    'kite': 22,
-    'lantern': 22,
-    'hand-fan': 26,
-    'lollipop': 26,
-    'book': 26,
-    'origami': 26,
-    'wheel': 30,
-    'hammock': 32,
-    'perfectionist': 36,
-    // Fallback
-    [SHAPE_UNRECOGNIZED]: 8
-};
+// R-03: таблица SHAPE_BASE_POINTS снята — после S-01 её не читал никто, писал
+// в неё только registerCustomType (пользовательские виды, сняты там же).
 
 // UNIQUE_DISCOVERY_BONUS удалён: разовое начисление за первое создание фигуры
 // заменено цепочкой «Первооткрыватель» (achievements.js, страница «Огранка и путь»).
