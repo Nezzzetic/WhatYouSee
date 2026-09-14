@@ -1389,7 +1389,7 @@ function buildConstellationCommitPayload(lines) {
     const recognitionResult = recognizeShapeDetailed(lines, starIds);
     let shape = recognitionResult.label;
     let recognizedState = recognitionResult.state;
-    let recognizedConfidence = recognitionResult.confidence || 0;
+    const recognizedConfidence = recognitionResult.confidence || 0;
     let recognizedCandidates = Array.isArray(recognitionResult.candidates) ? [...recognitionResult.candidates] : [];
 
     recognizedCandidates = recognizedCandidates.filter(candidate => {
@@ -1404,24 +1404,6 @@ function buildConstellationCommitPayload(lines) {
         recognizedCandidates = [];
     }
     const recognizedClass = shape;
-
-    if (shape === SHAPE_UNRECOGNIZED) {
-        const signature = computeConstellationSignature(lines, starIds);
-
-        if (customTypes.length > 0) {
-            const customMatch = findMatchingCustomTypeDetailed(signature);
-            if (customMatch && customMatch.state === 'accept' && customMatch.name) {
-                shape = customMatch.name;
-                recognizedState = 'accept';
-                recognizedConfidence = customMatch.score;
-                recognizedCandidates = [{
-                    label: customMatch.name,
-                    score: customMatch.score,
-                    isCustom: true
-                }];
-            }
-        }
-    }
 
     return {
         lines: [...lines],

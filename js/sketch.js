@@ -736,7 +736,6 @@ function performFullReset(options) {
 
     closeBook();
     resetFieldSessionState();
-    customTypes = [];
 
     resetProgressionForFullReset();
     // B-02: вайп забирает и холст. Отдельного confirm не заводим — тот, что уже

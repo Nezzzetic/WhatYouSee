@@ -26,7 +26,6 @@ function saveGame() {
             constellations,
             fieldStars,
             fieldBackgroundStars,
-            customTypes,
             bestScore,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
@@ -91,7 +90,6 @@ function loadGame() {
         );
         constellationArtRevealed =
             state.constellationArtRevealed !== undefined ? !!state.constellationArtRevealed : true;
-        customTypes = state.customTypes || [];
         bestScore = Math.max(state.bestScore || 0, getFieldScore());
         resetRecordScoreBadge();
 
@@ -109,10 +107,6 @@ function loadGame() {
             : [];
         if (dailyTargetShapes.length === 0) {
             pickDailyTargets();
-        }
-
-        for (const ct of customTypes) {
-            registerCustomType(ct.name, ct.color, ct.signature, ct.patternSnapshot || null);
         }
 
         for (const star of fieldStars) {

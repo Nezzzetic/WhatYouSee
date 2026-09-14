@@ -460,40 +460,6 @@ function createFacetsRow(shapeName) {
 // ATLAS DATA
 // =============================================================================
 
-function getFallbackPatternFromSignature(signature) {
-    const starCount = Math.max(3, Math.min(6, signature?.starCount || 4));
-    const lineCount = Math.max(2, signature?.lineCount || (starCount - 1));
-
-    const stars = [];
-    for (let i = 0; i < starCount; i++) {
-        const angle = (-Math.PI / 2) + (2 * Math.PI * i / starCount);
-        stars.push([
-            0.5 + Math.cos(angle) * 0.35,
-            0.5 + Math.sin(angle) * 0.35
-        ]);
-    }
-
-    const lines = [];
-    const closedEdges = lineCount >= starCount;
-    const maxEdges = closedEdges ? starCount : Math.min(lineCount, starCount - 1);
-    for (let i = 0; i < maxEdges; i++) {
-        const a = i;
-        const b = (i + 1) % starCount;
-        lines.push([a, b]);
-    }
-
-    return { stars, lines };
-}
-
-function getCustomPattern(customType) {
-    if (customType && customType.patternSnapshot &&
-        Array.isArray(customType.patternSnapshot.stars) &&
-        Array.isArray(customType.patternSnapshot.lines)) {
-        return customType.patternSnapshot;
-    }
-    return getFallbackPatternFromSignature(customType?.signature);
-}
-
 function getAtlasEntryForShape(name) {
     const pattern = SHAPE_PATTERNS[name];
     const created = isShapeCreated(name);
@@ -502,7 +468,6 @@ function getAtlasEntryForShape(name) {
         color: getShapeColor(name),
         pattern,
         starCount: pattern?.stars?.length || 0,
-        isCustom: false,
         isCreated: created,
         atlasState: created ? 'known' : 'unknown'
     };
