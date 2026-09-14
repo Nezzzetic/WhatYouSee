@@ -670,19 +670,10 @@ const OBSERVATORY_UNLOCK_COST = ATLAS_PAGE_COSTS
 // открывался бы с одной звездой, а окно шкалы у корешка не двигалось бы месяцами.
 const OBSERVATORY_STAR_COST = 25;
 
-// Ordered list of all shape names (for UI checklist)
-const ALL_SHAPE_NAMES = [
-    'banana',
-    // Каталог-29 (топологический режим): активные демо-фигуры + Зубочистка (2★)
-    'checkmark', 'chip', 'cookie', 'chicken-foot', 'earthworm', 'toothpick',
-    // Каталог-29 (недемо-фигуры, страницы 2–6)
-    'spatula', 'diamond', 'envelope', 'fan', 'radish',
-    'donut', 'flag', 'tadpole', 'bunny', 'bull',
-    'bow', 'house', 'mace', 'kite', 'lantern',
-    'hand-fan', 'lollipop', 'book', 'origami',
-    'wheel', 'hammock', 'perfectionist',
-    SHAPE_UNRECOGNIZED
-];
+// Все ID таблицы SHAPES (каталог-29 + sentinel). R-03: раньше — отдельный
+// список руками; его порядок не читается нигде (только includes и фильтры
+// во множества ниже), поэтому он выводится из ключей SHAPES.
+const ALL_SHAPE_NAMES = Object.keys(SHAPES);
 
 // Built-in shapes shown in UI collections (exclude generic fallback).
 const BUILTIN_SHAPE_NAMES = ALL_SHAPE_NAMES.filter(name => name !== SHAPE_UNRECOGNIZED);
@@ -709,12 +700,9 @@ const UNDONE_NAME_MEMORY_MAX = 200;
 // получит настоящее имя на небе, не имея карточки в атласе. Убранные из белого
 // списка гасятся распознавателем (isBuiltinShapeEnabled) и читаются как
 // нераспознанные — получают поэтичное fallback-имя, как и было задумано.
-const DEMO_ACTIVE_BUILTIN_SHAPES = new Set([
-    'toothpick', 'checkmark', 'chip', 'chicken-foot', 'cookie', 'earthworm',
-    'diamond', 'spatula', 'banana', 'envelope', 'fan', 'radish',
-    'donut', 'flag', 'tadpole', 'bunny', 'bull', 'bow',
-    'house', 'mace', 'kite', 'lantern', 'hand-fan', 'origami'
-]);
+// R-03: белый список — ровно содержимое атласа. Раньше это был второй список,
+// синхронизируемый с ATLAS_PAGES руками; состав сторожит verify-catalog-29.js [5].
+const DEMO_ACTIVE_BUILTIN_SHAPES = new Set(ATLAS_PAGES.flat());
 // All built-ins outside the home demo whitelist are soft-disabled.
 const SOFT_DISABLED_BUILTIN_SHAPES = new Set(
     BUILTIN_SHAPE_NAMES.filter(name => !DEMO_ACTIVE_BUILTIN_SHAPES.has(name))
