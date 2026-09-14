@@ -137,12 +137,6 @@ function loadGame() {
         normalizeAtlasCollectedOnField();
 
         for (const c of constellations) {
-            const shapeName = c.shape || c.name;
-            if (c.atlasCollected || constellationArtRevealed) {
-                assignConstellationImageTransform(c);
-            } else {
-                c.imageTransform = null;
-            }
             if (constellationArtRevealed && Array.isArray(c.lines) && c.lines.length > 0) {
                 const fallbackStarIds = new Set();
                 for (const seg of c.lines) {

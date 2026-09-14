@@ -132,9 +132,6 @@ const LOCKED_STAR_SIZE_MULTIPLIER = 1.38;
  *  звезды на любом зуме (на отзуме звезда крупнее в world-юнитах — зазор тоже).
  *  Значение подобрано в браузере (2.0). Чисто визуально. */
 const LINE_STAR_GAP_FACTOR = 2.00;
-/** Skeleton under line-art overlay only (shapes with SHAPES[].image). */
-const LINEART_SKELETON_STROKE_ALPHA = 42;
-const LINEART_SKELETON_STROKE_WEIGHT = 0.65;
 /** Committed constellation lines at level reveal (no PNG on field). */
 const REVEALED_CONSTELLATION_STROKE_WEIGHT = 2.5;
 const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
@@ -493,17 +490,6 @@ const FLOATING_SCORE_DURATION_MS = 1500;
 const FLOATING_SCORE_RISE = 40;
 
 // =============================================================================
-// CONSTELLATION IMAGE OVERLAY
-// =============================================================================
-
-const CONSTELLATION_IMAGE_OPACITY = 255;
-const CONSTELLATION_IMAGE_PADDING = 1.2;
-/** Цепочка 3★ / 2 ребра: нижняя граница extentV как доля extentU (хорда 1–3), чтобы min(scaleU,scaleV) не сжимал лайнарт. */
-const CHAIN3_LINEART_MIN_V_RATIO = 0.35;
-/** Сдвиг лайнарта относительно математической оси. p5: положительный — по часовой. Подбирай ±90, 180 и т.д. под конкретный PNG. */
-const BANANA_LINEART_ANGLE_OFFSET_DEG = 180;
-
-// =============================================================================
 // SHAPE DEFINITIONS
 // =============================================================================
 //
@@ -517,16 +503,7 @@ const SHAPE_UNRECOGNIZED = 'unknown';
 // слоя (Треугольник, Квадрат, Усы, Сердце, Пицца и прочие) удалена вместе
 // с самим слоем — топораспознаватель их не выдавал ни разу.
 const SHAPES = {
-    'banana':            {
-        color: [255, 255, 100],
-        description: 'Плавная дуга из 4 звёзд',
-        image: 'banana-lineart-transparent.png',
-        imageArcSign: 1,
-        imageScale: 0.896,
-        imageAngleOffsetDeg: BANANA_LINEART_ANGLE_OFFSET_DEG,
-        // В долях extentV: «ниже» по исходнику (к низу PNG после finalAngle).
-        imageOffsetV: 0.07
-    },
+    'banana':          { color: [255, 255, 100], description: 'Плавная дуга из 4 звёзд' },
     // Каталог-29 (топологический режим)
     'toothpick':       { color: [225, 225, 210], description: 'Две звезды, одна линия' },
     'checkmark':          { color: [140, 220, 255], description: 'Три звезды цепочкой (уголок)' },
@@ -808,9 +785,7 @@ const SHAPE_PATTERNS = {
     'banana': {
         // Каталог-29: цепочка-дуга (изгиб в одну сторону, §4/§5). C-01.
         stars: [[0.08, 0.38], [0.37, 0.62], [0.63, 0.62], [0.92, 0.38]],
-        lines: [[0, 1], [1, 2], [2, 3]],
-        imageAnchor: { mode: 'centroid' },
-        imageDirection: { mode: 'bananaChordBulge' }
+        lines: [[0, 1], [1, 2], [2, 3]]
     },
     // --- Каталог-29: активные демо-фигуры (для карточек атласа / подсказок) ---
     'toothpick': {

@@ -792,25 +792,6 @@ function getFinaleStarFlash(starId) {
     return computeCommitWaveFlash(elapsed, birthMs, LEVEL_FINALE_STAR_FLASH_MS);
 }
 
-function assignConstellationImageTransform(constellation) {
-    if (!constellation || !Array.isArray(constellation.lines) || constellation.lines.length === 0) {
-        constellation.imageTransform = null;
-        return;
-    }
-    const shapeName = constellation.shape || constellation.name;
-    const shapeInfo = SHAPES[shapeName];
-    if (!shapeInfo || !shapeInfo.image) {
-        constellation.imageTransform = null;
-        return;
-    }
-    try {
-        constellation.imageTransform = computeImageTransform(constellation.lines, shapeName);
-    } catch (e) {
-        console.warn('imageTransform failed:', shapeName, e);
-        constellation.imageTransform = null;
-    }
-}
-
 function hasAtlasCollectedConstellationOnField() {
     return constellations.some(c => c && c.atlasCollected);
 }
@@ -1507,12 +1488,8 @@ function commitConstellationFromPayload(payload) {
         isUniqueDiscovery: false,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
-        imageTransform: null,
         lineColor: colorValueToRgb(getMeanColorValue([...starIds]))
     };
-    if (isAtlasCollect) {
-        assignConstellationImageTransform(constellation);
-    }
     constellations.push(constellation);
 
     // V-12: волна создания. Ставится до пересчётов и раскрытия — если этот же
@@ -1675,7 +1652,6 @@ function revealConstellationArt(animate = true) {
     for (const c of constellations) {
         const fallbackStarIds = collectStarIdsFromLines(c.lines);
         c.labelAnchor = computeConstellationLabelAnchor(c.lines, fallbackStarIds, c.name || c.shape);
-        assignConstellationImageTransform(c);
     }
     recomputeAtlasCollectedStarColors();
 

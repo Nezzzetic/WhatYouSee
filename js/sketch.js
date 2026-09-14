@@ -37,12 +37,6 @@ function generateNebulaBuffer() {
 }
 
 // =============================================================================
-// IMAGE PRELOADING
-// =============================================================================
-
-let constellationImages = {};
-
-// =============================================================================
 // APP MODE (B-02)
 // =============================================================================
 //
@@ -352,19 +346,6 @@ function setup() {
     generateNebulaBuffer();
     // K-01: канвас пишет тем же шрифтом, что и книга. Гротеска в игре нет.
     textFont("'EB Garamond', Georgia, 'Times New Roman', serif");
-
-    for (const [name, info] of Object.entries(SHAPES)) {
-        if (info.image) {
-            const img = new Image();
-            img.onload = () => { console.log('Constellation image loaded:', name, img.width + 'x' + img.height); };
-            img.onerror = () => {
-                console.warn('Failed to load constellation image:', name);
-                delete constellationImages[name];
-            };
-            img.src = 'images/' + info.image;
-            constellationImages[name] = img;
-        }
-    }
 
     loadProgression();
     // P-05: строго ПОСЛЕ loadProgression() — снимку нужны и playerId, и
