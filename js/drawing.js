@@ -456,7 +456,7 @@ function computeFaceHatchSegmentsWorld(polygon, stepWorld, angleDeg) {
  * штриховка не должна проявляться раньше своих линий и обязана гаснуть/рождаться
  * вместе с фигурой в сцене V-13 (риск 4).
  */
-function drawConstellationHatchingWorld(constellation, ox = 0) {
+function drawConstellationHatchingWorld(constellation) {
     const faces = computeConstellationFaces(constellation);
     if (faces.length === 0) return;
 
@@ -476,17 +476,15 @@ function drawConstellationHatchingWorld(constellation, ox = 0) {
     strokeWeight(HATCH_STROKE_WEIGHT_PX / zoomLevel);
     for (const face of faces) {
         const segments = computeFaceHatchSegmentsWorld(face, stepWorld, HATCH_ANGLE_DEG);
-        for (const s of segments) line(s.ax + ox, s.ay, s.bx + ox, s.by);
+        for (const s of segments) line(s.ax, s.ay, s.bx, s.by);
     }
 }
 
-/** Штриховка по всем видимым созвездиям тайла — тот же обход, что у скелета линий. */
-function drawConstellationHatchingOnTiles(tiles) {
-    for (const t of tiles) {
-        for (const constellation of constellations) {
-            if (!isConstellationVisible(constellation)) continue;
-            drawConstellationHatchingWorld(constellation, t.ox);
-        }
+/** Штриховка по всем видимым созвездиям — тот же обход, что у скелета линий. */
+function drawConstellationHatching() {
+    for (const constellation of constellations) {
+        if (!isConstellationVisible(constellation)) continue;
+        drawConstellationHatchingWorld(constellation);
     }
 }
 
@@ -792,29 +790,6 @@ function getFinaleStarFlash(starId) {
     return computeCommitWaveFlash(elapsed, birthMs, LEVEL_FINALE_STAR_FLASH_MS);
 }
 
-function assignConstellationImageTransform(constellation) {
-    if (!constellation || !Array.isArray(constellation.lines) || constellation.lines.length === 0) {
-        constellation.imageTransform = null;
-        return;
-    }
-    const shapeName = constellation.shape || constellation.name;
-    const shapeInfo = SHAPES[shapeName];
-    if (!shapeInfo || !shapeInfo.image) {
-        constellation.imageTransform = null;
-        return;
-    }
-    try {
-        constellation.imageTransform = computeImageTransform(constellation.lines, shapeName);
-    } catch (e) {
-        console.warn('imageTransform failed:', shapeName, e);
-        constellation.imageTransform = null;
-    }
-}
-
-function hasAtlasCollectedConstellationOnField() {
-    return constellations.some(c => c && c.atlasCollected);
-}
-
 /** Уже есть созвездие с этой атласной фигурой (ignoreConstellation — не считать, напр. текущий коммит). */
 function isAtlasShapeAlreadyOnField(shapeName, ignoreConstellation = null) {
     const normalized = normalizeShapeName(shapeName);
@@ -907,7 +882,7 @@ function collectCommittedSegmentEndpoints() {
     const segments = [];
     const committed = Array.isArray(constellations) ? constellations : [];
     for (const constellation of committed) {
-        segments.push(...getConstellationSegmentsHorizWrap(constellation.lines));
+        segments.push(...getConstellationSegments(constellation.lines));
     }
     return segments;
 }
@@ -1039,7 +1014,7 @@ function isDraftConstellationValid(lines) {
         const end = getStarById(seg.endId);
         if (!start || !end || !isEdgeLengthValid(start, end)) return false;
     }
-    const draftSegs = getConstellationSegmentsHorizWrap(lines);
+    const draftSegs = getConstellationSegments(lines);
     for (let i = 0; i < draftSegs.length; i++) {
         for (let j = i + 1; j < draftSegs.length; j++) {
             if (segmentsProperlyIntersect(draftSegs[i], draftSegs[j])) return false;
@@ -1408,7 +1383,7 @@ function buildConstellationCommitPayload(lines) {
     const recognitionResult = recognizeShapeDetailed(lines, starIds);
     let shape = recognitionResult.label;
     let recognizedState = recognitionResult.state;
-    let recognizedConfidence = recognitionResult.confidence || 0;
+    const recognizedConfidence = recognitionResult.confidence || 0;
     let recognizedCandidates = Array.isArray(recognitionResult.candidates) ? [...recognitionResult.candidates] : [];
 
     recognizedCandidates = recognizedCandidates.filter(candidate => {
@@ -1423,24 +1398,6 @@ function buildConstellationCommitPayload(lines) {
         recognizedCandidates = [];
     }
     const recognizedClass = shape;
-
-    if (shape === SHAPE_UNRECOGNIZED) {
-        const signature = computeConstellationSignature(lines, starIds);
-
-        if (customTypes.length > 0) {
-            const customMatch = findMatchingCustomTypeDetailed(signature);
-            if (customMatch && customMatch.state === 'accept' && customMatch.name) {
-                shape = customMatch.name;
-                recognizedState = 'accept';
-                recognizedConfidence = customMatch.score;
-                recognizedCandidates = [{
-                    label: customMatch.name,
-                    score: customMatch.score,
-                    isCustom: true
-                }];
-            }
-        }
-    }
 
     return {
         lines: [...lines],
@@ -1474,11 +1431,6 @@ function commitConstellationFromPayload(payload) {
         if (s) s.locked = true;
     }
 
-    if (!uniqueShapesFound.has(scoreClass)) {
-        uniqueShapesFound.add(scoreClass);
-    }
-    bonusAwardedClasses.add(scoreClass);
-
     // S-01: первое создание фигуры фиксируется на коммите (сюрприз-имя,
     // первая копия сразу становится atlas-collected)
     if (finalShape !== SHAPE_UNRECOGNIZED && isShapeVisibleInAtlas(finalShape) && !isShapeCreated(finalShape)) {
@@ -1503,16 +1455,10 @@ function commitConstellationFromPayload(payload) {
         starCount,
         shape: finalShape,
         recognizedClass: scoreClass,
-        score: 0,
-        isUniqueDiscovery: false,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
-        imageTransform: null,
         lineColor: colorValueToRgb(getMeanColorValue([...starIds]))
     };
-    if (isAtlasCollect) {
-        assignConstellationImageTransform(constellation);
-    }
     constellations.push(constellation);
 
     // V-12: волна создания. Ставится до пересчётов и раскрытия — если этот же
@@ -1536,7 +1482,7 @@ function commitConstellationFromPayload(payload) {
     constellation.orphanExtinguishedIds = extinguishOrphanStars();
     recomputeAtlasCollectedStarColors();
 
-    updateScoreUI(0, finalShape, starCount);
+    updateScoreUI();
     updateProgressionUI();
     onConstellationCreated(finalShape);
 
@@ -1571,18 +1517,6 @@ function collectStarIdsFromLines(lines) {
     return ids;
 }
 
-function rebuildFieldShapeRewardsFromConstellations() {
-    uniqueShapesFound.clear();
-    bonusAwardedClasses.clear();
-    for (const c of constellations) {
-        const sc = c.recognizedClass || c.shape;
-        if (sc) {
-            uniqueShapesFound.add(sc);
-            bonusAwardedClasses.add(sc);
-        }
-    }
-}
-
 function raiseUndoFloor() {
     undoFloor = Math.max(undoFloor, constellations.length);
 }
@@ -1614,12 +1548,8 @@ function undoLastConstellation() {
         if (s) s.extinguished = false;
     }
 
-    totalScore -= (last.score || 0);
-    if (totalScore < 0) totalScore = 0;
-
     if (typeof recordAchievementUndo === 'function') recordAchievementUndo(last);
 
-    rebuildFieldShapeRewardsFromConstellations();
     normalizeAtlasCollectedOnField();
     rebuildStarCountStateFromConstellations();
     recomputeSuppressedStars();
@@ -1639,8 +1569,7 @@ function undoLastConstellation() {
         tryRevealConstellationArtIfComplete();
     }
 
-    updateBestScoreFromFieldScore();
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     // O-01: снял единственное созвездие тьюторной ночи — вернулись на шаг
     // «соединение». Тутор пройденный этим не воскрешается: у него свой флаг.
@@ -1675,7 +1604,6 @@ function revealConstellationArt(animate = true) {
     for (const c of constellations) {
         const fallbackStarIds = collectStarIdsFromLines(c.lines);
         c.labelAnchor = computeConstellationLabelAnchor(c.lines, fallbackStarIds, c.name || c.shape);
-        assignConstellationImageTransform(c);
     }
     recomputeAtlasCollectedStarColors();
 
@@ -1688,7 +1616,7 @@ function revealConstellationArt(animate = true) {
     // защёлку суточного квеста, ✦ приходят обычным забором в Наградах.
     if (typeof recordAchievementReveal === 'function') recordAchievementReveal();
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
     // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,
@@ -1731,6 +1659,10 @@ function getConstellationStars(lines, starIds) {
     return stars;
 }
 
+/**
+ * Сегменты созвездия между фактическими позициями звёзд. R-03: до P-01 рядом
+ * жил двойник …HorizWrap, учитывавший wrap, — копия поля одна, двойник снят.
+ */
 function getConstellationSegments(lines) {
     const segments = [];
     for (const seg of lines || []) {
@@ -1739,20 +1671,6 @@ function getConstellationSegments(lines) {
         const end = getStarById(seg.endId);
         if (!start || !end) continue;
         segments.push({ ax: start.x, ay: start.y, bx: end.x, by: end.y });
-    }
-    return segments;
-}
-
-/** Сегменты созвездия между фактическими позициями звёзд (wrap убран, см. P-01). */
-function getConstellationSegmentsHorizWrap(lines) {
-    const segments = [];
-    for (const seg of lines || []) {
-        if (!seg) continue;
-        const start = getStarById(seg.startId);
-        const end = getStarById(seg.endId);
-        if (!start || !end) continue;
-        const wb = nearestHorizontalCopy(end.x, end.y, start.x, start.y);
-        segments.push({ ax: start.x, ay: start.y, bx: wb.x, by: wb.y });
     }
     return segments;
 }
@@ -1817,7 +1735,7 @@ function computeConstellationLabelAnchor(lines, starIds, shapeName) {
     const stars = getConstellationStars(lines, starIds);
     if (stars.length === 0) return null;
 
-    const segments = getConstellationSegmentsHorizWrap(lines);
+    const segments = getConstellationSegments(lines);
 
     let minX = Infinity;
     let minY = Infinity;

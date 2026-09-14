@@ -42,8 +42,7 @@ const CATALOG_SAVE_VERSION = 2;
 
 /**
  * L-01: в реестре ID есть встроенные фигуры (ключи SHAPES), sentinel и ID
- * fallback-имён. Пользовательские виды сюда тоже попадают: registerCustomType
- * кладёт их в SHAPES (customTypes.js).
+ * fallback-имён.
  */
 function isKnownShapeId(id) {
     if (id === SHAPE_UNRECOGNIZED) return true;
@@ -309,11 +308,6 @@ function revertShapeCreated(shapeName) {
     globalDiscoveredShapes.delete(normalized);
     saveProgression();
     return true;
-}
-
-/** @deprecated use markShapeCreated */
-function markShapeDiscovered(shapeName) {
-    return markShapeCreated(shapeName);
 }
 
 // =============================================================================

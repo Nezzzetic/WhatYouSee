@@ -50,15 +50,6 @@ function isLevelComplete() {
     return !hasConnectablePair();
 }
 
-function allStarsUnavailableForDrawing() {
-    if (!Array.isArray(fieldStars) || fieldStars.length === 0) return false;
-    for (const star of fieldStars) {
-        if (!star) continue;
-        if (!star.locked && !star.suppressed && !star.extinguished) return false;
-    }
-    return true;
-}
-
 // =============================================================================
 // РАССТОЯНИЯ (P-01: поле ограничено по обеим осям, wrap убран полностью)
 // =============================================================================
@@ -106,11 +97,6 @@ function getLocalCalendarSkyDateInt() {
     const startHour = typeof SKY_DAY_START_HOUR === 'number' ? SKY_DAY_START_HOUR : 0;
     if (d.getHours() < startHour) d.setDate(d.getDate() - 1);
     return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
-}
-
-/** @deprecated use getEffectiveSkyDateInt */
-function getLocalCalendarSkySeed() {
-    return getLocalCalendarSkyDateInt();
 }
 
 function addDaysToSkyDateInt(dateInt, days) {

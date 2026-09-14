@@ -84,7 +84,6 @@ en: {
     'shape.wheel': 'Wheel',
     'shape.hammock': 'Hammock',
     'shape.perfectionist': 'Perfectionist',
-    // Legacy (вне каталога-29, soft-disabled — но имена нужны для UI и отладки)
 
     // --- Fallback-имена (45, порядок = индекс, набор свой, не перевод) --------
     'fallback.0': 'Nebula',      'fallback.1': 'Spark',       'fallback.2': 'Shadow',
@@ -103,7 +102,7 @@ en: {
     'fallback.39': 'Ripple',     'fallback.40': 'Flash',      'fallback.41': 'Veil',
     'fallback.42': 'Halo',       'fallback.43': 'Passage',    'fallback.44': 'Pulse',
 
-    // --- Уровни (legacy XP) ---------------------------------------------------
+    // --- Уровни (S-03: лестница за ✦ по жизни) --------------------------------
     'level.0': 'Novice',
     'level.1': 'Observer',
     'level.2': 'Stargazer',
@@ -248,7 +247,6 @@ en: {
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
     // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
     'book.eyebrowExLibris': 'EX LIBRIS',
-    'book.eyebrowAtlas': 'ATLAS',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
     // подставляется на вызове, отдельного ключа под него не заводим.
@@ -263,7 +261,6 @@ en: {
     // на самой запертой странице, только короче. S-03: порог назван уровнем,
     // а не суммой ✦ — у суммы игроку не с чем сравнить.
     'book.indexOpensAtLevel': 'opens at level {n}',
-    'book.indexOpen': 'Open the observatory',
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
@@ -416,7 +413,6 @@ ru: {
     'shape.wheel': 'Колесо',
     'shape.hammock': 'Гамак',
     'shape.perfectionist': 'Перфекционист',
-    // Legacy
 
     // --- Fallback-имена (45) --------------------------------------------------
     'fallback.0': 'Туманность', 'fallback.1': 'Искра',       'fallback.2': 'Тень',
@@ -585,13 +581,11 @@ ru: {
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
-    'book.eyebrowAtlas': 'АТЛАС',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
     'book.eyebrowStampsChapter': 'Штампы · глава {n}',
     'book.indexOpensAtLevel': 'откроется на уровне {n}',
-    'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
     // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из K-15.

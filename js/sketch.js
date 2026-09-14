@@ -37,12 +37,6 @@ function generateNebulaBuffer() {
 }
 
 // =============================================================================
-// IMAGE PRELOADING
-// =============================================================================
-
-let constellationImages = {};
-
-// =============================================================================
 // APP MODE (B-02)
 // =============================================================================
 //
@@ -143,10 +137,6 @@ function setAppMode(mode) {
 // =============================================================================
 // SETUP
 // =============================================================================
-
-function getTopUIHeight() {
-    return 0;
-}
 
 /**
  * K-05: полосы во всю ширину под небом больше нет — лента-закладка занимает
@@ -353,19 +343,6 @@ function setup() {
     // K-01: канвас пишет тем же шрифтом, что и книга. Гротеска в игре нет.
     textFont("'EB Garamond', Georgia, 'Times New Roman', serif");
 
-    for (const [name, info] of Object.entries(SHAPES)) {
-        if (info.image) {
-            const img = new Image();
-            img.onload = () => { console.log('Constellation image loaded:', name, img.width + 'x' + img.height); };
-            img.onerror = () => {
-                console.warn('Failed to load constellation image:', name);
-                delete constellationImages[name];
-            };
-            img.src = 'images/' + info.image;
-            constellationImages[name] = img;
-        }
-    }
-
     loadProgression();
     // P-05: строго ПОСЛЕ loadProgression() — снимку нужны и playerId, и
     // счётчики достижений. На main функция инертна (адрес приёма пуст).
@@ -390,7 +367,7 @@ function setup() {
     // centerCamera() и отдельно от неё — её же зовёт камера финала V-13.
     if (typeof applyTutorialOpeningCamera === 'function') applyTutorialOpeningCamera();
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     closeBook();
     recomputeAchievementsClaimable();
@@ -550,18 +527,13 @@ function resetFieldSessionState() {
     revealTime = 0;
     undoFloor = 0;
 
-    totalScore = 0;
     constellations = [];
-    uniqueShapesFound = new Set();
-    bonusAwardedClasses = new Set();
     floatingScores = [];
     if (typeof cancelUndoMark === 'function') cancelUndoMark(); // K-04: окна отмены у нового неба нет
     // M-10: память имён отменённых созвездий привязана к id звёзд этого поля —
     // после перегенерации её ключи ни на что не указывают.
     if (typeof resetUndoneNameMemory === 'function') resetUndoneNameMemory();
-    bestScore = 0;
     resetStarCountBonusState();
-    resetRecordScoreBadge();
     atlasCollectedStarColors = new Map();
     if (typeof connectFeedbackState !== 'undefined' && connectFeedbackState instanceof Map) connectFeedbackState.clear();
     if (typeof cancelCommitWave === 'function') cancelCommitWave();
@@ -600,7 +572,7 @@ function startNewDailySky(options) {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
@@ -630,7 +602,7 @@ function onResetSky() {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
@@ -755,7 +727,6 @@ function performFullReset(options) {
 
     closeBook();
     resetFieldSessionState();
-    customTypes = [];
 
     resetProgressionForFullReset();
     // B-02: вайп забирает и холст. Отдельного confirm не заводим — тот, что уже
@@ -789,7 +760,7 @@ function performFullReset(options) {
     resetDragState();
     isPanning = false;
 
-    updateScoreUI(0, '', 0);
+    updateScoreUI();
     updateProgressionUI();
     recomputeAchievementsClaimable();
     updateRibbonSignal();
