@@ -186,10 +186,6 @@ if (typeof document !== 'undefined' && document.addEventListener) {
     });
 }
 
-function updateMetaPageProgressUI() {
-    /* progress to atlas pages shown only inside atlas overlay */
-}
-
 // =============================================================================
 // PROGRESSION UI
 // =============================================================================

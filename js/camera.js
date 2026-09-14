@@ -127,14 +127,6 @@ function clampCamera() {
 }
 
 /**
- * До P-01 возвращала смещения видимых горизонтальных копий поля (wrap).
- * Wrap убран — поле рендерится один раз, без копий/смещений.
- */
-function getVisibleTileWorldOffsets(viewPadPx) {
-    return [{ ox: 0, oy: 0 }];
-}
-
-/**
  * V-13: отзум финала ночи. Зовётся из draw() каждый кадр, пока идёт сцена.
  *
  * Цель НЕ запоминается на старте, а пересчитывается каждый кадр через штатную
@@ -217,20 +209,16 @@ function trimSegmentEndsWorld(ax, ay, bx, by, gapA, gapB) {
 }
 
 /**
- * Сегмент в мировых координатах между двумя звёздами.
- * До P-01 учитывала горизонтальный wrap (шов слева/справа); теперь wrap убран,
- * ox всегда 0 — рисует напрямую между фактическими позициями звёзд.
+ * Сегмент в мировых координатах между двумя звёздами (R-03: до P-01 здесь
+ * учитывался горизонтальный wrap, отсюда прежнее имя …HorizWrap…).
  * V-10: линия не доходит до звёзд — оба конца укорочены на зазор.
  * V-12: `progress` (0..1) чертит ребро не целиком, а до своей доли длины —
  * от startStar к endStar, то есть туда же, куда вёл палец. Возвращает
  * обрезанный сегмент, чтобы вызывающий мог положить сверху огонёк на острие.
  */
-function drawSegmentHorizWrapWorld(startStar, endStar, ox, progress = 1) {
-    const w1x = startStar.x + ox;
-    const w1y = startStar.y;
-    const w2 = nearestHorizontalCopy(endStar.x, endStar.y, w1x, w1y);
+function drawSegmentWorld(startStar, endStar, progress = 1) {
     const gap = getLineStarGapWorld();
-    const t = trimSegmentEndsWorld(w1x, w1y, w2.x, w2.y, gap, gap);
+    const t = trimSegmentEndsWorld(startStar.x, startStar.y, endStar.x, endStar.y, gap, gap);
     if (!t) return null;
     if (progress >= 1) {
         line(t.ax, t.ay, t.bx, t.by);
@@ -262,40 +250,37 @@ function drawCommitWaveCrestWorld(seg, progress, lineColor) {
     pop();
 }
 
-function drawConstellationSkeletonLinesWorld(tiles) {
-    for (const t of tiles) {
-        const ox = t.ox;
-        for (let constellation of constellations) {
-            if (!isConstellationVisible(constellation)) continue;
-            // V-09: атласные созвездия рисуются как обычные — prominent-стиль
-            // (жирная линия) остаётся только для финального раскрытия. Glow-ореол
-            // atlas-collected и prominent для recognizedAtlas убраны.
-            const prominent = constellationArtRevealed;
-            const shapeInfo = prominent
-                ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
-                : SHAPES[SHAPE_UNRECOGNIZED];
-            // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
-            const lineColor = constellation.lineColor || LINE_COLOR;
-            // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
-            // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
-            const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
-                ? getFinaleConstellationAlpha(constellation)
-                : 1;
-            if (finaleAlpha <= 0) continue;
+function drawConstellationSkeletonLinesWorld() {
+    for (let constellation of constellations) {
+        if (!isConstellationVisible(constellation)) continue;
+        // V-09: атласные созвездия рисуются как обычные — prominent-стиль
+        // (жирная линия) остаётся только для финального раскрытия. Glow-ореол
+        // atlas-collected и prominent для recognizedAtlas убраны.
+        const prominent = constellationArtRevealed;
+        const shapeInfo = prominent
+            ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
+            : SHAPES[SHAPE_UNRECOGNIZED];
+        // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
+        const lineColor = constellation.lineColor || LINE_COLOR;
+        // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
+        // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
+        const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
+            ? getFinaleConstellationAlpha(constellation)
+            : 1;
+        if (finaleAlpha <= 0) continue;
 
-            applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, finaleAlpha);
-            for (let i = 0; i < constellation.lines.length; i++) {
-                const seg = constellation.lines[i];
-                const startStar = getStarById(seg.startId);
-                const endStar = getStarById(seg.endId);
-                if (!startStar || !endStar) continue;
-                // V-12: у волнового созвездия ребро чертится до своей доли длины,
-                // у всех прочих progress === 1 — путь ровно как до задачи.
-                const progress = getCommitWaveEdgeProgress(constellation, i);
-                const trimmed = drawSegmentHorizWrapWorld(startStar, endStar, ox, progress);
-                if (progress < 1) {
-                    drawCommitWaveCrestWorld(trimmed, progress, lineColor);
-                }
+        applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, finaleAlpha);
+        for (let i = 0; i < constellation.lines.length; i++) {
+            const seg = constellation.lines[i];
+            const startStar = getStarById(seg.startId);
+            const endStar = getStarById(seg.endId);
+            if (!startStar || !endStar) continue;
+            // V-12: у волнового созвездия ребро чертится до своей доли длины,
+            // у всех прочих progress === 1 — путь ровно как до задачи.
+            const progress = getCommitWaveEdgeProgress(constellation, i);
+            const trimmed = drawSegmentWorld(startStar, endStar, progress);
+            if (progress < 1) {
+                drawCommitWaveCrestWorld(trimmed, progress, lineColor);
             }
         }
     }
@@ -500,19 +485,17 @@ function drawDraftStarCountLabelScreen() {
     }
 }
 
-function drawCurrentAndPendingLinesWorld(tiles) {
+function drawCurrentAndPendingLinesWorld() {
     const chainRgb = typeof getDraftChainColorRgb === 'function'
         ? getDraftChainColorRgb()
         : LINE_COLOR;
-    for (const t of tiles) {
-        stroke(chainRgb[0], chainRgb[1], chainRgb[2]);
-        strokeWeight(2 / zoomLevel);
-        for (let seg of currentLines) {
-            const startStar = getStarById(seg.startId);
-            const endStar = getStarById(seg.endId);
-            if (startStar && endStar) {
-                drawSegmentHorizWrapWorld(startStar, endStar, t.ox);
-            }
+    stroke(chainRgb[0], chainRgb[1], chainRgb[2]);
+    strokeWeight(2 / zoomLevel);
+    for (let seg of currentLines) {
+        const startStar = getStarById(seg.startId);
+        const endStar = getStarById(seg.endId);
+        if (startStar && endStar) {
+            drawSegmentWorld(startStar, endStar);
         }
     }
 }
@@ -589,7 +572,7 @@ function drawCollectedAtlasConstellationLabel(constellation, labelAnchor, zoomAl
     drawSmallCapsLabelWorld(name, labelAnchor.x, labelAnchor.y, labelSize, c, 255 * zoomAlpha * waveAlpha);
 }
 
-function drawConstellationLabelsOnTile() {
+function drawConstellationLabels() {
     // V-13: пока идёт финал ночи, подписей нет вовсе (решение заказчика: «названия
     // не важны на этой анимации»). Волну от revealTime при этом не трогаем — она
     // отыгрывает под нулевой альфой и к концу сцены все подписи уже на 255.
@@ -657,27 +640,22 @@ function drawFieldMode() {
     scale(zoomLevel);
     translate(-camX, -camY);
 
-    const tilePadForStars = 50;
-    const tiles = getVisibleTileWorldOffsets(tilePadForStars);
-    for (const t of tiles) {
-        push();
-        translate(t.ox, t.oy);
-        drawVisibleBackgroundStars(t.ox, t.oy);
-        pop();
-    }
+    // R-03: до P-01 каждый слой шёл циклом по копиям поля (wrap) со своим
+    // translate(ox, oy). Копия осталась одна и без смещения — проход один;
+    // push/pop вокруг слоёв оставлены: они изолируют стиль слоя от соседних.
+    push();
+    drawVisibleBackgroundStars();
+    pop();
 
-    if (typeof drawConstellationHatchingOnTiles === 'function') {
-        drawConstellationHatchingOnTiles(tiles);
+    if (typeof drawConstellationHatching === 'function') {
+        drawConstellationHatching();
     }
-    drawConstellationSkeletonLinesWorld(tiles);
-    drawCurrentAndPendingLinesWorld(tiles);
+    drawConstellationSkeletonLinesWorld();
+    drawCurrentAndPendingLinesWorld();
 
-    for (const t of tiles) {
-        push();
-        translate(t.ox, t.oy);
-        drawVisibleStars(t.ox, t.oy);
-        pop();
-    }
+    push();
+    drawVisibleStars();
+    pop();
 
     if (isDragging && currentStartStar) {
         const chainRgb = typeof getDraftChainColorRgb === 'function'
@@ -695,12 +673,9 @@ function drawFieldMode() {
 
     drawAttachFlash();
 
-    for (const t of tiles) {
-        push();
-        translate(t.ox, t.oy);
-        drawConstellationLabelsOnTile();
-        pop();
-    }
+    push();
+    drawConstellationLabels();
+    pop();
 
     pop();
 }
@@ -709,9 +684,7 @@ function drawFieldMode() {
 // VISIBILITY HELPERS
 // =============================================================================
 
-function drawVisibleBackgroundStars(worldTileOx, worldTileOy) {
-    const tileOx = typeof worldTileOx === 'number' ? worldTileOx : 0;
-    const tileOy = typeof worldTileOy === 'number' ? worldTileOy : 0;
+function drawVisibleBackgroundStars() {
     const viewW = width / zoomLevel;
     const viewH = height / zoomLevel;
     // Фоновые звёзды появляются быстрее основных (нет индивидуального appearDelay)
@@ -720,10 +693,8 @@ function drawVisibleBackgroundStars(worldTileOx, worldTileOy) {
     const bgFadeAlpha = bgFadeDuration > 0 ? constrain(bgElapsed / bgFadeDuration, 0, 1) : 1;
     noStroke();
     for (let s of fieldBackgroundStars) {
-        const wx = s.x + tileOx;
-        const wy = s.y + tileOy;
-        if (wx < camX - 10 || wx > camX + viewW + 10 ||
-            wy < camY - 10 || wy > camY + viewH + 10) continue;
+        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
+            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
         // K-03: пыль неподвижна. Мерцание фона делало поле труднее читаемым
         // (мелкая точка то видна, то нет) — дышат только крупные узлы.
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
@@ -766,7 +737,8 @@ function drawSparkleShape(x, y, diam, rayMult) {
 }
 
 // V-07: состояние фидбэк-анимации соединения. Обновляется раз за кадр
-// (гейт по frameCount), т.к. drawVisibleStars вызывается по разу на тайл.
+// (гейт по frameCount): до R-03 drawVisibleStars звалась по разу на копию
+// поля wrap-режима, гейт оставлен страховкой от повторного вызова за кадр.
 let feedbackAnchorId = null;
 let feedbackAnchorMoves = 0;
 let connectFeedbackFrame = -1;
@@ -774,7 +746,7 @@ let connectFeedbackFrame = -1;
 // (как atlasCollectedStarColors). Сбрасывается вместе с полем (sketch.js).
 let connectFeedbackState = new Map();
 
-function drawVisibleStars(worldTileOx, worldTileOy) {
+function drawVisibleStars() {
     // V-07: детект нового ребра — раз за кадр. Смена якоря (currentStartStar)
     // во время drag перезапускает импульс досягаемых звёзд.
     if (connectFeedbackFrame !== frameCount) {
@@ -789,8 +761,6 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
             feedbackAnchorId = aid;
         }
     }
-    const tileOx = typeof worldTileOx === 'number' ? worldTileOx : 0;
-    const tileOy = typeof worldTileOy === 'number' ? worldTileOy : 0;
     const viewW = width / zoomLevel;
     const viewH = height / zoomLevel;
     const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
@@ -803,8 +773,8 @@ function drawVisibleStars(worldTileOx, worldTileOy) {
     noStroke();
     for (let star of fieldStars) {
         if (!star) continue;
-        const wx = star.x + tileOx;
-        const wy = star.y + tileOy;
+        const wx = star.x;
+        const wy = star.y;
         if (wx < camX - 30 || wx > camX + viewW + 30 ||
             wy < camY - 30 || wy > camY + viewH + 30) continue;
 
@@ -1038,12 +1008,7 @@ function isConstellationVisible(constellation) {
     const vt = camY - margin;
     const vb = camY + viewH + margin;
     if (cy < vt || cy > vb) return false;
-    const pad = margin + 350;
-    for (const t of getVisibleTileWorldOffsets(pad)) {
-        const wcx = cx + t.ox;
-        if (wcx >= vl && wcx <= vr) return true;
-    }
-    return false;
+    return cx >= vl && cx <= vr;
 }
 
 // =============================================================================

@@ -144,10 +144,6 @@ function buildPageSpecialChain(spec) {
     };
 }
 
-function getPageSpecialForPage(pageIndex) {
-    return ATLAS_PAGE_SPECIALS.find(s => s.page === pageIndex) || null;
-}
-
 const ACHIEVEMENT_CHAINS = [
     // M-05/K-22: суточный квест — единственная бесконечная цепочка. Две ступени —
     // «Приход» и «Ночь закрыта» — вместо прежних двух отдельных цепочек по одному

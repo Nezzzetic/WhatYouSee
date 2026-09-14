@@ -310,11 +310,6 @@ function revertShapeCreated(shapeName) {
     return true;
 }
 
-/** @deprecated use markShapeCreated */
-function markShapeDiscovered(shapeName) {
-    return markShapeCreated(shapeName);
-}
-
 // =============================================================================
 // DEV DAY OFFSET
 // =============================================================================

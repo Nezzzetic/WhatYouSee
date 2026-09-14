@@ -14,8 +14,7 @@ const NIGHT_RGB = [5, 9, 15];
 const INK_RGB = [234, 241, 249];
 const INK_MUTED_RGB = [165, 184, 205];
 const INK_FAINT_RGB = [100, 128, 157];
-/** Сургуч: «готово, прижми». Единственный сигнал. */
-const WAX_RGB = [196, 85, 59];
+// Сургуч (--wax, «готово, прижми») канвасу не нужен — живёт только в CSS (R-03).
 /** Золото: свет и пройденный путь. */
 const GOLD_RGB = [217, 164, 65];
 const GOLD_LIGHT_RGB = [240, 216, 166];
@@ -24,7 +23,7 @@ const GOLD_LIGHT_RGB = [240, 216, 166];
 const NEBULA_TINT_RGB = [30, 58, 104];
 
 // --- Движение: два темпа и одна кривая ---------------------------------------
-// Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900). Темп назначается
+// Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900, только в CSS). Темп назначается
 // движению, которое игрок видит ОТДЕЛЬНЫМ событием: отклику на его касание
 // или сцене целиком. Внутренние шаги сцены (шаг волны, задержка между
 // созвездиями, вспышка одной звезды внутри общей волны) темпом не управляются —
@@ -32,7 +31,6 @@ const NEBULA_TINT_RGB = [30, 58, 104];
 
 const MOTION_MICRO_MS = 240;
 const MOTION_SCENE_MS = 700;
-const MOTION_SCENE_LONG_MS = 900;
 
 /**
  * Кривая книги — cubic-bezier(.22, 1, .36, 1), та же, что в CSS (--ease).
@@ -721,7 +719,6 @@ const DEMO_ACTIVE_BUILTIN_SHAPES = new Set([
 const SOFT_DISABLED_BUILTIN_SHAPES = new Set(
     BUILTIN_SHAPE_NAMES.filter(name => !DEMO_ACTIVE_BUILTIN_SHAPES.has(name))
 );
-const ACTIVE_BUILTIN_SHAPE_NAMES = BUILTIN_SHAPE_NAMES.filter(name => !SOFT_DISABLED_BUILTIN_SHAPES.has(name));
 
 function isBuiltinShapeName(shapeName) {
     return BUILTIN_SHAPE_NAMES.includes(shapeName);
