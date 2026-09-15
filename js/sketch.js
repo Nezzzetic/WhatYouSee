@@ -544,7 +544,6 @@ function resetFieldSessionState() {
 function regenerateFieldStarsAfterReset() {
     if (shouldLoadPictureField()) {
         generatePictureField();
-        dailyTargetShapes = [];
         assignStarAppearDelays();
         generateBackgroundStars();
     } else {
@@ -588,7 +587,6 @@ function onResetSky() {
 
     if (shouldLoadPictureField()) {
         generatePictureField();
-        dailyTargetShapes = [];
         assignStarAppearDelays();
         generateBackgroundStars();
     } else {
@@ -615,7 +613,7 @@ function onDevNewDay() {
     incrementDevDayOffset();
     startNewDailySky({ saveAfter: true });
     if (typeof console !== 'undefined' && console.info) {
-        console.info('[dev] Новый день. effectiveDate:', getEffectiveSkyDateInt(), 'targets:', getDailyTargetShapes());
+        console.info('[dev] Новый день. effectiveDate:', getEffectiveSkyDateInt());
     }
 }
 

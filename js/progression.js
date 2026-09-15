@@ -7,7 +7,6 @@
 let metaScore = 0;
 let unlockedPageIndices = new Set();
 let createdShapes = new Set();
-let favoriteShapes = new Set();
 // K-11: закладка-цель — одна фигура, её чертёж ждёт в углу неба. Терпимое
 // поле: отсутствие в сейве значит «закладки нет», версию не поднимаем.
 let bookmarkedShape = null;
@@ -25,10 +24,6 @@ let lifetimeMetaEarned = 0;
 // «Сегодня» (maybeAnnounceLevelUp). Нужна только затем, чтобы ступень хвоста
 // объявлялась ровно один раз и не задним числом.
 let levelAnnounced = 1;
-
-// Legacy (migration only)
-let globalDiscoveredShapes = new Set();
-let atlasClaimedShapes = new Set();
 
 // Версия каталога фигур в сейве. 1 = каталог-29 (топологический режим),
 // 2 = тот же каталог, но ключи — ASCII-ID вместо русских имён (L-01).
@@ -255,19 +250,6 @@ function clampShapeToAtlasVisibility(shapeName) {
     return normalized;
 }
 
-function getUnlockedAtlasShapeNames() {
-    const names = [];
-    for (let i = 0; i < ATLAS_PAGES.length; i++) {
-        if (!isAtlasPageUnlocked(i)) continue;
-        names.push(...ATLAS_PAGES[i]);
-    }
-    return names;
-}
-
-function getUncreatedUnlockedShapeNames() {
-    return getUnlockedAtlasShapeNames().filter(name => !isShapeCreated(name));
-}
-
 // =============================================================================
 // CREATED SHAPES
 // =============================================================================
@@ -295,7 +277,6 @@ function markShapeCreated(shapeName) {
     if (!normalized) return false;
     if (createdShapes.has(normalized)) return false;
     createdShapes.add(normalized);
-    globalDiscoveredShapes.add(normalized);
     saveProgression();
     return true;
 }
@@ -305,7 +286,6 @@ function revertShapeCreated(shapeName) {
     if (!normalized) return false;
     if (!createdShapes.has(normalized)) return false;
     createdShapes.delete(normalized);
-    globalDiscoveredShapes.delete(normalized);
     saveProgression();
     return true;
 }
@@ -403,25 +383,6 @@ function getLevelName(level) {
     return t('level.' + index);
 }
 
-function isFavoriteShape(shapeName) {
-    const normalized = normalizeShapeName(shapeName);
-    if (!normalized) return false;
-    return favoriteShapes.has(normalized);
-}
-
-function toggleFavoriteShape(shapeName) {
-    const normalized = normalizeShapeName(shapeName);
-    if (!normalized) return false;
-    if (favoriteShapes.has(normalized)) {
-        favoriteShapes.delete(normalized);
-        saveProgression();
-        return false;
-    }
-    favoriteShapes.add(normalized);
-    saveProgression();
-    return true;
-}
-
 function getBookmarkedShape() {
     return bookmarkedShape;
 }
@@ -448,9 +409,6 @@ function toggleShapeBookmark(shapeName) {
  */
 function migrateSaveToCatalog29() {
     createdShapes = new Set();
-    globalDiscoveredShapes = new Set();
-    atlasClaimedShapes = new Set();
-    favoriteShapes = new Set();
     bookmarkedShape = null;
     if (typeof resetShapeAchievementsForCatalogMigration === 'function') {
         resetShapeAchievementsForCatalogMigration();
@@ -462,10 +420,7 @@ function resetProgressionForFullReset() {
     metaScore = 0;
     unlockedPageIndices = new Set();
     createdShapes = new Set();
-    favoriteShapes = new Set();
     bookmarkedShape = null;
-    globalDiscoveredShapes = new Set();
-    atlasClaimedShapes = new Set();
     devDayOffset = 0;
     // B-02: полный сброс — это вайп, холст уходит вместе с остальным.
     // Ключ хранения удаляет performFullReset (sketch.js).
@@ -487,7 +442,9 @@ function saveProgression() {
             metaScore,
             unlockedPageIndices: [...unlockedPageIndices],
             createdShapes: [...createdShapes],
-            favoriteShapes: [...favoriteShapes],
+            // R-04: `favoriteShapes` снят — интерфейса у избранного не было
+            // никогда, набор у всех пустой. Старый сейв с полем читается,
+            // поле уходит на первом же сохранении; версию не поднимаем.
             bookmarkedShape,
             playerId: ensurePlayerId(),
             devDayOffset,
@@ -536,15 +493,12 @@ function loadProgression() {
         );
 
         createdShapes = new Set(state.createdShapes || []);
-        favoriteShapes = new Set(Array.isArray(state.favoriteShapes) ? state.favoriteShapes : []);
         // K-11: терпимое поле — старый сейв без него просто не имеет закладки.
         bookmarkedShape = normalizeShapeName(state.bookmarkedShape);
 
-        if (Array.isArray(state.globalDiscoveredShapes) && createdShapes.size === 0) {
-            createdShapes = new Set(state.globalDiscoveredShapes);
-        }
-        globalDiscoveredShapes = new Set(createdShapes);
-        atlasClaimedShapes = new Set(state.atlasClaimedShapes || [...createdShapes]);
+        // R-04: перенос `globalDiscoveredShapes` → `createdShapes` (сейвы до S-01)
+        // снят. Эти поля не записал в сейв ни один коммит репозитория, а сейв
+        // старше него не несёт `achievementsVersion` и уходит в полный сброс v<8.
 
         // B-02: поля нет (сейв до обсерватории) — восстанавливаем точно, без
         // миграции и без сброса прогресса. Считается один раз: дальше поле живёт само.
