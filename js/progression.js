@@ -7,7 +7,6 @@
 let metaScore = 0;
 let unlockedPageIndices = new Set();
 let createdShapes = new Set();
-let favoriteShapes = new Set();
 // K-11: закладка-цель — одна фигура, её чертёж ждёт в углу неба. Терпимое
 // поле: отсутствие в сейве значит «закладки нет», версию не поднимаем.
 let bookmarkedShape = null;
@@ -390,25 +389,6 @@ function getLevelName(level) {
     return t('level.' + index);
 }
 
-function isFavoriteShape(shapeName) {
-    const normalized = normalizeShapeName(shapeName);
-    if (!normalized) return false;
-    return favoriteShapes.has(normalized);
-}
-
-function toggleFavoriteShape(shapeName) {
-    const normalized = normalizeShapeName(shapeName);
-    if (!normalized) return false;
-    if (favoriteShapes.has(normalized)) {
-        favoriteShapes.delete(normalized);
-        saveProgression();
-        return false;
-    }
-    favoriteShapes.add(normalized);
-    saveProgression();
-    return true;
-}
-
 function getBookmarkedShape() {
     return bookmarkedShape;
 }
@@ -437,7 +417,6 @@ function migrateSaveToCatalog29() {
     createdShapes = new Set();
     globalDiscoveredShapes = new Set();
     atlasClaimedShapes = new Set();
-    favoriteShapes = new Set();
     bookmarkedShape = null;
     if (typeof resetShapeAchievementsForCatalogMigration === 'function') {
         resetShapeAchievementsForCatalogMigration();
@@ -449,7 +428,6 @@ function resetProgressionForFullReset() {
     metaScore = 0;
     unlockedPageIndices = new Set();
     createdShapes = new Set();
-    favoriteShapes = new Set();
     bookmarkedShape = null;
     globalDiscoveredShapes = new Set();
     atlasClaimedShapes = new Set();
@@ -474,7 +452,9 @@ function saveProgression() {
             metaScore,
             unlockedPageIndices: [...unlockedPageIndices],
             createdShapes: [...createdShapes],
-            favoriteShapes: [...favoriteShapes],
+            // R-04: `favoriteShapes` снят — интерфейса у избранного не было
+            // никогда, набор у всех пустой. Старый сейв с полем читается,
+            // поле уходит на первом же сохранении; версию не поднимаем.
             bookmarkedShape,
             playerId: ensurePlayerId(),
             devDayOffset,
@@ -523,7 +503,6 @@ function loadProgression() {
         );
 
         createdShapes = new Set(state.createdShapes || []);
-        favoriteShapes = new Set(Array.isArray(state.favoriteShapes) ? state.favoriteShapes : []);
         // K-11: терпимое поле — старый сейв без него просто не имеет закладки.
         bookmarkedShape = normalizeShapeName(state.bookmarkedShape);
 
