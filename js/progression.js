@@ -25,10 +25,6 @@ let lifetimeMetaEarned = 0;
 // объявлялась ровно один раз и не задним числом.
 let levelAnnounced = 1;
 
-// Legacy (migration only)
-let globalDiscoveredShapes = new Set();
-let atlasClaimedShapes = new Set();
-
 // Версия каталога фигур в сейве. 1 = каталог-29 (топологический режим),
 // 2 = тот же каталог, но ключи — ASCII-ID вместо русских имён (L-01).
 // Сейвы без поля catalogVersion — с геометрического демо: прогрессия по
@@ -281,7 +277,6 @@ function markShapeCreated(shapeName) {
     if (!normalized) return false;
     if (createdShapes.has(normalized)) return false;
     createdShapes.add(normalized);
-    globalDiscoveredShapes.add(normalized);
     saveProgression();
     return true;
 }
@@ -291,7 +286,6 @@ function revertShapeCreated(shapeName) {
     if (!normalized) return false;
     if (!createdShapes.has(normalized)) return false;
     createdShapes.delete(normalized);
-    globalDiscoveredShapes.delete(normalized);
     saveProgression();
     return true;
 }
@@ -415,8 +409,6 @@ function toggleShapeBookmark(shapeName) {
  */
 function migrateSaveToCatalog29() {
     createdShapes = new Set();
-    globalDiscoveredShapes = new Set();
-    atlasClaimedShapes = new Set();
     bookmarkedShape = null;
     if (typeof resetShapeAchievementsForCatalogMigration === 'function') {
         resetShapeAchievementsForCatalogMigration();
@@ -429,8 +421,6 @@ function resetProgressionForFullReset() {
     unlockedPageIndices = new Set();
     createdShapes = new Set();
     bookmarkedShape = null;
-    globalDiscoveredShapes = new Set();
-    atlasClaimedShapes = new Set();
     devDayOffset = 0;
     // B-02: полный сброс — это вайп, холст уходит вместе с остальным.
     // Ключ хранения удаляет performFullReset (sketch.js).
@@ -506,11 +496,9 @@ function loadProgression() {
         // K-11: терпимое поле — старый сейв без него просто не имеет закладки.
         bookmarkedShape = normalizeShapeName(state.bookmarkedShape);
 
-        if (Array.isArray(state.globalDiscoveredShapes) && createdShapes.size === 0) {
-            createdShapes = new Set(state.globalDiscoveredShapes);
-        }
-        globalDiscoveredShapes = new Set(createdShapes);
-        atlasClaimedShapes = new Set(state.atlasClaimedShapes || [...createdShapes]);
+        // R-04: перенос `globalDiscoveredShapes` → `createdShapes` (сейвы до S-01)
+        // снят. Эти поля не записал в сейв ни один коммит репозитория, а сейв
+        // старше него не несёт `achievementsVersion` и уходит в полный сброс v<8.
 
         // B-02: поля нет (сейв до обсерватории) — восстанавливаем точно, без
         // миграции и без сброса прогресса. Считается один раз: дальше поле живёт само.

@@ -2,16 +2,10 @@
 
 // L-01: v02 → v03. В сохранённом небе лежат `constellations[].shape/name`
 // русскими именами — после перехода на ASCII-ID они не резолвятся ни в SHAPES,
-// ни в атласе. Новый ключ означает чистое небо, старый удаляется сразу, чтобы
-// не копить мусор в localStorage.
+// ни в атласе. Новый ключ означает чистое небо.
+// R-04: чистка старого ключа `starsReborn_v02` при загрузке снята — после L-01
+// прошло полтора месяца, а забытый ключ ни на что не влияет.
 const SAVE_KEY = 'starsReborn_v03';
-const LEGACY_SAVE_KEYS = ['starsReborn_v02'];
-
-(function dropLegacySaveKeys() {
-    for (const key of LEGACY_SAVE_KEYS) {
-        try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-    }
-}());
 
 // =============================================================================
 // SAVE
