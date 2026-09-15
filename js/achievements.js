@@ -144,10 +144,6 @@ function buildPageSpecialChain(spec) {
     };
 }
 
-function getPageSpecialForPage(pageIndex) {
-    return ATLAS_PAGE_SPECIALS.find(s => s.page === pageIndex) || null;
-}
-
 const ACHIEVEMENT_CHAINS = [
     // M-05/K-22: суточный квест — единственная бесконечная цепочка. Две ступени —
     // «Приход» и «Ночь закрыта» — вместо прежних двух отдельных цепочек по одному
@@ -1011,7 +1007,7 @@ function hasClaimableAchievements() {
 }
 
 // =============================================================================
-// ХУКИ ОЦЕНКИ (вызываются из drawing.js)
+// ХУКИ ОЦЕНКИ (вызываются из constellations.js)
 // =============================================================================
 
 function recordAchievementCommit(constellation) {
@@ -1176,18 +1172,18 @@ function claimAchievementStep(chainId) {
     if (typeof playClaim === 'function') playClaim(reward);
     if (typeof flyClaimReward === 'function') flyClaimReward(fromRect, reward);
 
-    // V-16: разрез главы атласа — узкое исключение из K-15, решение заказчика
-    // 2026-09-04. Забор марки — единственный live-путь к maybeAutoUnlockAtlasPages
-    // (в отличие от загрузки сейва и дев-вайпа), поэтому достаточно сверить
-    // unlockedPageIndices до/после — без изменения сигнатур awardMetaScore
-    // и maybeAutoUnlockAtlasPages.
-    const atlasPagesBeforeClaim = new Set(unlockedPageIndices);
+    // U-29 (выросло из V-16): баннер уровня — узкое исключение из K-15, решение
+    // заказчика. Забор марки — единственный live-путь к росту `getPlayerLevel()`
+    // (в отличие от загрузки сейва и дев-кнопки «+100 ✦», которая зовёт
+    // awardMetaScore напрямую), поэтому достаточно сверить уровень до/после —
+    // без изменения сигнатуры awardMetaScore.
+    const levelBeforeClaim = getPlayerLevel();
     awardMetaScore(reward);
-    if (typeof showChapterCutBanner === 'function') {
-        const newlyCutPages = [...unlockedPageIndices]
-            .filter(i => !atlasPagesBeforeClaim.has(i))
-            .sort((a, b) => a - b);
-        if (newlyCutPages.length) showChapterCutBanner(newlyCutPages);
+    const levelAfterClaim = getPlayerLevel();
+    if (typeof showLevelBanner === 'function' && levelAfterClaim > levelBeforeClaim) {
+        const newLevels = [];
+        for (let lv = levelBeforeClaim + 1; lv <= levelAfterClaim; lv++) newLevels.push(lv);
+        showLevelBanner(newLevels, getLevelUnlockKeys(levelBeforeClaim, levelAfterClaim));
     }
 
     if (chain.daily) {
@@ -1217,9 +1213,8 @@ function claimAchievementStep(chainId) {
     return true;
 }
 
-// =============================================================================
-// ОВЕРЛЕЙ UI
-// =============================================================================
+// R-05: рендер страниц Штампов — bookStamps.js, строки сцепок (общие со
+// «Сегодня») — ui.js. Здесь остаются данные глав и их предикаты.
 
 // =============================================================================
 // U-09/K-06: НАГРАДЫ — 5 СТРАНИЦ СТРОК; «Сутки» живут на «Сегодня», не в Штампах
@@ -1228,7 +1223,7 @@ function claimAchievementStep(chainId) {
 /**
  * Порядок фиксирован и не зависит от наличия забора: игрок ищет готовое
  * по капле сургуча на высечке «Stamps», а не по перескакивающим строкам.
- * REWARD_PAGES[0] («Сутки») сама книга (ui.js, renderBookToday) рендерит на
+ * REWARD_PAGES[0] («Сутки») сама книга (bookToday.js, renderBookToday) рендерит на
  * странице «Сегодня» отдельно — getBookPageIndex('rewards') по страницам
  * Штампов ходит с индекса 1, а не 0.
  *
@@ -1239,10 +1234,13 @@ function claimAchievementStep(chainId) {
  * включительно (getAtlasCumulativeCost) — тот же нож, что и у атласа, на том
  * же ряду чисел. `null` — глава открыта всегда, порог не существует.
  *
- * B-04: все главы Штампов открыты сразу (unlockAtIndex → null везде) — при
- * четырёх главах атласа прежние индексы 1/3/5 либо совпали бы с самим окном
- * первых дней, либо ушли за пределы ряда. Замки особых достижений
- * (requiresPageComplete/getChainLockReason) это решение не трогает.
+ * O-08: три главы вместо четырёх — заперты уровнями S-03, а не все сразу.
+ * «Первый свет» получил размерные плюс Trailblazer/Sky Architect (переехали
+ * с «Долгого пути») и остаётся открытым всегда — это единственная глава,
+ * доступная новичку до уровня 2. «Рука гранильщика» (цветовые) заперта до
+ * уровня 2, «Долгий путь» (остаток + вся бывшая Odd Nights, 6 цепочек) — до
+ * уровня 3. Собственные замки особых (requiresPageComplete/getChainLockReason)
+ * это решение не трогает — они внутри главы и замок главы не дублируют.
  */
 const REWARD_PAGES = [
     {
@@ -1252,31 +1250,31 @@ const REWARD_PAGES = [
         chainIds: ['evening_rite']
     },
     {
+        // O-08: Trailblazer и Sky Architect переехали сюда с «Долгого пути» —
+        // порядок: сначала три размерные (как раньше), следом они (решение
+        // исполнителя, заказчик порядок не задавал).
         id: 'first_light', sign: ACHIEVEMENT_SIZE_SIGN, title: t('rewardPage.firstLight'),
-        chainIds: ['size_2_4', 'size_5_7', 'size_8plus'],
+        chainIds: ['size_2_4', 'size_5_7', 'size_8plus', 'razvedka', 'constellations'],
         unlockAtIndex: null
     },
     {
         // U-17: «Рука гранильщика» переехала на вторую страницу Штампов (после
         // «Первого света», перед «Долгим путём») — решение заказчика.
+        // O-08: заперта целиком до уровня 2 (unlockAtIndex: 1 → getAtlasChapterLevel = 2).
         id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
-        unlockAtIndex: null
+        unlockAtIndex: 1
     },
     {
-        // U-10: «Огранщик» и «Первооткрыватель» — старая страница «Огранка и путь».
+        // O-08: «Долгий путь» вобрал остаток старой страницы (Огранщик, Странник
+        // ночей) и всю бывшую Odd Nights (Радуга/Мозаика/Витраж/Калейдоскоп) —
+        // четвёртой главы штампов больше нет. Заперта целиком до уровня 3
+        // (unlockAtIndex: 2 → getAtlasChapterLevel = 3). Одноразовые вызовы
+        // держат свой отдельный замок requiresPageComplete/getChainLockReason
+        // независимо от замка самой главы.
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['razvedka', 'ogranshchik', 'nights', 'constellations'],
-        unlockAtIndex: null
-    },
-    {
-        // Особые достижения страниц атласа: у каждой уже есть свой замок
-        // (requiresPageComplete/getChainLockReason) — этот порог лишь решает,
-        // видна ли сама глава на оглавлении и в пейджере, замка не дублирует.
-        // B-04: gobelen/orchestra/symphony сняты вместе с бывшими главами V/VI/VII.
-        id: 'odd_nights', sign: 'comet', title: t('rewardPage.oddNights'),
-        chainIds: ['rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
-        unlockAtIndex: null
+        chainIds: ['ogranshchik', 'nights', 'rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
+        unlockAtIndex: 2
     }
 ];
 
@@ -1309,6 +1307,30 @@ function getRewardPageUnlockLevel(pageIndex) {
     return getAtlasChapterLevel(page.unlockAtIndex);
 }
 
+/**
+ * U-29: что открыл проход уровней (fromLevel, toLevel] — главы атласа, главы
+ * штампов, Экслибрис. Атлас и уровень заперты на одном ряду по построению
+ * (`getAtlasChapterLevel`: глава i открывается уровнем i+1) — используется
+ * напрямую, без сверки unlockedPageIndices до/после, как делал V-16.
+ * Ключи — `atlas:<idx>` / `stamps:<idx>` / `exlibris`, порядок внутри уровня
+ * фиксирован (атлас → штампы → Экслибрис), уровни по возрастанию.
+ */
+function getLevelUnlockKeys(fromLevel, toLevel) {
+    const keys = [];
+    for (let lv = fromLevel + 1; lv <= toLevel; lv++) {
+        const atlasIdx = lv - 1;
+        if (atlasIdx < ATLAS_PAGE_COSTS.length) keys.push('atlas:' + atlasIdx);
+        for (let i = 0; i < REWARD_PAGES.length; i++) {
+            if (typeof REWARD_PAGES[i].unlockAtIndex === 'number'
+                && getRewardPageUnlockLevel(i) === lv) {
+                keys.push('stamps:' + i);
+            }
+        }
+        if (lv === OBSERVATORY_UNLOCK_LEVEL) keys.push('exlibris');
+    }
+    return keys;
+}
+
 /** U-09: бейдж на иконке рельса — на этой странице есть что забрать. */
 function rewardPageHasClaimable(pageIndex) {
     return getRewardPageChains(pageIndex).some(chain => {
@@ -1332,251 +1354,6 @@ function getRewardPagePressedStamps(pageIndex) {
         total += chain.steps.length;
     }
     return { pressed, total };
-}
-
-/**
- * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
- * цепочка пройдена целиком. У шагов суточного квеста прогресса нет (условие
- * бинарное) — вместо числа тире (K-22: тот же общий путь, `getAchievementStepProgress`
- * не знает проверок `dailyEntry`/`dailyNight` и честно отдаёт null).
- */
-function buildAchievementHeadCount(chain, p, done) {
-    if (done) return { text: t('rewards.headDone'), ready: false };
-    if (p.claimable) return { text: t('rewards.headReady'), ready: true };
-    const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
-    if (!prog) return { text: '—', ready: false };
-    return { text: t('rewards.headProgress', { current: Math.min(prog.current, prog.target), target: prog.target }), ready: false };
-}
-
-/**
- * Одна марка сцепки. Три состояния и ни одного больше:
- * свет ждёт (число) → готово прижать (сургучная рамка, марка сама кликабельна)
- * → оттиск (число вылетело к корешку, на его месте знак цепочки).
- *
- * Прижимается сама марка — кнопки нет нигде. Зона касания шире марки на 6 pt
- * с каждой стороны (`.achv-tile-hit`): марка мелкая, палец крупный.
- */
-function createAchievementTile(chain, stepIndex, p) {
-    const tile = document.createElement('div');
-    tile.className = 'achv-tile';
-
-    // K-22: суточная цепочка идёт тем же путём — stepIndex у неё выведен
-    // recompute'ом из защёлок суток, «текущий» шаг всегда ровно один.
-    const pressed = stepIndex < p.stepIndex;
-    const isCurrent = stepIndex === p.stepIndex;
-    const ready = isCurrent && !pressed && p.claimable;
-
-    if (pressed) {
-        tile.classList.add('achv-tile-lit');
-        tile.appendChild(glyphSign(chain.sign || 'arc', 14));
-        return tile;
-    }
-
-    const amt = document.createElement('span');
-    amt.className = 'achv-tile-amt';
-    amt.textContent = `${getAchievementChainStepReward(chain, stepIndex)} ✦`;
-    tile.appendChild(amt);
-
-    if (ready) {
-        tile.classList.add('achv-tile-ready');
-        tile.dataset.chainId = chain.id;
-        tile.setAttribute('role', 'button');
-        tile.tabIndex = 0;
-        tile.title = t('rewards.claim');
-        const hit = document.createElement('span');
-        hit.className = 'achv-tile-hit';
-        hit.setAttribute('aria-hidden', 'true');
-        // U-20: сетка всегда до пяти клеток (createAchievementTiles) — хит-зона
-        // растягивается на соседей до краёв полоски через эти два безразмерных числа.
-        hit.style.setProperty('--hit-l', stepIndex);
-        hit.style.setProperty('--hit-r', 4 - stepIndex);
-        tile.appendChild(hit);
-        // A-03: по data-chain-id `claimAchievementStep` находит точку старта перелёта ✦
-        tile.addEventListener('click', (e) => {
-            e.stopPropagation();
-            claimAchievementStep(chain.id);
-        });
-        tile.addEventListener('keydown', (e) => {
-            if (e.key !== 'Enter' && e.key !== ' ') return;
-            e.preventDefault();
-            claimAchievementStep(chain.id);
-        });
-    } else {
-        tile.title = t('rewards.claimIdle');
-    }
-    return tile;
-}
-
-/** Сетка на пять клеток всегда — столько же, сколько граней у фигуры атласа. */
-function createAchievementTiles(chain, p) {
-    const tiles = document.createElement('div');
-    tiles.className = 'achv-row-tiles';
-    const total = chain.steps.length;
-    for (let i = 0; i < 5; i++) {
-        if (i < total) {
-            tiles.appendChild(createAchievementTile(chain, i, p));
-        } else {
-            const empty = document.createElement('div');
-            empty.className = 'achv-tile achv-tile-empty';
-            tiles.appendChild(empty);
-        }
-    }
-    return tiles;
-}
-
-/**
- * U-24: заливка прогресса внутри текущего шага — «N из target» очков до
- * следующей марки, а не «шаг K из 5» (то уже видно клетками ниже). Короткая
- * полоска встаёт в конце строки описания, под счётом (два предыдущих места —
- * отдельной строкой под описанием, затем в шапке рядом со счётом — заказчик
- * поправил дважды по живому экрану до этой раскладки).
- *
- * Считается от того же чек-условия, что и `claimable` (`evaluateAchievementCheck`),
- * поэтому в момент готовности ratio сам приходит к 1 без отдельной ветки —
- * строка не дёргается, когда марка становится готова прижать (тот же принцип,
- * что уже чинила K-23 для другого сигнала).
- */
-function createAchievementProgressBar(prog) {
-    const bar = document.createElement('div');
-    bar.className = 'achv-row-bar';
-    const fill = document.createElement('div');
-    fill.className = 'achv-row-bar-fill';
-    const ratio = prog.target > 0 ? Math.max(0, Math.min(1, prog.current / prog.target)) : 0;
-    fill.style.width = (ratio * 100).toFixed(1) + '%';
-    bar.appendChild(fill);
-    return bar;
-}
-
-/** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
-function createAchievementLockedRow(reason) {
-    const row = document.createElement('div');
-    row.className = 'achv-row achv-row-locked';
-
-    const icon = document.createElement('div');
-    icon.className = 'achv-row-icon achv-row-icon-uncut';
-    icon.appendChild(glyphSign('lock', 22));
-    row.appendChild(icon);
-
-    const body = document.createElement('div');
-    body.className = 'achv-row-body';
-
-    const title = document.createElement('div');
-    title.className = 'achv-row-title achv-row-title-hidden';
-    title.textContent = t('achv.lockedTitle');
-    body.appendChild(title);
-
-    const text = document.createElement('div');
-    text.className = 'achv-row-step';
-    text.textContent = reason;
-    body.appendChild(text);
-
-    row.appendChild(body);
-    return row;
-}
-
-/**
- * K-08: достижение — сцепка марок, как в альбоме филателиста. Одна строка:
- * имя с линейкой из точек и счётом текущей ступени, курсивное описание того,
- * что именно считается, и полоска из пяти клеток — по ней сразу видно,
- * сколько света уже в книге и сколько ещё ждёт (getAchievementChainStepReward
- * на каждой клетке, суммы нигде не пересчитываются заново).
- */
-function createAchievementRow(chain) {
-    const lockReason = getChainLockReason(chain);
-    if (lockReason) return createAchievementLockedRow(lockReason);
-
-    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
-    // K-22: суточная цепочка тоже уходит в «done» (обе марки прижаты), но
-    // до конца суток, а не навсегда — recompute сбросит stepIndex сам,
-    // как только придёт новое небо.
-    const done = p.stepIndex >= chain.steps.length;
-
-    const row = document.createElement('div');
-    row.className = 'achv-row'
-        + (done ? ' achv-row-done' : '')
-        + (p.claimable ? ' achv-row-claimable' : '');
-    row.dataset.chainId = chain.id;
-
-    // U-24: текущий шаг читается один раз — бар в шапке и описание ниже
-    // берут один и тот же stepEntry/prog, не пересчитывают их порознь.
-    const stepEntry = chain.steps[p.stepIndex];
-    const prog = stepEntry ? getAchievementStepProgress(stepEntry.check) : null;
-
-    const head = document.createElement('div');
-    head.className = 'achv-row-head';
-
-    const title = document.createElement('span');
-    title.className = 'achv-row-title';
-    title.textContent = chain.title;
-    head.appendChild(title);
-
-    const dots = document.createElement('span');
-    dots.className = 'achv-row-dots';
-    head.appendChild(dots);
-
-    const countInfo = buildAchievementHeadCount(chain, p, done);
-    const count = document.createElement('span');
-    count.className = 'achv-row-count' + (countInfo.ready ? ' achv-row-count-ready' : '');
-    count.textContent = countInfo.text;
-    head.appendChild(count);
-
-    row.appendChild(head);
-
-    // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
-    // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
-    // steps) описания не показывает — печатать нечего.
-    //
-    // U-24: бар — в одной строке с описанием, под счётом (первая версия
-    // ставила его в шапку рядом со счётом — по следующему фидбеку заказчика
-    // перенесён сюда); только у цепочек с числовым прогрессом (суточный
-    // квест и одношаговые условия дают null).
-    const desc = document.createElement('div');
-    desc.className = 'achv-row-desc';
-    const descText = document.createElement('span');
-    descText.className = 'achv-row-desc-text';
-    descText.textContent = stepEntry ? stepEntry.desc : '';
-    desc.appendChild(descText);
-    if (prog) desc.appendChild(createAchievementProgressBar(prog));
-    row.appendChild(desc);
-
-    row.appendChild(createAchievementTiles(chain, p));
-
-    return row;
-}
-
-/** K-12: неразрезанная глава штампов — тот же нож и та же заглушка, что у атласа. */
-function createRewardPageLockedNotice(pageIndex) {
-    const locked = document.createElement('div');
-    locked.className = 'atlas-page-locked';
-    const cost = getRewardPageUnlockCost(pageIndex);
-
-    const lockedText = document.createElement('p');
-    lockedText.textContent = t('stamps.chapterLocked', { n: getRewardPageUnlockLevel(pageIndex) });
-    locked.appendChild(lockedText);
-
-    const progressText = document.createElement('p');
-    progressText.className = 'atlas-page-locked-progress';
-    progressText.textContent = t('stamps.chapterLockedProgress', {
-        current: Math.min(getLifetimeMetaEarned(), cost),
-        target: cost
-    });
-    locked.appendChild(progressText);
-
-    return locked;
-}
-
-function renderAchievementsList() {
-    const list = document.getElementById('achievementsList');
-    if (!list) return;
-    list.innerHTML = '';
-    const pageIndex = getBookPageIndex('rewards');
-    if (!isRewardPageUnlocked(pageIndex)) {
-        list.appendChild(createRewardPageLockedNotice(pageIndex));
-        return;
-    }
-    for (const chain of getRewardPageChains(pageIndex)) {
-        list.appendChild(createAchievementRow(chain));
-    }
 }
 
 // Инициализация дефолтами при загрузке модуля (до loadProgression).

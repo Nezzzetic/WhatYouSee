@@ -84,7 +84,6 @@ en: {
     'shape.wheel': 'Wheel',
     'shape.hammock': 'Hammock',
     'shape.perfectionist': 'Perfectionist',
-    // Legacy (вне каталога-29, soft-disabled — но имена нужны для UI и отладки)
 
     // --- Fallback-имена (45, порядок = индекс, набор свой, не перевод) --------
     'fallback.0': 'Nebula',      'fallback.1': 'Spark',       'fallback.2': 'Shadow',
@@ -103,7 +102,7 @@ en: {
     'fallback.39': 'Ripple',     'fallback.40': 'Flash',      'fallback.41': 'Veil',
     'fallback.42': 'Halo',       'fallback.43': 'Passage',    'fallback.44': 'Pulse',
 
-    // --- Уровни (legacy XP) ---------------------------------------------------
+    // --- Уровни (S-03: лестница за ✦ по жизни) --------------------------------
     'level.0': 'Novice',
     'level.1': 'Observer',
     'level.2': 'Stargazer',
@@ -164,10 +163,10 @@ en: {
     },
     'chain.size8plus.desc': 'Constellations of 8 stars or more',
     'chain.rainbow.step': {
-        one: '{n} night with a full rainbow (all 5 colors in one night)',
-        other: '{n} nights with a full rainbow (all 5 colors in one night)'
+        one: '{n} night: constellations of all 5 colors',
+        other: '{n} nights: constellations of all 5 colors'
     },
-    'chain.rainbow.desc': 'Nights finished using all five colors',
+    'chain.rainbow.desc': 'Nights with constellations of all five colors on the field',
     'chain.mosaic.step': {
         one: '{n} night with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
         other: '{n} nights with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
@@ -177,7 +176,7 @@ en: {
         one: '{n} night: {desc}',
         other: '{n} nights: {desc}'
     },
-    'chain.vitrazh.desc': 'page 3 shapes on the field in all 5 colors',
+    'chain.vitrazh.desc': 'five colors among page 3 shapes',
     'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
     'chain.nights.step': {
         one: '{n} completed night',
@@ -214,7 +213,6 @@ en: {
     'rewardPage.firstLight': 'First Light',
     'rewardPage.longWalk': 'The Long Walk',
     'rewardPage.cuttersHand': "The Cutter's Hand",
-    'rewardPage.oddNights': 'Odd Nights',
 
     // --- Награды: строки и замки ---------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -236,19 +234,19 @@ en: {
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
-    'book.footStampsProgress': '{current} of {total} pressed',
     // K-28: пейджер в подвале — сквозной по всей книге, не только внутри
     // атласа/штампов (swipeBookPage).
     'book.pagerPrev': 'Previous page',
     'book.pagerNext': 'Next page',
     'book.openRibbon': 'Open the almanac',
+    // O-07: постоянный знак закрытия — второй хвост ленты, висит сверху страницы.
+    'book.closeRibbon': 'Close the almanac',
     'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
     // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
     'book.eyebrowExLibris': 'EX LIBRIS',
-    'book.eyebrowAtlas': 'ATLAS',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
     // подставляется на вызове, отдельного ключа под него не заводим.
@@ -263,22 +261,26 @@ en: {
     // на самой запертой странице, только короче. S-03: порог назван уровнем,
     // а не суммой ✦ — у суммы игроку не с чем сравнить.
     'book.indexOpensAtLevel': 'opens at level {n}',
-    'book.indexOpen': 'Open the observatory',
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
-    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15,
-    // строка в ленте новостей (book.newsAtlasCut) выше остаётся отдельно.
-    'book.chapterCutBannerEyebrow': 'A new chapter',
-    'book.chapterCutBanner': 'Chapter {n} — {name} has opened.',
-    'book.chapterCutBannerMultiple': 'New chapters have opened: {names}.',
+    // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из
+    // K-15, строки в ленте новостей (book.newsAtlasCut/newsLevelUp) остаются
+    // отдельной постоянной записью дня независимо от баннера.
+    'book.levelBannerEyebrow': 'New level',
+    'book.levelBannerTitle': 'Level {n} — {name}',
+    'book.levelBannerTitleMultiple': 'Levels reached: {names}',
+    // U-29 (2026-09-14): общая формулировка вместо названия главы — решение заказчика.
+    'book.levelBannerUnlockAtlas': 'A new atlas page is available.',
+    'book.levelBannerUnlockStamps': 'New achievements are available.',
+    'book.levelBannerUnlockExLibris': 'Ex Libris has opened.',
     'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open.',
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Ex Libris has opened — {n} stars are waiting.',
-    // S-03: ступень хвоста лестницы (после последней главы) — у неё нет ни
-    // разреза, ни баннера; без строки опустевшая шкала читалась бы как потеря.
+    // S-03: постоянная запись дня для любого уровня, включая ступени хвоста
+    // (после последней главы), где баннер (U-29) несёт только поздравление.
     'book.newsLevelUp': 'Level {n} — {name}.',
     // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
     // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
@@ -357,7 +359,6 @@ en: {
     'tutor.zoom': 'Now spread two fingers — pull the sky back.',
 
     // --- Поле -----------------------------------------------------------------
-    'field.renamePrompt': 'Rename constellation:',
     'field.constellation': 'Constellation',
 
     // --- Обсерватория (B-02) --------------------------------------------------
@@ -412,7 +413,6 @@ ru: {
     'shape.wheel': 'Колесо',
     'shape.hammock': 'Гамак',
     'shape.perfectionist': 'Перфекционист',
-    // Legacy
 
     // --- Fallback-имена (45) --------------------------------------------------
     'fallback.0': 'Туманность', 'fallback.1': 'Искра',       'fallback.2': 'Тень',
@@ -496,11 +496,11 @@ ru: {
     },
     'chain.size8plus.desc': 'Созвездия от 8 звёзд и больше',
     'chain.rainbow.step': {
-        one: '{n} ночь с полной радугой (все 5 цветов за ночь)',
-        few: '{n} ночи с полной радугой (все 5 цветов за ночь)',
-        many: '{n} ночей с полной радугой (все 5 цветов за ночь)'
+        one: '{n} ночь: созвездия всех 5 цветов',
+        few: '{n} ночи: созвездия всех 5 цветов',
+        many: '{n} ночей: созвездия всех 5 цветов'
     },
-    'chain.rainbow.desc': 'Ночи, где были все пять цветов',
+    'chain.rainbow.desc': 'Ночи с созвездиями всех пяти цветов на поле',
     'chain.mosaic.step': {
         one: '{n} ночь с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
         few: '{n} ночи с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
@@ -512,7 +512,7 @@ ru: {
         few: '{n} ночи: {desc}',
         many: '{n} ночей: {desc}'
     },
-    'chain.vitrazh.desc': 'фигуры стр. 3 на поле во всех 5 цветах',
+    'chain.vitrazh.desc': 'пять цветов среди фигур страницы 3',
     'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
@@ -552,7 +552,6 @@ ru: {
     'rewardPage.firstLight': 'Первый свет',
     'rewardPage.longWalk': 'Долгий путь',
     'rewardPage.cuttersHand': 'Рука гранильщика',
-    'rewardPage.oddNights': 'Странные ночи',
 
     // --- Награды --------------------------------------------------------------
     // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
@@ -574,27 +573,28 @@ ru: {
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
-    'book.footStampsProgress': 'прижато {current} из {total}',
     'book.pagerPrev': 'Предыдущая страница',
     'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',
+    'book.closeRibbon': 'Закрыть альманах',
     'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
-    'book.eyebrowAtlas': 'АТЛАС',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
     'book.eyebrowStampsChapter': 'Штампы · глава {n}',
     'book.indexOpensAtLevel': 'откроется на уровне {n}',
-    'book.indexOpen': 'Открыть обсерваторию',
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
-    // V-16: баннер разреза главы поверх книги — узкое исключение из K-15.
-    'book.chapterCutBannerEyebrow': 'Новая глава',
-    'book.chapterCutBanner': 'Глава {n} — «{name}» открыта.',
-    'book.chapterCutBannerMultiple': 'Открыты новые главы: {names}.',
+    // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из K-15.
+    'book.levelBannerEyebrow': 'Новый уровень',
+    'book.levelBannerTitle': 'Уровень {n} — {name}',
+    'book.levelBannerTitleMultiple': 'Новые уровни: {names}',
+    'book.levelBannerUnlockAtlas': 'Доступна новая страница атласа.',
+    'book.levelBannerUnlockStamps': 'Доступны новые достижения.',
+    'book.levelBannerUnlockExLibris': 'Открылся Экслибрис.',
     'book.newsShapeOpened': '«{name}» — прочерчена впервые.',
     'book.newsFacetLit': '«{name}» — новая грань поймала свет.',
     'book.newsChainOpen': '«{title}» — новое достижение открыто.',
@@ -667,7 +667,6 @@ ru: {
     'tutor.zoom': 'Теперь разведи пальцы — отдали небо.',
 
     // --- Поле -----------------------------------------------------------------
-    'field.renamePrompt': 'Переименовать созвездие:',
     'field.constellation': 'Созвездие',
 
     // --- Обсерватория (B-02) --------------------------------------------------

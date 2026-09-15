@@ -1,4 +1,6 @@
-// ui.js — UI rendering for the book (K-06), progression and atlas
+// ui.js — общий UI книги и неба: счёт ✦ и полёт награды, имена и цвета фигур,
+// глифы K-02, строки сцепок K-08, баннер V-16, лента и закладка на небе.
+// Каркас книги — book.js, страницы — book*.js, по файлу на страницу (R-05).
 
 // =============================================================================
 // SCORE UI
@@ -186,10 +188,6 @@ if (typeof document !== 'undefined' && document.addEventListener) {
     });
 }
 
-function updateMetaPageProgressUI() {
-    /* progress to atlas pages shown only inside atlas overlay */
-}
-
 // =============================================================================
 // PROGRESSION UI
 // =============================================================================
@@ -244,12 +242,15 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все двадцать четыре имени кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все двадцать пять имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
-    'drop', 'flame', 'ring', 'ball', 'wave'
+    'drop', 'flame', 'ring', 'ball', 'wave',
+    // O-07: крестик закрытия книги — единственный знак со своим (золотым)
+    // цветом вместо цвета строки, см. .book-close-sign в style.css
+    'cross'
 ];
 
 /**
@@ -318,6 +319,11 @@ function sizeGlyphCanvas(canvas, cssPx, forceCssSize = true) {
  * Отступ/толщина/радиус считаются от **логической** стороны (CSS px), иначе
  * порог читаемости K-02 (мин. 1.4 px точки на строке) на большом DPR съезжает
  * вниз — контекст масштабируется один раз, дальше формулы не меняются.
+ *
+ * V-19: `color` — либо один RGB (как раньше), либо массив из 2–4 RGB — тогда
+ * штрихи и точки красятся линейным градиентом слева направо через canvas
+ * `createLinearGradient`, цвета в переданном порядке. `blueprint` игнорирует
+ * `color` целиком, как и раньше.
  */
 function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const ctx = canvas.getContext('2d');
@@ -333,7 +339,17 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const halo = Math.max(2.6, side * 0.066);
     const iw = w - pad * 2;
     const ih = h - pad * 2;
-    const inkFaint = blueprint ? INK_FAINT_RGB : color;
+
+    const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    let paintStyle;
+    if (blueprint) {
+        paintStyle = solidStyle(INK_FAINT_RGB);
+    } else if (Array.isArray(color[0])) {
+        paintStyle = ctx.createLinearGradient(0, 0, w, 0);
+        color.forEach((rgb, i) => paintStyle.addColorStop(color.length > 1 ? i / (color.length - 1) : 0, solidStyle(rgb)));
+    } else {
+        paintStyle = solidStyle(color);
+    }
 
     ctx.clearRect(0, 0, w, h);
 
@@ -342,7 +358,8 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
     // K-31: контур чертежа неразгаданной был бледен дважды — здесь и через
     // `.atlas-card-unknown` (снята). Альфа поднята с 0.7 до 0.85, вровень
     // с контуром точки ниже — сам чертёж теперь несёт весь контраст.
-    ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},${blueprint ? 0.85 : 0.7})`;
+    ctx.strokeStyle = paintStyle;
+    ctx.globalAlpha = blueprint ? 0.85 : 0.7;
     ctx.lineWidth = Math.max(1, side * 0.02);
     ctx.lineCap = 'round';
     ctx.setLineDash(blueprint ? [dot * 1.4, dot * 1.4] : []);
@@ -353,25 +370,30 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
         ctx.stroke();
     }
     ctx.setLineDash([]);
+    ctx.globalAlpha = 1;
 
     for (const [px, py] of pts) {
         if (blueprint) {
             ctx.beginPath();
             ctx.arc(px, py, dot, 0, Math.PI * 2);
-            ctx.strokeStyle = `rgba(${inkFaint[0]},${inkFaint[1]},${inkFaint[2]},0.85)`;
+            ctx.strokeStyle = paintStyle;
+            ctx.globalAlpha = 0.85;
             ctx.lineWidth = Math.max(0.8, side * 0.013);
             ctx.stroke();
+            ctx.globalAlpha = 1;
             continue;
         }
         ctx.beginPath();
         ctx.arc(px, py, dot, 0, Math.PI * 2);
-        ctx.fillStyle = `rgb(${color[0]},${color[1]},${color[2]})`;
+        ctx.fillStyle = paintStyle;
         ctx.fill();
 
         ctx.beginPath();
         ctx.arc(px, py, halo, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${color[0]},${color[1]},${color[2]},0.15)`;
+        ctx.fillStyle = paintStyle;
+        ctx.globalAlpha = 0.15;
         ctx.fill();
+        ctx.globalAlpha = 1;
     }
 }
 
@@ -389,14 +411,9 @@ function shapeGlyphNode(shapeId, size = 'row', color = INK_MUTED_RGB) {
     return canvas;
 }
 
-/** Совместимость: прежнее имя рисовалки подсказок. K-18: пробрасывает режим чертежа. */
-function drawHintPattern(canvas, pattern, color, blueprint) {
-    drawShapeGlyph(canvas, pattern, color, blueprint);
-}
-
 /**
  * K-18: грань фигуры как искра, а не ромбик — тот же контур, что звезда на
- * небе (`drawSparkleShape`, camera.js, тот же `SPARK_WAIST`), но портированный
+ * небе (`drawSparkleShape`, skyRender.js, тот же `SPARK_WAIST`), но портированный
  * с p5-`quadraticVertex` на SVG-путь: карточка рисуется обычным DOM/canvas 2D
  * без p5-инстанса. Цвет и заливка (горит/не горит) — на CSS `.atlas-facet path`.
  */
@@ -433,160 +450,43 @@ function createFacetsRow(shapeName) {
 }
 
 // =============================================================================
-// ATLAS DATA
+// V-19: ЦВЕТ ГЛИФА ПО ОГРАНКЕ — общий для карточки атласа и закладки на небе
 // =============================================================================
-
-function getFallbackPatternFromSignature(signature) {
-    const starCount = Math.max(3, Math.min(6, signature?.starCount || 4));
-    const lineCount = Math.max(2, signature?.lineCount || (starCount - 1));
-
-    const stars = [];
-    for (let i = 0; i < starCount; i++) {
-        const angle = (-Math.PI / 2) + (2 * Math.PI * i / starCount);
-        stars.push([
-            0.5 + Math.cos(angle) * 0.35,
-            0.5 + Math.sin(angle) * 0.35
-        ]);
-    }
-
-    const lines = [];
-    const closedEdges = lineCount >= starCount;
-    const maxEdges = closedEdges ? starCount : Math.min(lineCount, starCount - 1);
-    for (let i = 0; i < maxEdges; i++) {
-        const a = i;
-        const b = (i + 1) % starCount;
-        lines.push([a, b]);
-    }
-
-    return { stars, lines };
-}
-
-function getCustomPattern(customType) {
-    if (customType && customType.patternSnapshot &&
-        Array.isArray(customType.patternSnapshot.stars) &&
-        Array.isArray(customType.patternSnapshot.lines)) {
-        return customType.patternSnapshot;
-    }
-    return getFallbackPatternFromSignature(customType?.signature);
-}
-
-function getAtlasEntryForShape(name) {
-    const pattern = SHAPE_PATTERNS[name];
-    const created = isShapeCreated(name);
-    return {
-        name,
-        color: getShapeColor(name),
-        pattern,
-        starCount: pattern?.stars?.length || 0,
-        isCustom: false,
-        isCreated: created,
-        atlasState: created ? 'known' : 'unknown'
-    };
-}
-
-function getAtlasPageEntries(pageIndex) {
-    if (pageIndex < 0 || pageIndex >= ATLAS_PAGE_COUNT) return [];
-    return ATLAS_PAGES[pageIndex].map(name => getAtlasEntryForShape(name));
-}
 
 /** U-09: цвет карточки — золото у огранённой фигуры, иначе цвет из SHAPES. */
 const ATLAS_FACETED_COLOR = [255, 211, 92];
 
 /**
- * K-11: разворот-определитель — карточка `???` больше не существует.
- * Неразгаданная фигура рисуется тем же глифом, что и разгаданная — чертежом
- * (K-18). K-31: подпись «not yet traced» и число звёзд убраны совсем — на их
- * месте одинокий знак «?»; фигура рассказывает о себе только контуром.
+ * V-19: цвета граней для глифа — те же RGB, что несёт CSS `.atlas-facet-*`
+ * (K-01: канвас переменные не читает, дублируем числом). Ключи и их порядок
+ * совпадают с `ACHIEVEMENT_COLOR_KEYS` (achievements.js) — красный/оранжевый/
+ * жёлтый/белый/синий — порядок и определяет порядок цветов в градиенте.
  */
-function createAtlasEntryCard(entry) {
-    const faceted = entry.isCreated && typeof isShapeFaceted === 'function' && isShapeFaceted(entry.name);
-    const drawColor = faceted ? ATLAS_FACETED_COLOR : entry.color;
-    const bookmarked = typeof getBookmarkedShape === 'function' && getBookmarkedShape() === entry.name;
+const ATLAS_FACET_GLYPH_COLORS = {
+    red: [240, 122, 103],    // --star-garnet
+    orange: [242, 162, 84],  // --star-amber
+    yellow: [242, 201, 101], // --star-copper
+    white: [237, 239, 245],  // --star-opal
+    blue: [134, 200, 242]    // --star-ice
+};
 
-    const card = document.createElement('div');
-    card.className = 'atlas-card'
-        + (entry.isCreated ? ' atlas-card-known' : ' atlas-card-unknown')
-        + (faceted ? ' atlas-card-faceted' : '');
-
-    // K-31: закладка тапом по любой части карточки, не только булавкой —
-    // сама карточка становится доступной интерактивной целью (роль/фокус/aria).
-    card.setAttribute('role', 'button');
-    card.tabIndex = 0;
-    card.setAttribute('aria-pressed', String(bookmarked));
-    card.setAttribute('aria-label', t(bookmarked ? 'atlas.pinOff' : 'atlas.pinOn'));
-    const togglePin = () => {
-        if (typeof toggleShapeBookmark === 'function') toggleShapeBookmark(entry.name);
-        renderAtlasList();
-        if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
-    };
-    card.addEventListener('click', togglePin);
-    card.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        togglePin();
-    });
-
-    if (faceted) {
-        const crown = glyphSign('corona', 16, 'atlas-card-crown');
-        card.appendChild(crown);
-    }
-
-    // Булавка остаётся видимым индикатором состояния (риск дока K-31), но
-    // клик по карточке уже переключает закладку сам — булавка не дублирует
-    // фокус клавиатуры и убрана из a11y-дерева, чтобы не звучать дважды.
-    // `.atlas-pin[data-shape-id]` держит и харнесс (`__test.pin`).
-    const pin = document.createElement('button');
-    pin.type = 'button';
-    pin.className = 'atlas-pin' + (bookmarked ? ' atlas-pin-on' : '');
-    pin.dataset.shapeId = entry.name;
-    pin.tabIndex = -1;
-    pin.setAttribute('aria-hidden', 'true');
-    pin.appendChild(document.createElement('i'));
-    pin.addEventListener('click', (event) => {
-        event.stopPropagation();
-        togglePin();
-    });
-    card.appendChild(pin);
-
-    // U-22: состояние закладки словом — тем же самым, что стоит подписью под
-    // чертежом в углу неба (`sky.bookmarkLabel`, K-11/K-32). Одна подпись на
-    // двух экранах и есть недостающее объяснение: точка здесь — чертёж там.
-    // Новых ключей локали задача не заводит. Слово стоит в шапке карточки
-    // напротив булавки (правка заказчика с устройства 2026-09-04) — абсолютом
-    // в отведённой сверху полосе, поэтому K-23 держится по построению: полоса
-    // есть у каждой карточки всегда, а слово только показывается и прячется.
-    const mark = document.createElement('div');
-    mark.className = 'atlas-card-mark' + (bookmarked ? ' atlas-card-mark-on' : '');
-    mark.textContent = t('sky.bookmarkLabel');
-    card.appendChild(mark);
-
-    const canvas = document.createElement('canvas');
-    canvas.className = 'atlas-card-canvas';
-    sizeGlyphCanvas(canvas, GLYPH_SIZES.spread, false);
-    card.appendChild(canvas);
-
-    const title = document.createElement('div');
-    if (entry.isCreated) {
-        title.className = 'atlas-card-title';
-        title.textContent = getDisplayShapeName(entry.name);
-        title.style.color = `rgb(${drawColor[0]},${drawColor[1]},${drawColor[2]})`;
-    } else {
-        // Имя фигуры — сюрприз до первого создания; вместо него — «?».
-        title.className = 'atlas-card-title atlas-card-title-unknown';
-        title.textContent = '?';
-    }
-    card.appendChild(title);
-
-    if (entry.isCreated) {
-        // U-09: 5 граней. Ни цифр, ни кнопок — грань просто горит или нет.
-        // K-18: искра тем же контуром, что звезда на небе, а не ромбик.
-        card.appendChild(createFacetsRow(entry.name));
-    }
-
-    // K-18: режим чертежа для неразгаданной — пунктир, полые точки, нейтральный цвет.
-    if (entry.pattern) drawHintPattern(canvas, entry.pattern, drawColor, !entry.isCreated);
-
-    return card;
+/**
+ * V-19: цвет глифа фигуры по её огранке. Полная огранка (5 граней) — золото,
+ * как и раньше. Одна зажжённая грань — цвет этой грани. 2–4 грани — массив
+ * цветов в фиксированном порядке `ACHIEVEMENT_COLOR_KEYS`, `drawShapeGlyph`
+ * рисует его линейным градиентом. Фигура без единой грани (не должно
+ * случаться у созданной — коммит зажигает грань всегда) откатывается на
+ * декоративный цвет `SHAPES`, чтобы карточка не осталась совсем без цвета.
+ */
+function getShapeGlyphColor(shapeName) {
+    if (typeof isShapeFaceted === 'function' && isShapeFaceted(shapeName)) return ATLAS_FACETED_COLOR;
+    const keys = typeof ACHIEVEMENT_COLOR_KEYS !== 'undefined' ? ACHIEVEMENT_COLOR_KEYS : [];
+    const lit = keys
+        .filter(color => typeof isShapeFacetLit === 'function' && isShapeFacetLit(shapeName, color))
+        .map(color => ATLAS_FACET_GLYPH_COLORS[color]);
+    if (lit.length === 1) return lit[0];
+    if (lit.length > 1) return lit;
+    return getShapeColor(shapeName);
 }
 
 /**
@@ -607,1092 +507,99 @@ function fillLevelLockText(el, templateKey, level) {
     el.appendChild(document.createTextNode(parts.slice(1).join('')));
 }
 
-function renderAtlasList() {
-    const list = document.getElementById('atlasList');
-    if (!list) return;
-    list.innerHTML = '';
-
-    const pageIndex = getBookPageIndex('atlas');
-
-    if (!isAtlasPageUnlocked(pageIndex)) {
-        // Страницы открываются автоматически. V-17 свела порог и прогресс к
-        // одной системе отсчёта; S-03 (правка заказчика 2026-09-10) оставила
-        // на странице атласа только уровень — ни одного числа ✦: сколько
-        // осталось, показывает шкала у корешка.
-        const locked = document.createElement('div');
-        locked.className = 'atlas-page-locked';
-
-        const lockedText = document.createElement('p');
-        fillLevelLockText(lockedText, 'atlas.pageLocked', getAtlasChapterLevel(pageIndex));
-        locked.appendChild(lockedText);
-
-        list.appendChild(locked);
-        return;
-    }
-
-    for (const entry of getAtlasPageEntries(pageIndex)) {
-        list.appendChild(createAtlasEntryCard(entry));
-    }
-}
-
-// =============================================================================
-// K-06: КНИГА — общий каркас (пять высечек, шкала света у корешка)
-// =============================================================================
-//
-// Шторка U-09 (85vh, рельс страниц, сегмент Atlas/Rewards/Observatory) стала
-// полноэкранной книгой. Навигация плоская: любая высечка из любой, без
-// промежуточных разделов. Под-страницы атласа и наград листаются
-// пейджер-кнопками в подвале и горизонтальным свайпом (K-28, вернул то, что
-// K-06 когда-то убрал целиком) — оба пути ведут через один stepBookPage.
-// Свайп же на краю раздела не останавливается, а переводит в соседнюю
-// высечку (swipeBookPage) — сквозная последовательность страниц всей книги.
-
-// K-14: 'settings' — валидная цель openBook/switchBookCut, но не шестая
-// высечка — вход только строкой из «Index» (решение заказчика 2026-08-25:
-// высечек пять, см. K-06). Своей кнопки в #bookTabs у неё нет и не будет.
-const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'exlibris', 'settings'];
-
-let bookCut = 'today';
-let bookOpen = false;
-// U-10/M-05: «Сутки» (REWARD_PAGES[0]) — на «Сегодня», а не в Штампах, поэтому
-// bookPageIndices.rewards ходит по [1, REWARD_PAGE_COUNT - 1].
-let bookPageIndices = { atlas: 0, rewards: 1 };
-let bookHandlersBound = false;
-
-function getBookPageCount(section) {
-    if (section === 'rewards') return REWARD_PAGE_COUNT - 1;
-    return ATLAS_PAGE_COUNT;
-}
-
-function getBookPageIndex(section) {
-    if (section === 'rewards') {
-        return Math.max(1, Math.min(REWARD_PAGE_COUNT - 1, bookPageIndices.rewards || 1));
-    }
-    return Math.max(0, Math.min(ATLAS_PAGE_COUNT - 1, bookPageIndices.atlas || 0));
-}
-
-function setBookPageIndex(section, index) {
-    if (section === 'rewards') {
-        bookPageIndices.rewards = Math.max(1, Math.min(REWARD_PAGE_COUNT - 1, index));
-        return;
-    }
-    bookPageIndices.atlas = Math.max(0, Math.min(ATLAS_PAGE_COUNT - 1, index));
-}
-
-function isBookOpen() {
-    return bookOpen;
-}
-
-/** K-19: римские цифры генерируются, не заводятся в словарь — до VII хватает. */
-function toRoman(n) {
-    const table = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
-    let s = '';
-    for (const [v, sym] of table) {
-        while (n >= v) { s += sym; n -= v; }
-    }
-    return s;
-}
-
-/** K-19: строка оглавления — «Ch. <римская> · <имя>», одна форма для атласа и штампов. */
-function formatChapterIndexTitle(chapterNo, name) {
-    return t('book.indexChapterTitle', { n: toRoman(chapterNo), name });
-}
-
-/**
- * K-10: модель нумерации страниц — единая формула, общая для шапки книги и
- * оглавления. Считается детерминированно от состава глав, в сейве не живёт.
- */
-function getAtlasChapterFolio(idx) {
-    return 3 + idx;
-}
-
-function getStampsChapterFolio(idx) {
-    return 3 + ATLAS_PAGE_COUNT + (idx - 1);
-}
-
-function getExLibrisFolio() {
-    return 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
-}
-
-/** K-14: настройки — последняя колонцифра книги, строкой после Ex Libris. */
-function getSettingsFolio() {
-    return getExLibrisFolio() + 1;
-}
-
-/** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
-function renderBookHead() {
-    const eyebrowEl = document.getElementById('bookEyebrow');
-    const titleEl = document.getElementById('bookTitle');
-    const footLeftEl = document.getElementById('bookFootLeft');
-    const folioEl = document.getElementById('bookFolio');
-    const prevBtn = document.getElementById('bookFootPrev');
-    const nextBtn = document.getElementById('bookFootNext');
-    if (!eyebrowEl || !titleEl || !footLeftEl || !folioEl) return;
-
-    let eyebrow = '';
-    let title = '';
-    let folioN = 1;
-    let footLeft = t('book.brand');
-    // K-18: подвал атласа/штампов вместо ALMANAC несёт прогресс главы слева;
-    // справа — колонцифра текущей страницы. K-28: стрелки пейджера теперь
-    // видны на любом развороте (сквозной swipeBookPage), не только на атласе
-    // и штампах — прячутся только на истинных краях книги (см. ниже).
-
-    if (bookCut === 'today') {
-        // K-09/U-16: надзаголовок — дата эффективных суток без номера ночи;
-        // титул страницы остаётся «Tonight».
-        const dateStr = typeof getEffectiveSkyDateInt === 'function' && typeof formatSkyDateLong === 'function'
-            ? formatSkyDateLong(getEffectiveSkyDateInt())
-            : '';
-        eyebrow = t('book.eyebrowToday', { date: dateStr });
-        title = t('book.headToday');
-        folioN = 1;
-    } else if (bookCut === 'index') {
-        title = t('book.headIndex');
-        folioN = 2;
-    } else if (bookCut === 'atlas') {
-        // K-11: заголовок страницы стал литературным названием главы;
-        // нумерация уехала в надзаголовок. K-19: «of M» из надзаголовка снято
-        // и номер стал римским — сколько всего, отвечает оглавление.
-        const idx = getBookPageIndex('atlas');
-        eyebrow = t('book.eyebrowAtlasChapter', { n: toRoman(idx + 1) });
-        title = t('atlas.chapterTitle' + idx);
-        folioN = getAtlasChapterFolio(idx);
-        // K-31: счётчик «N of M traced» в подвале снят — счёт главы остался
-        // только в оглавлении (K-19); подвал атласа падает на бренд, как у
-        // Today/Index/Ex Libris/Settings.
-    } else if (bookCut === 'stamps') {
-        // K-12: главы штампов пронумерованы так же, как главы атласа.
-        const idx = getBookPageIndex('rewards');
-        const page = REWARD_PAGES[idx];
-        eyebrow = t('book.eyebrowStampsChapter', { n: toRoman(idx) });
-        title = page ? page.title : '';
-        folioN = getStampsChapterFolio(idx);
-        const { pressed, total } = getRewardPagePressedStamps(idx);
-        footLeft = t('book.footStampsProgress', { current: pressed, total });
-    } else if (bookCut === 'exlibris') {
-        eyebrow = t('book.eyebrowExLibris');
-        title = t('book.headExLibris');
-        folioN = getExLibrisFolio();
-    } else if (bookCut === 'settings') {
-        title = t('book.headSettings');
-        folioN = getSettingsFolio();
-    }
-
-    eyebrowEl.textContent = eyebrow;
-    titleEl.textContent = title;
-    footLeftEl.textContent = footLeft;
-    // S-03 (правка заказчика 2026-09-10): уровень — в подвале рядом с брендом
-    // (на Штампах — рядом с прогрессом главы) на любой странице книги.
-    const footLevelEl = document.getElementById('bookFootLevel');
-    if (footLevelEl) footLevelEl.textContent = t('book.footLevel', { n: getPlayerLevel() });
-    folioEl.textContent = t('book.folio', { n: folioN });
-
-    if (prevBtn && nextBtn) {
-        // K-28: пейджер общий на всю книгу — data-pager называет текущий раздел
-        // (verify-atlas-spread.js смотрит на 'atlas' при клике), сама стрелка
-        // прячется только там, где swipeBookPage(±1) действительно некуда вести.
-        const pagerAttr = bookCut === 'stamps' ? 'rewards' : bookCut;
-        prevBtn.dataset.pager = pagerAttr;
-        nextBtn.dataset.pager = pagerAttr;
-        prevBtn.hidden = !canSwipeBookPage(-1);
-        nextBtn.hidden = !canSwipeBookPage(1);
-    }
-}
-
-/**
- * Шкала света у корешка (риск 3 дока K-06). S-03: окно — ступень лестницы
- * уровней: нижняя засечка — порог текущего уровня, верхняя — следующего,
- * флажок — `lifetimeMetaEarned`. Засечка сама и есть порог, поэтому знаков на
- * шкале нет ни одного — нож у засечки (открытый вопрос K-06) снят решением
- * заказчика 2026-09-10.
- */
-function renderBookGauge() {
-    const el = document.getElementById('bookGauge');
-    if (!el) return;
-    const trackH = el.getBoundingClientRect().height;
-    el.innerHTML = '';
-
-    const { earned, level, floor, ceil, ratio } = getLevelProgress();
-
-    const fill = document.createElement('div');
-    fill.className = 'book-gauge-fill';
-    // K-25: заливка перекрывает обе риски запасом BOOK_GAUGE_OVERSHOOT_PX
-    // вместо того, чтобы упираться точно в их координату.
-    fill.style.bottom = `-${BOOK_GAUGE_OVERSHOOT_PX}px`;
-    fill.style.height = `calc(${Math.round(ratio * 100)}% + ${BOOK_GAUGE_OVERSHOOT_PX * 2}px)`;
-    el.appendChild(fill);
-
-    const topTick = document.createElement('div');
-    topTick.className = 'book-gauge-tick book-gauge-tick-top';
-    topTick.textContent = String(ceil);
-    el.appendChild(topTick);
-
-    // S-03 (правка заказчика 2026-09-10): над верхней засечкой — куда она
-    // ведёт, номером следующего уровня. Текст, не знак.
-    const next = document.createElement('div');
-    next.className = 'book-gauge-next';
-    next.textContent = t('book.gaugeNextLevel', { n: level + 1 });
-    el.appendChild(next);
-
-    const bottomTick = document.createElement('div');
-    bottomTick.className = 'book-gauge-tick book-gauge-tick-bottom';
-    bottomTick.textContent = String(floor);
-    el.appendChild(bottomTick);
-
-    const flag = document.createElement('div');
-    // На нуле флажку нечего показывать — «● 0» рядом с нижней риской выглядит
-    // как случайная деталь, а не как метка прогресса, которого ещё нет. Узел
-    // остаётся в разметке (visibility, не display/innerHTML) — на нём стоит
-    // getClaimFlightTargetRect(), и первый в жизни игрока забор не должен
-    // целиться в устаревший (и уже скрытый книгой) прямоугольник ленты.
-    flag.className = earned > 0 ? 'book-gauge-flag' : 'book-gauge-flag book-gauge-flag-empty';
-    // K-25: честная ratio-координата, но не ближе BOOK_GAUGE_FLAG_MIN_GAP_PX
-    // к любой из рисок — иначе цифра нижнего значения садится на риску текстом.
-    const minRatio = trackH > 0 ? Math.min(0.5, BOOK_GAUGE_FLAG_MIN_GAP_PX / trackH) : 0;
-    const flagRatio = Math.min(Math.max(ratio, minRatio), 1 - minRatio);
-    flag.style.bottom = `${flagRatio * 100}%`;
-    flag.textContent = String(earned);
-    el.appendChild(flag);
-}
-
-/**
- * Штампы, кроме суточных — те живут на «Сегодня» и точку высечки не зажигают.
- * K-12: неразрезанная глава в счёт не идёт — до неё нельзя долистать и нечего
- * прижать, капля сургуча звала бы туда, куда сама книга ещё не пускает.
- */
-function stampsHaveClaimable() {
-    if (typeof rewardPageHasClaimable !== 'function') return false;
-    for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
-        if (!isRewardPageUnlocked(i)) continue;
-        if (rewardPageHasClaimable(i)) return true;
-    }
-    return false;
-}
-
-/**
- * K-17: второй раздел с настоящим «взять» — «Сегодня». Готовая суточная марка
- * (REWARD_PAGES[0]) и непрочитанное событие мира — те же два условия, что
- * поднимают каплю на ленте (`hasSkyWaxSignal`), но теперь видно и где именно.
- */
-function todayHasSignal() {
-    return (typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(0))
-        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
-}
-
-/**
- * Пять высечек: подсветка активной и капля сургуча там, где есть готовое
- * (концепт, Табл. III-VI). У «Атласа» и «Оглавления» забора нет — точка им
- * не полагается никогда: она зовёт прижать, а прижимать там нечего.
- */
-function renderBookTabs() {
-    document.querySelectorAll('.book-tab').forEach(btn => {
-        btn.classList.toggle('book-tab-on', btn.dataset.cut === bookCut);
-    });
-    const stampsWax = document.getElementById('bookTabStampsWax');
-    if (stampsWax) stampsWax.hidden = !stampsHaveClaimable();
-    const todayWax = document.getElementById('bookTabTodayWax');
-    if (todayWax) todayWax.hidden = !todayHasSignal();
-}
-
-/** «Сегодня»: ежедневка — то же достижение на две ступени, что и штампы (REWARD_PAGES[0]). */
-function renderBookToday() {
-    const list = document.getElementById('bookTodayList');
-    if (list) {
-        list.innerHTML = '';
-        for (const chain of getRewardPageChains(0)) {
-            list.appendChild(createAchievementRow(chain));
-        }
-    }
-    renderBookTodayDawn();
-    renderBookTodayNews();
-    renderBookTodayState();
-}
-
-/**
- * K-09: события мира обычной строкой — единственное место, где игра рассказывает
- * новости. Список ведётся за текущую ночь (`achievementCounters.daily.newsLog`)
- * и переписывается наутро вместе с сутками; до первого события список пуст —
- * это нормальная пустая ночь, не сломанная вёрстка (риск 3 дока).
- */
-function renderBookTodayNews() {
-    const el = document.getElementById('bookTodayNews');
-    if (!el) return;
-    el.innerHTML = '';
-    const daily = (achievementCounters && achievementCounters.daily) || null;
-    const log = daily && Array.isArray(daily.newsLog) ? daily.newsLog : [];
-    for (const entry of log) {
-        const row = document.createElement('div');
-        row.className = 'book-news-row';
-        row.textContent = t(entry.key, entry.params);
-        el.appendChild(row);
-    }
-    // K-15: страница прочитана — капля сургуча на ленте гаснет по этой причине.
-    if (daily) daily.newsUnseen = false;
-}
-
-/**
- * K-17: две строки состояния страницы — сколько звёзд на небе ещё не соединено
- * и что заложено закладкой. В концепте они стоят на «Сегодня» рядом с событиями
- * ночи, но событиями не являются: в `newsLog` не пишутся, в сейв не идут и
- * считаются заново на каждом рендере — поэтому и блок у них свой.
- *
- * Номер главы здесь арабский (`book.todayBookmark`) — это отсылка к главе
- * внутри предложения, не заголовок; римской цифрой (K-19) набираются только
- * надзаголовок разворота и строка оглавления.
- */
-function renderBookTodayState() {
-    const el = document.getElementById('bookTodayState');
-    if (!el) return;
-    el.innerHTML = '';
-
-    const addRow = (text) => {
-        const row = document.createElement('div');
-        row.className = 'book-state-row';
-        row.textContent = text;
-        el.appendChild(row);
-    };
-
-    // O-03: на доигранной ночи звёзды остаются (часть подавлена, часть погашена —
-    // M-07), просто пар для них больше нет; «ещё не соединено N звёзд» про такое
-    // небо врёт, поэтому строка снимается, а не дополняется.
-    const nightComplete = typeof isLevelComplete === 'function' && isLevelComplete();
-    if (!nightComplete) {
-        const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
-        addRow(tp('book.todayStarsLeft', free));
-    }
-
-    const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
-    if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
-    const name = getDisplayShapeName(shapeId);
-    const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
-    const starCount = pattern && Array.isArray(pattern.stars) ? pattern.stars.length : 0;
-    const chapter = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(shapeId) : -1;
-    // Закладку ставят с карточки разворота, то есть у фигуры всегда есть и
-    // чертёж, и глава; страховка — на случай закладки из будущего источника.
-    if (starCount > 0 && chapter >= 0) {
-        addRow(tp('book.todayBookmark', starCount, { name, ch: chapter + 1 }));
-    } else {
-        addRow(t('book.todayBookmarkPlain', { name }));
-    }
-}
-
-// =============================================================================
-// O-03: КОНЕЦ НОЧИ — ТОЛЬКО КНИГА, «СЕГОДНЯ»
-// =============================================================================
-// Небо молчит (решение заказчика: K-15 не отменяется, тоста не будет). Блок
-// стоит на «Сегодня» сразу после ежедневки и виден только на доигранной ночи —
-// F5 на уже завершённом небе его не прячет (это состояние, а не сцена V-13).
-
-/** Чистая: ms до ближайшего начала суток неба — M-09, местные 05:00 (`SKY_DAY_START_HOUR`), а не полночь. До этого часа цель сегодняшняя, после — завтрашняя, ровно как у `getLocalCalendarSkyDateInt()`. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, локальный конструктор `new Date(y, m, d, h)` сам переживает переход на летнее время. */
-function msUntilNextSkyDay() {
-    const now = new Date();
-    const startHour = typeof SKY_DAY_START_HOUR === 'number' ? SKY_DAY_START_HOUR : 0;
-    const dayShift = now.getHours() < startHour ? 0 : 1;
-    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + dayShift, startHour);
-    return next.getTime() - now.getTime();
-}
-
-/**
- * Чистая: ms → целые часы до границы, округление ВНИЗ — не обещать больше
- * времени, чем реально осталось (1ч59м не станет «2 часа»). `lessThanHour`
- * отдельным флагом, а не проверкой `hours === 0`, чтобы вызывающий код читался
- * как решение о тексте, а не как арифметика.
- */
-function computeDawnHours(ms) {
-    const hours = Math.max(0, Math.floor(ms / 3600000));
-    return { hours, lessThanHour: hours < 1 };
-}
-
-/** ms → локализованная фраза «N hours» / «1 hour» / «less than an hour» (правка по живому фидбеку — было ЧЧ:ММ). */
-function formatDawnDuration(ms) {
-    const { hours, lessThanHour } = computeDawnHours(ms);
-    return lessThanHour ? t('book.dawnLessHour') : tp('book.dawnHours', hours, { n: hours });
-}
-
-let bookTodayDawnTimer = null;
-
-function stopBookTodayDawnTimer() {
-    if (bookTodayDawnTimer) {
-        clearInterval(bookTodayDawnTimer);
-        bookTodayDawnTimer = null;
-    }
-}
-
-/** Тик и первая отрисовка. На нуле сам закрывает себя и дёргает штатную смену дня — только на доигранном поле, где терять нечего. */
-function updateBookTodayDawnText() {
-    const clockEl = document.getElementById('bookTodayDawnClock');
-    if (!clockEl) return;
-    const ms = msUntilNextSkyDay();
-    if (ms <= 0) {
-        stopBookTodayDawnTimer();
-        if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
-        return;
-    }
-    clockEl.textContent = formatDawnDuration(ms);
-}
-
-/**
- * Идемпотентна: `refreshBookIfOpen()` зовут из мест, не связанных с концом
- * ночи (забор марки, `afterAchievementStateChanged`), и повторный вызов не
- * должен ни ронять уже идущий интервал, ни плодить второй — только менять
- * видимость блока при смене состояния (например, откат последнего созвездия
- * вернул ночь из «доиграна» в «играется»).
- */
-function renderBookTodayDawn() {
-    const el = document.getElementById('bookTodayDawn');
-    if (!el) return;
-    const complete = typeof isLevelComplete === 'function' && isLevelComplete();
-    el.hidden = !complete;
-    if (!complete) {
-        stopBookTodayDawnTimer();
-        return;
-    }
-    updateBookTodayDawnText();
-    if (!bookTodayDawnTimer) {
-        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, BOOK_DAWN_TICK_MS);
-    }
-}
-
-// Вкладка ушла в фон — тик не нужен, пока его не видно; страница вернулась —
-// досчитать заново тем же путём, что и обычный рендер книги.
-if (typeof document !== 'undefined' && document.addEventListener) {
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-            stopBookTodayDawnTimer();
-        } else {
-            refreshBookIfOpen();
-        }
-    });
-}
-
-/**
- * «Оглавление»: временный плоский список вместо разворота-определителя (K-10).
- * Строка тапабельна — прыгает сразу на нужную главу, это и есть «объём решают
- * главы, а не длина свитка» из концепта.
- */
-/**
- * K-10: строка главы — имя с линейкой из точек (как в сцепке K-08), счёт и
- * колонцифра. Неразрезанная глава несёт знак замка (K-24, был нож — эта роль
- * ножа осталась только за разрезанием страниц) и порог в ✦ вместо счёта, но
- * с той же колонцифрой, что у разрезанной (страница недостижима постранично,
- * но пейджер её уже показывает заглушкой `atlas.pageLocked` — сюда ведёт тот
- * же тап). Сургучная точка — только там, где есть настоящее «взять» (Штампы);
- * у атласа нет кнопки забора, поэтому просто вести не при чём.
- */
-function createBookIndexRow(title, folioN, countText, opts) {
-    const o = opts || {};
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'book-index-row';
-
-    // K-23: жёлоб держит место у ЛЮБОЙ строки оглавления — не только затем,
-    // чтобы разрезанная и запертая глава не отличались геометрией, но и
-    // чтобы заголовки всех строк (включая Ex Libris и Настройки, ни замка,
-    // ни точки не знающие) лежали на одной вертикали, а не рвали список
-    // вразнобой (фидбек с телефона 2026-08-31). K-24: замок и сургучная точка
-    // на одной строке никогда не встречаются (замок — атлас/штампы взаперти,
-    // точка — только разрезанные штампы с чем взять) — жёлоб на двоих один,
-    // не два: второй пустой слот только раздвигал бы список зазором без смысла.
-    const icon = document.createElement('span');
-    icon.className = 'book-index-row-icon';
-    if (o.locked) {
-        icon.classList.add('achv-row-icon-uncut');
-        icon.appendChild(glyphSign('lock', 16));
-    } else if (o.wax) {
-        const wax = document.createElement('span');
-        wax.className = 'book-index-row-wax book-index-row-wax-lit';
-        icon.appendChild(wax);
-    }
-    row.appendChild(icon);
-
-    const head = document.createElement('span');
-    head.className = 'book-index-row-head';
-
-    const label = document.createElement('span');
-    label.className = 'book-index-row-title';
-    label.textContent = title;
-    head.appendChild(label);
-
-    const dots = document.createElement('span');
-    dots.className = 'book-index-row-dots';
-    head.appendChild(dots);
-
-    const count = document.createElement('span');
-    count.className = 'book-index-row-status';
-    // K-16: в статусе строки может стоять не число, а знак кассы (K-02) — эмодзи
-    // в игре нет ни одного, а «открыто» у Ex Libris нечем считать.
-    if (o.countSign) count.appendChild(glyphSign(o.countSign, 16));
-    else count.textContent = countText;
-    head.appendChild(count);
-
-    row.appendChild(head);
-
-    if (folioN !== null) {
-        const folio = document.createElement('span');
-        folio.className = 'book-index-row-folio';
-        folio.textContent = t('book.folio', { n: folioN });
-        row.appendChild(folio);
-    }
-
-    return row;
-}
-
-function renderBookIndex() {
-    const el = document.getElementById('bookIndex');
-    if (!el) return;
-    el.innerHTML = '';
-
-    const atlasSec = document.createElement('div');
-    atlasSec.className = 'book-index-sec';
-    const atlasTitle = document.createElement('div');
-    atlasTitle.className = 'book-index-sec-title';
-    atlasTitle.textContent = t('book.cutAtlas');
-    atlasSec.appendChild(atlasTitle);
-    for (let i = 0; i < ATLAS_PAGE_COUNT; i++) {
-        const unlocked = isAtlasPageUnlocked(i);
-        // K-19: неразрезанная глава не раскрывает литературное имя — «?».
-        const title = formatChapterIndexTitle(i + 1, unlocked ? t('atlas.chapterTitle' + i) : '?');
-        const row = unlocked
-            ? createBookIndexRow(
-                title,
-                getAtlasChapterFolio(i),
-                `${ATLAS_PAGES[i].filter(isShapeCreated).length} / ${ATLAS_PAGES[i].length}`
-            )
-            : createBookIndexRow(
-                title,
-                getAtlasChapterFolio(i),
-                // V-17 / S-03: тот же уровень, что и на самой запертой странице
-                // атласа (atlas.pageLocked) — иначе оглавление и разворот
-                // называют разные пороги для одной главы.
-                t('book.indexOpensAtLevel', { n: getAtlasChapterLevel(i) }),
-                { locked: true }
-            );
-        row.addEventListener('click', () => {
-            setBookPageIndex('atlas', i);
-            switchBookCut('atlas');
-        });
-        atlasSec.appendChild(row);
-    }
-    el.appendChild(atlasSec);
-
-    const stampsSec = document.createElement('div');
-    stampsSec.className = 'book-index-sec';
-    const stampsTitle = document.createElement('div');
-    stampsTitle.className = 'book-index-sec-title';
-    stampsTitle.textContent = t('book.cutStamps');
-    stampsSec.appendChild(stampsTitle);
-    for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
-        const page = REWARD_PAGES[i];
-        const unlocked = isRewardPageUnlocked(i);
-        // K-19: неразрезанная глава не раскрывает литературное имя — «?».
-        const title = formatChapterIndexTitle(i, unlocked ? page.title : '?');
-
-        let row;
-        if (unlocked) {
-            // K-19: счёт главы — прижатые марки (сумма stepIndex) из общего
-            // числа марок главы, а не пройденные цепочки целиком.
-            const { pressed, total } = getRewardPagePressedStamps(i);
-            row = createBookIndexRow(
-                title,
-                getStampsChapterFolio(i),
-                `${pressed} / ${total}`,
-                { wax: rewardPageHasClaimable(i) }
-            );
-        } else {
-            row = createBookIndexRow(
-                title,
-                getStampsChapterFolio(i),
-                t('book.indexOpensAtLevel', { n: getRewardPageUnlockLevel(i) }),
-                { locked: true }
-            );
-        }
-        row.addEventListener('click', () => {
-            setBookPageIndex('rewards', i);
-            switchBookCut('stamps');
-        });
-        stampsSec.appendChild(row);
-    }
-    el.appendChild(stampsSec);
-
-    const exSec = document.createElement('div');
-    exSec.className = 'book-index-sec';
-    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const exRow = createBookIndexRow(
-        t('book.cutExLibris'),
-        getExLibrisFolio(),
-        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
-        exUnlocked ? { countSign: 'crescent' } : undefined
-    );
-    exRow.addEventListener('click', () => switchBookCut('exlibris'));
-    exSec.appendChild(exRow);
-    el.appendChild(exSec);
-
-    // K-14: настройки — строкой в конце оглавления, единственный вход
-    // (страница не висит на своей высечке). Ни счёта, ни замка — доступна
-    // всегда, у неё нет условия открытия.
-    const settingsSec = document.createElement('div');
-    settingsSec.className = 'book-index-sec';
-    const settingsRow = createBookIndexRow(t('book.cutSettings'), getSettingsFolio(), '');
-    settingsRow.addEventListener('click', () => switchBookCut('settings'));
-    settingsSec.appendChild(settingsRow);
-    el.appendChild(settingsSec);
-}
-
-function stepBookPage(delta) {
-    if (bookCut === 'atlas') {
-        const idx = getBookPageIndex('atlas') + delta;
-        if (idx < 0 || idx >= ATLAS_PAGE_COUNT) return false;
-        setBookPageIndex('atlas', idx);
-        renderBook();
-        return true;
-    }
-    if (bookCut === 'stamps') {
-        const idx = getBookPageIndex('rewards') + delta;
-        if (idx < 1 || idx >= REWARD_PAGE_COUNT) return false;
-        setBookPageIndex('rewards', idx);
-        renderBook();
-        return true;
-    }
-    return false;
-}
-
-/**
- * K-28: горизонтальный переход по книге — общий и для свайпа, и для кнопок
- * пейджера в подвале. Внутри атласа/штампов — то же самое, что было раньше:
- * stepBookPage. На краю раздела — или там, где страниц нет вовсе («Today»/
- * «Index»/«Ex Libris») — переходит в соседнюю высечку по порядку
- * BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли, чтобы
- * номера страниц шли подряд по всей книге. «Settings» в эту цепочку не входит
- * (K-14, решение заказчика — высечек пять); край книги (до «Today», после
- * «Ex Libris») жест молчит, без зацикливания.
- */
-function swipeBookPage(delta) {
-    if (stepBookPage(delta)) return;
-    const order = BOOK_CUT_LIST.filter(cut => cut !== 'settings');
-    const i = order.indexOf(bookCut);
-    if (i === -1) return; // 'settings' — вне сквозного порядка, свайп молчит
-    const nextCut = order[i + delta];
-    if (!nextCut) return;
-    if (nextCut === 'atlas') setBookPageIndex('atlas', delta > 0 ? 0 : ATLAS_PAGE_COUNT - 1);
-    else if (nextCut === 'stamps') setBookPageIndex('rewards', delta > 0 ? 1 : REWARD_PAGE_COUNT - 1);
-    switchBookCut(nextCut);
-}
-
-/**
- * K-28: было бы swipeBookPage(delta) сейчас куда-то вести, без побочных
- * эффектов — только чтобы решить, показывать ли стрелку пейджера. Логика
- * зеркалит stepBookPage/swipeBookPage: внутри атласа/штампов смотрит на
- * границы главы, иначе — на порядок высечек (BOOK_CUT_LIST без 'settings').
- */
-function canSwipeBookPage(delta) {
-    if (bookCut === 'atlas') {
-        const idx = getBookPageIndex('atlas') + delta;
-        if (idx >= 0 && idx < ATLAS_PAGE_COUNT) return true;
-    } else if (bookCut === 'stamps') {
-        const idx = getBookPageIndex('rewards') + delta;
-        if (idx >= 1 && idx < REWARD_PAGE_COUNT) return true;
-    }
-    const order = BOOK_CUT_LIST.filter(cut => cut !== 'settings');
-    const i = order.indexOf(bookCut);
-    return i !== -1 && !!order[i + delta];
-}
-
-// =============================================================================
-// B-02/K-13: ОБСЕРВАТОРИЯ В КНИГЕ — страница «Ex Libris»
-// =============================================================================
-//
-// K-13: страница и обсерватория — одно состояние, отдельного входа/выхода
-// больше нет. Открыл высечку «Ex Libris» (и обсерватория уже разряжена) —
-// холст ожил прямо в рамке страницы; ушёл на другую высечку или закрыл книгу —
-// вернулся на поле. Синхронизирует это syncExLibrisAppMode().
-
-function renderBookExLibris() {
-    const unlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const lockedEl = document.getElementById('exLibrisLocked');
-    const plateEl = document.getElementById('exLibrisPlate');
-    if (lockedEl) lockedEl.hidden = unlocked;
-    if (plateEl) plateEl.hidden = !unlocked;
-
-    if (!unlocked) {
-        closeObservatoryRenameField();
-        const titleEl = document.getElementById('exLibrisLockTitle');
-        const progressEl = document.getElementById('exLibrisLockProgress');
-        if (titleEl) titleEl.textContent = t('observatory.lockedTitle');
-        // S-03 (правка заказчика 2026-09-10): как и на атласе — только уровень,
-        // ни полосы, ни чисел ✦; сколько осталось, показывает шкала у корешка.
-        if (progressEl) fillLevelLockText(progressEl, 'observatory.lockedLevel', OBSERVATORY_UNLOCK_LEVEL);
-    }
-}
-
-// =============================================================================
-// K-21: КНИЖНОЕ ПЕРЕИМЕНОВАНИЕ НА ЭКСЛИБРИСЕ (замена openObservatoryRenamePrompt)
-// =============================================================================
-//
-// Тап по подписи созвездия на холсте (или по знаку пера рядом с ней) больше не
-// зовёт системный prompt() — открывается эта строка на бумаге, рядом с
-// подписью «ex libris». Отмены нет: пустой ввод и Esc имя не меняют, Enter и
-// потеря фокуса коммитят непустое значение.
-
-/** Запись обсерватории (observatory.js), которую сейчас редактирует строка ввода. */
-let observatoryRenameEntry = null;
-
-function openObservatoryRenameField(entry) {
-    if (!entry) return false;
-    const row = document.getElementById('exLibrisRenameRow');
-    const input = document.getElementById('exLibrisRenameInput');
-    if (!row || !input) return false;
-    observatoryRenameEntry = entry;
-    input.value = typeof getObservatoryLabelText === 'function' ? getObservatoryLabelText(entry) : '';
-    row.hidden = false;
-    input.focus();
-    input.select();
-    return true;
-}
-
-function closeObservatoryRenameField() {
-    const row = document.getElementById('exLibrisRenameRow');
-    if (row) row.hidden = true;
-    observatoryRenameEntry = null;
-}
-
-/** Непустое значение уходит в entry.custom; пустое — имя остаётся прежним. */
-function commitObservatoryRenameField() {
-    const entry = observatoryRenameEntry;
-    const input = document.getElementById('exLibrisRenameInput');
-    if (!entry || !input) return;
-    const value = input.value.trim();
-    if (value !== '') {
-        entry.custom = value;
-        if (typeof saveObservatoryNow === 'function') saveObservatoryNow();
-    }
-}
-
-/**
- * K-13: держит appMode в паре с высечкой «Ex Libris» — единственное место,
- * где что-то решает, быть ли сейчас обсерватории. Вызывается после каждого
- * изменения состояния книги (открыть/закрыть/переключить высечку).
- */
-function syncExLibrisAppMode() {
-    const shouldBeObservatory = bookOpen && bookCut === 'exlibris'
-        && typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-    if (shouldBeObservatory !== inObservatory) {
-        // setAppMode() сам зовёт updateObservatoryUI() → updateExLibrisEmbedding()
-        setAppMode(shouldBeObservatory ? 'observatory' : 'field');
-    } else if (typeof updateExLibrisEmbedding === 'function') {
-        // Режим не поменялся, но резервированный прямоугольник мог протухнуть
-        // (resize, смена высечки туда-обратно) — освежаем его на всякий случай.
-        updateExLibrisEmbedding();
-    }
-}
-
-/** Тумблер «соединять»/«двигать»; красить — тапом в «двигать» (без смены). */
-function updateObservatoryUI() {
-    const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-
-    const seg = document.getElementById('observatoryModeSeg');
-    if (seg) seg.hidden = !inObservatory;
-
-    if (inObservatory) {
-        const mode = typeof getObservatoryMode === 'function' ? getObservatoryMode() : 'connect';
-        const connectBtn = document.getElementById('obsModeConnectBtn');
-        const moveBtn = document.getElementById('obsModeMoveBtn');
-        // Активное положение подсвечено всегда: в «перемещать» тап красит звезду,
-        // а в «соединять» нет, и перепутать это дорого.
-        if (connectBtn) connectBtn.classList.toggle('seg-btn-on', mode === 'connect');
-        if (moveBtn) moveBtn.classList.toggle('seg-btn-on', mode === 'move');
-    }
-
-    if (bookOpen && bookCut === 'exlibris') renderBookExLibris();
-
-    // K-11: обсерватория — не то небо, для которого закладывают фигуру.
-    renderSkyBookmark();
-
-    if (typeof updateExLibrisEmbedding === 'function') updateExLibrisEmbedding();
-}
-
-// =============================================================================
-// K-14: НАСТРОЙКИ — страница книги, первый тумблер (звук)
-// =============================================================================
-//
-// Вход только строкой из «Index» (BOOK_CUT_LIST выше) — своей высечки нет.
-// Тумблер книжный: пустая клетка / оттиск, как марка K-08 (`.achv-tile`),
-// а не системный чекбокс (риск 2 дока). Список рассчитан на второй тумблер —
-// вибро приедет с A-05/U-14 такой же строкой, без переверстки страницы.
-
-function createSettingsToggleRow(labelKey, getOn, onToggle) {
-    const row = document.createElement('div');
-    row.className = 'settings-row';
-
-    const label = document.createElement('span');
-    label.className = 'settings-row-label';
-    label.textContent = t(labelKey);
-    row.appendChild(label);
-
-    const tile = document.createElement('button');
-    tile.type = 'button';
-    tile.className = 'settings-toggle achv-tile';
-
-    // «press» (K-02, до сих пор нигде не занят) — оттиск в буквальном смысле:
-    // прижатая марка. Пустая клетка обходится вовсе без знака, как и у
-    // неиспользованных клеток сцепки K-08 (achv-tile-empty).
-    const sync = () => {
-        const on = getOn();
-        tile.classList.toggle('achv-tile-lit', on);
-        tile.classList.toggle('achv-tile-empty', !on);
-        tile.innerHTML = '';
-        if (on) tile.appendChild(glyphSign('press', 16));
-        tile.setAttribute('aria-pressed', String(on));
-        tile.setAttribute('aria-label', `${t(labelKey)}: ${t(on ? 'settings.toggleOn' : 'settings.toggleOff')}`);
-    };
-    sync();
-
-    tile.addEventListener('click', () => {
-        onToggle(!getOn());
-        sync();
-    });
-
-    row.appendChild(tile);
-    return row;
-}
-
-function renderBookSettings() {
-    const el = document.getElementById('bookSettingsList');
-    if (!el) return;
-    el.innerHTML = '';
-    el.appendChild(createSettingsToggleRow('settings.sound', isSoundEnabled, setSoundEnabled));
-    // U-14: второй тумблер на готовое место — раздельно от звука (требование
-    // заказчика 2026-08-23), тем же конструктором строки.
-    el.appendChild(createSettingsToggleRow('settings.haptic', isHapticEnabled, toggleHapticSetting));
-    // A-07: третий тумблер тем же конструктором. Музыка гасится отдельно от
-    // звука по той же причине, по которой U-14 отделила вибро: её глушат,
-    // чтобы слушать своё, не трогая отклик интерфейса.
-    el.appendChild(createSettingsToggleRow('settings.music', isMusicEnabled, toggleMusicSetting));
-    el.appendChild(createSettingsCredits());
-}
-
-/**
- * A-07: указание авторства музыки — требование лицензии CC BY 4.0, под которой
- * отданы оба трека. Страница настроек выбрана как место, где кредит найдут,
- * не ища: другого экрана «о программе» в книге нет.
- *
- * Адрес остаётся текстом, а не ссылкой: в WebView нативной сборки (P-02)
- * внешний href открылся бы в том же окне, и вернуться в игру было бы нечем.
- * CC-BY требует указать адрес, а не сделать его кликабельным.
- */
-function createSettingsCredits() {
-    const box = document.createElement('div');
-    box.className = 'settings-credits';
-
-    const head = document.createElement('div');
-    head.className = 'settings-credits-head';
-    head.textContent = t('settings.credits');
-    box.appendChild(head);
-
-    (typeof MUSIC_CREDITS !== 'undefined' ? MUSIC_CREDITS : []).forEach(line => {
-        const row = document.createElement('div');
-        row.className = 'settings-credits-line';
-        row.textContent = line;
-        box.appendChild(row);
-    });
-
-    return box;
-}
-
-// U-14: включение тумблера вибро обязано само себя подтвердить — короткий
-// импульс, чтобы игрок почувствовал, что включил именно вибро (риск дока).
-// Выключение молчит: setHapticEnabled(false) само гасит уже идущий паттерн.
-// Клик — по DOM-кнопке, не по канвасу p5, жест туда не долетает сам по себе —
-// initAudio() зовётся здесь явно, как у claimAchievementStep (A-03), иначе
-// самый первый в жизни игрока тап по этой кнопке был бы холостым.
-function toggleHapticSetting(on) {
-    if (typeof initAudio === 'function') initAudio();
-    setHapticEnabled(on);
-    if (on && typeof hapticPulse === 'function') hapticPulse(HAPTIC_TOGGLE_MS);
-}
-
-// A-07: та же оговорка, что у вибро, и по той же причине — клик по DOM-кнопке
-// мимо канваса p5, `_interacted` сам по себе не встанет. Без `initAudio()`
-// первый в жизни игрока тап по этому тумблеру включил бы настройку, но не
-// музыку: `startMusic()` молчит, пока жеста не было.
-function toggleMusicSetting(on) {
-    if (typeof initAudio === 'function') initAudio();
-    setMusicEnabled(on);
-}
-
-// =============================================================================
-// K-06: РЕНДЕР И ОТКРЫТИЕ/ЗАКРЫТИЕ КНИГИ
-// =============================================================================
-
-function renderBook() {
-    const sections = {
-        today: document.getElementById('bookToday'),
-        index: document.getElementById('bookIndex'),
-        atlas: document.getElementById('bookAtlasSection'),
-        stamps: document.getElementById('bookStampsSection'),
-        exlibris: document.getElementById('bookExLibris'),
-        settings: document.getElementById('bookSettingsSection')
-    };
-    for (const cut in sections) {
-        if (sections[cut]) sections[cut].hidden = cut !== bookCut;
-    }
-    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
-    // (renderBookToday() его при надобности заведёт заново).
-    if (bookCut !== 'today') stopBookTodayDawnTimer();
-
-    recomputeAchievementsClaimable();
-
-    if (bookCut === 'today') {
-        renderBookToday();
-    } else if (bookCut === 'index') {
-        renderBookIndex();
-    } else if (bookCut === 'atlas') {
-        renderAtlasList();
-    } else if (bookCut === 'stamps') {
-        renderAchievementsList();
-    } else if (bookCut === 'exlibris') {
-        renderBookExLibris();
-    } else if (bookCut === 'settings') {
-        renderBookSettings();
-    }
-
-    renderBookHead();
-    renderBookGauge();
-    renderBookTabs();
-    updateScoreUI();
-    updateRibbonSignal();
-
-    const body = document.getElementById('bookBody');
-    if (body) body.scrollTop = 0;
-}
-
-function refreshBookIfOpen() {
-    if (bookOpen) renderBook();
-}
-
-/**
- * U-21: самое первое за игру открытие книги приходится на разворот атласа —
- * иначе новичок не находит его вовсе: сигнала у высечки у атласа нет и не
- * будет (бейджей он не показывает никогда), а глава I бесплатна, то есть
- * разворот не пустой ни у кого. Дальше книга открывается там, где игрок был
- * в прошлый раз (K-05). Флаг тратится только на путях игрока — тап по ленте,
- * потягивание, Enter, — они зовут openBook() без аргумента; харнесс с явным
- * разделом первое открытие не съедает.
- */
-function isFirstBookOpenPending() {
-    return typeof achievementCounters !== 'undefined' && !!achievementCounters
-        && !achievementCounters.bookFirstOpenDone;
-}
-
-/**
- * Ставит раздел, но флага НЕ тратит: зовётся в момент, когда книга только
- * становится видимой (потягивание ленты за палец), — иначе игрок тянет вверх
- * «Сегодня», а по приезде страница на его глазах подменяется атласом. Если
- * жест бросили на полпути, флаг цел, а `bookCut` уже атлас — следующее
- * открытие приведёт туда же, и подмены снова не будет.
- */
-function applyFirstBookOpenCut() {
-    if (!isFirstBookOpenPending()) return false;
-    bookCut = 'atlas';
-    return true;
-}
-
-/** Книга действительно открылась — первое открытие израсходовано. */
-function markFirstBookOpenDone() {
-    if (!isFirstBookOpenPending()) return;
-    achievementCounters.bookFirstOpenDone = true;
-    if (typeof saveProgression === 'function') saveProgression();
-}
-
-function openBook(cut) {
-    closeObservatoryRenameField();
-    if (BOOK_CUT_LIST.includes(cut)) {
-        bookCut = cut;
-    } else {
-        applyFirstBookOpenCut();
-        markFirstBookOpenDone();
-    }
-    bookOpen = true;
-    const book = document.getElementById('book');
-    if (book) book.hidden = false;
-    if (document.body) document.body.classList.add('book-open-body');
-    renderBook();
-    syncExLibrisAppMode();
-}
-
-function closeBook() {
-    if (!bookOpen) return;
-    closeObservatoryRenameField();
-    dismissChapterCutBanner(true); // V-16: баннер не переживает закрытие книги
-    stopBookTodayDawnTimer(); // O-03: закрыли книгу — тик посекундно никому не нужен
-    bookOpen = false;
-    const book = document.getElementById('book');
-    if (book) {
-        setBookTransform(book, '');
-        book.hidden = true;
-    }
-    if (document.body) document.body.classList.remove('book-open-body');
-    syncExLibrisAppMode();
-}
-
-function switchBookCut(cut) {
-    if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
-    closeObservatoryRenameField();
-    bookCut = cut;
-    renderBook();
-    syncExLibrisAppMode();
-}
-
 // =============================================================================
 // V-16 — БАННЕР РАЗРЕЗА ГЛАВЫ: УЗКОЕ ИСКЛЮЧЕНИЕ ИЗ K-15
 // =============================================================================
-// Единственный тост в игре — решение заказчика 2026-09-04: разрез главы атласа
+// Единственный тост в игре — вырос из V-16 (разрез главы атласа) в баннер
+// уровня (U-29, решение заказчика): забор марки, поднявший `getPlayerLevel()`,
 // достаточно важен, чтобы получить яркий отклик прямо в момент забора марки,
-// внутри уже открытой книги. Остальные события (огранка, особые цепочки,
-// обсерватория) по-прежнему идут только строкой в ленте «Сегодня» + каплей
-// сургуча (K-15) — это исключение их не отменяет.
+// внутри уже открытой книги. Одно окно на всё, что уровень открыл разом —
+// главу атласа, главу Штампов, Экслибрис, — а на ступенях хвоста (5+, ничего
+// не открывающих) то же окно несёт только поздравление с уровнем. Остальные
+// события (огранка, особые цепочки) по-прежнему идут только строкой в ленте
+// «Сегодня» + каплей сургуча (K-15) — это исключение их не отменяет.
 //
 // Состояние сессионное, вне сейва: узел — ребёнок #bookPage (не переживает
 // закрытие книги, не трогается перерисовкой конкретных разделов renderBook()).
 // Триггер — только claimAchievementStep (achievements.js): забор марки
 // физически невозможен вне открытой книги и никогда не случается на путях
-// загрузки сейва/дев-вайпа, поэтому отдельный announce-флаг не нужен.
+// загрузки сейва/дев-вайпа/дев-кнопки «+100 ✦» (та зовёт awardMetaScore
+// напрямую), поэтому отдельный announce-флаг не нужен — прецедент V-16.
 
-let chapterCutBannerIndices = [];
-let chapterCutBannerTimer = null;
+let levelBannerLevels = [];
+let levelBannerUnlockKeys = [];
+let levelBannerTimer = null;
 
-/** Заголовок главы(-ав) — та же форма, что в оглавлении (K-19), без «Ch.»/римской в начале. */
-function chapterCutBannerText(indices) {
-    if (indices.length === 1) {
-        const idx = indices[0];
-        return t('book.chapterCutBanner', {
-            n: toRoman(idx + 1),
-            name: t('atlas.chapterTitle' + idx)
-        });
+/** Заголовок уровня(-ей) — одна ступень или список через запятую при мёрдже. */
+function levelBannerTitleText(levels) {
+    if (levels.length === 1) {
+        const lv = levels[0];
+        return t('book.levelBannerTitle', { n: lv, name: getLevelName(lv) });
     }
-    const names = indices.map(idx => t('atlas.chapterTitle' + idx)).join(', ');
-    return t('book.chapterCutBannerMultiple', { names });
+    const names = levels.map(lv => lv + ' — ' + getLevelName(lv)).join(', ');
+    return t('book.levelBannerTitleMultiple', { names });
 }
 
 /**
- * Показать баннер. Батч: несколько порогов в одном заборе — один вызов с
- * массивом индексов, а не несколько подряд. Повторный клейм, пока баннер ещё
- * виден, — мёрджит список глав и продлевает таймер вместо второго баннера.
+ * Категория разблокировки по ключу вида `atlas:<idx>`/`stamps:<idx>`/`exlibris` —
+ * решение заказчика 2026-09-14: строка общая («доступна новая страница атласа»/
+ * «доступны новые достижения»), без названия конкретной главы. Несколько глав
+ * атласа или штампов в одном мёрдже (span в несколько уровней) схлопываются
+ * в одну строку категории, а не повторяются.
  */
-function showChapterCutBanner(newIndices) {
-    if (!Array.isArray(newIndices) || newIndices.length === 0) return;
+function levelBannerUnlockCategory(key) {
+    if (key.indexOf('atlas:') === 0) return 'atlas';
+    if (key.indexOf('stamps:') === 0) return 'stamps';
+    if (key === 'exlibris') return 'exlibris';
+    return null;
+}
+
+function levelBannerCategoryText(category) {
+    if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
+    if (category === 'stamps') return t('book.levelBannerUnlockStamps');
+    if (category === 'exlibris') return t('book.levelBannerUnlockExLibris');
+    return '';
+}
+
+/**
+ * Показать баннер. Батч: несколько уровней в одном заборе — один вызов с
+ * массивом. Повторный клейм, пока баннер ещё виден, — мёрджит уровни и их
+ * разблокировки в тот же баннер и продлевает таймер вместо второго баннера.
+ */
+function showLevelBanner(newLevels, newUnlockKeys) {
+    if (!Array.isArray(newLevels) || newLevels.length === 0) return;
     // Баннер — поверх ОТКРЫТОЙ книги; в реальной игре забор вне книги
     // невозможен физически, а __test.claim() умеет забирать и мимо DOM (K-07).
     if (!bookOpen) return;
-    const el = document.getElementById('chapterCutBanner');
-    const titleEl = document.getElementById('chapterCutBannerTitle');
-    if (!el || !titleEl) return;
+    const el = document.getElementById('levelBanner');
+    const titleEl = document.getElementById('levelBannerTitle');
+    const unlocksEl = document.getElementById('levelBannerUnlocks');
+    if (!el || !titleEl || !unlocksEl) return;
 
-    const merged = new Set(chapterCutBannerIndices);
-    for (const i of newIndices) merged.add(i);
-    chapterCutBannerIndices = [...merged].sort((a, b) => a - b);
-    titleEl.textContent = chapterCutBannerText(chapterCutBannerIndices);
+    const mergedLevels = new Set(levelBannerLevels);
+    for (const lv of newLevels) mergedLevels.add(lv);
+    levelBannerLevels = [...mergedLevels].sort((a, b) => a - b);
+
+    const mergedUnlocks = new Set(levelBannerUnlockKeys);
+    for (const key of (newUnlockKeys || [])) mergedUnlocks.add(key);
+    levelBannerUnlockKeys = [...mergedUnlocks];
+
+    titleEl.textContent = levelBannerTitleText(levelBannerLevels);
+    unlocksEl.innerHTML = '';
+    const categories = [];
+    for (const key of levelBannerUnlockKeys) {
+        const cat = levelBannerUnlockCategory(key);
+        if (cat && !categories.includes(cat)) categories.push(cat);
+    }
+    for (const cat of categories) {
+        const row = document.createElement('div');
+        row.className = 'level-banner-unlock-row';
+        row.textContent = levelBannerCategoryText(cat);
+        unlocksEl.appendChild(row);
+    }
+    // Ступень хвоста ничего не открывает — список пуст и скрыт, баннер несёт
+    // только поздравление с уровнем в заголовке.
+    unlocksEl.hidden = categories.length === 0;
 
     el.hidden = false;
     // Форсированный рефлоу — тот же приём, что у книжных доводок K-26
@@ -1700,24 +607,25 @@ function showChapterCutBanner(newIndices) {
     // которая не рендерится (свёрнута/не в фокусе), rAF может не выстрелить
     // вовсе, и переход застрянет с classList без -on навсегда.
     void el.offsetHeight;
-    el.classList.add('chapter-cut-banner-on');
+    el.classList.add('level-banner-on');
 
-    if (chapterCutBannerTimer) clearTimeout(chapterCutBannerTimer);
-    chapterCutBannerTimer = setTimeout(
-        () => dismissChapterCutBanner(false), CHAPTER_CUT_BANNER_HOLD_MS
+    if (levelBannerTimer) clearTimeout(levelBannerTimer);
+    levelBannerTimer = setTimeout(
+        () => dismissLevelBanner(false), LEVEL_BANNER_HOLD_MS
     );
 }
 
 /** immediate=true — обрыв без доигрывания (закрытие книги); false — гаснет плавно. */
-function dismissChapterCutBanner(immediate) {
-    if (chapterCutBannerTimer) {
-        clearTimeout(chapterCutBannerTimer);
-        chapterCutBannerTimer = null;
+function dismissLevelBanner(immediate) {
+    if (levelBannerTimer) {
+        clearTimeout(levelBannerTimer);
+        levelBannerTimer = null;
     }
-    chapterCutBannerIndices = [];
-    const el = document.getElementById('chapterCutBanner');
+    levelBannerLevels = [];
+    levelBannerUnlockKeys = [];
+    const el = document.getElementById('levelBanner');
     if (!el || el.hidden) return;
-    el.classList.remove('chapter-cut-banner-on');
+    el.classList.remove('level-banner-on');
     if (immediate || prefersReducedMotion()) {
         el.hidden = true;
         return;
@@ -1779,395 +687,226 @@ function renderSkyBookmark() {
     // когерентность одного состояния «не разгадано» на разных узлах.
     // K-30: CSS уже пиннит видимый размер (.sky-bookmark-canvas), но буфер
     // нужно досчитать под DPR — иначе чертёж в углу неба мылится сильнее всего.
+    // V-19: тот же цвет/градиент огранки, что на карточке атласа (открытый
+    // вопрос дока решён в пользу «менять заодно» — иначе чертёж на небе
+    // и карточка одной и той же фигуры расходились бы цветом).
     if (canvas && pattern) {
         sizeGlyphCanvas(canvas, 60);
-        drawShapeGlyph(canvas, pattern, getShapeColor(shapeId), !created);
+        drawShapeGlyph(canvas, pattern, created ? getShapeGlyphColor(shapeId) : getShapeColor(shapeId), !created);
     }
 }
 
 // =============================================================================
-// K-06: ЖЕСТЫ КНИГИ
+// K-08: СТРОКИ СЦЕПОК — общие для «Сегодня» (суточный квест) и Штампов
 // =============================================================================
 
-/** Единая точка координат: работает и для мыши, и для пальца. */
-function getGesturePoint(event) {
-    if (event.touches && event.touches.length) return event.touches[0];
-    if (event.changedTouches && event.changedTouches.length) return event.changedTouches[0];
-    if (typeof event.clientX === 'number') return event;
-    return null;
-}
-
-function isMultiTouch(event) {
-    return !!(event.touches && event.touches.length > 1);
-}
-
-/** K-26: во столько px книга уходит за нижний край экрана целиком. */
-function bookTravelPx() {
-    return window.innerHeight || document.documentElement.clientHeight || 800;
-}
-
 /**
- * K-35: книге ставят transform только через это. Встроенный холст экслибриса
- * лежит поверх книги отдельным fixed-узлом (K-13) и за ней сам не поедет — ход
- * книги повторяется на нём и на рамке гравюры. Вне экслибриса обе функции
- * работают ровно как прежняя присвоенная строка.
+ * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
+ * цепочка пройдена целиком. У шагов суточного квеста считать нечего (условие
+ * бинарное, K-22: `getAchievementStepProgress` не знает проверок `dailyEntry`/
+ * `dailyNight` и честно отдаёт null) — слот остаётся пустым, а не прочерком
+ * (U-30: прочерк читался как отдельная лишняя полоска).
  */
-function setBookTransform(book, transform) {
-    if (book) book.style.transform = transform;
-    if (typeof setExLibrisFollowTransform === 'function') setExLibrisFollowTransform(transform);
-}
-
-function setBookTransition(book, transition) {
-    if (book) book.style.transition = transition;
-    if (typeof setExLibrisFollowTransition === 'function') setExLibrisFollowTransition(transition);
-}
-
-/**
- * K-26: довод жеста книги — от текущей позиции translateY плавно к цели
- * (или мгновенно при «уменьшить движение»), потом зовёт onSettled. Общая
- * точка для открытия и закрытия: раньше на отпускании transform сбрасывался
- * и hidden ставился в один тик без всякой доводки — движение обрывалось.
- */
-function settleBookTransform(book, targetPx, onSettled) {
-    if (!book) { onSettled(); return; }
-    const finalTransform = targetPx ? `translateY(${targetPx}px)` : '';
-    if (prefersReducedMotion()) {
-        setBookTransition(book, '');
-        setBookTransform(book, finalTransform);
-        onSettled();
-        return;
-    }
-    let done = false;
-    const finish = () => {
-        if (done) return;
-        done = true;
-        book.removeEventListener('transitionend', onEnd);
-        clearTimeout(timer);
-        setBookTransition(book, '');
-        onSettled();
-    };
-    const onEnd = (event) => { if (event.target === book && event.propertyName === 'transform') finish(); };
-    book.addEventListener('transitionend', onEnd);
-    const timer = setTimeout(finish, BOOK_SETTLE_MS + 120);
-    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
-    // Форсированный рефлоу — браузер обязан зафиксировать стартовую (тянутую
-    // пальцем) позицию до смены на целевую, иначе переход схлопнется в один
-    // кадр без анимации. rAF для этого не годится — в фоновой/скрытой вкладке
-    // кадров нет вовсе, и жест завис бы там намертво.
-    void book.offsetHeight;
-    setBookTransform(book, finalTransform);
+function buildAchievementHeadCount(chain, p, done) {
+    if (done) return { text: t('rewards.headDone'), ready: false };
+    if (p.claimable) return { text: t('rewards.headReady'), ready: true };
+    const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
+    if (!prog) return { text: '', ready: false };
+    return { text: t('rewards.headProgress', { current: Math.min(prog.current, prog.target), target: prog.target }), ready: false };
 }
 
 /**
- * K-26: тап по ленте и Enter — короткая дорога к открытию, но не должны
- * выглядеть рывком: страница едет с закрытой позиции тем же ходом, что и
- * потягивание. openBook() остаётся синхронным (нужно тестовому харнессу и
- * программным вызовам) — это чисто визуальная доводка поверх готового состояния.
- */
-function openBookAnimated(cut) {
-    const book = document.getElementById('book');
-    const canAnimate = !!book && !prefersReducedMotion();
-    // K-35: открываем ДО подстановки стартовой позиции — раньше было наоборот.
-    // Внутри openBook() холст экслибриса встраивается по замеру прямоугольника
-    // страницы, и замер обязан пройти по книге в покое: с уже подставленным
-    // сдвигом слот мерялся уехавшим вниз на целый экран, и небо оставалось за
-    // нижним краем до ближайшего ресайза. Кадра между открытием и сдвигом не
-    // будет — обе строки в одном тике, до первой отрисовки.
-    openBook(cut);
-    if (!canAnimate) return;
-    setBookTransition(book, 'none');
-    setBookTransform(book, `translateY(${bookTravelPx()}px)`);
-    void book.offsetHeight; // рефлоу теперь, когда книга уже видима — фиксирует старт
-    setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
-    setBookTransform(book, '');
-    const onEnd = (event) => {
-        if (event.target !== book || event.propertyName !== 'transform') return;
-        book.removeEventListener('transitionend', onEnd);
-        setBookTransition(book, '');
-    };
-    book.addEventListener('transitionend', onEnd);
-}
-
-/**
- * Два жеста книги на одном обработчике, разведённые по оси (BOOK_AXIS_DECIDE_PX,
- * риск 1 дока K-28 — тот же приём, что уже развёл закрытие книги (вниз) и
- * потягивание ленты (вверх), см. setupRibbonPullGesture):
+ * Одна марка сцепки. Три состояния и ни одного больше:
+ * свет ждёт (число) → готово прижать (сургучная рамка, марка сама кликабельна)
+ * → оттиск (число вылетело к корешку, на его месте знак цепочки).
  *
- * — вертикаль: потягивание вниз закрывает книгу с любой страницы (риск 4
- *   дока K-06 — возврат на небо обязан быть таким же дешёвым, как вход).
- *   Тянут вниз в самом верху прокрутки страницы — закрытие; тянут в середине
- *   списка — обычная прокрутка, жест её не трогает.
- * — горизонталь (K-28): свайп листает страницу — swipeBookPage(), тот же
- *   переход, что у пейджер-кнопки в подвале, плюс переход в соседний раздел
- *   на краю текущего. Без протяжки страницы за пальцем — решение осознанно
- *   (см. «Согласованный план» дока K-28): раздел просто перерисовывается,
- *   как от кнопки.
- *
- * Мультитач и щипок зума (isMultiTouch) не считаются ни тем, ни другим жестом.
+ * Прижимается сама марка — кнопки нет нигде. Зона касания шире марки на 6 pt
+ * с каждой стороны (`.achv-tile-hit`): марка мелкая, палец крупный.
  */
-function setupBookCloseGesture() {
-    if (bookHandlersBound) return;
-    const book = document.getElementById('book');
-    const body = document.getElementById('bookBody');
-    const ribbon = document.getElementById('skyRibbon');
-    if (!book || !body) return;
+function createAchievementTile(chain, stepIndex, p) {
+    const tile = document.createElement('div');
+    tile.className = 'achv-tile';
 
-    let startX = 0;
-    let startY = 0;
-    let axis = null; // 'vertical' | 'horizontal', решается на BOOK_AXIS_DECIDE_PX
-    let closing = false;
-    let tracking = false;
+    // K-22: суточная цепочка идёт тем же путём — stepIndex у неё выведен
+    // recompute'ом из защёлок суток, «текущий» шаг всегда ровно один.
+    const pressed = stepIndex < p.stepIndex;
+    const isCurrent = stepIndex === p.stepIndex;
+    const ready = isCurrent && !pressed && p.claimable;
 
-    const onStart = (event) => {
-        if (isMultiTouch(event)) { tracking = false; return; }
-        if (event.type === 'mousedown' && event.button !== 0) return;
-        const p = getGesturePoint(event);
-        if (!p) return;
-        startX = p.clientX;
-        startY = p.clientY;
-        axis = null;
-        closing = false;
-        tracking = true;
-    };
+    if (pressed) {
+        tile.classList.add('achv-tile-lit');
+        tile.appendChild(glyphSign(chain.sign || 'arc', 14));
+        return tile;
+    }
 
-    const onMove = (event) => {
-        if (!tracking || isMultiTouch(event)) return;
-        const p = getGesturePoint(event);
-        if (!p) return;
-        const dx = p.clientX - startX;
-        const dy = p.clientY - startY;
+    const amt = document.createElement('span');
+    amt.className = 'achv-tile-amt';
+    amt.textContent = `${getAchievementChainStepReward(chain, stepIndex)} ✦`;
+    tile.appendChild(amt);
 
-        if (!axis) {
-            if (Math.max(Math.abs(dx), Math.abs(dy)) < BOOK_AXIS_DECIDE_PX) return;
-            if (Math.abs(dx) > Math.abs(dy)) {
-                axis = 'horizontal';
-            } else {
-                axis = 'vertical';
-                closing = dy > 0 && body.scrollTop <= 0;
-            }
-        }
+    if (ready) {
+        tile.classList.add('achv-tile-ready');
+        tile.dataset.chainId = chain.id;
+        tile.setAttribute('role', 'button');
+        tile.tabIndex = 0;
+        tile.title = t('rewards.claim');
+        const hit = document.createElement('span');
+        hit.className = 'achv-tile-hit';
+        hit.setAttribute('aria-hidden', 'true');
+        // U-20: сетка всегда до пяти клеток (createAchievementTiles) — хит-зона
+        // растягивается на соседей до краёв полоски через эти два безразмерных числа.
+        hit.style.setProperty('--hit-l', stepIndex);
+        hit.style.setProperty('--hit-r', 4 - stepIndex);
+        tile.appendChild(hit);
+        // A-03: по data-chain-id `claimAchievementStep` находит точку старта перелёта ✦
+        tile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            claimAchievementStep(chain.id);
+        });
+        tile.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            e.preventDefault();
+            claimAchievementStep(chain.id);
+        });
+    } else {
+        tile.title = t('rewards.claimIdle');
+    }
+    return tile;
+}
 
-        if (axis === 'horizontal') {
-            // K-28: страница не тянется за пальцем — только preventDefault,
-            // чтобы жест не ушёл в браузер; сам переход — на отпускании.
-            if (event.cancelable) event.preventDefault();
-            return;
-        }
-        if (!closing) return;
-        if (event.cancelable) event.preventDefault();
-        setBookTransform(book, `translateY(${Math.max(0, dy)}px)`);
-    };
-
-    const onEnd = (event) => {
-        if (!tracking) return;
-        tracking = false;
-        const p = getGesturePoint(event);
-
-        if (axis === 'horizontal') {
-            const dx = p ? p.clientX - startX : 0;
-            if (Math.abs(dx) >= BOOK_PAGE_SWIPE_MIN_PX) swipeBookPage(dx < 0 ? 1 : -1);
-            axis = null;
-            return;
-        }
-
-        const dy = p ? Math.max(0, p.clientY - startY) : 0;
-        if (closing && dy >= BOOK_CLOSE_SWIPE_MIN_PX) {
-            // K-26: довод — доезжаем вниз до конца тем же ходом, что вёл за
-            // пальцем, и только потом прячем; раньше это обрывалось тут же.
-            settleBookTransform(book, bookTravelPx(), () => closeBook());
-        } else if (closing) {
-            // ниже порога — страница падает обратно тем же доводом
-            settleBookTransform(book, 0, () => {});
+/** Сетка на пять клеток всегда — столько же, сколько граней у фигуры атласа. */
+function createAchievementTiles(chain, p) {
+    const tiles = document.createElement('div');
+    tiles.className = 'achv-row-tiles';
+    const total = chain.steps.length;
+    for (let i = 0; i < 5; i++) {
+        if (i < total) {
+            tiles.appendChild(createAchievementTile(chain, i, p));
         } else {
-            setBookTransform(book, '');
+            const empty = document.createElement('div');
+            empty.className = 'achv-tile achv-tile-empty';
+            tiles.appendChild(empty);
         }
-        closing = false;
-        axis = null;
-    };
-
-    book.addEventListener('touchstart', onStart, { passive: true });
-    book.addEventListener('touchmove', onMove, { passive: false });
-    book.addEventListener('touchend', onEnd);
-    book.addEventListener('touchcancel', onEnd);
-    book.addEventListener('mousedown', onStart);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onEnd);
-
-    // K-05: потягивание ленты вверх — обратный жест к открытию книги
-    if (ribbon) setupRibbonPullGesture(ribbon);
-
-    bookHandlersBound = true;
+    }
+    return tiles;
 }
 
 /**
- * K-05/K-26: тянем ленту-закладку вверх — книга едет за пальцем той же
- * формулой, что и закрытие (setupBookCloseGesture), и на отпускании либо
- * доводится до конца, либо падает обратно. Открывается на последней высечке.
+ * U-24: заливка прогресса внутри текущего шага — «N из target» очков до
+ * следующей марки, а не «шаг K из 5» (то уже видно клетками ниже). Короткая
+ * полоска встаёт в конце строки описания, под счётом (два предыдущих места —
+ * отдельной строкой под описанием, затем в шапке рядом со счётом — заказчик
+ * поправил дважды по живому экрану до этой раскладки).
+ *
+ * Считается от того же чек-условия, что и `claimable` (`evaluateAchievementCheck`),
+ * поэтому в момент готовности ratio сам приходит к 1 без отдельной ветки —
+ * строка не дёргается, когда марка становится готова прижать (тот же принцип,
+ * что уже чинила K-23 для другого сигнала).
  */
-function setupRibbonPullGesture(ribbon) {
-    const book = document.getElementById('book');
-    let startY = 0;
-    let startX = 0;
-    let tracking = false;
-    let decided = false;
-    let dragging = false;
-    let pulled = false;
-
-    const beginDrag = () => {
-        if (!book) return;
-        dragging = true;
-        pulled = true; // жест пошёл — тап после него не должен сработать отдельно
-        setBookTransition(book, '');
-        book.hidden = false;
-        // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
-        // уже атласом, а не подменяется им по приезде.
-        applyFirstBookOpenCut();
-        renderBook();
-        setBookTransform(book, `translateY(${bookTravelPx()}px)`);
-    };
-
-    const start = (event) => {
-        if (isMultiTouch(event) || bookOpen) { tracking = false; return; }
-        if (event.type === 'mousedown' && event.button !== 0) return;
-        const p = getGesturePoint(event);
-        if (!p) return;
-        startY = p.clientY;
-        startX = p.clientX;
-        tracking = true;
-        decided = false;
-        dragging = false;
-        pulled = false;
-    };
-
-    const move = (event) => {
-        if (!tracking || bookOpen || isMultiTouch(event)) return;
-        const p = getGesturePoint(event);
-        if (!p) return;
-        const dy = startY - p.clientY;
-        const dx = Math.abs(p.clientX - startX);
-
-        if (!decided) {
-            if (Math.max(dy, dx) < BOOK_AXIS_DECIDE_PX) return;
-            decided = true;
-            if (dy <= 0 || dy <= dx) { tracking = false; return; } // не вверх — не наш жест
-            beginDrag();
-        }
-
-        if (!dragging) return;
-        if (event.cancelable) event.preventDefault();
-        setBookTransform(book, `translateY(${Math.max(0, bookTravelPx() - dy)}px)`);
-    };
-
-    const end = (event) => {
-        if (!tracking) { tracking = false; return; }
-        tracking = false;
-        if (!dragging) return;
-        const p = getGesturePoint(event);
-        const dy = p ? startY - p.clientY : 0;
-        dragging = false;
-
-        if (dy >= BOOK_OPEN_SWIPE_MIN_PX) {
-            // K-26: довод — доезжаем вверх до конца тем же ходом, что вёл
-            // за пальцем, и только потом открываем по-настоящему.
-            settleBookTransform(book, 0, () => openBook());
-        } else {
-            // ниже порога — страница падает обратно, книга остаётся закрытой
-            settleBookTransform(book, bookTravelPx(), () => { if (book) book.hidden = true; });
-        }
-    };
-
-    ribbon.addEventListener('touchstart', start, { passive: true });
-    ribbon.addEventListener('touchmove', move, { passive: false });
-    ribbon.addEventListener('touchend', end);
-    ribbon.addEventListener('touchcancel', end);
-    ribbon.addEventListener('mousedown', start);
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', end);
-
-    // Потянули — click по ленте под пальцем не должен сработать отдельно
-    ribbon.addEventListener('click', (event) => {
-        if (!pulled) return;
-        pulled = false;
-        event.stopPropagation();
-        event.preventDefault();
-    }, true);
-
-    // Тап по ленте — короткая дорога, но с тем же доводом (K-26)
-    ribbon.addEventListener('click', () => {
-        if (bookOpen) return;
-        openBookAnimated();
-    });
+function createAchievementProgressBar(prog) {
+    const bar = document.createElement('div');
+    bar.className = 'achv-row-bar';
+    const fill = document.createElement('div');
+    fill.className = 'achv-row-bar-fill';
+    const ratio = prog.target > 0 ? Math.max(0, Math.min(1, prog.current / prog.target)) : 0;
+    fill.style.width = (ratio * 100).toFixed(1) + '%';
+    bar.appendChild(fill);
+    return bar;
 }
 
-function setupBookControls() {
-    // K-05: лента — единая цель: тап, потягивание вверх или Enter открывают
-    // книгу на той высечке, где игрок был в прошлый раз.
-    document.getElementById('skyRibbon')?.addEventListener('keydown', (event) => {
-        if (event.key !== 'Enter' && event.key !== ' ') return;
-        event.preventDefault();
-        openBookAnimated();
-    });
+/** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
+function createAchievementLockedRow(reason) {
+    const row = document.createElement('div');
+    row.className = 'achv-row achv-row-locked';
 
-    document.querySelectorAll('.book-tab').forEach(btn => {
-        btn.addEventListener('click', () => switchBookCut(btn.dataset.cut));
-    });
+    const icon = document.createElement('div');
+    icon.className = 'achv-row-icon achv-row-icon-uncut';
+    icon.appendChild(glyphSign('lock', 22));
+    row.appendChild(icon);
 
-    // K-18: пейджер живёт в подвале книги, те же два узла на всех разворотах
-    // (renderBookHead переставляет им data-pager/hidden). K-28: ведёт сквозной
-    // swipeBookPage, а не stepBookPage — крутит и главы атласа/штампов, и
-    // переходы между разделами, ровно как горизонтальный свайп.
-    document.getElementById('bookFootPrev')?.addEventListener('click', (event) => {
-        swipeBookPage(Number(event.currentTarget.dataset.dir));
-    });
-    document.getElementById('bookFootNext')?.addEventListener('click', (event) => {
-        swipeBookPage(Number(event.currentTarget.dataset.dir));
-    });
+    const body = document.createElement('div');
+    body.className = 'achv-row-body';
 
-    // B-02: тумблер режима холста — тот же угол, где раньше жила кнопка отката (K-04)
-    document.getElementById('obsModeConnectBtn')?.addEventListener('click', () => setObservatoryMode('connect'));
-    document.getElementById('obsModeMoveBtn')?.addEventListener('click', () => setObservatoryMode('move'));
+    const title = document.createElement('div');
+    title.className = 'achv-row-title achv-row-title-hidden';
+    title.textContent = t('achv.lockedTitle');
+    body.appendChild(title);
 
-    // K-21: Enter коммитит и закрывает, Esc отменяет ввод (не коммитит) и
-    // закрывает, потеря фокуса коммитит — тот же путь, что и Enter.
-    const exLibrisRenameInput = document.getElementById('exLibrisRenameInput');
-    if (exLibrisRenameInput) {
-        // Enter/Esc зовут коммит/закрытие НАПРЯМУЮ, а не через .blur(): реальный
-        // blur — это событие потери фокуса, и полагаться, что программный blur()
-        // его вызовет, нельзя (в headless-браузере программный focus() не всегда
-        // становится document.activeElement, и .blur() тогда молча ничего не
-        // делает). blur() ниже — просто убрать курсор/клавиатуру, если фокус
-        // всё-таки настоящий; сам путь Enter/Esc от этого не зависит.
-        exLibrisRenameInput.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                commitObservatoryRenameField();
-                closeObservatoryRenameField();
-                exLibrisRenameInput.blur();
-            } else if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation(); // не даём window-хендлеру закрыть всю книгу
-                closeObservatoryRenameField(); // без коммита — ввод отбрасывается
-                exLibrisRenameInput.blur();
-            }
-        });
-        // Реальная потеря фокуса (тап мимо поля) — коммитит тем же путём, что Enter.
-        exLibrisRenameInput.addEventListener('blur', () => {
-            commitObservatoryRenameField();
-            closeObservatoryRenameField();
-        });
-    }
+    const text = document.createElement('div');
+    text.className = 'achv-row-step';
+    text.textContent = reason;
+    body.appendChild(text);
 
-    setupBookCloseGesture();
+    row.appendChild(body);
+    return row;
 }
 
-function onGlobalPopupKeydown(event) {
-    if (event.key === 'Escape') {
-        closeBook();
-        return;
-    }
-    if (!bookOpen) return;
-    // K-28: клавиатура — тот же сквозной переход, что кнопка и свайп.
-    if (event.key === 'ArrowLeft') swipeBookPage(-1);
-    if (event.key === 'ArrowRight') swipeBookPage(1);
-}
+/**
+ * K-08: достижение — сцепка марок, как в альбоме филателиста. Одна строка:
+ * имя с линейкой из точек и счётом текущей ступени, курсивное описание того,
+ * что именно считается, и полоска из пяти клеток — по ней сразу видно,
+ * сколько света уже в книге и сколько ещё ждёт (getAchievementChainStepReward
+ * на каждой клетке, суммы нигде не пересчитываются заново).
+ */
+function createAchievementRow(chain) {
+    const lockReason = getChainLockReason(chain);
+    if (lockReason) return createAchievementLockedRow(lockReason);
 
+    const p = achievementProgress[chain.id] || { stepIndex: 0, claimable: false };
+    // K-22: суточная цепочка тоже уходит в «done» (обе марки прижаты), но
+    // до конца суток, а не навсегда — recompute сбросит stepIndex сам,
+    // как только придёт новое небо.
+    const done = p.stepIndex >= chain.steps.length;
+
+    const row = document.createElement('div');
+    row.className = 'achv-row'
+        + (done ? ' achv-row-done' : '')
+        + (p.claimable ? ' achv-row-claimable' : '');
+    row.dataset.chainId = chain.id;
+
+    // U-24: текущий шаг читается один раз — бар в шапке и описание ниже
+    // берут один и тот же stepEntry/prog, не пересчитывают их порознь.
+    const stepEntry = chain.steps[p.stepIndex];
+    const prog = stepEntry ? getAchievementStepProgress(stepEntry.check) : null;
+
+    const head = document.createElement('div');
+    head.className = 'achv-row-head';
+
+    const title = document.createElement('span');
+    title.className = 'achv-row-title';
+    title.textContent = chain.title;
+    head.appendChild(title);
+
+    const dots = document.createElement('span');
+    dots.className = 'achv-row-dots';
+    head.appendChild(dots);
+
+    const countInfo = buildAchievementHeadCount(chain, p, done);
+    const count = document.createElement('span');
+    count.className = 'achv-row-count' + (countInfo.ready ? ' achv-row-count-ready' : '');
+    count.textContent = countInfo.text;
+    head.appendChild(count);
+
+    row.appendChild(head);
+
+    // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
+    // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
+    // steps) описания не показывает — печатать нечего.
+    //
+    // U-24: бар — в одной строке с описанием, под счётом (первая версия
+    // ставила его в шапку рядом со счётом — по следующему фидбеку заказчика
+    // перенесён сюда); только у цепочек с числовым прогрессом (суточный
+    // квест и одношаговые условия дают null).
+    const desc = document.createElement('div');
+    desc.className = 'achv-row-desc';
+    const descText = document.createElement('span');
+    descText.className = 'achv-row-desc-text';
+    descText.textContent = stepEntry ? stepEntry.desc : '';
+    desc.appendChild(descText);
+    if (prog) desc.appendChild(createAchievementProgressBar(prog));
+    row.appendChild(desc);
+
+    row.appendChild(createAchievementTiles(chain, p));
+
+    return row;
+}

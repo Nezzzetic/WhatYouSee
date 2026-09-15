@@ -474,7 +474,6 @@
             // O-02: реально загруженная картинка (оверрайд/воскресенье/первые
             // ночи), а не только ручной оверрайд, как было раньше.
             pictureFieldId: typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null,
-            dailyTargets: getDailyTargetShapes(),
             starCount: Array.isArray(fieldStars) ? fieldStars.length : 0,
             freeStarCount: getPlayableStars().length,
             levelComplete: !!constellationArtRevealed,
@@ -554,16 +553,18 @@
     }
 
     /**
-     * V-16: срез баннера разреза главы — узкое исключение из K-15. Без него
-     * браузерный слой умеет только ловить скриншот в произвольный момент.
-     * `chapterCutBannerIndices` — script-level let из ui.js, виден по имени.
+     * U-29 (выросло из V-16): срез баннера уровня — узкое исключение из K-15.
+     * Без него браузерный слой умеет только ловить скриншот в произвольный
+     * момент. `levelBannerLevels`/`levelBannerUnlockKeys` — script-level let
+     * из ui.js, видны по имени.
      */
-    function chapterCutBannerState() {
-        const el = document.getElementById('chapterCutBanner');
-        const titleEl = document.getElementById('chapterCutBannerTitle');
+    function levelBannerState() {
+        const el = document.getElementById('levelBanner');
+        const titleEl = document.getElementById('levelBannerTitle');
         return {
             active: !!(el && !el.hidden),
-            indices: typeof chapterCutBannerIndices !== 'undefined' ? [...chapterCutBannerIndices] : [],
+            levels: typeof levelBannerLevels !== 'undefined' ? [...levelBannerLevels] : [],
+            unlocks: typeof levelBannerUnlockKeys !== 'undefined' ? [...levelBannerUnlockKeys] : [],
             text: titleEl ? titleEl.textContent : ''
         };
     }
@@ -746,24 +747,14 @@
         stars: observatoryStarsDump,
         lines: observatoryLinesDump,
         state: observatoryState,
-        /** Позиция — мировые координаты; связи проверяются на разрыв как пальцем. */
+        /** Позиция — мировые координаты; связи не рвутся никаким расстоянием (M-11). */
         move: (id, x, y) => {
             const star = getObservatoryStarById(Number(id));
             if (!star) fail('observatory.move: нет звезды ' + id);
             star.x = Math.max(0, Math.min(FIELD_WIDTH, Number(x)));
             star.y = Math.max(0, Math.min(FIELD_HEIGHT, Number(y)));
-            // Разрыв растянутых связей — то же, что делает mouseReleased
-            const maxEdge = getMaxEdgeLength();
-            const doomed = observatoryLines.filter(l => {
-                if (l.startId !== star.id && l.endId !== star.id) return false;
-                const a = getObservatoryStarById(l.startId);
-                const b = getObservatoryStarById(l.endId);
-                return a && b && Math.hypot(a.x - b.x, a.y - b.y) > maxEdge + 1e-6;
-            });
-            for (const l of doomed) removeObservatoryLine(l.startId, l.endId);
-            if (doomed.length > 0) syncObservatoryNames();
             scheduleObservatorySave();
-            return { star: observatoryStarView(star), broken: doomed.length };
+            return { star: observatoryStarView(star), broken: 0 };
         },
         /** Есть связь — снимает её, нет — проводит (та же протяжка, что пальцем). */
         connect: (a, b) => {
@@ -777,9 +768,6 @@
                 syncObservatoryNames();
                 scheduleObservatorySave();
                 return { connected: false, lineCount: observatoryLines.length };
-            }
-            if (!isObservatoryEdgeLengthValid(ia, ib)) {
-                fail('observatory.connect: связь ' + ia + '-' + ib + ' длиннее getMaxEdgeLength()');
             }
             observatoryLines.push({ startId: ia, endId: ib });
             syncObservatoryNames();
@@ -1074,7 +1062,7 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
-        chapterCutBanner: chapterCutBannerState,
+        levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,
         setZoom,

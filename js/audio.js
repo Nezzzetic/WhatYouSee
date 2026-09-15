@@ -2,6 +2,7 @@
 // All functions are global. Safe to call before initAudio() — they silently no-op.
 
 let _audioCtx = null;
+let _sfxBus = null; // A-09: общая шина эффектов — GainNode(SFX_BUS_GAIN) → компрессор → destination
 let _lastEdgeSnapTime = 0;
 
 // A-05: жест игрока уже был. Ставится initAudio() — она зовётся ровно из точек
@@ -102,6 +103,19 @@ function initAudio() {
     if (!_audioCtx) {
         try {
             _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            // A-09: шина эффектов — один множитель на все голоса (SFX_BUS_GAIN)
+            // и компрессор как страховка от клиппинга при наложении (волна V-12,
+            // аккорд забора A-03), а не подстройка порога под каждый голос отдельно.
+            _sfxBus = _audioCtx.createGain();
+            _sfxBus.gain.setValueAtTime(SFX_BUS_GAIN, _audioCtx.currentTime);
+            const compressor = _audioCtx.createDynamicsCompressor();
+            compressor.threshold.setValueAtTime(-8, _audioCtx.currentTime);
+            compressor.knee.setValueAtTime(6, _audioCtx.currentTime);
+            compressor.ratio.setValueAtTime(8, _audioCtx.currentTime);
+            compressor.attack.setValueAtTime(0.003, _audioCtx.currentTime);
+            compressor.release.setValueAtTime(0.15, _audioCtx.currentTime);
+            _sfxBus.connect(compressor);
+            compressor.connect(_audioCtx.destination);
         } catch (e) {}
     }
     // A-07: тот же жест, что будит контекст, запускает музыку — другого
@@ -142,7 +156,7 @@ function playEdgeSnap(chainEdgeCount) {
         const osc = _audioCtx.createOscillator();
         const gain = _audioCtx.createGain();
         osc.connect(gain);
-        gain.connect(_audioCtx.destination);
+        gain.connect(_sfxBus);
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq, t);
         osc.frequency.exponentialRampToValueAtTime(freq * 0.85, t + 0.06); // лёгкий спад — характер «щелчка»
@@ -163,7 +177,7 @@ function playCommit() {
             const osc = _audioCtx.createOscillator();
             const gain = _audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(_audioCtx.destination);
+            gain.connect(_sfxBus);
             osc.type = 'sine';
             osc.frequency.setValueAtTime(freq, t);
             gain.gain.setValueAtTime(vol, t);
@@ -230,7 +244,7 @@ function playClaim(reward) {
         const sub = _audioCtx.createOscillator();
         const subGain = _audioCtx.createGain();
         sub.connect(subGain);
-        subGain.connect(_audioCtx.destination);
+        subGain.connect(_sfxBus);
         sub.type = 'sine';
         sub.frequency.setValueAtTime(root / 2, t);
         subGain.gain.setValueAtTime(0.0001, t);
@@ -243,7 +257,7 @@ function playClaim(reward) {
             const osc = _audioCtx.createOscillator();
             const gain = _audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(_audioCtx.destination);
+            gain.connect(_sfxBus);
             osc.type = 'sine';
             const start = t + i * CLAIM_NOTE_STEP;
             osc.frequency.setValueAtTime(root * Math.pow(2, CLAIM_NOTES[i] / 12), start);
@@ -266,7 +280,7 @@ function playLevelComplete() {
             const osc = _audioCtx.createOscillator();
             const gain = _audioCtx.createGain();
             osc.connect(gain);
-            gain.connect(_audioCtx.destination);
+            gain.connect(_sfxBus);
             osc.type = 'sine';
             const start = t + i * 0.15;
             osc.frequency.setValueAtTime(freq, start);

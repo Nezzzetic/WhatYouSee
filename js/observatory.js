@@ -437,27 +437,9 @@ function removeObservatoryLine(a, b) {
     return observatoryLines.length !== before;
 }
 
-/** Единственное ограничение холста: длина связи ≤ getMaxEdgeLength(). */
+/** M-11: у холста нет ограничения на длину связи — только сами звёзды должны существовать. */
 function isObservatoryEdgeLengthValid(a, b) {
-    const sa = getObservatoryStarById(a);
-    const sb = getObservatoryStarById(b);
-    if (!sa || !sb) return false;
-    return Math.hypot(sa.x - sb.x, sa.y - sb.y) <= getMaxEdgeLength() + 1e-6;
-}
-
-/** Связи звезды, растянутые дальше радиуса, — «обречённые»: рвутся на отпускании. */
-function getObservatoryDoomedLines() {
-    if (!observatoryDragStar) return [];
-    const maxEdge = getMaxEdgeLength();
-    const out = [];
-    for (const l of observatoryLines) {
-        if (l.startId !== observatoryDragStar.id && l.endId !== observatoryDragStar.id) continue;
-        const a = getObservatoryStarById(l.startId);
-        const b = getObservatoryStarById(l.endId);
-        if (!a || !b) continue;
-        if (Math.hypot(a.x - b.x, a.y - b.y) > maxEdge + 1e-6) out.push(l);
-    }
-    return out;
+    return !!getObservatoryStarById(a) && !!getObservatoryStarById(b);
 }
 
 // =============================================================================
@@ -844,7 +826,8 @@ function observatoryMouseDragged() {
 
     if (observatoryMode === 'move') {
         if (!observatoryDragStar) return;
-        // Звезда следует за пальцем; связи тянутся сами, обречённые подсвечиваются
+        // Звезда следует за пальцем; связи тянутся сами следом, разорвать
+        // их расстоянием нельзя (M-11)
         observatoryDragStar.x = constrain(fx, 0, FIELD_WIDTH);
         observatoryDragStar.y = constrain(fy, 0, FIELD_HEIGHT);
         return;
@@ -901,11 +884,7 @@ function observatoryMouseReleased() {
             // Тап красит звезду — только в «перемещать»; в «соединять» тап молчит
             cycleObservatoryStarColor(observatoryPressStar);
         } else if (observatoryDragStar) {
-            // Обречённые связи рвутся именно здесь: пока палец держит, ничего
-            // не потеряно — вернул звезду в радиус, связь уцелела
-            const doomed = getObservatoryDoomedLines();
-            for (const l of doomed) removeObservatoryLine(l.startId, l.endId);
-            if (doomed.length > 0) syncObservatoryNames();
+            // M-11: связь не рвётся никаким расстоянием — только позиция меняется
             scheduleObservatorySave();
         }
     }
@@ -935,7 +914,6 @@ function drawObservatoryBackgroundStars() {
 }
 
 function drawObservatoryLines() {
-    const doomed = new Set(getObservatoryDoomedLines());
     const gap = getLineStarGapWorld();
 
     for (const l of observatoryLines) {
@@ -945,20 +923,10 @@ function drawObservatoryLines() {
         const trimmed = trimSegmentEndsWorld(a.x, a.y, b.x, b.y, gap, gap);
         if (!trimmed) continue;
 
-        if (doomed.has(l)) {
-            // Обречённая связь: пунктир сургучом, исчезнет на отпускании
-            // (K-01: системного красного в палитре книги нет).
-            stroke(WAX_RGB[0], WAX_RGB[1], WAX_RGB[2], 210);
-            strokeWeight(2 / zoomLevel);
-            drawingContext.setLineDash([8 / zoomLevel, 6 / zoomLevel]);
-            line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);
-            drawingContext.setLineDash([]);
-        } else {
-            const rgb = observatoryLineRgb(a, b);
-            stroke(rgb[0], rgb[1], rgb[2], 210);
-            strokeWeight(2 / zoomLevel);
-            line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);
-        }
+        const rgb = observatoryLineRgb(a, b);
+        stroke(rgb[0], rgb[1], rgb[2], 210);
+        strokeWeight(2 / zoomLevel);
+        line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);
     }
 }
 
@@ -983,28 +951,17 @@ function drawObservatoryStars() {
     }
 }
 
-/** Резиновая линия от якоря к курсору — как при рисовании на поле. */
+/** Резиновая линия от якоря к курсору — как при рисовании на поле, без предела длины (M-11). */
 function drawObservatoryDraftLine() {
     if (observatoryMode !== 'connect' || !observatoryConnectAnchor) return;
     const fx = mouseX / zoomLevel + camX;
     const fy = mouseY / zoomLevel + camY;
     const rgb = colorValueToRgb(observatoryConnectAnchor.colorValue);
 
-    let ex = fx;
-    let ey = fy;
-    const dx = ex - observatoryConnectAnchor.x;
-    const dy = ey - observatoryConnectAnchor.y;
-    const len = Math.hypot(dx, dy);
-    const maxLen = getMaxEdgeLength();
-    if (len > maxLen && len > 1e-9) {
-        ex = observatoryConnectAnchor.x + dx * (maxLen / len);
-        ey = observatoryConnectAnchor.y + dy * (maxLen / len);
-    }
-
     stroke(rgb[0], rgb[1], rgb[2], 180);
     strokeWeight(2 / zoomLevel);
     const trimmed = trimSegmentEndsWorld(
-        observatoryConnectAnchor.x, observatoryConnectAnchor.y, ex, ey,
+        observatoryConnectAnchor.x, observatoryConnectAnchor.y, fx, fy,
         getLineStarGapWorld(), 0
     );
     if (trimmed) line(trimmed.ax, trimmed.ay, trimmed.bx, trimmed.by);

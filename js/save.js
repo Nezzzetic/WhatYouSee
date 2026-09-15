@@ -2,16 +2,10 @@
 
 // L-01: v02 → v03. В сохранённом небе лежат `constellations[].shape/name`
 // русскими именами — после перехода на ASCII-ID они не резолвятся ни в SHAPES,
-// ни в атласе. Новый ключ означает чистое небо, старый удаляется сразу, чтобы
-// не копить мусор в localStorage.
+// ни в атласе. Новый ключ означает чистое небо.
+// R-04: чистка старого ключа `starsReborn_v02` при загрузке снята — после L-01
+// прошло полтора месяца, а забытый ключ ни на что не влияет.
 const SAVE_KEY = 'starsReborn_v03';
-const LEGACY_SAVE_KEYS = ['starsReborn_v02'];
-
-(function dropLegacySaveKeys() {
-    for (const key of LEGACY_SAVE_KEYS) {
-        try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-    }
-}());
 
 // =============================================================================
 // SAVE
@@ -19,18 +13,18 @@ const LEGACY_SAVE_KEYS = ['starsReborn_v02'];
 
 function saveGame() {
     try {
+        // R-03: totalScore, bestScore, uniqueShapesFound, bonusAwardedClasses
+        // и customTypes из сейва неба сняты вместе со старым счётом. Версия не
+        // поднимается: сейв прошлой версии с этими полями читается как раньше,
+        // поля просто игнорируются и умирают со сменой суток.
         const state = {
-            totalScore,
-            uniqueShapesFound: [...uniqueShapesFound],
-            bonusAwardedClasses: [...bonusAwardedClasses],
             constellations,
             fieldStars,
             fieldBackgroundStars,
-            customTypes,
-            bestScore,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
-            dailyTargetShapes: getDailyTargetShapes(),
+            // R-04: `dailyTargetShapes` снят вместе с якорями M-03. Сейв тех же
+            // суток с этим полем читается как раньше — поле просто игнорируется.
             // M-10: память имён отменённых созвездий. Поле необязательное —
             // версия сейва из-за него не поднимается: сохранение без него
             // читается как ночь, в которой ещё ничего не отменяли.
@@ -72,28 +66,13 @@ function loadGame() {
             return false;
         }
 
-        totalScore = state.totalScore || 0;
         constellations = state.constellations || [];
-        uniqueShapesFound = new Set(
-            constellations.map(c => c.recognizedClass || c.shape).filter(Boolean)
-        );
-        bonusAwardedClasses = new Set(state.bonusAwardedClasses || []);
-        if (bonusAwardedClasses.size === 0) {
-            bonusAwardedClasses = new Set(
-                constellations
-                    .map(c => c.recognizedClass || c.shape)
-                    .filter(Boolean)
-            );
-        }
         fieldStars = state.fieldStars || [];
         fieldBackgroundStars = (state.fieldBackgroundStars || []).map(s =>
             s.phase !== undefined ? s : { ...s, phase: Math.random() * Math.PI * 2 }
         );
         constellationArtRevealed =
             state.constellationArtRevealed !== undefined ? !!state.constellationArtRevealed : true;
-        customTypes = state.customTypes || [];
-        bestScore = Math.max(state.bestScore || 0, getFieldScore());
-        resetRecordScoreBadge();
 
         // M-10: память имён отменённых созвездий переживает F5 — сейв тех же
         // суток, значит и поле, и id звёзд те же, и ключи всё ещё указывают
@@ -103,17 +82,6 @@ function loadGame() {
         }
 
         rebuildStarCountStateFromConstellations();
-
-        dailyTargetShapes = Array.isArray(state.dailyTargetShapes)
-            ? state.dailyTargetShapes.slice()
-            : [];
-        if (dailyTargetShapes.length === 0) {
-            pickDailyTargets();
-        }
-
-        for (const ct of customTypes) {
-            registerCustomType(ct.name, ct.color, ct.signature, ct.patternSnapshot || null);
-        }
 
         for (const star of fieldStars) {
             if (!star) continue;
@@ -137,12 +105,6 @@ function loadGame() {
         normalizeAtlasCollectedOnField();
 
         for (const c of constellations) {
-            const shapeName = c.shape || c.name;
-            if (c.atlasCollected || constellationArtRevealed) {
-                assignConstellationImageTransform(c);
-            } else {
-                c.imageTransform = null;
-            }
             if (constellationArtRevealed && Array.isArray(c.lines) && c.lines.length > 0) {
                 const fallbackStarIds = new Set();
                 for (const seg of c.lines) {

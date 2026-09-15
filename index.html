@@ -87,6 +87,9 @@
         <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.2"/></symbol>
         <!-- лазурные · волна -->
         <symbol id="i-wave" viewBox="0 0 24 24"><path d="M3 9C5.5 6 8.5 6 11 9 13.5 12 16.5 12 19 9M3 16C5.5 13 8.5 13 11 16 13.5 19 16.5 19 19 16"/></symbol>
+        <!-- O-07: закрыть книгу — крестик, единственный знак кассы с золотом
+             вместо цвета строки (см. .book-close-sign, style.css) -->
+        <symbol id="i-cross" viewBox="0 0 24 24"><path d="M6 6 18 18"/><path d="M18 6 6 18"/></symbol>
       </defs>
     </svg>
 
@@ -170,13 +173,14 @@
                     <h2 id="bookTitle" class="book-title"></h2>
                     <div class="book-rule" aria-hidden="true"></div>
                 </div>
-                <!-- V-16: баннер разреза главы — единственный тост в игре, узкое
-                     исключение из K-15 (showChapterCutBanner, ui.js). Ребёнок
+                <!-- U-29 (выросло из V-16): баннер уровня — единственный тост в игре,
+                     узкое исключение из K-15 (showLevelBanner, ui.js). Ребёнок
                      .book-page, не .book-body — renderBook() не трогает этот узел
                      при перерисовке текущего раздела. -->
-                <div id="chapterCutBanner" class="chapter-cut-banner" hidden role="status" aria-live="polite">
-                    <div class="chapter-cut-banner-eyebrow" data-i18n="book.chapterCutBannerEyebrow"></div>
-                    <div id="chapterCutBannerTitle" class="chapter-cut-banner-title"></div>
+                <div id="levelBanner" class="level-banner" hidden role="status" aria-live="polite">
+                    <div class="level-banner-eyebrow" data-i18n="book.levelBannerEyebrow"></div>
+                    <div id="levelBannerTitle" class="level-banner-title"></div>
+                    <div id="levelBannerUnlocks" class="level-banner-unlocks" hidden></div>
                 </div>
                 <div id="bookBody" class="book-body">
                     <div id="bookToday" class="book-section" hidden>
@@ -293,6 +297,22 @@
                 </button>
                 <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
             </div>
+
+            <!-- O-07: постоянный знак закрытия — новичок без подсказок со
+                 стороны не понимал, как выйти из книги (K-26 сняла кнопку
+                 «RETURN TO THE SKY», оставив только жест и Escape). Хвост той
+                 же ширины, что у ленты-закладки на небе (K-05, --ribbon-w),
+                 только висит сверху страницы, а не снизу экрана; знак —
+                 золотой крестик «cross» (единственный знак кассы K-02 со
+                 своим цветом, а не цветом строки — см. .book-close-sign).
+                 Тап закрывает тем же доводом (settleBookTransform →
+                 closeBook), что и потягивание вниз. -->
+            <button type="button" id="bookCloseRibbon" class="book-close-ribbon"
+                    data-i18n-aria="book.closeRibbon">
+                <span class="book-close-ribbon-tail" aria-hidden="true">
+                    <svg class="ic ic-sm book-close-sign" width="14" height="14" focusable="false"><use href="#i-cross"/></svg>
+                </span>
+            </button>
         </div>
     </div>
 
@@ -306,17 +326,30 @@
     <script src="js/constants.js"></script>
     <script src="js/pictureFields.js"></script>
     <script src="js/field.js"></script>
+    <!-- R-05: бывшие camera.js + drawing.js — камера, рендер неба, сцены во времени,
+         созвездия, ввод; порядок прежний, файлы подряд на месте двух старых -->
     <script src="js/camera.js"></script>
-    <script src="js/drawing.js"></script>
-    <!-- B-02: обсерватория опирается на camera.js (клампы, зазоры) и field.js (maxEdge) -->
+    <script src="js/skyRender.js"></script>
+    <script src="js/skyEffects.js"></script>
+    <script src="js/constellations.js"></script>
+    <script src="js/input.js"></script>
+    <!-- B-02: обсерватория опирается на camera.js (клампы), skyRender.js (зазоры) и field.js (maxEdge) -->
     <script src="js/observatory.js"></script>
     <script src="js/topologyRecognition.js"></script>
     <script src="js/recognition.js"></script>
-    <script src="js/customTypes.js"></script>
     <script src="js/scoring.js"></script>
     <script src="js/progression.js"></script>
+    <!-- R-05: бывший ui.js — общее, каркас книги и по файлу на страницу;
+         рендер штампов — после achievements.js, откуда он переехал -->
     <script src="js/ui.js"></script>
+    <script src="js/book.js"></script>
+    <script src="js/bookToday.js"></script>
+    <script src="js/bookIndex.js"></script>
+    <script src="js/bookAtlas.js"></script>
+    <script src="js/bookExLibris.js"></script>
+    <script src="js/bookSettings.js"></script>
     <script src="js/achievements.js"></script>
+    <script src="js/bookStamps.js"></script>
     <script src="js/save.js"></script>
     <script src="js/tutorial.js"></script>
     <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после

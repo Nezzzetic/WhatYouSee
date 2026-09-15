@@ -14,8 +14,7 @@ const NIGHT_RGB = [5, 9, 15];
 const INK_RGB = [234, 241, 249];
 const INK_MUTED_RGB = [165, 184, 205];
 const INK_FAINT_RGB = [100, 128, 157];
-/** Сургуч: «готово, прижми». Единственный сигнал. */
-const WAX_RGB = [196, 85, 59];
+// Сургуч (--wax, «готово, прижми») канвасу не нужен — живёт только в CSS (R-03).
 /** Золото: свет и пройденный путь. */
 const GOLD_RGB = [217, 164, 65];
 const GOLD_LIGHT_RGB = [240, 216, 166];
@@ -24,7 +23,7 @@ const GOLD_LIGHT_RGB = [240, 216, 166];
 const NEBULA_TINT_RGB = [30, 58, 104];
 
 // --- Движение: два темпа и одна кривая ---------------------------------------
-// Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900). Темп назначается
+// Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900, только в CSS). Темп назначается
 // движению, которое игрок видит ОТДЕЛЬНЫМ событием: отклику на его касание
 // или сцене целиком. Внутренние шаги сцены (шаг волны, задержка между
 // созвездиями, вспышка одной звезды внутри общей волны) темпом не управляются —
@@ -32,7 +31,6 @@ const NEBULA_TINT_RGB = [30, 58, 104];
 
 const MOTION_MICRO_MS = 240;
 const MOTION_SCENE_MS = 700;
-const MOTION_SCENE_LONG_MS = 900;
 
 /**
  * Кривая книги — cubic-bezier(.22, 1, .36, 1), та же, что в CSS (--ease).
@@ -80,9 +78,6 @@ const TOTAL_STAR_COUNT = 150;
 const STAR_EDGE_MARGIN = 100;
 const MIN_STAR_DISTANCE = 60;
 const BACKGROUND_STAR_COUNT = 600;
-
-/** M-03: вставлять якорные звёзды фигур в начало дня. false = скрытые подсказки отключены. */
-const INJECT_ANCHOR_STARS = false;
 
 // =============================================================================
 // ZOOM PARAMETERS
@@ -132,9 +127,6 @@ const LOCKED_STAR_SIZE_MULTIPLIER = 1.38;
  *  звезды на любом зуме (на отзуме звезда крупнее в world-юнитах — зазор тоже).
  *  Значение подобрано в браузере (2.0). Чисто визуально. */
 const LINE_STAR_GAP_FACTOR = 2.00;
-/** Skeleton under line-art overlay only (shapes with SHAPES[].image). */
-const LINEART_SKELETON_STROKE_ALPHA = 42;
-const LINEART_SKELETON_STROKE_WEIGHT = 0.65;
 /** Committed constellation lines at level reveal (no PNG on field). */
 const REVEALED_CONSTELLATION_STROKE_WEIGHT = 2.5;
 const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
@@ -355,6 +347,20 @@ const CLAIM_SOUND_TIER_SMALL = 30;  // ≤ — две ноты
 const CLAIM_SOUND_TIER_MID = 100;   // ≤ — три ноты; выше — четыре
 
 // =============================================================================
+// A-09: ШИНА ЭФФЕКТОВ
+// =============================================================================
+//
+// Каждый голос (A-01/A-02/A-03) прописывает свою громкость числом
+// (`gain.setValueAtTime(0.18…)`, `0.12`, `0.15`…) и раньше шёл прямо на
+// `_audioCtx.destination`. Одной ручки на всех не было — баланс со звуком
+// эффектов против музыки (A-07) правился бы правкой десятка чисел разом.
+//
+// `SFX_BUS_GAIN` — не абсолютная громкость, а множитель поверх уже прописанных
+// чисел: подключается через общий `GainNode` (см. `audio.js`, `initAudio()`),
+// сохраняя баланс между голосами. Число калибруется на слух, не формулой.
+const SFX_BUS_GAIN = 1.4;
+
+// =============================================================================
 // A-07: ЭМБИЕНТ-МУЗЫКА
 // =============================================================================
 //
@@ -372,9 +378,9 @@ const MUSIC_TRACKS = [
     'music/unraveling.mp3'       // 7:24, эмбиентные струнные и синт
 ];
 
-// Музыка уступает событийным звукам: те бьют пиками 0.12…0.18 по синусоиде,
-// эта громкость поверх −18,4 LUFS оставляет их слышимыми поверх фона.
-const MUSIC_VOLUME = 0.34;
+// A-09: музыка тише, эффекты (через SFX_BUS_GAIN выше) громче — перебалансировка
+// по прямой правке заказчика, эффекты должны отчётливо выделяться поверх фона.
+const MUSIC_VOLUME = 0.22;
 
 // Пауза между вещами. Тишина здесь — часть медитативного тона, а не пропуск:
 // два трека подряд без передышки читаются как радио, а не как ночь.
@@ -461,9 +467,6 @@ const MAX_STARS_PER_CONSTELLATION = 100;
 // и сам переключатель RECOGNITION_MODE — режим остался один.
 // Ограничения §4 живут в topologyRecognition.js со своими числами.
 
-/** Сколько кандидатов показывать в разборе. Живёт: customTypes.js. */
-const RECOG_MAX_CANDIDATES_TO_SHOW = 3;
-
 // =============================================================================
 // ANIMATION PARAMETERS
 // =============================================================================
@@ -479,17 +482,6 @@ const FLOATING_SCORE_DURATION_MS = 1500;
 const FLOATING_SCORE_RISE = 40;
 
 // =============================================================================
-// CONSTELLATION IMAGE OVERLAY
-// =============================================================================
-
-const CONSTELLATION_IMAGE_OPACITY = 255;
-const CONSTELLATION_IMAGE_PADDING = 1.2;
-/** Цепочка 3★ / 2 ребра: нижняя граница extentV как доля extentU (хорда 1–3), чтобы min(scaleU,scaleV) не сжимал лайнарт. */
-const CHAIN3_LINEART_MIN_V_RATIO = 0.35;
-/** Сдвиг лайнарта относительно математической оси. p5: положительный — по часовой. Подбирай ±90, 180 и т.д. под конкретный PNG. */
-const BANANA_LINEART_ANGLE_OFFSET_DEG = 180;
-
-// =============================================================================
 // SHAPE DEFINITIONS
 // =============================================================================
 //
@@ -503,16 +495,7 @@ const SHAPE_UNRECOGNIZED = 'unknown';
 // слоя (Треугольник, Квадрат, Усы, Сердце, Пицца и прочие) удалена вместе
 // с самим слоем — топораспознаватель их не выдавал ни разу.
 const SHAPES = {
-    'banana':            {
-        color: [255, 255, 100],
-        description: 'Плавная дуга из 4 звёзд',
-        image: 'banana-lineart-transparent.png',
-        imageArcSign: 1,
-        imageScale: 0.896,
-        imageAngleOffsetDeg: BANANA_LINEART_ANGLE_OFFSET_DEG,
-        // В долях extentV: «ниже» по исходнику (к низу PNG после finalAngle).
-        imageOffsetV: 0.07
-    },
+    'banana':          { color: [255, 255, 100], description: 'Плавная дуга из 4 звёзд' },
     // Каталог-29 (топологический режим)
     'toothpick':       { color: [225, 225, 210], description: 'Две звезды, одна линия' },
     'checkmark':          { color: [140, 220, 255], description: 'Три звезды цепочкой (уголок)' },
@@ -551,56 +534,13 @@ const SHAPES = {
 // SCORING
 // =============================================================================
 
-const SHAPE_BASE_POINTS = {
-    'banana': 20,
-    // Каталог-29 (топологический режим)
-    'toothpick': 6,
-    'checkmark': 10,
-    'chip': 12,
-    'cookie': 16,
-    'chicken-foot': 14,
-    'earthworm': 16,
-    // Каталог-29 (недемо-фигуры, страницы 2–6) — по числу линий/★
-    'spatula': 16,
-    'diamond': 18,
-    'envelope': 22,
-    'fan': 16,
-    'radish': 16,
-    'donut': 20,
-    'flag': 18,
-    'tadpole': 18,
-    'bunny': 18,
-    'bull': 18,
-    'bow': 22,
-    'house': 22,
-    'mace': 22,
-    'kite': 22,
-    'lantern': 22,
-    'hand-fan': 26,
-    'lollipop': 26,
-    'book': 26,
-    'origami': 26,
-    'wheel': 30,
-    'hammock': 32,
-    'perfectionist': 36,
-    // Fallback
-    [SHAPE_UNRECOGNIZED]: 8
-};
+// R-03: таблица SHAPE_BASE_POINTS снята — после S-01 её не читал никто, писал
+// в неё только registerCustomType (пользовательские виды, сняты там же).
 
 // UNIQUE_DISCOVERY_BONUS удалён: разовое начисление за первое создание фигуры
 // заменено цепочкой «Первооткрыватель» (achievements.js, страница «Огранка и путь»).
 // Молчаливая награда не оставляла следа в Наградах — ни цели заранее, ни
 // прогресса; теперь открытия видно строкой со ступенями и забором.
-
-// =============================================================================
-// CUSTOM CONSTELLATION TYPES
-// =============================================================================
-
-const CUSTOM_TYPE_BASE_POINTS = 12;
-const SIGNATURE_ANGLE_TOLERANCE = 30;
-const SIGNATURE_RATIO_TOLERANCE = 0.5;
-const CUSTOM_MATCH_ACCEPT_THRESHOLD = 0.66;
-const CUSTOM_MATCH_MARGIN_THRESHOLD = 0.06;
 
 // =============================================================================
 // FIELD GOALS — 3 этапа, при достижении каждого даётся XP
@@ -640,10 +580,12 @@ const BOOK_AXIS_DECIDE_PX = 10;       // после стольких px реша
 // на отпускании доезжают до конца тем же ходом, что и сцена (не микро-отклик).
 const BOOK_SETTLE_MS = MOTION_SCENE_MS;
 
-// V-16: баннер разреза главы — узкое исключение из K-15 («тостов нет вовсе»).
-// Держится дольше микро-отклика, но короче полноценной сцены; появление и
-// исчезание — тем же темпом MOTION_SCENE_MS (CSS: var(--t-scene)).
-const CHAPTER_CUT_BANNER_HOLD_MS = 2600;
+// U-29 (выросло из V-16): баннер уровня — узкое исключение из K-15 («тостов
+// нет вовсе»). Держится дольше микро-отклика, но короче полноценной сцены;
+// появление и исчезание — тем же темпом MOTION_SCENE_MS (CSS: var(--t-scene)).
+// Дольше, чем было у баннера разреза главы (2600 мс), — состав строк вырос
+// до трёх (уровень + до трёх строк того, что открылось), решение исполнителя.
+const LEVEL_BANNER_HOLD_MS = 3600;
 
 // S-03: шкала света у корешка меряет добор до следующего уровня — окно берётся
 // из лестницы уровней (getLevelProgress, progression.js). Своей ширины окна у
@@ -685,10 +627,11 @@ const ATLAS_PAGES = [
 ];
 // Глава I открыта бесплатно намеренно — при любой ненулевой цене весь первый
 // вечер игрок провёл бы без единого имени фигуры. B-05: ряд заменён под правку
-// заказчика — массив кумулятивный (getAtlasCumulativeCost, progression.js),
-// эти значения дают показанный игроку порог «opens at» 75 / 250 / 500 ✦
+// заказчика — массив кумулятивный (getAtlasCumulativeCost, progression.js).
+// Правка заказчика 2026-09-13: уровень 2 — 50 ✦, уровень 3 — 200 ✦ (было 75/250);
+// эти значения дают показанный игроку порог «opens at» 50 / 200 / 450 ✦
 // для глав II/III/IV.
-const ATLAS_PAGE_COSTS = [0, 75, 175, 250];
+const ATLAS_PAGE_COSTS = [0, 50, 150, 250];
 const ATLAS_PAGE_COUNT = ATLAS_PAGES.length;
 
 // S-03: лестница уровней. Первые ступени — те же кумулятивные пороги глав
@@ -711,11 +654,11 @@ const LEVEL_NAME_COUNT = 6;
 // ⚠ Это НАКОПИТЕЛЬ, а не цена. Обе величины считаются от «✦, заработанных за
 // всё время» (`lifetimeMetaEarned`), баланс `metaScore` они не трогают никогда.
 //
-// S-03: Экслибрис открывается уровнем, а не своим числом. Прежние 115 ✦ (B-04,
-// «от ритма раскадровки») сели на ближайшую ступень лестницы — уровень 2, тот
-// же, что открывает главу II (решение заказчика: отдельный уровень ему не
-// нужен). Порог в ✦ — производная от лестницы, отдельно его не правят.
-const OBSERVATORY_UNLOCK_LEVEL = 2;
+// S-03: Экслибрис открывается уровнем, а не своим числом. Изначально сел на
+// уровень 2 (та же ступень, что глава II) — правка заказчика 2026-09-13
+// перенесла его на уровень 3 (ту же ступень, что глава III). Порог в ✦ —
+// производная от лестницы, отдельно его не правят.
+const OBSERVATORY_UNLOCK_LEVEL = 3;
 const OBSERVATORY_UNLOCK_COST = ATLAS_PAGE_COSTS
     .slice(0, OBSERVATORY_UNLOCK_LEVEL)
     .reduce((sum, cost) => sum + cost, 0);
@@ -724,19 +667,10 @@ const OBSERVATORY_UNLOCK_COST = ATLAS_PAGE_COSTS
 // открывался бы с одной звездой, а окно шкалы у корешка не двигалось бы месяцами.
 const OBSERVATORY_STAR_COST = 25;
 
-// Ordered list of all shape names (for UI checklist)
-const ALL_SHAPE_NAMES = [
-    'banana',
-    // Каталог-29 (топологический режим): активные демо-фигуры + Зубочистка (2★)
-    'checkmark', 'chip', 'cookie', 'chicken-foot', 'earthworm', 'toothpick',
-    // Каталог-29 (недемо-фигуры, страницы 2–6)
-    'spatula', 'diamond', 'envelope', 'fan', 'radish',
-    'donut', 'flag', 'tadpole', 'bunny', 'bull',
-    'bow', 'house', 'mace', 'kite', 'lantern',
-    'hand-fan', 'lollipop', 'book', 'origami',
-    'wheel', 'hammock', 'perfectionist',
-    SHAPE_UNRECOGNIZED
-];
+// Все ID таблицы SHAPES (каталог-29 + sentinel). R-03: раньше — отдельный
+// список руками; его порядок не читается нигде (только includes и фильтры
+// во множества ниже), поэтому он выводится из ключей SHAPES.
+const ALL_SHAPE_NAMES = Object.keys(SHAPES);
 
 // Built-in shapes shown in UI collections (exclude generic fallback).
 const BUILTIN_SHAPE_NAMES = ALL_SHAPE_NAMES.filter(name => name !== SHAPE_UNRECOGNIZED);
@@ -763,17 +697,13 @@ const UNDONE_NAME_MEMORY_MAX = 200;
 // получит настоящее имя на небе, не имея карточки в атласе. Убранные из белого
 // списка гасятся распознавателем (isBuiltinShapeEnabled) и читаются как
 // нераспознанные — получают поэтичное fallback-имя, как и было задумано.
-const DEMO_ACTIVE_BUILTIN_SHAPES = new Set([
-    'toothpick', 'checkmark', 'chip', 'chicken-foot', 'cookie', 'earthworm',
-    'diamond', 'spatula', 'banana', 'envelope', 'fan', 'radish',
-    'donut', 'flag', 'tadpole', 'bunny', 'bull', 'bow',
-    'house', 'mace', 'kite', 'lantern', 'hand-fan', 'origami'
-]);
+// R-03: белый список — ровно содержимое атласа. Раньше это был второй список,
+// синхронизируемый с ATLAS_PAGES руками; состав сторожит verify-catalog-29.js [5].
+const DEMO_ACTIVE_BUILTIN_SHAPES = new Set(ATLAS_PAGES.flat());
 // All built-ins outside the home demo whitelist are soft-disabled.
 const SOFT_DISABLED_BUILTIN_SHAPES = new Set(
     BUILTIN_SHAPE_NAMES.filter(name => !DEMO_ACTIVE_BUILTIN_SHAPES.has(name))
 );
-const ACTIVE_BUILTIN_SHAPE_NAMES = BUILTIN_SHAPE_NAMES.filter(name => !SOFT_DISABLED_BUILTIN_SHAPES.has(name));
 
 function isBuiltinShapeName(shapeName) {
     return BUILTIN_SHAPE_NAMES.includes(shapeName);
@@ -791,9 +721,7 @@ const SHAPE_PATTERNS = {
     'banana': {
         // Каталог-29: цепочка-дуга (изгиб в одну сторону, §4/§5). C-01.
         stars: [[0.08, 0.38], [0.37, 0.62], [0.63, 0.62], [0.92, 0.38]],
-        lines: [[0, 1], [1, 2], [2, 3]],
-        imageAnchor: { mode: 'centroid' },
-        imageDirection: { mode: 'bananaChordBulge' }
+        lines: [[0, 1], [1, 2], [2, 3]]
     },
     // --- Каталог-29: активные демо-фигуры (для карточек атласа / подсказок) ---
     'toothpick': {

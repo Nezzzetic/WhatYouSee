@@ -280,118 +280,6 @@ body {
     touch-action: none;
 }
 
-.field-goals-progress-fill {
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 0%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-    transition: width var(--t-micro) var(--ease);
-}
-
-.field-goal-claim-buttons {
-    margin-top: 6px;
-    width: 80%;
-    max-width: 80%;
-    align-self: center;
-    height: 28px;
-    position: relative;
-    min-height: 28px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-.field-goal-claim-btn {
-    position: absolute;
-    top: 0;
-    transform: translateX(-50%);
-    padding: 4px 10px;
-    border-radius: 999px;
-    border-color: var(--paper-edge);
-    color: var(--ink-muted);
-    background: var(--paper-deep);
-    font-size: 11px;
-    min-width: 74px;
-}
-
-.field-goal-claim-btn:hover {
-    border-color: var(--wax);
-    background: var(--paper-raised);
-}
-
-.field-goal-claim-btn.ready {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: var(--paper-raised);
-}
-
-.field-goal-claim-btn.claimed {
-    border-color: var(--paper-edge);
-    color: var(--ink-faint);
-    background: var(--paper-deep);
-}
-
-.resource-item {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.resource-item-bar {
-    flex-wrap: wrap;
-    min-width: 120px;
-}
-
-.resource-label {
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--ink-faint);
-    font-weight: 600;
-}
-
-.resource-value {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--ink);
-}
-
-.score-value {
-    color: var(--gold);
-    font-size: 18px;
-}
-
-.bar-container {
-    width: 100%;
-    height: 4px;
-    background: var(--paper-deep);
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.bar-fill {
-    height: 100%;
-    width: 0%;
-    border-radius: 2px;
-    transition: width var(--t-micro) var(--ease);
-}
-
-.xp-bar-fill {
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-}
-
-.token-bar-fill {
-    background: linear-gradient(90deg, var(--gold-deep), var(--gold));
-}
-
-.bar-text {
-    font-size: 10px;
-    color: var(--ink-faint);
-    width: 100%;
-}
-
 .btn-danger {
     border-color: var(--wax);
     color: var(--wax-soft);
@@ -402,45 +290,12 @@ body {
     background: var(--paper-raised);
 }
 
-#atlasBtn.atlas-btn-claimable {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.32);
-}
-
-#achievementsBtn.achv-btn-claimable {
-    border-color: var(--wax);
-    color: var(--wax-soft);
-    background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 0 10px rgba(var(--wax-rgb), 0.35);
-}
-
 /* --- Canvas --- */
 
 #canvas-container {
     position: absolute;
     inset: 0;
     overflow: hidden;
-}
-
-.field-goal-dot {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    transform: translate(-50%, -50%);
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--night);
-    border: 1px solid var(--ink-faint);
-    z-index: 2;
-}
-
-.field-goal-dot.achieved {
-    background: var(--gold);
-    border-color: var(--gold-light);
-    box-shadow: 0 0 8px rgba(var(--gold-rgb), 0.5);
 }
 
 /* --- Buttons --- */
@@ -464,34 +319,21 @@ button {
     transition: border-color var(--t-micro) var(--ease), background var(--t-micro) var(--ease);
 }
 
-button:hover {
-    border-color: var(--ink-faint);
-    background: var(--paper-edge);
+/* U-28: на тач-экране тап навсегда «залипает» в :hover (mouseleave не наступает,
+   пока палец не коснётся чего-то другого) — без media кнопка без своего :hover
+   (например, высечка книги .book-tab) оставалась подсвеченной этим правилом и
+   после ухода с раздела свайпом. Тот же диагноз, что уже чинил O-07 у знака
+   закрытия книги, только здесь источник — общее правило, а не собственное. */
+@media (hover: hover) {
+    button:hover {
+        border-color: var(--ink-faint);
+        background: var(--paper-edge);
+    }
 }
 
 button:disabled {
     opacity: 0.4;
     cursor: default;
-}
-
-/* V-13: блок тоста завершения ночи снят вместе с самим тостом.
-   .toast-close-btn ниже — общий класс, его используют тосты достижений. */
-
-.toast-close-btn {
-    position: absolute;
-    top: 6px;
-    right: 8px;
-    background: none;
-    border: none;
-    color: var(--ink-muted);
-    font-size: 18px;
-    line-height: 1;
-    cursor: pointer;
-    padding: 0 2px;
-}
-
-.toast-close-btn:hover {
-    color: var(--ink);
 }
 
 .atlas-page-locked-progress {
@@ -530,8 +372,7 @@ button:disabled {
     flex: none;
 }
 
-/* Запертая глава: нож приглушён — «ещё не разрезана», а не «нельзя». */
-.rail-uncut,
+/* Запертая глава: знак приглушён — «ещё не разрезана», а не «нельзя». */
 .achv-row-icon-uncut {
     opacity: 0.4;
 }
@@ -895,21 +736,25 @@ button:disabled {
 #bookFootPrev { padding-left: 20px; margin-left: -20px; }
 #bookFootNext { padding-right: 20px; margin-right: -20px; }
 
-/* --- V-16: баннер разреза главы — единственный тост в игре, узкое исключение
-   из K-15 («тостов нет вовсе»). Решение заказчика 2026-09-04: разрез главы —
-   один из важнейших этапов игры, ради него можно позволить себе яркий отклик
-   прямо поверх открытой книги, а не только строку в ленте новостей ниже.
+/* --- U-29 (выросло из V-16): баннер уровня — единственный тост в игре, узкое
+   исключение из K-15 («тостов нет вовсе»). Решение заказчика: баннер разреза
+   главы стал баннером уровня, шире и с составом того, что открылось (глава
+   атласа, глава Штампов, Экслибрис) — то же одно окно, только больше.
    Ребёнок .book-page (не .book-body) — плавает над текущим разделом, лист под
    него не выделяет отдельного места в раскладке. Слой между страницей книги
    (1200) и перелётом монеты (1300, A-03) — по смыслу «под» жестом забора. --- */
 
-.chapter-cut-banner {
+.level-banner {
     position: absolute;
     left: 50%;
     top: calc(var(--safe-top) + 58px);
     z-index: 1220;
-    max-width: min(84%, 340px);
-    padding: 13px 20px;
+    /* U-29 (2026-09-14, решение заказчика): фиксированная width, а не max-width —
+       с общей формулировкой (без имени главы) содержимое короче, и по одной
+       max-width коробка сжималась бы обратно до узкой, а не читалась шире.
+       84.6%/378px = -10% от 94%/420px (правка заказчика 2026-09-14, второй круг). */
+    width: min(84.6%, 378px);
+    padding: 14px 22px 16px;
     text-align: center;
     border: 1px solid var(--wax);
     border-radius: var(--r-lg);
@@ -921,28 +766,46 @@ button:disabled {
     transition: opacity var(--t-scene) var(--ease), transform var(--t-scene) var(--ease);
 }
 
-.chapter-cut-banner-on {
+.level-banner-on {
     opacity: 1;
     transform: translate(-50%, 0);
 }
 
-.chapter-cut-banner-eyebrow {
+.level-banner-eyebrow {
     font-size: 10px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
     color: var(--wax-soft);
 }
 
-.chapter-cut-banner-title {
+.level-banner-title {
     font-family: var(--font-title);
-    font-size: 16.5px;
+    font-size: 17px;
     line-height: 1.3;
     color: var(--gold-light);
     margin-top: 5px;
 }
 
+/* Список того, что открылось на этой ступени — пусто и скрыто на хвосте
+   лестницы (уровень 5+), где баннер несёт только поздравление. */
+.level-banner-unlocks {
+    margin-top: 9px;
+    padding-top: 9px;
+    border-top: 1px solid rgba(var(--wax-rgb), 0.3);
+}
+
+.level-banner-unlock-row {
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--ink);
+}
+
+.level-banner-unlock-row + .level-banner-unlock-row {
+    margin-top: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .chapter-cut-banner { transition: none; }
+    .level-banner { transition: none; }
 }
 
 /* --- K-09: новости мира на «Сегодня» — обычная строка, ничего не всплывает --- */
@@ -1012,25 +875,7 @@ button:disabled {
     white-space: nowrap;
 }
 
-/* --- временная кнопка/сетка книги (Ex Libris, Index) --- */
-
-.book-btn {
-    align-self: center;
-    margin-top: 12px;
-    padding: 9px 18px;
-    border: 1px solid var(--paper-edge);
-    border-radius: 99px;
-    background: rgba(var(--ink-rgb), 0.05);
-    color: var(--ink);
-    font-family: var(--font-text);
-    font-size: 13.5px;
-    cursor: pointer;
-}
-
-.book-btn:hover {
-    border-color: var(--ink-faint);
-    background: rgba(var(--ink-rgb), 0.09);
-}
+/* --- сетка оглавления книги (Index) --- */
 
 .book-index-sec {
     display: flex;
@@ -1270,6 +1115,7 @@ button:disabled {
     writing-mode: vertical-rl;
     transform: rotate(180deg);
     cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .book-tab-on {
@@ -1290,6 +1136,56 @@ button:disabled {
     border-radius: 50%;
     background: var(--wax);
     box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+}
+
+/* --- O-07: постоянный знак закрытия книги -----------------------------------
+   Единственный видимый способ выйти из книги без жеста и без Escape — до
+   этой задачи их не было вовсе (K-26 сняла «RETURN TO THE SKY» как второй
+   вход в тот же жест закрытия, но новичок жеста не знал). Та же толщина
+   (`--ribbon-w`) и тот же отступ от края (`--ribbon-right`), что у ленты-
+   закладки на небе (K-05) — узнаваемая пара, только эта висит СВЕРХУ страницы,
+   уголковый вырез снизу вместо сверху, зеркально. Живёт углом, свободным от
+   высечек (`.book-tabs` начинается заметно ниже) и от заголовка (по центру). */
+
+.book-close-ribbon {
+    position: absolute;
+    top: 0;
+    right: var(--ribbon-right);
+    z-index: 1215;
+    width: var(--ribbon-w);
+    height: 34px;
+    padding: 4px 0 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    border: none;
+    background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+    box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Только устройства с настоящим курсором — на тачскрине тап навсегда «залипает»
+   в :hover (снять его нечем, mouseleave не наступает никогда), и после закрытия
+   книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
+   media — клавиатурный фокус не залипает так же и должен подсвечиваться всегда. */
+@media (hover: hover) {
+    .book-close-ribbon:hover {
+        filter: brightness(1.12);
+    }
+}
+
+.book-close-ribbon:focus-visible {
+    filter: brightness(1.12);
+}
+
+/* Крестик — единственный знак кассы K-02 со своим цветом вместо цвета строки
+   (правило концепта нарушено осознанно: это не строка сцепки, а предмет на
+   ленте, и золото здесь читается как «путь наверх», тот же смысл, что у шкалы
+   света и огранки). */
+.book-close-sign {
+    color: var(--gold);
 }
 
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
@@ -1454,12 +1350,6 @@ button:disabled {
     font-size: 13px;
     color: var(--ink-faint);
     cursor: pointer;
-}
-
-.exlibris-tool-on {
-    color: var(--gold);
-    background: rgba(var(--gold-rgb), 0.1);
-    box-shadow: inset 0 0 0 1px rgba(var(--gold-rgb), 0.5);
 }
 
 /* K-21: поле переименования — строка на бумаге рядом с подписью «ex libris»,
