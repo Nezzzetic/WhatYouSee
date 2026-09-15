@@ -349,7 +349,8 @@ let rainbowCountedThisNight = false;
 let mosaicCountedThisNight = false;
 // atlas-pages-graph: id особых достижений страниц 2–6, засчитанных этой ночью (≤1/ночь)
 let pageSpecialsCountedThisNight = new Set();
-// S-01: фигуры, засчитанные в огранку этой ночью (анти-гринд ≤1/ночь)
+// S-01: фигуры атласа, созданные этой ночью. M-12: огранку не ограничивает —
+// читается только особыми достижениями глав (pageAllCreatedNight/shapeCreatedNight)
 let shapesCountedThisNight = new Set();
 // S-01: особые достижения (Радуга/Мозаика), о доступности которых уже оповестили
 let announcedSpecialChains = new Set();
@@ -1025,7 +1026,7 @@ function recordAchievementUndo(constellation) {
 }
 
 // =============================================================================
-// U-09: ОГРАНКА — СЧЁТ ГРАНЕЙ НА КОММИТЕ (≤1/ночь на фигуру) И ОТКАТ
+// U-09: ОГРАНКА — СЧЁТ ГРАНЕЙ НА КОММИТЕ И ОТКАТ
 // =============================================================================
 
 function getCommittedAtlasShapeName(constellation) {
@@ -1047,10 +1048,11 @@ function shapeTotalCreations(counts) {
 function recordShapeCommitForFacets(constellation) {
     const name = getCommittedAtlasShapeName(constellation);
     if (!name) return;
-    if (shapesCountedThisNight.has(name)) return; // анти-гринд: ≤1 засчёт на фигуру за ночь
+    // M-12: отдельного ночного ограничения у огранки нет. Две грани одной
+    // фигуры с одного поля не получить и так: вторая копия атласной фигуры
+    // на поле коммитится безымянной (M-02) и сюда не доходит.
 
-    // U-09: цвет зажигает свою грань с первого раза (квот нет); красный и синий
-    // банан за одну ночь получить нельзя — только +1 грань на фигуру за небо.
+    // U-09: цвет зажигает свою грань с первого раза (квот нет).
     const ids = collectStarIdsFromLines(constellation.lines);
     const bucket = constellationColorBucket([...ids]);
     if (!bucket) return;
@@ -1091,7 +1093,8 @@ function announceNewlyAvailableSpecialChains() {
 function recordShapeUndoForFacets(constellation) {
     const name = getCommittedAtlasShapeName(constellation);
     if (!name) return;
-    if (!shapesCountedThisNight.has(name)) return;
+    // M-12: созвездие с именем фигуры атласа засчитано на коммите всегда —
+    // ночной флаг больше не решает, гасить ли грань.
     shapesCountedThisNight.delete(name);
     // Откат того же созвездия → тот же бакет, что был засчитан на коммите.
     const ids = collectStarIdsFromLines(constellation.lines);
