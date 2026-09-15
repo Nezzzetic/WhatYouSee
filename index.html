@@ -326,16 +326,30 @@
     <script src="js/constants.js"></script>
     <script src="js/pictureFields.js"></script>
     <script src="js/field.js"></script>
+    <!-- R-05: бывшие camera.js + drawing.js — камера, рендер неба, сцены во времени,
+         созвездия, ввод; порядок прежний, файлы подряд на месте двух старых -->
     <script src="js/camera.js"></script>
-    <script src="js/drawing.js"></script>
-    <!-- B-02: обсерватория опирается на camera.js (клампы, зазоры) и field.js (maxEdge) -->
+    <script src="js/skyRender.js"></script>
+    <script src="js/skyEffects.js"></script>
+    <script src="js/constellations.js"></script>
+    <script src="js/input.js"></script>
+    <!-- B-02: обсерватория опирается на camera.js (клампы), skyRender.js (зазоры) и field.js (maxEdge) -->
     <script src="js/observatory.js"></script>
     <script src="js/topologyRecognition.js"></script>
     <script src="js/recognition.js"></script>
     <script src="js/scoring.js"></script>
     <script src="js/progression.js"></script>
+    <!-- R-05: бывший ui.js — общее, каркас книги и по файлу на страницу;
+         рендер штампов — после achievements.js, откуда он переехал -->
     <script src="js/ui.js"></script>
+    <script src="js/book.js"></script>
+    <script src="js/bookToday.js"></script>
+    <script src="js/bookIndex.js"></script>
+    <script src="js/bookAtlas.js"></script>
+    <script src="js/bookExLibris.js"></script>
+    <script src="js/bookSettings.js"></script>
     <script src="js/achievements.js"></script>
+    <script src="js/bookStamps.js"></script>
     <script src="js/save.js"></script>
     <script src="js/tutorial.js"></script>
     <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после
