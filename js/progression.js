@@ -255,19 +255,6 @@ function clampShapeToAtlasVisibility(shapeName) {
     return normalized;
 }
 
-function getUnlockedAtlasShapeNames() {
-    const names = [];
-    for (let i = 0; i < ATLAS_PAGES.length; i++) {
-        if (!isAtlasPageUnlocked(i)) continue;
-        names.push(...ATLAS_PAGES[i]);
-    }
-    return names;
-}
-
-function getUncreatedUnlockedShapeNames() {
-    return getUnlockedAtlasShapeNames().filter(name => !isShapeCreated(name));
-}
-
 // =============================================================================
 // CREATED SHAPES
 // =============================================================================

@@ -29,7 +29,8 @@ function saveGame() {
             fieldBackgroundStars,
             constellationArtRevealed,
             skyDate: getEffectiveSkyDateInt(),
-            dailyTargetShapes: getDailyTargetShapes(),
+            // R-04: `dailyTargetShapes` снят вместе с якорями M-03. Сейв тех же
+            // суток с этим полем читается как раньше — поле просто игнорируется.
             // M-10: память имён отменённых созвездий. Поле необязательное —
             // версия сейва из-за него не поднимается: сохранение без него
             // читается как ночь, в которой ещё ничего не отменяли.
@@ -87,13 +88,6 @@ function loadGame() {
         }
 
         rebuildStarCountStateFromConstellations();
-
-        dailyTargetShapes = Array.isArray(state.dailyTargetShapes)
-            ? state.dailyTargetShapes.slice()
-            : [];
-        if (dailyTargetShapes.length === 0) {
-            pickDailyTargets();
-        }
 
         for (const star of fieldStars) {
             if (!star) continue;

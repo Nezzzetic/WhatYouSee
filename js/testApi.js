@@ -474,7 +474,6 @@
             // O-02: реально загруженная картинка (оверрайд/воскресенье/первые
             // ночи), а не только ручной оверрайд, как было раньше.
             pictureFieldId: typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null,
-            dailyTargets: getDailyTargetShapes(),
             starCount: Array.isArray(fieldStars) ? fieldStars.length : 0,
             freeStarCount: getPlayableStars().length,
             levelComplete: !!constellationArtRevealed,

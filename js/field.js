@@ -76,8 +76,6 @@ function nearestHorizontalCopy(px, py, targetX, targetY) {
 // DAILY SKY (персональный seed: playerId + эффективная дата)
 // =============================================================================
 
-let dailyTargetShapes = [];
-
 function hashStringToSeed(str) {
     let h = 0;
     for (let i = 0; i < str.length; i++) {
@@ -109,8 +107,8 @@ function addDaysToSkyDateInt(dateInt, days) {
 }
 
 // T-01: единственный шов, через который тестовый харнесс (`?test=1`, testApi.js)
-// фиксирует дату неба — от неё зависят раскладка поля, дневные цели и воскресная
-// картинка. Вне харнесса всегда null, расчёт обычный (dev-режим ходит по дням
+// фиксирует дату неба — от неё зависят раскладка поля и воскресная картинка.
+// Вне харнесса всегда null, расчёт обычный (dev-режим ходит по дням
 // через devDayOffset и этот шов не трогает).
 let testSkyDateOverride = null;
 
@@ -137,105 +135,12 @@ function seedSkyRandomForToday() {
     randomSeed(getPersonalDailySeed());
 }
 
-function shuffleArrayInPlace(arr, seedKey) {
-    randomSeed(hashStringToSeed(seedKey));
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(random(0, i + 1));
-        const tmp = arr[i];
-        arr[i] = arr[j];
-        arr[j] = tmp;
-    }
-}
-
-function pickDailyTargets() {
-    let pool = getUncreatedUnlockedShapeNames();
-    const effectiveDate = getEffectiveSkyDateInt();
-    const seedKey = `${ensurePlayerId()}:${effectiveDate}:targets`;
-
-    if (pool.length < 2) {
-        const fallback = getUnlockedAtlasShapeNames();
-        for (const name of fallback) {
-            if (!pool.includes(name)) pool.push(name);
-        }
-    }
-
-    shuffleArrayInPlace(pool, seedKey);
-
-    dailyTargetShapes = pool.slice(0, Math.min(2, pool.length));
-    return dailyTargetShapes;
-}
-
-function getDailyTargetShapes() {
-    return dailyTargetShapes.slice();
-}
-
-function isDailyTargetShape(shapeName) {
-    const normalized = typeof shapeName === 'string' ? shapeName.trim() : '';
-    return dailyTargetShapes.includes(normalized);
-}
-
-function createAnchorFieldStar(id, x, y, anchorShape) {
-    const star = createGeneratedFieldStar(id, x, y);
-    star.isDailyAnchor = true;
-    star.anchorShape = anchorShape;
-    star.extinguished = false;
-    return star;
-}
-
-function injectAnchorStarsForTargets(targets) {
-    if (!Array.isArray(targets) || targets.length === 0) return;
-
-    const effectiveDate = getEffectiveSkyDateInt();
-    const minX = STAR_EDGE_MARGIN;
-    const maxX = FIELD_WIDTH - STAR_EDGE_MARGIN;
-    const minY = STAR_EDGE_MARGIN;
-    const maxY = FIELD_HEIGHT - STAR_EDGE_MARGIN;
-
-    for (let t = 0; t < targets.length; t++) {
-        const shapeName = targets[t];
-        const pattern = SHAPE_PATTERNS && SHAPE_PATTERNS[shapeName];
-        if (!pattern || !Array.isArray(pattern.stars)) continue;
-
-        const anchorSeed = hashStringToSeed(`${ensurePlayerId()}:${effectiveDate}:anchor:${shapeName}`);
-        randomSeed(anchorSeed);
-        const cx = random(minX + 180, maxX - 180);
-        const cy = random(minY + 120, maxY - 120);
-        const scale = random(200, 340);
-        const yAnchor = 0.5;
-
-        for (const pt of pattern.stars) {
-            const px = pt[0];
-            const py = pt[1];
-            let x = cx + (px - 0.5) * scale;
-            let y = cy + (py - yAnchor) * scale;
-
-            let tooClose = false;
-            for (const existing of fieldStars) {
-                if (dist(x, y, existing.x, existing.y) < MIN_STAR_DISTANCE * 0.85) {
-                    tooClose = true;
-                    break;
-                }
-            }
-            if (tooClose) {
-                x += random(-40, 40);
-                y += random(-40, 40);
-            }
-
-            const id = fieldStars.length;
-            fieldStars.push(createAnchorFieldStar(id, x, y, shapeName));
-        }
-    }
-
-    recomputeSuppressedStars();
-}
-
 function generateDailyField() {
     // O-02: первые две ночи новичка — фиксированные картинки, приоритет выше
     // воскресенья (первое впечатление не должно зависеть от дня недели).
     const onboardingId = consumeOnboardingFixedPictureId();
     if (onboardingId) {
         generatePictureField(onboardingId);
-        dailyTargetShapes = [];
         assignStarAppearDelays();
         generateBackgroundStars();
         if (typeof console !== 'undefined' && console.info) {
@@ -248,7 +153,6 @@ function generateDailyField() {
     const scheduledId = getScheduledPictureFieldId();
     if (scheduledId) {
         generatePictureField(scheduledId);
-        dailyTargetShapes = [];
         assignStarAppearDelays();
         generateBackgroundStars();
         if (typeof console !== 'undefined' && console.info) {
@@ -257,17 +161,16 @@ function generateDailyField() {
         return;
     }
 
+    // R-04: здесь раньше выбирались «цели дня» под якоря M-03, и их тасовка
+    // пересевала random() между игровыми звёздами и фоном. Сняты вместе с
+    // якорями — пыль и задержки появления теперь продолжают сид неба.
     seedSkyRandomForToday();
     generateStars();
-    pickDailyTargets();
-    if (INJECT_ANCHOR_STARS) {
-        injectAnchorStarsForTargets(dailyTargetShapes); // dead code — INJECT_ANCHOR_STARS=false
-    }
     assignStarAppearDelays();
     generateBackgroundStars();
 
     if (typeof console !== 'undefined' && console.info) {
-        console.info('[daily] effectiveDate:', getEffectiveSkyDateInt(), 'targets:', dailyTargetShapes);
+        console.info('[daily] effectiveDate:', getEffectiveSkyDateInt());
     }
 }
 
