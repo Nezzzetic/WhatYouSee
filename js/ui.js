@@ -55,13 +55,16 @@ function releaseScoreDisplay(all) {
 
 /**
  * K-06: цель коротко вздрагивает — награда доехала именно сюда.
- * K-17: цель у пульса та же, что у монеты, — флажок шкалы, пока книга открыта.
+ * V-20: цель у пульса — бусина корешка, пока книга открыта (была флажком
+ * шкалы K-17); заодно проявляет счёт у бусины — «в момент получения очков»
+ * из развилки 2 дока V-20, тот же showBookSpineScore(), что и касание нити.
  * U-31: на небе пульс — на знаке ленты, не на хвосте: хвост теперь несёт
  * протяжку (--ribbon-pull/--ribbon-follow), и анимация на нём же смотрелась
  * бы рывком поверх жеста.
  */
 function pulseScoreDisplay() {
-    const el = (bookOpen && document.querySelector('#bookGauge .book-gauge-flag'))
+    if (bookOpen && typeof showBookSpineScore === 'function') showBookSpineScore();
+    const el = (bookOpen && document.querySelector('#bookGauge .book-spine-bead'))
         || document.getElementById('ribbonSign');
     if (!el) return;
     el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
@@ -88,25 +91,26 @@ function prefersReducedMotion() {
 let lastRibbonFlightRect = null;
 
 /**
- * K-17: тот же приём для флажка шкалы. Шкала пересобирается на каждом рендере
- * книги (`renderBookGauge` чистит узел целиком), и на смене высечки полёт
- * мог бы застать её между двумя кадрами — кэш последнего ненулевого замера
- * закрывает и это, и ресайз.
+ * K-17/V-20: тот же приём для бусины корешка. Шкала пересобирается на каждом
+ * рендере книги (`renderBookGauge` чистит узел целиком), и на смене высечки
+ * полёт мог бы застать её между двумя кадрами — кэш последнего ненулевого
+ * замера закрывает и это, и ресайз.
  */
 let lastGaugeFlightRect = null;
 
 /**
- * Цель полёта награды — флажок шкалы света у корешка: «число вылетает из клетки
- * и уходит к корешку, растворяется в позолоте» (концепт, Табл. III b). Лента-
- * закладка осталась запасной целью: пока книга закрыта, шкалы на экране нет.
+ * Цель полёта награды — бусина корешка (V-20, была флажком шкалы K-17):
+ * «число вылетает из клетки и уходит к корешку, растворяется в позолоте»
+ * (концепт, Табл. III b). Лента-закладка осталась запасной целью: пока книга
+ * закрыта, корешка на экране нет.
  *
  * K-04 целился в ленту потому, что корешка тогда не было видно вовсе — шкалу
  * закрашивала страница; с K-17 он виден, и цель вернулась туда, где ей место.
  */
 function getClaimFlightTargetRect() {
-    const flag = document.querySelector('#bookGauge .book-gauge-flag');
-    if (flag) {
-        const rect = flag.getBoundingClientRect();
+    const bead = document.querySelector('#bookGauge .book-spine-bead');
+    if (bead) {
+        const rect = bead.getBoundingClientRect();
         if (rect.width || rect.height) lastGaugeFlightRect = rect;
     }
     const ribbon = document.getElementById('skyRibbon');
