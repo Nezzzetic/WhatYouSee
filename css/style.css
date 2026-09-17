@@ -394,7 +394,13 @@ button:disabled {
     position: fixed;
     right: calc(var(--ribbon-right) + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
     bottom: var(--safe-bottom);
-    z-index: 40;
+    /* U-31 (фидбек с устройства): пока книга открывается, её собственный
+       z-index (1200) выше ленты — с ростом --ribbon-follow верхний край
+       книги наезжал на угол экрана и визуально (и по хит-тесту) перекрывал
+       ленту прямо посреди протяжки, будто она «перестаёт тянуться».
+       За пределами открытия это не имеет цену: книга либо не отрисована
+       (hidden), либо уже официально open и ленту саму скрывает display:none. */
+    z-index: 1220;
     width: var(--ribbon-hit-w);
     height: var(--ribbon-hit-h);
     display: flex;
@@ -447,17 +453,24 @@ button:disabled {
    (updateRibbonSignal, ui.js). Ни числа, ни цвета тревоги. Полное правило
    сигналов — K-15. Свой цвет вместо цвета строки — знак на предмете, не в
    строке сцепки (то же исключение, что раньше держал только крестик). */
+/* U-31 (фидбек с устройства): `top: 50%` считается от ТЕКУЩЕЙ (растущей
+   протяжкой) высоты хвоста — знак остаётся в её середине и «едет» вместе
+   с краем без единой строки JS, никакого отдельного отклика на --ribbon-pull
+   не требуется. Раньше `bottom` мерился от одной константы --ribbon-h и не
+   замечал протяжку вовсе — знак стоял на месте, пока хвост рос вокруг него. */
 .ribbon-sign {
     position: absolute;
     left: 50%;
-    bottom: calc(var(--ribbon-h) * 0.47);
-    transform: translateX(-50%);
-    color: var(--ink-faint);
-    transition: color var(--t-micro) var(--ease);
+    top: 50%;
+    transform: translate(-50%, -50%);
+    /* Обычное состояние — золотой контур; сигнал — та же гравюра заливкой
+       (fill), а не сменой цвета: цвет остаётся золотым всегда. */
+    color: var(--gold);
+    transition: fill var(--t-micro) var(--ease);
 }
 
 .ribbon-sign.is-lit {
-    color: var(--gold);
+    fill: currentColor;
     filter: drop-shadow(0 0 4px rgba(var(--gold-rgb), 0.65));
 }
 
@@ -1223,11 +1236,14 @@ body.book-opening .book-close-ribbon {
    было у крестика O-07 — единственный знак кассы K-02 со своим цветом вместо
    цвета строки; теперь оба знака ленты делят это исключение — они на
    предмете, не в строке сцепки). */
+/* U-31 (фидбек с устройства): `top: 50%` — от текущей (растущей протяжкой)
+   высоты хвоста, знак остаётся в его середине и едет с краем без JS —
+   тот же приём, что у знака небесной стороны (.ribbon-sign). */
 .book-close-sign {
     position: absolute;
     left: 50%;
-    top: calc(var(--ribbon-h) * 0.3);
-    transform: translateX(-50%);
+    top: 50%;
+    transform: translate(-50%, -50%);
     color: var(--gold);
 }
 
