@@ -635,8 +635,8 @@
                     : null;
                 const target = typeof getClaimFlightTargetRect === 'function'
                     ? getClaimFlightTargetRect() : null;
-                const flag = document.querySelector('#bookGauge .book-gauge-flag');
-                const flagBox = flag ? flag.getBoundingClientRect() : null;
+                const bead = document.querySelector('#bookGauge .book-spine-bead');
+                const beadBox = bead ? bead.getBoundingClientRect() : null;
                 const waxOf = (id) => {
                     const el = document.getElementById(id);
                     return el ? !el.hidden : null;
@@ -644,9 +644,9 @@
                 return {
                     gaugeVisible: !!(box && box.width > 0 && hit && gauge.contains(hit)),
                     gaugeHit: hit ? (hit.id || hit.className || hit.tagName) : null,
-                    flightOnFlag: !!(target && flagBox && flagBox.width
-                        && Math.abs(target.left - flagBox.left) < 1
-                        && Math.abs(target.top - flagBox.top) < 1),
+                    flightOnBead: !!(target && beadBox && beadBox.width
+                        && Math.abs(target.left - beadBox.left) < 1
+                        && Math.abs(target.top - beadBox.top) < 1),
                     tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') },
                     todayState: [...document.querySelectorAll('#bookTodayState .book-state-row')]
                         .map(r => r.textContent)
