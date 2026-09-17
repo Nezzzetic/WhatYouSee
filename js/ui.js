@@ -56,10 +56,13 @@ function releaseScoreDisplay(all) {
 /**
  * K-06: цель коротко вздрагивает — награда доехала именно сюда.
  * K-17: цель у пульса та же, что у монеты, — флажок шкалы, пока книга открыта.
+ * U-31: на небе пульс — на знаке ленты, не на хвосте: хвост теперь несёт
+ * протяжку (--ribbon-pull/--ribbon-follow), и анимация на нём же смотрелась
+ * бы рывком поверх жеста.
  */
 function pulseScoreDisplay() {
     const el = (bookOpen && document.querySelector('#bookGauge .book-gauge-flag'))
-        || document.querySelector('.ribbon-tail');
+        || document.getElementById('ribbonSign');
     if (!el) return;
     el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
     el.classList.remove('score-pulse');
@@ -248,9 +251,10 @@ const GLYPH_SIGNS = [
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
     'drop', 'flame', 'ring', 'ball', 'wave',
-    // O-07: крестик закрытия книги — единственный знак со своим (золотым)
-    // цветом вместо цвета строки, см. .book-close-sign в style.css
-    'cross'
+    // U-31: два знака одной ленты — на предмете, не в строке, поэтому со
+    // своим цветом вместо цвета строки (то же исключение, что раньше держал
+    // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css)
+    'book'
 ];
 
 /**
@@ -642,14 +646,73 @@ function hasSkyWaxSignal() {
     return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
 }
 
-/** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
+/**
+ * U-31: знак книги на небесной стороне ленты — погашен (--ink-faint) или
+ * золотом с сиянием (--gold), когда есть что забрать. Замена капли сургуча;
+ * ни числа, ни цвета тревоги.
+ */
 function updateRibbonSignal() {
     // K-04: заодно освежаем замер ленты — пока небо на экране, она измерима,
     // а к моменту полёта награды книга уже открыта и прячет её.
     getClaimFlightTargetRect();
-    const wax = document.getElementById('ribbonWax');
-    if (wax) wax.hidden = !hasSkyWaxSignal();
+    const sign = document.getElementById('ribbonSign');
+    if (sign) sign.classList.toggle('is-lit', hasSkyWaxSignal());
     renderSkyBookmark();
+}
+
+/**
+ * U-31: лента одна, две стороны — во время протяжки растёт вместе с пальцем,
+ * без перехода (1:1, прямое управление). `el` — узел стороны (`#skyRibbon`
+ * или `#bookCloseRibbon`), значения ставятся ему, а хвост (`.ribbon-tail`/
+ * `.book-close-ribbon-tail`) читает их через CSS-переменные — они наследуются.
+ * `stretchPx` — на сколько лента длиннее покоя (0…RIBBON_STRETCH_PX);
+ * `followPx` — на сколько сторона сдвинута вместе с краем книги сверх этого.
+ */
+function setRibbonPull(el, stretchPx, followPx) {
+    if (!el) return;
+    el.style.setProperty('--ribbon-pull', `${stretchPx}px`);
+    el.style.setProperty('--ribbon-follow', `${followPx}px`);
+}
+
+/**
+ * Ниже порога протяжки — лента пружинит в покой сама, книга не двигалась.
+ * Темп — `--t-micro` (тот же короткий отклик, что был у hover-сдвига хвоста),
+ * не сценовый довод книги: это не общее с ней движение, а обрыв натяжения.
+ */
+function settleRibbonPull(el) {
+    if (!el) return;
+    const tail = el.querySelector('.ribbon-tail, .book-close-ribbon-tail');
+    if (!tail || prefersReducedMotion()) {
+        setRibbonPull(el, 0, 0);
+        return;
+    }
+    tail.style.transition = 'height var(--t-micro) var(--ease), transform var(--t-micro) var(--ease)';
+    void tail.offsetHeight;
+    setRibbonPull(el, 0, 0);
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        tail.removeEventListener('transitionend', finish);
+        tail.style.transition = '';
+    };
+    tail.addEventListener('transitionend', finish);
+    setTimeout(finish, 260);
+}
+
+/**
+ * Обе стороны — в покой без перехода. Зовётся из `openBook()`/`closeBook()`
+ * (харнесс, Escape, доводы жеста) — состояние ленты обязано быть чистым на
+ * любом исходе, иначе книжная сторона рискует не появиться (риск дока).
+ */
+function resetRibbons() {
+    ['skyRibbon', 'bookCloseRibbon'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const tail = el.querySelector('.ribbon-tail, .book-close-ribbon-tail');
+        if (tail) tail.style.transition = '';
+        setRibbonPull(el, 0, 0);
+    });
 }
 
 /**
