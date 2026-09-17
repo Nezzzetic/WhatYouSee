@@ -414,6 +414,9 @@ function openBook(cut) {
     if (document.body) document.body.classList.add('book-open-body');
     renderBook();
     syncExLibrisAppMode();
+    // U-31: лента одна — на любом исходе (харнесс, Escape, доводы жеста) обе
+    // стороны обязаны прийти в покой, иначе книжная рискует не появиться.
+    resetRibbons();
 }
 
 function closeBook() {
@@ -429,6 +432,7 @@ function closeBook() {
     }
     if (document.body) document.body.classList.remove('book-open-body');
     syncExLibrisAppMode();
+    resetRibbons(); // U-31: см. openBook()
 }
 
 function switchBookCut(cut) {
@@ -517,9 +521,16 @@ function settleBookTransform(book, targetPx, onSettled) {
  * выглядеть рывком: страница едет с закрытой позиции тем же ходом, что и
  * потягивание. openBook() остаётся синхронным (нужно тестовому харнессу и
  * программным вызовам) — это чисто визуальная доводка поверх готового состояния.
+ *
+ * U-31: без фазы протяжки — небесная сторона едет вместе с книгой в длине
+ * покоя (`--ribbon-pull` не трогаем, только `--ribbon-follow` от 0 до полного
+ * проезда), той же длительностью, что и сама книга; книжная сторона скрыта
+ * классом `book-opening`, пока довод не закончился, — тот же приём, что у
+ * протяжки за палец (setupRibbonPullGesture).
  */
 function openBookAnimated(cut) {
     const book = document.getElementById('book');
+    const ribbon = document.getElementById('skyRibbon');
     const canAnimate = !!book && !prefersReducedMotion();
     // K-35: открываем ДО подстановки стартовой позиции — раньше было наоборот.
     // Внутри openBook() холст экслибриса встраивается по замеру прямоугольника
@@ -527,17 +538,25 @@ function openBookAnimated(cut) {
     // сдвигом слот мерялся уехавшим вниз на целый экран, и небо оставалось за
     // нижним краем до ближайшего ресайза. Кадра между открытием и сдвигом не
     // будет — обе строки в одном тике, до первой отрисовки.
-    openBook(cut);
+    openBook(cut); // резет ленты внутри — ничему не мешает, ниже переставим сами
     if (!canAnimate) return;
+    document.body.classList.add('book-opening');
     setBookTransition(book, 'none');
     setBookTransform(book, `translateY(${bookTravelPx()}px)`);
+    setRibbonPull(ribbon, 0, 0);
+    const tail = ribbon && ribbon.querySelector('.ribbon-tail');
     void book.offsetHeight; // рефлоу теперь, когда книга уже видима — фиксирует старт
     setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
+    if (tail) tail.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
     setBookTransform(book, '');
+    setRibbonPull(ribbon, 0, bookTravelPx());
     const onEnd = (event) => {
         if (event.target !== book || event.propertyName !== 'transform') return;
         book.removeEventListener('transitionend', onEnd);
         setBookTransition(book, '');
+        if (tail) tail.style.transition = '';
+        resetRibbons();
+        document.body.classList.remove('book-opening');
     };
     book.addEventListener('transitionend', onEnd);
 }
@@ -574,6 +593,7 @@ function setupBookCloseGesture() {
     const book = document.getElementById('book');
     const body = document.getElementById('bookBody');
     const ribbon = document.getElementById('skyRibbon');
+    const closeRibbon = document.getElementById('bookCloseRibbon');
     if (!book || !body) return;
 
     let startX = 0;
@@ -585,6 +605,14 @@ function setupBookCloseGesture() {
     const onStart = (event) => {
         if (isMultiTouch(event)) { tracking = false; return; }
         if (event.type === 'mousedown' && event.button !== 0) return;
+        // U-31: касание на книжной стороне ленты — это её собственный жест
+        // (setupCloseRibbonPullGesture), а не потягивание страницы вниз.
+        // stopPropagation там уже гасит это на большинстве путей — эта
+        // проверка добавляет вторую страховку независимо от нашего порядка.
+        if (event.target.closest && event.target.closest('#bookCloseRibbon')) {
+            tracking = false;
+            return;
+        }
         const p = getGesturePoint(event);
         if (!p) return;
         startX = p.clientX;
@@ -659,14 +687,40 @@ function setupBookCloseGesture() {
 
     // K-05: потягивание ленты вверх — обратный жест к открытию книги
     if (ribbon) setupRibbonPullGesture(ribbon);
+    // U-31: потягивание книжной стороны вниз — обратный жест к закрытию
+    if (closeRibbon) setupCloseRibbonPullGesture(closeRibbon);
 
     bookHandlersBound = true;
 }
 
 /**
- * K-05/K-26: тянем ленту-закладку вверх — книга едет за пальцем той же
- * формулой, что и закрытие (setupBookCloseGesture), и на отпускании либо
- * доводится до конца, либо падает обратно. Открывается на последней высечке.
+ * U-31: довод открытия сверх RIBBON_STRETCH_PX — книга едет к 0 обычным
+ * settleBookTransform, небесная сторона следует тем же ходом (--ribbon-follow
+ * от текущего значения до полного проезда), чтобы не отставать от края
+ * книги. Общий хвост для протяжки за порог и короткой дороги (тап/Enter,
+ * см. openBookAnimated) — обе кончаются одинаково.
+ */
+function settleRibbonOpen(book, ribbon, onSettled) {
+    const tail = ribbon && ribbon.querySelector('.ribbon-tail');
+    if (tail && !prefersReducedMotion()) {
+        tail.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
+        void tail.offsetHeight;
+    }
+    setRibbonPull(ribbon, RIBBON_STRETCH_PX, bookTravelPx());
+    settleBookTransform(book, 0, () => {
+        if (tail) tail.style.transition = '';
+        onSettled();
+        document.body.classList.remove('book-opening');
+    });
+}
+
+/**
+ * K-05/K-26/U-31: тянем небесную сторону ленты вверх. Первые RIBBON_STRETCH_PX
+ * тянется только сама лента (книга стоит за нижним краем); дальше книга едет
+ * за пальцем, а лента — вместе с её верхним краем, как закреплённая на ней.
+ * На отпускании — за порогом довод до конца (settleRibbonOpen), ниже порога
+ * книга падает обратно (никуда не двигалась — follow был 0 весь жест), а
+ * лента пружинит сама (settleRibbonPull, ui.js).
  */
 function setupRibbonPullGesture(ribbon) {
     const book = document.getElementById('book');
@@ -681,7 +735,10 @@ function setupRibbonPullGesture(ribbon) {
         if (!book) return;
         dragging = true;
         pulled = true; // жест пошёл — тап после него не должен сработать отдельно
+        document.body.classList.add('book-opening'); // книжной стороны не видно на ходу
         setBookTransition(book, '');
+        const tail = ribbon.querySelector('.ribbon-tail');
+        if (tail) tail.style.transition = '';
         book.hidden = false;
         // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
         // уже атласом, а не подменяется им по приезде.
@@ -719,7 +776,10 @@ function setupRibbonPullGesture(ribbon) {
 
         if (!dragging) return;
         if (event.cancelable) event.preventDefault();
-        setBookTransform(book, `translateY(${Math.max(0, bookTravelPx() - dy)}px)`);
+        const stretch = Math.min(dy, RIBBON_STRETCH_PX);
+        const follow = Math.max(0, dy - RIBBON_STRETCH_PX);
+        setBookTransform(book, `translateY(${Math.max(0, bookTravelPx() - follow)}px)`);
+        setRibbonPull(ribbon, stretch, follow);
     };
 
     const end = (event) => {
@@ -730,13 +790,16 @@ function setupRibbonPullGesture(ribbon) {
         const dy = p ? startY - p.clientY : 0;
         dragging = false;
 
-        if (dy >= BOOK_OPEN_SWIPE_MIN_PX) {
+        if (dy >= RIBBON_STRETCH_PX) {
             // K-26: довод — доезжаем вверх до конца тем же ходом, что вёл
             // за пальцем, и только потом открываем по-настоящему.
-            settleBookTransform(book, 0, () => openBook());
+            settleRibbonOpen(book, ribbon, () => openBook());
         } else {
-            // ниже порога — страница падает обратно, книга остаётся закрытой
+            // ниже порога книга не двигалась вовсе (follow был 0) — только
+            // лента пружинит обратно в покой.
             settleBookTransform(book, bookTravelPx(), () => { if (book) book.hidden = true; });
+            settleRibbonPull(ribbon);
+            document.body.classList.remove('book-opening');
         }
     };
 
@@ -761,6 +824,85 @@ function setupRibbonPullGesture(ribbon) {
         if (bookOpen) return;
         openBookAnimated();
     });
+}
+
+/**
+ * U-31: тянем книжную сторону ленты вниз — зеркало setupRibbonPullGesture.
+ * Книжная сторона живёт внутри `#book` (DOM-потомок), поэтому не нуждается
+ * в собственном «follow»-сдвиге — она едет с книгой сама через её же
+ * transform; здесь считается только протяжка самой ленты (`stretch`) и
+ * перемещение книги (`translateY(follow)`, вниз от открытого положения).
+ * Работает при любой прокрутке страницы — в отличие от setupBookCloseGesture,
+ * который закрывает только у самого верха списка.
+ */
+function setupCloseRibbonPullGesture(closeRibbon) {
+    const book = document.getElementById('book');
+    let startY = 0;
+    let tracking = false;
+    let dragging = false;
+    let pulled = false;
+
+    const start = (event) => {
+        if (isMultiTouch(event) || !bookOpen) { tracking = false; return; }
+        if (event.type === 'mousedown' && event.button !== 0) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        // Не даём setupBookCloseGesture поймать тот же жест на #book.
+        event.stopPropagation();
+        startY = p.clientY;
+        tracking = true;
+        dragging = true;
+        pulled = false;
+        setBookTransition(book, '');
+        const tail = closeRibbon.querySelector('.book-close-ribbon-tail');
+        if (tail) tail.style.transition = '';
+    };
+
+    const move = (event) => {
+        if (!tracking || !dragging || isMultiTouch(event)) return;
+        const p = getGesturePoint(event);
+        if (!p) return;
+        const dy = Math.max(0, p.clientY - startY);
+        if (dy > 0) pulled = true;
+        if (event.cancelable) event.preventDefault();
+        const stretch = Math.min(dy, RIBBON_STRETCH_PX);
+        const follow = Math.max(0, dy - RIBBON_STRETCH_PX);
+        setBookTransform(book, `translateY(${follow}px)`);
+        setRibbonPull(closeRibbon, stretch, 0);
+    };
+
+    const end = (event) => {
+        if (!tracking) return;
+        tracking = false;
+        if (!dragging) return;
+        dragging = false;
+        const p = getGesturePoint(event);
+        const dy = p ? Math.max(0, p.clientY - startY) : 0;
+
+        if (dy >= RIBBON_STRETCH_PX) {
+            settleBookTransform(book, bookTravelPx(), () => closeBook());
+        } else {
+            // ниже порога книга не двигалась (follow был 0) — лента пружинит.
+            settleBookTransform(book, 0, () => {});
+            settleRibbonPull(closeRibbon);
+        }
+    };
+
+    closeRibbon.addEventListener('touchstart', start, { passive: true });
+    closeRibbon.addEventListener('touchmove', move, { passive: false });
+    closeRibbon.addEventListener('touchend', end);
+    closeRibbon.addEventListener('touchcancel', end);
+    closeRibbon.addEventListener('mousedown', start);
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', end);
+
+    // Потянули — click по знаку не должен отдельно закрыть книгу без довода.
+    closeRibbon.addEventListener('click', (event) => {
+        if (!pulled) return;
+        pulled = false;
+        event.stopPropagation();
+        event.preventDefault();
+    }, true);
 }
 
 function setupBookControls() {

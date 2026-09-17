@@ -588,9 +588,13 @@
      * тратящимся metaScore). K-16: псевдонима `ui()` больше нет, форма одна.
      */
     function book() {
-        const wax = document.getElementById('ribbonWax');
+        const sign = document.getElementById('ribbonSign');
         const ribbon = document.getElementById('skyRibbon');
-        const waxOn = !!(wax && !wax.hidden);
+        const closeRibbon = document.getElementById('bookCloseRibbon');
+        const waxOn = !!(sign && sign.classList.contains('is-lit'));
+        // U-31: --ribbon-pull/--ribbon-follow ставятся setRibbonPull() прямо
+        // инлайн-стилем на узел стороны — читаем оттуда же, а не вычисленным.
+        const pxOf = (el, name) => el ? (parseFloat(el.style.getPropertyValue(name)) || 0) : 0;
         return {
             open: bookOpen,
             cut: bookCut,
@@ -600,6 +604,14 @@
             gauge: getLevelProgress(),
             wax: waxOn,
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
+            ribbonPull: pxOf(ribbon, '--ribbon-pull'),
+            ribbonFollow: pxOf(ribbon, '--ribbon-follow'),
+            closeRibbonPull: pxOf(closeRibbon, '--ribbon-pull'),
+            // Книжная сторона скрыта visibility:hidden (body.book-opening), а
+            // не hidden/display:none — «видимость» обязана читать вычисленный
+            // стиль, boundingRect у visibility:hidden всё равно ненулевой.
+            closeRibbonVisible: !!(closeRibbon && closeRibbon.getBoundingClientRect().height > 0
+                && getComputedStyle(closeRibbon).visibility !== 'hidden'),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
             rewardsBadge: waxOn,
             hasClaimable: hasClaimableAchievements(),

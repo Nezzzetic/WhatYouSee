@@ -95,12 +95,15 @@
     /* K-05: лента-закладка. Видимый хвост — узкий, зона касания вокруг него
        шире (пальцу 24 px мало). Пропорции из концепта (18×64 при макете 320 px),
        пересчитанные на 412. Камера полосу под лентой больше НЕ резервирует —
-       резерв остался только на инсет системной панели (см. getBottomUIHeight). */
+       резерв остался только на инсет системной панели (см. getBottomUIHeight).
+       U-31: лента одна и двусторонняя, длина покоя — половина прежней (84→42),
+       зона касания укорочена вместе с хвостом (104→64), иначе над коротким
+       хвостом висела бы невидимая зона, крадущая касания у звёзд в углу. */
     --ribbon-w: 24px;
-    --ribbon-h: 84px;
+    --ribbon-h: 42px;
     --ribbon-right: 28px;
     --ribbon-hit-w: 56px;
-    --ribbon-hit-h: 104px;
+    --ribbon-hit-h: 64px;
     /* Лента — тёмный сургуч: тот же красный, уведённый в тень переплёта. */
     --ribbon-lo: #5E2F3C;
     --ribbon-hi: #7A3B4A;
@@ -409,40 +412,53 @@ button:disabled {
     cursor: grabbing;
 }
 
-/* Хвост закладки: уголковый вырез сверху, тень из-под переплёта. */
+/* Хвост закладки: уголковый вырез сверху, тень из-под переплёта.
+   U-31: высота растёт протяжкой (--ribbon-pull), сдвиг вместе с краем книги —
+   отдельной переменной (--ribbon-follow), а не тем же transform, что хотел бы
+   взять hover, — иначе JS-протяжка и hover-твик спорили бы за одно свойство.
+   Обеих переменных по умолчанию нет — растёт/едет только во время жеста. */
 .ribbon-tail {
     position: relative;
     display: block;
     width: var(--ribbon-w);
-    height: var(--ribbon-h);
+    height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
+    transform: translateY(calc(-1 * var(--ribbon-follow, 0px)));
     background: linear-gradient(0deg, var(--ribbon-lo), var(--ribbon-hi));
     clip-path: polygon(0 0, 50% 16%, 100% 0, 100% 100%, 0 100%);
     box-shadow: 0 -4px 14px -4px rgba(var(--night-rgb), 0.7);
+}
+
+/* Hover/фокус двигают тем же --ribbon-follow, что и протяжка — во время
+   жеста инлайн-стиль (setRibbonPull) сильнее этого правила и просто берёт
+   верх, поэтому твик и протяжка не спорят за transform одновременно. */
+.ribbon:hover .ribbon-tail,
+.ribbon:focus-visible .ribbon-tail {
+    --ribbon-follow: 3px;
     transition: transform var(--t-micro) var(--ease);
 }
 
-.ribbon:hover .ribbon-tail,
-.ribbon:focus-visible .ribbon-tail {
-    transform: translateY(-3px);
-}
-
-/* Книга открыта — лента ушла вместе с небом */
+/* Книга открыта — небесная сторона ушла вместе с небом */
 .book-open-body .ribbon {
     display: none;
 }
 
-/* Капля сургуча: единственный сигнал на небе. Ни числа, ни цвета тревоги —
-   «есть что прижать». Полное правило сигналов — K-15. */
-.ribbon-wax {
+/* U-31: знак книги на хвосте небесной стороны — замена капли сургуча.
+   Погашен без сигнала, золотом и сиянием — когда есть что забрать
+   (updateRibbonSignal, ui.js). Ни числа, ни цвета тревоги. Полное правило
+   сигналов — K-15. Свой цвет вместо цвета строки — знак на предмете, не в
+   строке сцепки (то же исключение, что раньше держал только крестик). */
+.ribbon-sign {
     position: absolute;
     left: 50%;
     bottom: calc(var(--ribbon-h) * 0.47);
     transform: translateX(-50%);
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 36% 32%, var(--gold-light), var(--wax) 70%);
-    box-shadow: 0 0 12px 2px rgba(var(--wax-rgb), 0.55);
+    color: var(--ink-faint);
+    transition: color var(--t-micro) var(--ease);
+}
+
+.ribbon-sign.is-lit {
+    color: var(--gold);
+    filter: drop-shadow(0 0 4px rgba(var(--gold-rgb), 0.65));
 }
 
 /* --- K-11: чертёж закладки-цели — верхний левый угол неба -------------------
@@ -1147,23 +1163,46 @@ button:disabled {
    уголковый вырез снизу вместо сверху, зеркально. Живёт углом, свободным от
    высечек (`.book-tabs` начинается заметно ниже) и от заголовка (по центру). */
 
+/* U-31: та же зона/хвост, что у небесной стороны, только сверху и вниз —
+   `.book-close-ribbon` — прозрачная зона касания, `.book-close-ribbon-tail` —
+   видимый хвост, растёт вниз от прибитого верха (у небесной — вверх от низа). */
 .book-close-ribbon {
     position: absolute;
     top: 0;
-    right: var(--ribbon-right);
+    right: calc(var(--ribbon-right) + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
     z-index: 1215;
-    width: var(--ribbon-w);
-    height: 34px;
-    padding: 4px 0 0;
+    width: var(--ribbon-hit-w);
+    height: var(--ribbon-hit-h);
     display: flex;
     align-items: flex-start;
     justify-content: center;
+    padding: 0;
     border: none;
+    background: none;
+    touch-action: none; /* потягивание ленты вниз, а не прокрутка страницы */
+    cursor: grab;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.book-close-ribbon:active {
+    cursor: grabbing;
+}
+
+/* Пока книгу вытягивают вверх (U-31), книжной стороны не видно — появляется,
+   только когда книга зафиксировалась (открылась). Небесную на ходу закрытия
+   и так прячет .book-open-body .ribbon — снимается с closeBook(). */
+body.book-opening .book-close-ribbon {
+    visibility: hidden;
+}
+
+.book-close-ribbon-tail {
+    position: relative;
+    display: block;
+    width: var(--ribbon-w);
+    height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
     background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
     clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
     box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
 }
 
 /* Только устройства с настоящим курсором — на тачскрине тап навсегда «залипает»
@@ -1171,20 +1210,24 @@ button:disabled {
    книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
    media — клавиатурный фокус не залипает так же и должен подсвечиваться всегда. */
 @media (hover: hover) {
-    .book-close-ribbon:hover {
+    .book-close-ribbon:hover .book-close-ribbon-tail {
         filter: brightness(1.12);
     }
 }
 
-.book-close-ribbon:focus-visible {
+.book-close-ribbon:focus-visible .book-close-ribbon-tail {
     filter: brightness(1.12);
 }
 
-/* Крестик — единственный знак кассы K-02 со своим цветом вместо цвета строки
-   (правило концепта нарушено осознанно: это не строка сцепки, а предмет на
-   ленте, и золото здесь читается как «путь наверх», тот же смысл, что у шкалы
-   света и огранки). */
+/* Знак неба на книжной стороне — всегда золото, ему нечего сообщать (U-31,
+   было у крестика O-07 — единственный знак кассы K-02 со своим цветом вместо
+   цвета строки; теперь оба знака ленты делят это исключение — они на
+   предмете, не в строке сцепки). */
 .book-close-sign {
+    position: absolute;
+    left: 50%;
+    top: calc(var(--ribbon-h) * 0.3);
+    transform: translateX(-50%);
     color: var(--gold);
 }
 
@@ -1988,8 +2031,9 @@ button:disabled {
    на счётчике ✦ в шапке шторки (U-09); счётчика на небе больше нет, роль —
    у ленты, туда же летит и сама монета (getClaimFlightTargetRect). */
 /* K-17: пульс прилёта стоит там же, куда прилетела монета — на флажке шкалы,
-   пока книга открыта, и на ленте, когда закрыта. */
-.ribbon-tail.score-pulse,
+   пока книга открыта, и на знаке ленты, когда закрыта (U-31: не на хвосте —
+   его transform занят протяжкой). */
+.ribbon-sign.score-pulse,
 .book-gauge-flag.score-pulse {
     animation: scorePulse var(--score-pulse-ms, 240ms) var(--ease);
 }
@@ -2016,7 +2060,7 @@ button:disabled {
     .claim-coin,
     .claim-coin-y,
     .claim-coin-pill,
-    .ribbon-tail.score-pulse,
+    .ribbon-sign.score-pulse,
     .book-gauge-flag.score-pulse,
     .achv-tile-ready {
         animation: none;
