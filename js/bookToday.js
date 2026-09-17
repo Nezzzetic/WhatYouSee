@@ -32,8 +32,6 @@ function renderBookTodayNews() {
         row.textContent = t(entry.key, entry.params);
         el.appendChild(row);
     }
-    // K-15: страница прочитана — капля сургуча на ленте гаснет по этой причине.
-    if (daily) daily.newsUnseen = false;
 }
 
 /**

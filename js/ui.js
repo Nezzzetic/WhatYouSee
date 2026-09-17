@@ -634,12 +634,12 @@ function dismissLevelBanner(immediate) {
 }
 
 /**
- * K-05/K-15: единственный сигнал на небе. «В книге что-то есть» — готовая
- * награда ИЛИ непрочитанное событие мира (запись в новостях «Сегодня»).
+ * K-05: единственный сигнал на небе. «В книге что-то есть» — готовая награда.
+ * U-33 сняла второе условие K-15 (непрочитанное событие мира) — то же сведение,
+ * что `todayHasSignal()` уже прошла в U-25.
  */
 function hasSkyWaxSignal() {
-    return (typeof hasClaimableAchievements === 'function' && hasClaimableAchievements())
-        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
+    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
 }
 
 /** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
