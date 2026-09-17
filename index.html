@@ -91,6 +91,10 @@
              только у закрытия; знаки ленты — второе исключение «свой цвет
              вместо цвета строки», см. .ribbon-sign/.book-close-sign) -->
         <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5.6C9.8 4.2 7 3.8 4.4 4.4V17.6C7 17 9.8 17.4 12 18.8C14.2 17.4 17 17 19.6 17.6V4.4C17 3.8 14.2 4.2 12 5.6Z"/><path d="M12 5.6V18.8"/></symbol>
+        <!-- U-31 (фидбек с устройства): книжная сторона ленты — две звезды
+             разного размера вместо месяца со звездой (nightstar остаётся в
+             кассе, снова нигде не рисуется, как и до этой задачи) -->
+        <symbol id="i-stars" viewBox="0 0 24 24"><path d="M9 3c.7 4.6 2.1 6 6.7 6.7-4.6.7-6 2.1-6.7 6.7-.7-4.6-2.1-6-6.7-6.7C6.9 9 8.3 7.6 9 3Z"/><path d="M17.4 13.6c.3 1.7.8 2.2 2.5 2.5-1.7.3-2.2.8-2.5 2.5-.3-1.7-.8-2.2-2.5-2.5 1.7-.3 2.2-.8 2.5-2.5Z"/></symbol>
       </defs>
     </svg>
 
@@ -306,15 +310,16 @@
                  «RETURN TO THE SKY», оставив только жест и Escape; O-07 дала
                  постоянный знак взамен неё). Та же ширина и отступ, что у
                  небесной стороны (--ribbon-w/--ribbon-right), висит сверху
-                 страницы, вырез снизу; знак — золотая ночь «nightstar»
-                 (крестик снят, ей нечего сообщать — всегда золото, см.
+                 страницы, вырез снизу; знак — две золотые звезды «stars»
+                 (правка по фидбеку с устройства, было «nightstar»; крестик
+                 снят раньше, ей нечего сообщать — всегда золото, см.
                  .book-close-sign). Тап закрывает тем же доводом
                  (settleBookTransform → closeBook), что и потягивание лентой
                  вниз/страницей вниз (K-26). -->
             <button type="button" id="bookCloseRibbon" class="book-close-ribbon"
                     data-i18n-aria="book.closeRibbon">
                 <span class="book-close-ribbon-tail" aria-hidden="true">
-                    <svg class="ic ic-sm book-close-sign" width="14" height="14" focusable="false"><use href="#i-nightstar"/></svg>
+                    <svg class="ic ic-sm book-close-sign" width="14" height="14" focusable="false"><use href="#i-stars"/></svg>
                 </span>
             </button>
         </div>

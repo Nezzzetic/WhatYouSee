@@ -253,8 +253,9 @@ const GLYPH_SIGNS = [
     'drop', 'flame', 'ring', 'ball', 'wave',
     // U-31: два знака одной ленты — на предмете, не в строке, поэтому со
     // своим цветом вместо цвета строки (то же исключение, что раньше держал
-    // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css)
-    'book'
+    // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css);
+    // «stars» на книжной стороне сменил «nightstar» по фидбегу с устройства.
+    'book', 'stars'
 ];
 
 /**
