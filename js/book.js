@@ -754,7 +754,15 @@ function setupRibbonPullGesture(ribbon) {
         document.body.classList.add('book-opening'); // книжной стороны не видно на ходу
         setBookTransition(book, '');
         const tail = ribbon.querySelector('.ribbon-tail');
-        if (tail) tail.style.transition = '';
+        // U-31 (фидбек с устройства, круг 3): 'none' инлайн, а не '' — сброс
+        // до пустой строки снимает ТОЛЬКО инлайн-переопределение и открывает
+        // дорогу каскаду: залипший на тач-экране :hover (mouseleave не
+        // наступает) навешивает свой transition на transform, и та же
+        // протяжка, что двигает книгу мгновенно, для ленты растягивается
+        // на 240 мс за кадр — она визуально «не идёт дальше», хотя follow
+        // растёт. 'none' инлайн сильнее любого правила каскада независимо
+        // от того, сработал ли @media(hover:hover) на конкретном устройстве.
+        if (tail) tail.style.transition = 'none';
         book.hidden = false;
         // U-21: раздел решается ДО первой отрисовки — страница едет за пальцем
         // уже атласом, а не подменяется им по приезде.
@@ -871,7 +879,10 @@ function setupCloseRibbonPullGesture(closeRibbon) {
         pulled = false;
         setBookTransition(book, '');
         const tail = closeRibbon.querySelector('.book-close-ribbon-tail');
-        if (tail) tail.style.transition = '';
+        // U-31: 'none' инлайн — тот же приём, что в setupRibbonPullGesture,
+        // на случай залипшего :hover (этой стороне не грозит --ribbon-follow,
+        // но высота через --ribbon-pull всё равно не должна ловить транзишен).
+        if (tail) tail.style.transition = 'none';
     };
 
     const move = (event) => {
