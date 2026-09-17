@@ -422,7 +422,11 @@ button:disabled {
    U-31: высота растёт протяжкой (--ribbon-pull), сдвиг вместе с краем книги —
    отдельной переменной (--ribbon-follow), а не тем же transform, что хотел бы
    взять hover, — иначе JS-протяжка и hover-твик спорили бы за одно свойство.
-   Обеих переменных по умолчанию нет — растёт/едет только во время жеста. */
+   Обеих переменных по умолчанию нет — растёт/едет только во время жеста.
+   U-31 (фидбек с устройства, круг 3): глубина выреза считается от ПОКОЙНОЙ
+   --ribbon-h, а не от живой (растущей) высоты хвоста — раньше `50%` было
+   в процентах от высоты и глубина выреза росла вместе с протяжкой, вырез
+   визуально «деформировался» (заметно глубже вытянутого, чем в покое). */
 .ribbon-tail {
     position: relative;
     display: block;
@@ -430,14 +434,28 @@ button:disabled {
     height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
     transform: translateY(calc(-1 * var(--ribbon-follow, 0px)));
     background: linear-gradient(0deg, var(--ribbon-lo), var(--ribbon-hi));
-    clip-path: polygon(0 0, 50% 16%, 100% 0, 100% 100%, 0 100%);
+    clip-path: polygon(0 0, 50% calc(var(--ribbon-h) * 0.16), 100% 0, 100% 100%, 0 100%);
     box-shadow: 0 -4px 14px -4px rgba(var(--night-rgb), 0.7);
 }
 
 /* Hover/фокус двигают тем же --ribbon-follow, что и протяжка — во время
    жеста инлайн-стиль (setRibbonPull) сильнее этого правила и просто берёт
-   верх, поэтому твик и протяжка не спорят за transform одновременно. */
-.ribbon:hover .ribbon-tail,
+   верх, поэтому твик и протяжка не спорят за transform одновременно.
+   U-31 (фидбек с устройства, круг 3): только настоящий курсор — на
+   тач-экране касание может залипнуть в :hover (mouseleave не наступает),
+   и тогда ЭТА transition начинала гоняться за каждым JS-обновлением
+   --ribbon-follow во время протяжки (перетриггеривалась на каждый
+   touchmove чаще, чем успевала доиграть 240 мс) — лента визуально
+   перестаёт ехать дальше, хотя книга уже едет; тот же диагноз, что у
+   .book-tab чинила O-07/U-28. :focus-visible вне media — клавиатурный
+   фокус не залипает так же и должен подсвечиваться всегда. */
+@media (hover: hover) {
+    .ribbon:hover .ribbon-tail {
+        --ribbon-follow: 3px;
+        transition: transform var(--t-micro) var(--ease);
+    }
+}
+
 .ribbon:focus-visible .ribbon-tail {
     --ribbon-follow: 3px;
     transition: transform var(--t-micro) var(--ease);
@@ -1213,13 +1231,16 @@ body.book-opening .book-close-ribbon {
     visibility: hidden;
 }
 
+/* U-31 (фидбек с устройства, круг 3): та же правка, что у .ribbon-tail —
+   глубина выреза считается от ПОКОЙНОЙ --ribbon-h (18% сверху = зеркало
+   16% снизу у небесной стороны), а не от живой высоты хвоста. */
 .book-close-ribbon-tail {
     position: relative;
     display: block;
     width: var(--ribbon-w);
     height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
     background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - var(--ribbon-h) * 0.18), 0 100%);
     box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
 }
 
