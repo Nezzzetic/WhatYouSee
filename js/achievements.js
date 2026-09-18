@@ -1137,10 +1137,10 @@ function afterAchievementStateChanged() {
  * Ищем по `data-chain-id`, а не через обработчик клика, — тогда точку старта
  * знает сам `claimAchievementStep`, и `__test.claim()` гоняет ровно ту же
  * анимацию, что палец: проверяется игра, а не копия правил. Кнопки забора
- * в игре больше нет — прижимается сама марка (`.achv-tile-ready`).
+ * в игре больше нет — прижимается сама печать (`.achv-seal-current-ready`, U-32).
  */
 function getClaimButtonRect(chainId) {
-    const btn = document.querySelector(`.achv-tile-ready[data-chain-id="${chainId}"]`);
+    const btn = document.querySelector(`.achv-seal-current-ready[data-chain-id="${chainId}"]`);
     return btn ? btn.getBoundingClientRect() : null;
 }
 
