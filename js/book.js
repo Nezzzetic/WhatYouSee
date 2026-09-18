@@ -587,6 +587,11 @@ function openBookAnimated(cut) {
     openBook(cut); // резет ленты внутри — ничему не мешает, ниже переставим сами
     if (!canAnimate) return;
     const travel = bookTravelPx(); // один замер на весь довод, см. setupRibbonPullGesture
+    // V-20 (фидбек с устройства 2026-09-17, круг 2): та же поправка, что у
+    // интерактивной протяжки (setupRibbonPullGesture) — без нее лента тут
+    // тоже доезжала бы дальше книги и улетала за экран.
+    const strip = document.getElementById('bookSkyStrip');
+    const stripPx = strip ? strip.getBoundingClientRect().height : 0;
     document.body.classList.add('book-opening');
     setBookTransition(book, 'none');
     setBookTransform(book, `translateY(${travel}px)`, travel);
@@ -596,7 +601,7 @@ function openBookAnimated(cut) {
     setBookTransition(book, `transform ${BOOK_SETTLE_MS}ms var(--ease)`);
     if (tail) tail.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
     setBookTransform(book, '');
-    setRibbonPull(ribbon, 0, travel);
+    setRibbonPull(ribbon, 0, Math.max(0, travel - stripPx));
     const onEnd = (event) => {
         if (event.target !== book || event.propertyName !== 'transform') return;
         book.removeEventListener('transitionend', onEnd);
@@ -751,14 +756,20 @@ function setupBookCloseGesture() {
  *
  * `travel` приходит СНАРУЖИ, а не считается здесь заново (фидбек с
  * устройства, см. beginDrag) — тот же замер, что вёл книгу весь жест.
+ *
+ * V-20 (фидбек с устройства 2026-09-17, круг 2): `follow` у ленты доезжал до
+ * полного `travel`, а книга — только до `travel - stripPx` (см. move()) —
+ * на самом отпускании лента «отрывалась» и улетала за экран ещё stripPx
+ * после того, как книга уже встала. Довод ленты укорочен на ту же величину,
+ * что и довод книги, — оба останавливаются в одной точке.
  */
-function settleRibbonOpen(book, ribbon, travel, onSettled) {
+function settleRibbonOpen(book, ribbon, travel, stripPx, onSettled) {
     const tail = ribbon && ribbon.querySelector('.ribbon-tail');
     if (tail && !prefersReducedMotion()) {
         tail.style.transition = `transform ${BOOK_SETTLE_MS}ms var(--ease)`;
         void tail.offsetHeight;
     }
-    setRibbonPull(ribbon, RIBBON_STRETCH_PX, travel);
+    setRibbonPull(ribbon, RIBBON_STRETCH_PX, Math.max(0, travel - stripPx));
     settleBookTransform(book, 0, () => {
         if (tail) tail.style.transition = '';
         onSettled();
@@ -876,7 +887,7 @@ function setupRibbonPullGesture(ribbon) {
         if (dy >= RIBBON_STRETCH_PX) {
             // K-26: довод — доезжаем вверх до конца тем же ходом, что вёл
             // за пальцем, и только потом открываем по-настоящему.
-            settleRibbonOpen(book, ribbon, travel, () => openBook());
+            settleRibbonOpen(book, ribbon, travel, stripPx, () => openBook());
         } else {
             // ниже порога книга не двигалась вовсе (follow был 0) — только
             // лента пружинит обратно в покой.
