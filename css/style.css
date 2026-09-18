@@ -1920,12 +1920,16 @@ body.book-opening .book-close-ribbon {
     transition: stroke-dashoffset var(--t-micro) var(--ease);
 }
 
+/* Фидбек с телефона: `align-items: baseline` не центрирует строку по высоте —
+   прижимает её к верху контейнера (баг самого свойства на разноразмерных
+   inline-детях, не браузера), числа наезжали на верхнюю дугу кольца. */
 .achv-seal-num {
     position: absolute;
     inset: 0;
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: center;
+    line-height: 1;
     pointer-events: none;
     font-variant-numeric: tabular-nums;
 }
@@ -1960,8 +1964,16 @@ body.book-opening .book-close-ribbon {
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Фидбек с телефона: отдельный `::after` со своим `inset` рисовал ВТОРОЕ
+   кольцо на фиксированном расстоянии от края (box-shadow без блюра
+   толком не смешивался с телом) — грязно, читалось как две обводки вместо
+   одного светящегося кольца. Свечение теперь — box-shadow самого тела
+   печати: растёт от истинного круглого края, поэтому выглядит как один
+   нимб, а не эхо-контур. Дышит именно этот box-shadow (см. keyframes ниже) —
+   заливка и цифры/кольцо остаются как есть. */
 .achv-seal-current-ready .achv-seal-body {
-    background: rgba(var(--gold-rgb), 0.1);
+    background: rgba(var(--gold-rgb), 0.14);
+    animation: achvSealBreathe 2.1s ease-in-out infinite alternate;
 }
 
 .achv-seal-current-ready .achv-seal-ring-fill {
@@ -1989,29 +2001,18 @@ body.book-opening .book-close-ribbon {
     outline: none;
 }
 
-/* Дышит только свечение вокруг кольца — кольцо и числа не гаснут (развилка 3
-   дока: два круга правки U-20 подняли прежнюю амплитуду/период марки до
-   заметности, тот же диапазон переносится сюда на новый носитель). */
-.achv-seal-current-ready .achv-seal-body::after {
-    content: "";
-    position: absolute;
-    inset: -6px;
-    border-radius: 50%;
-    box-shadow: 0 0 9px 2px rgba(var(--gold-rgb), 0.6);
-    opacity: 0.6;
-    pointer-events: none;
-    animation: achvSealBreathe 2.1s ease-in-out infinite alternate;
-}
-
+/* Дышит только свечение вокруг тела печати — кольцо и числа не гаснут
+   (развилка 3 дока: два круга правки U-20 подняли прежнюю амплитуду/период
+   марки до заметности, тот же диапазон переносится сюда на новый носитель). */
 @keyframes achvSealBreathe {
-    from { opacity: 0.55; }
-    to   { opacity: 1; }
+    from { box-shadow: 0 0 6px 1px rgba(var(--gold-rgb), 0.4); }
+    to   { box-shadow: 0 0 14px 3px rgba(var(--gold-rgb), 0.75); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .achv-seal-current-ready .achv-seal-body::after {
+    .achv-seal-current-ready .achv-seal-body {
         animation: none;
-        opacity: 0.85;
+        box-shadow: 0 0 10px 2px rgba(var(--gold-rgb), 0.6);
     }
 }
 
@@ -2227,8 +2228,7 @@ body.book-opening .book-close-ribbon {
     .claim-coin-y,
     .claim-coin-pill,
     .ribbon-sign.score-pulse,
-    .book-spine-bead.score-pulse,
-    .achv-seal-current-ready .achv-seal-body::after {
+    .book-spine-bead.score-pulse {
         animation: none;
     }
 }
