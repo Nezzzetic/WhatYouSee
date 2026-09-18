@@ -1230,15 +1230,17 @@ button:disabled {
     transform: rotate(180deg) translateX(2px);
 }
 
-/* U-32: красная сургучная точка сменилась золотой звёздочкой — тот же угол
-   высечки, тот же принцип «есть что взять», без тревожного цвета. */
+/* U-32: красная сургучная точка сменилась золотой звёздочкой — принцип «есть
+   что взять», без тревожного цвета.
+   U-34: звёздочка ушла с угла высечки (вылезала за контур, у «STAMPS» касалась
+   буквы) внутрь — flex-элементом после слова: в развороте (writing-mode:
+   vertical-rl + rotate(180deg)) это на экране над словом, на оси высечки.
+   Место занято всегда, горит только класс -lit — слово не прыгает (K-23). */
 .book-tab-wax {
-    position: absolute;
-    /* Высечка развёрнута (writing-mode: vertical-rl + rotate(180deg)) — «левый
-       верхний» в экранных координатах читается как «правый нижний» в системе
-       координат до поворота. */
-    left: 1px;
-    bottom: 3px;
+    flex: none;
+    margin-inline-start: 3px;
+    visibility: hidden;
+    pointer-events: none;
     width: 9px;
     height: 9px;
     display: flex;
@@ -1252,6 +1254,10 @@ button:disabled {
 
 .book-tab-wax::before {
     content: "✦";
+}
+
+.book-tab-wax-lit {
+    visibility: visible;
 }
 
 /* --- O-07: постоянный знак закрытия книги -----------------------------------
@@ -1761,8 +1767,10 @@ body.book-opening .book-close-ribbon {
 /* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
    (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
    строка списка — без линейки. */
+/* U-34: вертикальные зазоры ужаты (9/10 → 5/6 и ниже по строке) — пять
+   строк главы встают без прокрутки на окне 393×735 (Chrome на телефоне). */
 .achv-row {
-    padding: 9px 0 10px 9px;
+    padding: 5px 0 6px 9px;
     border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -1800,6 +1808,7 @@ body.book-opening .book-close-ribbon {
 
 .achv-row-title {
     font-size: 16px;
+    line-height: 1.2;
     font-weight: 700;
     color: var(--ink);
     white-space: nowrap;
@@ -1823,13 +1832,13 @@ body.book-opening .book-close-ribbon {
 /* --- сцепка: описание — курсив под именем ---------------------------------- */
 
 .achv-row-desc {
-    margin-top: 2px;
+    margin-top: 0;
 }
 
 .achv-row-desc-text {
     font-style: italic;
     font-size: 13px;
-    line-height: 1.35;
+    line-height: 1.25;
     color: var(--ink-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -1843,14 +1852,18 @@ body.book-opening .book-close-ribbon {
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
     gap: 8px;
-    margin-top: 8px;
+    margin-top: 5px;
 }
 
+/* U-34: слот — опора для растянутой .achv-seal-hit. Без position зона касания
+   считалась от ближайшего позиционированного предка и накрывала почти всю
+   страницу книги (398×864 на «Сегодня») — тап в любом месте забирал награду. */
 .achv-seal-slot {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 2px;
 }
 
 .achv-seal-body {
@@ -1869,9 +1882,9 @@ body.book-opening .book-close-ribbon {
    пустой печати), чтобы высота ряда не прыгала при смене состояния (риск
    дока — «высота строки не должна прыгать»). */
 .achv-seal-label {
-    min-height: 12px;
+    min-height: 11px;
     font-size: 10px;
-    line-height: 1.2;
+    line-height: 1.1;
     text-align: center;
     color: var(--ink-faint);
     white-space: nowrap;
