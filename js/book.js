@@ -179,9 +179,12 @@ function renderBookGauge() {
 
     const { earned, level, ceil, ratio } = getLevelProgress();
 
+    // Фидбек с телефона 2026-09-17: в головке корешка — куда ведёт нить,
+    // следующий уровень (было так и до V-20, у прежней шкалы K-06/K-17),
+    // а не текущий — тот уже назван в подвале («ALMANAC · LEVEL N»).
     const levelEl = document.createElement('div');
     levelEl.className = 'book-spine-level';
-    levelEl.textContent = t('book.spineLevel', { n: level });
+    levelEl.textContent = t('book.spineLevel', { n: level + 1 });
     el.appendChild(levelEl);
 
     const thread = document.createElement('div');
@@ -790,6 +793,7 @@ function setupRibbonPullGesture(ribbon) {
     let dragging = false;
     let pulled = false;
     let travel = 0;
+    let stripPx = 0;
 
     const beginDrag = () => {
         if (!book) return;
@@ -813,6 +817,14 @@ function setupRibbonPullGesture(ribbon) {
         // уже атласом, а не подменяется им по приезде.
         applyFirstBookOpenCut();
         renderBook();
+        // V-20 (фидбек с устройства 2026-09-17): верх `.book` — теперь полоса
+        // неба (`.book-sky-strip`), а не лист. Без поправки первые stripPx
+        // протяжки открывали только её — прозрачную, — и лист не появлялся,
+        // пока лента уже заметно отъехала: между лентой и книгой была видна
+        // пустота. Замеряется, как и travel, один раз на весь жест — высота
+        // строки зависит от --safe-top и не меняется посреди протяжки.
+        const strip = document.getElementById('bookSkyStrip');
+        stripPx = strip ? strip.getBoundingClientRect().height : 0;
         setBookTransform(book, `translateY(${travel}px)`, travel);
     };
 
@@ -847,7 +859,9 @@ function setupRibbonPullGesture(ribbon) {
         if (event.cancelable) event.preventDefault();
         const stretch = Math.min(dy, RIBBON_STRETCH_PX);
         const follow = Math.max(0, dy - RIBBON_STRETCH_PX);
-        setBookTransform(book, `translateY(${Math.max(0, travel - follow)}px)`, travel);
+        // Лист догоняет ленту сразу, без мёртвой зоны на высоту полосы неба
+        // (stripPx) — см. комментарий в beginDrag.
+        setBookTransform(book, `translateY(${Math.max(0, travel - follow - stripPx)}px)`, travel);
         setRibbonPull(ribbon, stretch, follow);
     };
 
