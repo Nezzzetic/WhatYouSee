@@ -535,7 +535,7 @@
      * открыта на верной странице и цепочка claimable) и, если передан
      * `stepIndex`, что показан именно этот шаг цепочки — тестирует то, что
      * видит и жмёт игрок, а не копию правил. Кнопки забора в игре больше нет —
-     * прижимается сама марка (`.achv-tile-ready`).
+     * прижимается сама печать (`.achv-seal-current-ready`, U-32).
      */
     function press(chainId, stepIndex) {
         const progress = achievementProgress[chainId];
@@ -544,8 +544,8 @@
             fail('press: цепочка «' + chainId + '» сейчас на шаге ' + progress.stepIndex
                 + ', а не ' + stepIndex);
         }
-        const tile = document.querySelector('.achv-tile-ready[data-chain-id="' + chainId + '"]');
-        if (!tile) fail('press: готовой марки цепочки «' + chainId + '» нет в DOM '
+        const tile = document.querySelector('.achv-seal-current-ready[data-chain-id="' + chainId + '"]');
+        if (!tile) fail('press: готовой печати цепочки «' + chainId + '» нет в DOM '
             + '(книга не на той странице или нечего забирать?)');
         const before = getMetaScore();
         tile.click();

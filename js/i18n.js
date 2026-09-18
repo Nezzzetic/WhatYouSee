@@ -215,10 +215,9 @@ en: {
     'rewardPage.cuttersHand': "The Cutter's Hand",
 
     // --- Награды: строки и замки ---------------------------------------------
-    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
-    'rewards.headReady': 'ready',
-    'rewards.headDone': 'done',
-    'rewards.headProgress': '{current} / {target}',
+    // U-32: печати сцепки несут прогресс сами (кольцо) — счёта в шапке строки
+    // больше нет, вместо него подпись под готовой печатью, капсом её ставит CSS.
+    'rewards.take': 'take',
     'rewards.claim': 'Claim reward',
     'rewards.claimIdle': 'Reward for the current step — meet its condition',
     'rewards.lockCollectPage': 'Collect every shape on page {n}',
@@ -557,10 +556,9 @@ ru: {
     'rewardPage.cuttersHand': 'Рука гранильщика',
 
     // --- Награды --------------------------------------------------------------
-    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
-    'rewards.headReady': 'готово',
-    'rewards.headDone': 'пройдено',
-    'rewards.headProgress': '{current} / {target}',
+    // U-32: печати сцепки несут прогресс сами (кольцо) — счёта в шапке строки
+    // больше нет, вместо него подпись под готовой печатью, капсом её ставит CSS.
+    'rewards.take': 'забрать',
     'rewards.claim': 'Забрать награду',
     'rewards.claimIdle': 'Награда за текущую ступень — выполните её условие',
     'rewards.lockCollectPage': 'Соберите все фигуры страницы {n}',

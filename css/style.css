@@ -132,7 +132,9 @@
     --ink-muted: #A5B8CD;
     --ink-faint: #64809D;
 
-    /* Сургуч — «готово, прижми». Единственный сигнал во всей игре. */
+    /* Сургуч — было «готово, прижми», единственным сигналом во всей игре
+       (U-32 переселила его в золото ниже — красный остался только у кнопки
+       сброса прогресса, `.btn-danger`). */
     --wax: #C4553B;
     --wax-soft: #DE8B72;
 
@@ -801,8 +803,8 @@ button:disabled {
 /* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
    странно попадать пальцем даже с увеличенной зоной касания. Зона касания
    растёт ещё и через padding + отрицательный margin — тот же приём, что уже
-   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой марки
-   (K-08, `.achv-tile-ready` шире на 6pt). Горизонталь — асимметрично: сторона
+   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой печати
+   сцепки (U-32, `.achv-seal-hit` шире печати). Горизонталь — асимметрично: сторона
    к колонцифре (`#bookFolio`) остаётся узкой (4px, в пределах gap:6px), чтобы
    хиткон стрелки не наезжал на число при наведении/касании (был баг — правка
    по фидбеку с телефона), наружная сторона (к пустому полю страницы) растёт
@@ -847,10 +849,10 @@ button:disabled {
     width: min(84.6%, 378px);
     padding: 14px 22px 16px;
     text-align: center;
-    border: 1px solid var(--wax);
+    border: 1px solid var(--gold);
     border-radius: var(--r-lg);
     background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 10px 26px rgba(var(--paper-deep-rgb), 0.55), 0 0 18px rgba(var(--wax-rgb), 0.4);
+    box-shadow: 0 10px 26px rgba(var(--paper-deep-rgb), 0.55), 0 0 18px rgba(var(--gold-rgb), 0.4);
     pointer-events: none;
     opacity: 0;
     transform: translate(-50%, -10px);
@@ -866,7 +868,7 @@ button:disabled {
     font-size: 10px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
-    color: var(--wax-soft);
+    color: var(--gold);
 }
 
 .level-banner-title {
@@ -882,7 +884,7 @@ button:disabled {
 .level-banner-unlocks {
     margin-top: 9px;
     padding-top: 9px;
-    border-top: 1px solid rgba(var(--wax-rgb), 0.3);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.3);
 }
 
 .level-banner-unlock-row {
@@ -1053,17 +1055,27 @@ button:disabled {
 }
 
 /* K-24: точка садится в тот же жёлоб .book-index-row-icon, что и замок —
-   на одной строке они не встречаются, второй слот был лишним зазором. */
+   на одной строке они не встречаются, второй слот был лишним зазором.
+   U-32: красная сургучная точка сменилась золотой звёздочкой — сигнал
+   «есть что взять» больше не читается тревогой. */
 .book-index-row-wax {
     flex: none;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
 }
 
 .book-index-row-wax-lit {
-    background: var(--wax);
-    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+    color: var(--gold);
+    text-shadow: 0 0 5px rgba(var(--gold-rgb), 0.65);
+}
+
+.book-index-row-wax-lit::before {
+    content: "✦";
 }
 
 .book-index-row-folio {
@@ -1218,18 +1230,28 @@ button:disabled {
     transform: rotate(180deg) translateX(2px);
 }
 
+/* U-32: красная сургучная точка сменилась золотой звёздочкой — тот же угол
+   высечки, тот же принцип «есть что взять», без тревожного цвета. */
 .book-tab-wax {
     position: absolute;
     /* Высечка развёрнута (writing-mode: vertical-rl + rotate(180deg)) — «левый
        верхний» в экранных координатах читается как «правый нижний» в системе
        координат до поворота. */
-    left: 3px;
-    bottom: 6px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--wax);
-    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+    left: 1px;
+    bottom: 3px;
+    width: 9px;
+    height: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--gold);
+    text-shadow: 0 0 5px rgba(var(--gold-rgb), 0.65);
+}
+
+.book-tab-wax::before {
+    content: "✦";
 }
 
 /* --- O-07: постоянный знак закрытия книги -----------------------------------
@@ -1723,10 +1745,13 @@ body.book-opening .book-close-ribbon {
     font-size: 13px;
 }
 
-/* --- K-08: награды — сцепка марок, как в альбоме филателиста ---------------
-   Достижение — одна строка: имя с линейкой из точек и счётом ступени, курсив
-   описания под ним, ниже полоска из пяти клеток. Кнопки забора нет нигде —
-   прижимается сама марка (см. `.achv-tile-ready`). */
+/* --- U-32 (заменила K-08/K-18/U-20/U-24): награды — сцепка печатей, как в
+   альбоме филателиста. Достижение — одна строка: имя, курсив описания
+   текущего шага под ним, ниже ряд из пяти круглых печатей 44 pt — прогресс
+   виден в кольце текущей, а не в счёте шапки и не в полоске (обе сняты,
+   дублировали кольцо). Красный сургуч ушёл целиком — сигнал «готово»
+   стал золотым (см. `.achv-seal-current-ready` ниже). Кнопки забора нет
+   нигде — прижимается сама печать. */
 
 .achv-list {
     display: flex;
@@ -1736,9 +1761,6 @@ body.book-opening .book-close-ribbon {
 /* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
    (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
    строка списка — без линейки. */
-/* K-23: жёлоб под сургучную полосу зарезервирован всегда — иначе появление
-   сигнала «готово прижать» расталкивает строку (padding был только у
-   `.achv-row-claimable`, box-shadow сам по себе на геометрию не влияет). */
 .achv-row {
     padding: 9px 0 10px 9px;
     border-bottom: 1px solid var(--paper-edge);
@@ -1750,13 +1772,6 @@ body.book-opening .book-close-ribbon {
 
 .achv-row-done {
     opacity: 0.55;
-}
-
-/* Носитель «готово прижать» на уровне строки — маргинальный акцент сургучом,
-   не рамка-карточка (риск 1: дублирует сургучный счёт шапки и кольцо готовой
-   марки — три независимых сигнала вместо одной рамки). */
-.achv-row-claimable {
-    box-shadow: inset 3px 0 0 var(--wax);
 }
 
 .achv-row-locked {
@@ -1783,11 +1798,13 @@ body.book-opening .book-close-ribbon {
     gap: 4px;
 }
 
-/* U-24: имя цепочки крупнее — 14px терялось рядом с укрупнённым счётом. */
 .achv-row-title {
     font-size: 16px;
     font-weight: 700;
     color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .achv-row-title-hidden {
@@ -1796,63 +1813,20 @@ body.book-opening .book-close-ribbon {
 }
 
 /* Строка-замок держит текст причины в том же классе, что раньше — прогресса
-   у неё нет, полосу и марки заменяет одна фраза. */
+   у неё нет, полосу и печати заменяет одна фраза. */
 .achv-row-step {
     font-size: 11.5px;
     line-height: 1.3;
     color: var(--ink-muted);
 }
 
-/* --- сцепка: шапка (имя · точки · счёт) ------------------------------------ */
-
-.achv-row-head {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-}
-
-.achv-row-head .achv-row-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.achv-row-dots {
-    flex: 1;
-    min-width: 10px;
-    border-bottom: 1px dotted rgba(var(--ink-rgb), 0.28);
-    transform: translateY(-4px);
-}
-
-/* U-24: счёт крупнее и светлее книжного «ink» — раньше терялся мелким
-   приглушённым текстом, фидбек с живого экрана («непонятно»). */
-.achv-row-count {
-    flex: none;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--ink);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-.achv-row-count-ready {
-    color: var(--wax-soft);
-}
-
-/* --- сцепка: описание — курсив под именем, бар прогресса в конце той же
-   строки (U-24: раньше стоял рядом со счётом в шапке — заказчик попросил
-   перенести под счёт, в одну линию с описанием шага). --- */
+/* --- сцепка: описание — курсив под именем ---------------------------------- */
 
 .achv-row-desc {
     margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
 }
 
 .achv-row-desc-text {
-    flex: 1;
-    min-width: 0;
     font-style: italic;
     font-size: 13px;
     line-height: 1.35;
@@ -1860,38 +1834,202 @@ body.book-opening .book-close-ribbon {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: block;
 }
 
-/* U-24: заливка прогресса внутри текущего шага — короткая полоска, не
-   книжная волосяная линия: на такой ширине 1px рядом с текстом не читался
-   бы. Показывается только у цепочек с числовым прогрессом (суточный квест
-   и одношаговые условия дают null — createAchievementRow). */
-.achv-row-bar {
-    flex: none;
-    width: 64px;
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(var(--ink-rgb), 0.16);
-    overflow: hidden;
-}
+/* --- U-32: ряд из пяти круглых печатей -------------------------------------- */
 
-.achv-row-bar-fill {
-    height: 100%;
-    width: 0;
-    border-radius: 3px;
-    background: var(--gold);
-    box-shadow: 0 0 4px rgba(var(--gold-rgb), 0.5);
-}
-
-/* --- сцепка: полоска из пяти клеток ----------------------------------------- */
-
-.achv-row-tiles {
-    --tile-gap: 6px;
+.achv-row-seals {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--tile-gap);
-    margin-top: 7px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 8px;
 }
+
+.achv-seal-slot {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.achv-seal-body {
+    position: relative;
+    width: min(44px, 100%);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+}
+
+/* Подпись под текущей печатью — награда бледно или «TAKE N ✦» золотом капсом
+   готовности; строка всегда в разметке (даже пустой у собранной/будущей/
+   пустой печати), чтобы высота ряда не прыгала при смене состояния (риск
+   дока — «высота строки не должна прыгать»). */
+.achv-seal-label {
+    min-height: 12px;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- собранная печать: приглушённая латунь ---------------------------------- */
+
+.achv-seal-collected .achv-seal-body {
+    background: rgba(var(--gold-rgb), 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--gold-rgb), 0.38);
+    color: var(--gold);
+}
+
+/* --- будущая / пустая (слот сверх длины цепочки, развилка 2 дока) ---------- */
+
+.achv-seal-future .achv-seal-body {
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.16);
+}
+
+.achv-seal-empty .achv-seal-body {
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.07);
+}
+
+/* --- текущая печать: тонкое кольцо, дуга прогресса, числа ------------------- */
+
+.achv-seal-ring {
+    position: absolute;
+    inset: 0;
+    /* Дуга растёт от 12 часов по часовой — <circle> в SVG начинается в 3
+       часа, поворот на -90° переносит старт наверх. */
+    transform: rotate(-90deg);
+}
+
+.achv-seal-ring-track {
+    fill: none;
+    stroke: rgba(var(--gold-rgb), 0.22);
+    stroke-width: 2;
+}
+
+.achv-seal-ring-fill {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 2;
+    stroke-linecap: round;
+    transition: stroke-dashoffset var(--t-micro) var(--ease);
+}
+
+.achv-seal-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.achv-seal-num-cur {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.achv-seal-num-req {
+    font-size: 8px;
+    color: var(--ink-faint);
+}
+
+/* Длинные пары («512 / 1000») сжимаются целиком — переноситься в кольце
+   44 px попросту некуда (риск дока). */
+.achv-seal-num-tight .achv-seal-num-cur {
+    font-size: 10px;
+}
+
+.achv-seal-num-tight .achv-seal-num-req {
+    font-size: 6.5px;
+}
+
+/* --- текущая печать, можно взять: кольцо замкнулось ярким золотом ---------- */
+/* z-index обязателен: opacity/filter дыхания создают контекст наложения, и
+   без него растянутая .achv-seal-hit уходит под соседние печати. */
+.achv-seal-current-ready {
+    z-index: 2;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.achv-seal-current-ready .achv-seal-body {
+    background: rgba(var(--gold-rgb), 0.1);
+}
+
+.achv-seal-current-ready .achv-seal-ring-fill {
+    stroke: var(--gold-light);
+    stroke-width: 2.4;
+}
+
+.achv-seal-current-ready .achv-seal-num-cur {
+    color: var(--gold-light);
+}
+
+.achv-seal-current-ready .achv-seal-num-req {
+    color: var(--gold);
+}
+
+.achv-seal-current-ready .achv-seal-label {
+    color: var(--gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.achv-seal-current-ready:focus-visible .achv-seal-body {
+    box-shadow: 0 0 0 2px rgba(var(--gold-light-rgb), 0.7);
+    outline: none;
+}
+
+/* Дышит только свечение вокруг кольца — кольцо и числа не гаснут (развилка 3
+   дока: два круга правки U-20 подняли прежнюю амплитуду/период марки до
+   заметности, тот же диапазон переносится сюда на новый носитель). */
+.achv-seal-current-ready .achv-seal-body::after {
+    content: "";
+    position: absolute;
+    inset: -6px;
+    border-radius: 50%;
+    box-shadow: 0 0 9px 2px rgba(var(--gold-rgb), 0.6);
+    opacity: 0.6;
+    pointer-events: none;
+    animation: achvSealBreathe 2.1s ease-in-out infinite alternate;
+}
+
+@keyframes achvSealBreathe {
+    from { opacity: 0.55; }
+    to   { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .achv-seal-current-ready .achv-seal-body::after {
+        animation: none;
+        opacity: 0.85;
+    }
+}
+
+/* U-32 (было U-20): зона касания шире печати — печать мелкая, палец крупный.
+   Растёт и по вертикали, и по горизонтали вокруг самой печати (не через всю
+   полоску, как было у прямоугольной марки — круги соседей не перекрываются
+   заметно, второй круг не активируется мимо своего). Реальный узел (не
+   псевдоэлемент): надёжнее ловит тап в WebView. */
+.achv-seal-hit {
+    position: absolute;
+    inset: -10px -6px -6px;
+    z-index: 1;
+}
+
+/* --- K-14: настройки — тумблер книжный: пустая клетка / оттиск ------------
+   U-32 сняла достижения с `.achv-tile` целиком (печати сцепок теперь
+   `.achv-seal-*` выше) — эти четыре правила остались жить только ради
+   тумблера настроек, второго и последнего, кто их читает. */
 
 .achv-tile {
     position: relative;
@@ -1901,7 +2039,6 @@ body.book-opening .book-close-ribbon {
     align-items: center;
     justify-content: center;
     box-shadow: inset 0 0 0 1px var(--paper-edge);
-    font-variant-numeric: tabular-nums;
 }
 
 .achv-tile::before {
@@ -1913,21 +2050,11 @@ body.book-opening .book-close-ribbon {
     pointer-events: none;
 }
 
-/* K-18: было --gold-deep — на тёмной бумаге (--paper) почти нечитаемо;
-   --gold-light у готовой марки (ниже) остаётся ярче — двухступенчатая
-   лестница без нового токена. */
-.achv-tile-amt {
-    font-size: 11px;
-    color: var(--gold);
-    letter-spacing: 0.01em;
-}
-
 .achv-tile-empty {
     opacity: 0.3;
 }
 
-/* Оттиск: число вылетело к корешку, на его месте — знак цепочки. Свой цвет
-   знаку не идёт (K-02) — цепочки цвета красят его через inline style сами. */
+/* Оттиск: клетка тумблера включена — знак кассы «press» вместо пустоты. */
 .achv-tile-lit {
     background: rgba(var(--ink-rgb), 0.06);
     box-shadow: inset 0 0 0 1px var(--paper-edge);
@@ -1937,73 +2064,9 @@ body.book-opening .book-close-ribbon {
     color: var(--ink-faint);
 }
 
-/* U-20: готова прижать — сургуч заливкой, единственное закрашенное пятно
-   среди волосяных линеек страницы (было кольцо-рамка, на бумаге не читалось
-   как «нажми»). Дышит ровно эта клетка (K-03: яркость 0.8…1.0, период 5–9 с,
-   геометрия неподвижна — двигать нельзя, марка не должна елозить под пальцем).
-   z-index обязателен: opacity/filter дыхания создают контекст наложения, и без
-   него растянутая .achv-tile-hit уходит под соседние клетки ниже по DOM. */
-.achv-tile-ready {
-    z-index: 2;
-    background: var(--wax);
-    box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    animation: achvTileBreathe 2.1s ease-in-out infinite alternate;
-}
-
-.achv-tile-ready::before {
-    border-color: rgba(var(--gold-light-rgb), 0.35);
-}
-
-.achv-tile-ready .achv-tile-amt {
-    color: var(--gold-light);
-    font-weight: 650;
-}
-
-.achv-tile-ready:hover,
-.achv-tile-ready:focus-visible {
-    box-shadow: inset 0 0 0 2px rgba(var(--wax-rgb), 0.95);
-    outline: none;
-}
-
-/* Фидбек с плейтеста 2026-09-05, два круга: первая версия (0.82↔1, 6.4s) была
-   практически не видна — глаз не ловит 18% альфы на насыщенном сургучном пятне,
-   амплитуда и период подняты вместе с наружным свечением (0.6↔1, 4.2s); второй
-   круг — тот же диапазон вдвое быстрее (2.1s), период всё ещё не в счётчик
-   мигания. ::before/пунктир не трогаем, контур растёт вторым слоем поверх,
-   а не вместо заливки. Всё ещё только opacity/box-shadow — без transform,
-   марка не должна елозить под пальцем. */
-@keyframes achvTileBreathe {
-    from {
-        opacity: 0.6;
-        box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
-    }
-    to {
-        opacity: 1;
-        box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8), 0 0 9px 1px rgba(var(--wax-rgb), 0.6);
-    }
-}
-
-/* U-20: по вертикали зона касания заметно шире марки (48 px — под полоской
-   ~20 px мёртвого поля, отнять не у кого). По горизонтали растягивается до
-   краёв полоски через --hit-l/--hit-r (шаг клетки задаёт createAchievementTile,
-   потолок сетки всегда 5 — createAchievementTiles): вторая марка в строке не
-   активируется, пока не прижата первая (K-22), так что мишени соседних строк
-   не пересекаются. Реальный узел (не псевдоэлемент): надёжнее ловит тап в
-   WebView. */
-.achv-tile-hit {
-    position: absolute;
-    top: -8px;
-    bottom: -8px;
-    left: calc(-1 * var(--hit-l, 0) * (100% + var(--tile-gap)) - 6px);
-    right: calc(-1 * var(--hit-r, 0) * (100% + var(--tile-gap)) - 6px);
-    z-index: 1;
-}
-
-/* --- K-14: настройки — тумблер книжный: пустая клетка / оттиск (`.achv-tile`
-   выше), а не системный чекбокс. Своей иконки в тумблере нет — состоянию
-   нечего означать темой, это бинарный переключатель, а не оттиск цепочки. */
+/* Тумблер книжный: пустая клетка / оттиск (`.achv-tile` выше), а не
+   системный чекбокс. Своей иконки в тумблере нет — состоянию нечего
+   означать темой, это бинарный переключатель, а не оттиск цепочки. */
 
 .settings-list {
     display: flex;
@@ -2103,7 +2166,7 @@ body.book-opening .book-close-ribbon {
     top: 0;
     transform: translate(-50%, -50%);
     padding: 6px 11px;
-    border: 1px solid var(--wax);
+    border: 1px solid var(--gold);
     border-radius: 99px;
     background: rgba(var(--paper-raised-rgb), 0.95);
     color: var(--gold-light);
@@ -2165,7 +2228,7 @@ body.book-opening .book-close-ribbon {
     .claim-coin-pill,
     .ribbon-sign.score-pulse,
     .book-spine-bead.score-pulse,
-    .achv-tile-ready {
+    .achv-seal-current-ready .achv-seal-body::after {
         animation: none;
     }
 }
