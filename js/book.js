@@ -256,10 +256,12 @@ function renderBookTabs() {
     document.querySelectorAll('.book-tab').forEach(btn => {
         btn.classList.toggle('book-tab-on', btn.dataset.cut === bookCut);
     });
+    // U-34: звёздочка горит классом, а не hidden — место под неё в высечке
+    // занято всегда, и слово не прыгает, когда сигнал загорается/гаснет (K-23).
     const stampsWax = document.getElementById('bookTabStampsWax');
-    if (stampsWax) stampsWax.hidden = !stampsHaveClaimable();
+    if (stampsWax) stampsWax.classList.toggle('book-tab-wax-lit', stampsHaveClaimable());
     const todayWax = document.getElementById('bookTabTodayWax');
-    if (todayWax) todayWax.hidden = !todayHasSignal();
+    if (todayWax) todayWax.classList.toggle('book-tab-wax-lit', todayHasSignal());
 }
 
 function stepBookPage(delta) {

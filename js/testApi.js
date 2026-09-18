@@ -639,7 +639,7 @@
                 const beadBox = bead ? bead.getBoundingClientRect() : null;
                 const waxOf = (id) => {
                     const el = document.getElementById(id);
-                    return el ? !el.hidden : null;
+                    return el ? el.classList.contains('book-tab-wax-lit') : null;
                 };
                 return {
                     gaugeVisible: !!(box && box.width > 0 && hit && gauge.contains(hit)),

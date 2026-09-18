@@ -305,14 +305,14 @@
             <div id="bookTabs" class="book-tabs" role="tablist">
                 <button type="button" class="book-tab" data-cut="today" role="tab">
                     <!-- K-17: та же пара «локализуемый span + своя капля», что у Штампов -->
-                    <span data-i18n="book.cutToday">Today</span><span id="bookTabTodayWax" class="book-tab-wax" hidden></span>
+                    <span data-i18n="book.cutToday">Today</span><span id="bookTabTodayWax" class="book-tab-wax" aria-hidden="true"></span>
                 </button>
                 <button type="button" class="book-tab" data-cut="index" role="tab" data-i18n="book.cutIndex">Index</button>
                 <button type="button" class="book-tab" data-cut="atlas" role="tab" data-i18n="book.cutAtlas">Atlas</button>
                 <button type="button" class="book-tab" data-cut="stamps" role="tab">
                     <!-- applyHtmlI18n перезаписывает textContent целиком — капля
                          сургуча живёт своим span'ом, а не внутри локализуемого -->
-                    <span data-i18n="book.cutStamps">Stamps</span><span id="bookTabStampsWax" class="book-tab-wax" hidden></span>
+                    <span data-i18n="book.cutStamps">Stamps</span><span id="bookTabStampsWax" class="book-tab-wax" aria-hidden="true"></span>
                 </button>
                 <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
             </div>

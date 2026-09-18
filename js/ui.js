@@ -786,10 +786,15 @@ function getAchievementSealProgress(check, claimable) {
     return { current: claimable ? 1 : 0, target: 1 };
 }
 
-/** Кольцо прогресса шага — SVG-дуга, растёт от 12 часов по часовой (rotate в CSS). */
+/**
+ * Кольцо прогресса шага — SVG-дуга, растёт от 12 часов по часовой (rotate в CSS).
+ * U-34: R = 20.8 — внешний край дуги готовой печати (штрих 2.4) ложится ровно
+ * на край тела 44 px, как контур собранной/будущей; при 17.5 кольцо было на
+ * 3.5 px меньше соседей и читалось другим, мелким кружком.
+ */
 function createAchievementSealRing(ratio) {
     const NS = 'http://www.w3.org/2000/svg';
-    const SIZE = 44, R = 17.5;
+    const SIZE = 44, R = 20.8;
     const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('class', 'achv-seal-ring');
     svg.setAttribute('viewBox', `0 0 ${SIZE} ${SIZE}`);
