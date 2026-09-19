@@ -475,9 +475,34 @@ function isMultiTouch(event) {
     return !!(event.touches && event.touches.length > 1);
 }
 
-/** K-26: во столько px книга уходит за нижний край экрана целиком. */
+/**
+ * U-35: нижний инсет системной панели в px. `--safe-bottom` из JS напрямую не
+ * прочесть (см. getBottomUIHeight в sketch.js) — меряем узлом с `height:
+ * var(--safe-bottom)`. В браузере ноль; на Redmi с навигационной панелью 48.
+ */
+function bottomInsetPx() {
+    let probe = document.getElementById('bottomInsetProbe');
+    if (!probe) {
+        probe = document.createElement('div');
+        probe.id = 'bottomInsetProbe';
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:fixed;left:0;bottom:0;width:1px;height:var(--safe-bottom);'
+            + 'visibility:hidden;pointer-events:none;';
+        document.body.appendChild(probe);
+    }
+    return Math.round(probe.getBoundingClientRect().height) || 0;
+}
+
+/**
+ * K-26: во столько px книга уходит вниз до закрытого положения.
+ * U-35: отсчёт — от низа ленты, а не от низа экрана. Лента стоит на
+ * `bottom: var(--safe-bottom)`, то есть выше края экрана на нижний инсет;
+ * без вычета верх листа шёл за лентой с постоянным зазором в этот инсет
+ * (на телефоне с навигационной панелью — 48 px, «лента отстаёт от книги»).
+ */
 function bookTravelPx() {
-    return window.innerHeight || document.documentElement.clientHeight || 800;
+    const full = window.innerHeight || document.documentElement.clientHeight || 800;
+    return Math.max(1, full - bottomInsetPx());
 }
 
 /**
