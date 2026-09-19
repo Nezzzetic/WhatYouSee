@@ -2,7 +2,8 @@
 
 /** Совместимость: прежнее имя рисовалки подсказок. K-18: пробрасывает режим чертежа. */
 function drawHintPattern(canvas, pattern, color, blueprint) {
-    drawShapeGlyph(canvas, pattern, color, blueprint);
+    // V-22: разворот атласа лежит на тёплой бумаге — глиф «чернилами».
+    drawShapeGlyph(canvas, pattern, color, blueprint, true);
 }
 
 // =============================================================================
@@ -127,7 +128,8 @@ function createAtlasEntryCard(entry) {
     if (entry.isCreated) {
         title.className = 'atlas-card-title';
         title.textContent = getDisplayShapeName(entry.name);
-        paintGlyphTextColor(title, glyphColor);
+        // V-22: подпись — тем же цветом «чернилами», что и глиф над ней.
+        paintGlyphTextColor(title, paperInkGlyphColor(glyphColor));
     } else {
         // Имя фигуры — сюрприз до первого создания; вместо него — «?».
         title.className = 'atlas-card-title atlas-card-title-unknown';

@@ -104,9 +104,10 @@
     --ribbon-right: 28px;
     --ribbon-hit-w: 56px;
     --ribbon-hit-h: 64px;
-    /* Лента — тёмный сургуч: тот же красный, уведённый в тень переплёта. */
-    --ribbon-lo: #5E2F3C;
-    --ribbon-hi: #7A3B4A;
+    /* Лента — красный переплётной ленты. V-22 (правка заказчика): небесная
+       сторона того же цвета, что книжная (была тёмным сургучом #5E2F3C/#7A3B4A). */
+    --ribbon-lo: #7A2424;
+    --ribbon-hi: #93302E;
 
     /* --- Типографика: два шрифта и ни одного гротеска --------------------- */
     --font-title: 'Playfair Display', Georgia, 'Times New Roman', serif;
@@ -618,6 +619,73 @@ button:disabled {
     inset: 0;
     z-index: 1200;
     background: none;
+
+    /* V-22: книга — тёплая бумага, а не ночная. Токены бумаги, чернил и
+       золота переопределены только в области книги: лента на небе, плашка
+       монеты, тутор и пометка корректора лежат на небе и остаются ночными.
+       Ночь внутри книги — нить уровня в полосе неба и вклейки атласа — берёт
+       значения :root обратно (.book-gauge, .atlas-card ниже). Ориентир —
+       макет dev/docs/ui-concepts/book-paper-frame.html. */
+    --paper: #EDE2C8;
+    --paper-deep: #E2D6B8;
+    --paper-raised: #F4ECD8;
+    --paper-edge: #CDBF9E;
+    --paper-rgb: 237, 226, 200;
+    --paper-deep-rgb: 226, 214, 184;
+    --paper-raised-rgb: 244, 236, 216;
+    --ink: #2F2A22;
+    --ink-muted: #5F5543;
+    --ink-faint: #6E6049;
+    --ink-rgb: 47, 42, 34;
+    /* Золото на свету темнеет — иначе подписи уровня и числа наград не читаются. */
+    --gold: #845A17;
+    --gold-light: #7A5214;
+    --gold-deep: #B8862E;
+    --gold-rgb: 132, 90, 23;
+    --gold-light-rgb: 122, 82, 20;
+    --gold-deep-rgb: 184, 134, 46;
+    /* Толщина блока страниц (развилка 3): слои по диагонали вверх-вправо. */
+    --leaf-layer-1: #DDD0B0;
+    --leaf-layer-2: #E6DABC;
+    --leaf-layer-3: #D3C5A3;
+    --leaf-layer-4: #DFD2B2;
+    --book-binding: #1F2B4A;
+    --book-binding-deep: #172139;
+    /* Звёздные цвета на бумаге — «чернилами»: тот же тон, что на небе, темнее
+       (вариант B макета atlas-paper-variants). Те же числа у канваса —
+       PAPER_STAR_INK, ui.js. Окошко закладки на небе живёт вне .book. */
+    --star-garnet: #B8432F;
+    --star-amber: #A5581A;
+    --star-copper: #86661A;
+    --star-opal: #5E6B80;
+    --star-ice: #2F7FB5;
+    --star-garnet-rgb: 184, 67, 47;
+    --star-amber-rgb: 165, 88, 26;
+    --star-copper-rgb: 134, 102, 26;
+    --star-opal-rgb: 94, 107, 128;
+    --star-ice-rgb: 47, 127, 181;
+}
+
+/* V-22: ночь внутри книги — те же значения, что в :root (нить уровня лежит
+   на небе, в полосе над листом). */
+.book-gauge {
+    --paper: #111B30;
+    --paper-deep: #0D1527;
+    --paper-raised: #16223A;
+    --paper-edge: #1A3355;
+    --paper-rgb: 17, 27, 48;
+    --paper-deep-rgb: 13, 21, 39;
+    --paper-raised-rgb: 22, 34, 58;
+    --ink: #EAF1F9;
+    --ink-muted: #A5B8CD;
+    --ink-faint: #64809D;
+    --ink-rgb: 234, 241, 249;
+    --gold: #D9A441;
+    --gold-light: #F0D8A6;
+    --gold-deep: #7A5A20;
+    --gold-rgb: 217, 164, 65;
+    --gold-light-rgb: 240, 216, 166;
+    --gold-deep-rgb: 122, 90, 32;
 }
 
 /* V-20: полоса неба над листом — кнопка без вида, во всю ширину книги.
@@ -647,7 +715,10 @@ button:disabled {
     position: absolute;
     top: calc(var(--safe-top) + 44px);
     right: var(--book-obrez);
-    bottom: 0;
+    /* V-22: лист уходит за нижний край экрана на 8 px (и на столько же растёт
+       нижнее поле) — иначе слои обреза, сдвинутые вверх, обрывались бы у
+       низа экрана лесенкой. Содержимое стоит на прежних местах. */
+    bottom: -8px;
     left: 0;
     display: flex;
     flex-direction: column;
@@ -656,44 +727,62 @@ button:disabled {
        (.book-foot) уходит под нав-панель Android целиком — в браузере
        env(...) = 0, поэтому баг был не виден ни разу до сборки APK. */
     padding: 18px max(var(--page-pad-right), 16px)
-        calc(var(--safe-bottom) + 10px) max(var(--page-pad-left), 24px);
-    /* Ночная бумага: сплошной цвет + слабое пятно света в верхней трети +
-       зерно (фрактальный шум data-URI, внешних запросов ноль). */
+        calc(var(--safe-bottom) + 18px) max(var(--page-pad-left), 24px);
+    /* V-22: тёплая бумага — сплошной цвет + лёгкое потемнение к краям листа
+       (вместо ночного пятна света V-20) + зерно тёмным шумом (фрактальный шум
+       data-URI, внешних запросов ноль). */
     background-color: var(--paper);
     background-image:
-        radial-gradient(60% 40% at 50% 18%, rgba(255, 240, 210, 0.035) 0%, transparent 70%),
-        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+        radial-gradient(120% 90% at 50% 35%, transparent 55%, rgba(120, 90, 40, 0.10) 100%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 0 0.1 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
     background-repeat: no-repeat, repeat;
     background-size: 100% 100%, 180px 180px;
+    /* V-22 (развилка 3): толщина блока страниц — одна стопка копий листа,
+       сдвинутых по диагонали вверх-вправо. Верхний и правый обрез — одни и те
+       же слои, поэтому угол сходится лесенкой без зазора (в макете две
+       несогласованные стопки давали ступеньку). Слои лежат в полосе неба
+       и в обрезе, коробку листа не трогают; последний — тень на небо. */
+    box-shadow:
+        1.5px -1.5px 0 var(--leaf-layer-1),
+        3px -3px 0 var(--leaf-layer-2),
+        4.5px -4.5px 0 var(--leaf-layer-3),
+        6px -6px 0 var(--leaf-layer-4),
+        7px -7px 0 var(--leaf-layer-3),
+        8px -4px 14px rgba(0, 0, 0, 0.45);
     touch-action: pan-y;
 }
 
-/* V-20 (заменил тени K-27): слева — корешок 14 px (тёмный градиент,
-   отбрасывает тень на лист); справа — кромка 4 px волосяных линий толщины
-   блока страниц, по ней снаружи торчат высечки (обрез между кромкой и краем
-   экрана — уже не лист, а притемнённое небо). */
+/* V-20 (заменил тени K-27): слева — корешок 14 px, отбрасывает тень на лист.
+   V-22 (развилка 4): корешок — самый высокий предмет книги: поднимается над
+   листом выше стопки слоёв обреза и закрывает их левые концы; на его головке
+   каптальчик — полоска красно-золотой нити. Кромка 4 px волосяных линий
+   справа (V-20) снята — толщину блока теперь рисуют слои `box-shadow` листа.
+   `::after` — тень переплёта на бумаге у корешка (жёлоб). */
 .book-page::before,
 .book-page::after {
     content: '';
     position: absolute;
-    top: 0;
     bottom: 0;
     pointer-events: none;
 }
 
 .book-page::before {
+    top: -10px;
     left: 0;
     width: 14px;
-    background: linear-gradient(180deg, #0A1122 0%, #0D1527 100%);
-    box-shadow: 6px 0 18px -4px rgba(0, 0, 0, 0.55);
+    border-radius: 2px 0 0 0;
+    background:
+        repeating-linear-gradient(90deg, #8E2B2B 0 2px, #E3C27A 2px 4px) top / 100% 4px no-repeat,
+        linear-gradient(90deg, var(--book-binding-deep) 0%, var(--book-binding) 55%, var(--book-binding-deep) 100%);
+    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.35);
+    z-index: 1;
 }
 
 .book-page::after {
-    right: 0;
-    width: 4px;
-    background: repeating-linear-gradient(180deg,
-        rgba(255, 255, 255, 0.05) 0 1px,
-        rgba(0, 0, 0, 0.12) 1px 2px);
+    top: 0;
+    left: 14px;
+    width: 18px;
+    background: linear-gradient(90deg, rgba(90, 64, 28, 0.22), rgba(90, 64, 28, 0));
 }
 
 .book-head {
@@ -702,12 +791,44 @@ button:disabled {
     margin-bottom: 6px;
 }
 
+/* V-22: надзаголовок — колонтитул: слева раздел, справа глава/дата, под ними
+   линейка (renderBookRunningHead, book.js). Высота та же, что у прежней
+   строки по центру (14 px), поэтому титул и тело страницы стоят на прежних
+   местах. Справа — место под книжную сторону ленты (её хвост висит от кромки
+   листа на 2…26 px от правого края, --page-pad-right 16 px). */
 .book-eyebrow {
-    font-size: 11px;
-    letter-spacing: 0.3em;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    height: 14px;
+    margin-right: 16px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--paper-edge);
+    font-size: 10px;
+    line-height: 9px;
+    letter-spacing: 0.25em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    min-height: 1em;
+    text-align: left;
+    white-space: nowrap;
+}
+
+.book-rh-left,
+.book-rh-right {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.book-rh-right {
+    text-align: right;
+}
+
+/* Разделитель « · » остаётся в узле (textContent строки не меняется), но не
+   виден — колонтитул делит строку на две стороны. */
+.book-rh-sep {
+    display: none;
 }
 
 .book-title {
@@ -1091,68 +1212,81 @@ button:disabled {
     white-space: nowrap;
 }
 
-/* --- V-20: корешок вместо шкалы света — номер уровня, нить, бусина -------- */
+/* --- V-20 → V-22: нить уровня — номер уровня, нить, бусина --------------- */
 /* Заменяет K-06/K-17/K-25 (две засечки-сотни, флажок, слово «следующий
-   уровень»). Узел `#bookGauge` тот же — на нём стоят харнесс и верификаторы —
-   дети внутри переписаны целиком. Зона касания (32 px) шире визуального
-   корешка (14 px, `.book-page::before`), они делят одну левую координату. */
+   уровень»). Узел `#bookGauge` тот же — на нём стоят харнесс и верификаторы.
+   V-20 клал нить вдоль корешка, V-22 — горизонтально над листом. */
 .book-gauge {
+    /* V-22 (развилка 7): нить уровня легла горизонтально в полосу неба над
+       листом (макет: L.N → бусина → L.N+1). Узел — по-прежнему ребёнок листа
+       (на нём стоят харнесс и верификаторы) и едет вместе с ним при протяжке.
+       Строка 24 px — зона касания нити (тап показывает счёт, книгу не
+       закрывает); полоса над и под ней закрывает книгу тапом. */
     position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 32px;
+    left: 14px;
+    right: 0;
+    top: -40px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 2px 0 4px;
     touch-action: pan-y;
 }
 
-.book-spine-level {
-    position: absolute;
-    left: 0;
-    top: 10px;
-    width: 14px;
-    text-align: center;
+.book-spine-level,
+.book-spine-next {
+    flex: none;
     white-space: nowrap;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
+    font-variant-numeric: tabular-nums;
     color: var(--gold);
 }
 
-/* Пунктирная нить вдоль корешка — направление ступени задаёт номер уровня
-   выше, засечек и чисел ✦ на ней нет (развилка 8 дока: заливки «пройденной»
-   части нет, как в макете). */
-.book-spine-thread {
-    position: absolute;
-    left: 7px;
-    top: 32px;
-    bottom: 10px;
-    width: 0;
-    border-left: 1px dashed rgba(var(--gold-rgb), 0.35);
+.book-spine-next {
+    opacity: 0.55;
 }
 
-/* Бусина — доля пути к следующему уровню (getLevelProgress().ratio), `bottom`
-   ставится в JS % от высоты самой нити (renderBookGauge). Видна и на нуле
-   (K-25: цель полёта первого забора — она же, устаревшего прямоугольника не
-   должно быть, узел не прячется никогда). */
+/* Пунктирная нить; пройденная часть залита сплошным золотом. */
+.book-spine-thread {
+    position: relative;
+    flex: 1;
+    height: 0;
+    border-top: 1.5px dotted rgba(var(--gold-rgb), 0.5);
+}
+
+.book-spine-fill {
+    position: absolute;
+    left: 0;
+    top: -1.5px;
+    height: 1.5px;
+    background: var(--gold);
+}
+
+/* Бусина — доля пути к следующему уровню (getLevelProgress().ratio), `left`
+   ставится в JS % от длины нити (renderBookGauge). Видна и на нуле (K-25:
+   цель полёта первого забора — она же). */
 .book-spine-bead {
     position: absolute;
-    left: 50%;
-    transform: translate(-50%, 50%);
-    width: 8px;
-    height: 8px;
+    top: -0.75px;
+    transform: translate(-50%, -50%);
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     background: var(--gold-light);
-    box-shadow: 0 0 6px 1px rgba(var(--gold-rgb), 0.7);
+    box-shadow: 0 0 7px 1px rgba(var(--gold-rgb), 0.75);
 }
 
-/* Счёт «earned / ceil» — скрыт по умолчанию, проявляется касанием нити и
-   забором награды (showBookSpineScore, book.js) на BOOK_SPINE_SCORE_HOLD_MS,
-   повтор продлевает показ, а не переигрывает проявление. */
+/* Счёт «earned / ceil» — над бусиной; скрыт по умолчанию, проявляется
+   касанием нити и забором награды (showBookSpineScore, book.js) на
+   BOOK_SPINE_SCORE_HOLD_MS, повтор продлевает показ. */
 .book-spine-score {
     position: absolute;
-    left: 14px;
-    top: 50%;
-    transform: translateY(-50%);
+    left: 50%;
+    bottom: 9px;
+    transform: translateX(-50%);
     white-space: nowrap;
     font-size: 10px;
     font-weight: 700;
@@ -1213,14 +1347,20 @@ button:disabled {
        (к кромке листа) — см. развилку 5 дока V-20. */
     border-radius: 4px 0 0 4px;
     border-right: none;
-    background: var(--paper-raised);
-    color: var(--ink-faint);
+    /* V-22 (развилка 10): у каждой высечки свой цвет (правила по data-cut
+       ниже), подпись тёмными чернилами. Неактивные задвинуты под кромку
+       листа на 4 px, активная выдвинута целиком — «длиннее» остальных. */
+    border: none;
+    background: var(--tab-bg, var(--paper-raised));
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.25);
+    color: rgba(var(--ink-rgb), 0.72);
+    transform: rotate(180deg) translateX(4px);
+    transition: transform var(--t-micro) var(--ease);
     font-family: var(--font-text);
     font-size: 9.5px;
     letter-spacing: 0.2em;
     text-transform: uppercase;
     writing-mode: vertical-rl;
-    transform: rotate(180deg);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }
@@ -1235,12 +1375,20 @@ button:disabled {
     inset: 0 -18px 0 0;
 }
 
+/* Пастели из макета book-paper-frame (V-22). */
+.book-tab[data-cut="today"] { --tab-bg: #C9D6E3; }
+.book-tab[data-cut="index"] { --tab-bg: #D9CFE6; }
+.book-tab[data-cut="atlas"] { --tab-bg: #CFE0CF; }
+.book-tab[data-cut="stamps"] { --tab-bg: #E9C77E; }
+.book-tab[data-cut="exlibris"] { --tab-bg: #E6CFC6; }
+
 .book-tab-on {
-    /* Активная слита с листом без шва: тот же цвет, что у бумаги, и сдвинута
-       ещё на 2 px в неё — граница высечки уходит под кромку. */
-    background: var(--paper);
+    /* V-22: активная выдвинута из-под кромки на всю ширину и на 2 px дальше
+       (в развороте rotate(180deg) минус по X — это экранное «вправо»). */
     color: var(--ink);
-    transform: rotate(180deg) translateX(2px);
+    font-weight: 600;
+    transform: rotate(180deg) translateX(-2px);
+    box-shadow: 0 -1px 3px rgba(0, 0, 0, 0.35);
 }
 
 /* U-32: красная сургучная точка сменилась золотой звёздочкой — принцип «есть
@@ -1261,8 +1409,10 @@ button:disabled {
     justify-content: center;
     font-size: 8px;
     line-height: 1;
-    color: var(--gold);
-    text-shadow: 0 0 5px rgba(var(--gold-rgb), 0.65);
+    /* V-22 (развилка 11): тёмное золото — читается на всех пяти цветах
+       высечек, включая охру Stamps. */
+    color: #6B4A12;
+    text-shadow: 0 0 4px rgba(255, 236, 190, 0.9);
 }
 
 .book-tab-wax::before {
@@ -1292,7 +1442,11 @@ button:disabled {
        верха экрана; --ribbon-right не трогаем (та же книжная сторона ленты).
        U-34: обрез стал шире 26 px — лента сдвигается на ту же разницу, чтобы
        висеть на листе, а не свисать за его кромку. */
-    top: calc(var(--safe-top) + 34px);
+    /* V-22 (развилка 5): хвост начинается ровно на кромке листа — слои
+       верхнего обреза над ним открыты, и лента читается выходящей из-под них
+       (в макете она лежала поверх обреза). Полоса неба выше и так закрывает
+       книгу тапом — зона касания ленте там не нужна. */
+    top: calc(var(--safe-top) + 44px);
     right: calc(var(--ribbon-right) + var(--book-obrez) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
     z-index: 1215;
     width: var(--ribbon-hit-w);
@@ -1332,6 +1486,17 @@ body.book-opening .book-close-ribbon {
     box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
 }
 
+/* V-22: у самой кромки лента темнее — уходит под верхний обрез. */
+.book-close-ribbon-tail::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 5px;
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0));
+}
+
 /* Только устройства с настоящим курсором — на тачскрине тап навсегда «залипает»
    в :hover (снять его нечем, mouseleave не наступает никогда), и после закрытия
    книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
@@ -1359,7 +1524,9 @@ body.book-opening .book-close-ribbon {
     left: 50%;
     bottom: calc(var(--ribbon-h) / 2);
     transform: translate(-50%, 50%);
-    color: var(--gold);
+    /* V-22: золото книги на свету темнее — знак ленты берёт светлое золото
+       неба (#E3C27A — нить каптальчика), на красной ленте оно читается. */
+    color: #E3C27A;
 }
 
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,
@@ -1592,6 +1759,13 @@ body.book-opening .book-close-ribbon {
        слева напротив неё. Полоса есть у каждой карточки всегда (K-23), поэтому
        постановка закладки не двигает ни чертёж, ни сетку. */
     padding: 26px 6px 8px;
+    /* V-22 (вариант B, выбор заказчика 2026-09-19): карточка — гравюра на
+       бумаге в двойной рамке цвета линейки; фигура и подпись «чернилами»
+       (drawShapeGlyph paper, --star-* книги). Коробка карточки прежняя. */
+    /* Рамка — inset-тенями, не border: коробка карточки не растёт ни на пиксель. */
+    border-radius: var(--r-sm);
+    box-shadow: inset 0 0 0 1px var(--paper-edge), inset 0 0 0 3px var(--paper),
+        inset 0 0 0 4px rgba(205, 191, 158, 0.55);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
 }

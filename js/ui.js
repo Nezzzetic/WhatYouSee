@@ -333,8 +333,13 @@ function sizeGlyphCanvas(canvas, cssPx, forceCssSize = true) {
  * штрихи и точки красятся линейным градиентом слева направо через canvas
  * `createLinearGradient`, цвета в переданном порядке. `blueprint` игнорирует
  * `color` целиком, как и раньше.
+ *
+ * V-22: `paper` — глиф лежит на тёплой бумаге книги: чертёж бледными чернилами
+ * листа (PAPER_INK_FAINT_RGB), цвет — «чернилами» (paperInkGlyphColor). Окошко
+ * закладки на небе зовёт без него — там цвета неба.
  */
-function drawShapeGlyph(canvas, pattern, color, blueprint) {
+function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
+    if (paper && !blueprint) color = paperInkGlyphColor(color);
     const ctx = canvas.getContext('2d');
     const cssSize = Number(canvas.dataset.glyphCssPx) || canvas.width;
     const dpr = canvas.width / cssSize;
@@ -352,7 +357,7 @@ function drawShapeGlyph(canvas, pattern, color, blueprint) {
     const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
     let paintStyle;
     if (blueprint) {
-        paintStyle = solidStyle(INK_FAINT_RGB);
+        paintStyle = solidStyle(paper ? PAPER_INK_FAINT_RGB : INK_FAINT_RGB);
     } else if (Array.isArray(color[0])) {
         paintStyle = ctx.createLinearGradient(0, 0, w, 0);
         color.forEach((rgb, i) => paintStyle.addColorStop(color.length > 1 ? i / (color.length - 1) : 0, solidStyle(rgb)));
@@ -478,6 +483,53 @@ const ATLAS_FACET_GLYPH_COLORS = {
     white: [237, 239, 245],  // --star-opal
     blue: [134, 200, 242]    // --star-ice
 };
+
+/**
+ * V-22 (вариант B макета atlas-paper-variants): на тёплой бумаге книги фигура
+ * рисуется «чернилами» — тем же тоном, что звезда на небе, но темнее, иначе
+ * опал и медь на листе не видны. Те же значения несёт CSS: --star-* в области
+ * .book (искры граней). Ключ — RGB неба через запятую; цвета, которых нет в
+ * таблице (декоративный цвет SHAPES), темнеют общим правилом paperInkRgb.
+ */
+const PAPER_STAR_INK = {
+    '240,122,103': [184, 67, 47],    // гранат
+    '242,162,84': [165, 88, 26],     // янтарь
+    '242,201,101': [134, 102, 26],   // медь
+    '237,239,245': [94, 107, 128],   // опал
+    '134,200,242': [47, 127, 181],   // лёд
+    '255,211,92': [154, 106, 26]     // золото полной огранки (ATLAS_FACETED_COLOR)
+};
+
+function paperInkRgb(rgb) {
+    const known = PAPER_STAR_INK[rgb.join(',')];
+    if (known) return known;
+    // Общее правило: светлота не выше 0.4, насыщенность — не выше 0.65.
+    const [r, g, b] = rgb.map(v => v / 255);
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (max + min) / 2;
+    if (max !== min) {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+        h = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+        h /= 6;
+    }
+    const L = Math.min(l, 0.4), S = Math.min(s, 0.65);
+    const q = L < 0.5 ? L * (1 + S) : L + S - L * S, p = 2 * L - q;
+    const hue = t => {
+        if (t < 0) t += 1; if (t > 1) t -= 1;
+        if (t < 1 / 6) return p + (q - p) * 6 * t;
+        if (t < 1 / 2) return q;
+        if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+        return p;
+    };
+    return [hue(h + 1 / 3), hue(h), hue(h - 1 / 3)].map(v => Math.round(v * 255));
+}
+
+/** V-22: цвет глифа (один RGB или массив для градиента V-19) — чернилами бумаги. */
+function paperInkGlyphColor(color) {
+    return Array.isArray(color[0]) ? color.map(paperInkRgb) : paperInkRgb(color);
+}
 
 /**
  * V-19: цвет глифа фигуры по её огранке. Полная огранка (5 граней) — золото,
