@@ -80,6 +80,39 @@ function getSettingsFolio() {
     return getExLibrisFolio() + 1;
 }
 
+/**
+ * V-22: надзаголовок стал колонтитулом — слева раздел, справа глава/дата, под
+ * ними линейка. Строка локали прежняя («Atlas · Chapter I»), делится по « · »;
+ * разделитель остаётся в узле скрытым, поэтому textContent не меняется.
+ * У «Сегодня» в строке только дата — слева встаёт имя высечки.
+ */
+function renderBookRunningHead(el, eyebrow) {
+    const SEP = ' · ';
+    let left = eyebrow;
+    let right = '';
+    const at = eyebrow.indexOf(SEP);
+    if (at >= 0) {
+        left = eyebrow.slice(0, at);
+        right = eyebrow.slice(at + SEP.length);
+    } else if (bookCut === 'today' && eyebrow) {
+        left = t('book.cutToday');
+        right = eyebrow;
+    } else if (!eyebrow) {
+        // Оглавление и Настройки надзаголовка не имели — колонтитул не пустует.
+        left = bookCut === 'index' ? t('book.cutIndex') : t('book.brand');
+    }
+    const leftEl = document.createElement('span');
+    leftEl.className = 'book-rh-left';
+    leftEl.textContent = left;
+    const sepEl = document.createElement('span');
+    sepEl.className = 'book-rh-sep';
+    sepEl.textContent = right ? SEP : '';
+    const rightEl = document.createElement('span');
+    rightEl.className = 'book-rh-right';
+    rightEl.textContent = right;
+    el.replaceChildren(leftEl, sepEl, rightEl);
+}
+
 /** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
 function renderBookHead() {
     const eyebrowEl = document.getElementById('bookEyebrow');
@@ -140,7 +173,7 @@ function renderBookHead() {
         folioN = getSettingsFolio();
     }
 
-    eyebrowEl.textContent = eyebrow;
+    renderBookRunningHead(eyebrowEl, eyebrow);
     titleEl.textContent = title;
     footLeftEl.textContent = footLeft;
     // S-03 (правка заказчика 2026-09-10): уровень — в подвале рядом с брендом
@@ -166,9 +199,9 @@ function renderBookHead() {
  * флажок с числом, слово «следующий уровень»). Дети: номер уровня в головке,
  * пунктирная нить, бусина на доле пути (`getLevelProgress().ratio`), скрытый
  * по умолчанию счёт «earned / ceil» (показывает его showBookSpineScore()).
- * Ни чисел ✦, ни засечек, ни знаков — решение заказчика по развилке 8/9
- * дока: нить не заливается «пройденной» частью, направление задаёт номер
- * уровня выше.
+ * Ни чисел ✦, ни засечек, ни знаков. V-22: нить легла горизонтально в полосу
+ * неба над листом, пройденная часть залита, по краям — текущий и следующий
+ * уровень (макет book-paper-frame).
  */
 let bookSpineScoreTimer = null;
 
@@ -179,24 +212,35 @@ function renderBookGauge() {
 
     const { earned, level, ceil, ratio } = getLevelProgress();
 
-    // Фидбек с телефона 2026-09-17: в головке корешка — куда ведёт нить,
-    // следующий уровень (было так и до V-20, у прежней шкалы K-06/K-17),
-    // а не текущий — тот уже назван в подвале («ALMANAC · LEVEL N»).
+    // V-22: нить уровня легла горизонтально в полосу неба над листом —
+    // слева текущий уровень, справа следующий (приглушённо), между ними
+    // пройденная часть нити и бусина на ratio. Узел #bookGauge остаётся
+    // ребёнком листа и едет вместе с ним при протяжке.
     const levelEl = document.createElement('div');
     levelEl.className = 'book-spine-level';
-    levelEl.textContent = t('book.spineLevel', { n: level + 1 });
+    levelEl.textContent = t('book.spineLevel', { n: level });
     el.appendChild(levelEl);
 
     const thread = document.createElement('div');
     thread.className = 'book-spine-thread';
     el.appendChild(thread);
 
+    const fill = document.createElement('div');
+    fill.className = 'book-spine-fill';
+    fill.style.width = `${Math.round(ratio * 100)}%`;
+    thread.appendChild(fill);
+
     const bead = document.createElement('div');
     bead.className = 'book-spine-bead';
     // Видна и на нуле (K-25: цель полёта первого в жизни игрока забора —
     // она же, устаревшего прямоугольника скрытой книгой цели быть не должно).
-    bead.style.bottom = `${Math.round(ratio * 100)}%`;
+    bead.style.left = `${Math.round(ratio * 100)}%`;
     thread.appendChild(bead);
+
+    const nextEl = document.createElement('div');
+    nextEl.className = 'book-spine-next';
+    nextEl.textContent = t('book.spineLevel', { n: level + 1 });
+    el.appendChild(nextEl);
 
     const score = document.createElement('div');
     score.className = 'book-spine-score';
@@ -525,6 +569,20 @@ function computeBookOpenRatio(ty, travel) {
     return Math.min(1, Math.max(0, 1 - ty / t));
 }
 
+/**
+ * V-22 (правка заказчика после сверки на телефоне): нить уровня не едет за
+ * книгой, а висит в полосе неба, пока книга не скрыта целиком. Узел остаётся
+ * ребёнком листа (харнесс, верификаторы, цель полёта), поэтому получает
+ * встречный сдвиг — тем же переходом, что и книга (setBookTransition), так
+ * что на доводке оба хода гасят друг друга кадр в кадр.
+ */
+function setBookGaugeCounterTransform(transform) {
+    const gauge = document.getElementById('bookGauge');
+    if (!gauge) return;
+    const ty = parseBookTranslateY(transform);
+    gauge.style.transform = ty ? `translateY(${-ty}px)` : '';
+}
+
 function parseBookTranslateY(transform) {
     if (!transform) return 0;
     const m = /translateY\(([-\d.]+)px\)/.exec(transform);
@@ -543,11 +601,14 @@ function parseBookTranslateY(transform) {
 function setBookTransform(book, transform, travel) {
     if (book) book.style.transform = transform;
     if (typeof setExLibrisFollowTransform === 'function') setExLibrisFollowTransform(transform);
+    setBookGaugeCounterTransform(transform);
     setBookScrimOpen(computeBookOpenRatio(parseBookTranslateY(transform), travel));
 }
 
 function setBookTransition(book, transition) {
     if (book) book.style.transition = transition;
+    const gauge = document.getElementById('bookGauge');
+    if (gauge) gauge.style.transition = transition;
     if (typeof setExLibrisFollowTransition === 'function') setExLibrisFollowTransition(transition);
     const scrim = document.getElementById('bookScrim');
     if (scrim) scrim.style.transition = transition ? transition.replace('transform', 'opacity') : 'none';
