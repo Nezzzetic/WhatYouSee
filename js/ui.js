@@ -55,11 +55,17 @@ function releaseScoreDisplay(all) {
 
 /**
  * K-06: цель коротко вздрагивает — награда доехала именно сюда.
- * K-17: цель у пульса та же, что у монеты, — флажок шкалы, пока книга открыта.
+ * V-20: цель у пульса — бусина корешка, пока книга открыта (была флажком
+ * шкалы K-17); заодно проявляет счёт у бусины — «в момент получения очков»
+ * из развилки 2 дока V-20, тот же showBookSpineScore(), что и касание нити.
+ * U-31: на небе пульс — на знаке ленты, не на хвосте: хвост теперь несёт
+ * протяжку (--ribbon-pull/--ribbon-follow), и анимация на нём же смотрелась
+ * бы рывком поверх жеста.
  */
 function pulseScoreDisplay() {
-    const el = (bookOpen && document.querySelector('#bookGauge .book-gauge-flag'))
-        || document.querySelector('.ribbon-tail');
+    if (bookOpen && typeof showBookSpineScore === 'function') showBookSpineScore();
+    const el = (bookOpen && document.querySelector('#bookGauge .book-spine-bead'))
+        || document.getElementById('ribbonSign');
     if (!el) return;
     el.style.setProperty('--score-pulse-ms', `${CLAIM_SCORE_PULSE_MS}ms`);
     el.classList.remove('score-pulse');
@@ -85,25 +91,26 @@ function prefersReducedMotion() {
 let lastRibbonFlightRect = null;
 
 /**
- * K-17: тот же приём для флажка шкалы. Шкала пересобирается на каждом рендере
- * книги (`renderBookGauge` чистит узел целиком), и на смене высечки полёт
- * мог бы застать её между двумя кадрами — кэш последнего ненулевого замера
- * закрывает и это, и ресайз.
+ * K-17/V-20: тот же приём для бусины корешка. Шкала пересобирается на каждом
+ * рендере книги (`renderBookGauge` чистит узел целиком), и на смене высечки
+ * полёт мог бы застать её между двумя кадрами — кэш последнего ненулевого
+ * замера закрывает и это, и ресайз.
  */
 let lastGaugeFlightRect = null;
 
 /**
- * Цель полёта награды — флажок шкалы света у корешка: «число вылетает из клетки
- * и уходит к корешку, растворяется в позолоте» (концепт, Табл. III b). Лента-
- * закладка осталась запасной целью: пока книга закрыта, шкалы на экране нет.
+ * Цель полёта награды — бусина корешка (V-20, была флажком шкалы K-17):
+ * «число вылетает из клетки и уходит к корешку, растворяется в позолоте»
+ * (концепт, Табл. III b). Лента-закладка осталась запасной целью: пока книга
+ * закрыта, корешка на экране нет.
  *
  * K-04 целился в ленту потому, что корешка тогда не было видно вовсе — шкалу
  * закрашивала страница; с K-17 он виден, и цель вернулась туда, где ей место.
  */
 function getClaimFlightTargetRect() {
-    const flag = document.querySelector('#bookGauge .book-gauge-flag');
-    if (flag) {
-        const rect = flag.getBoundingClientRect();
+    const bead = document.querySelector('#bookGauge .book-spine-bead');
+    if (bead) {
+        const rect = bead.getBoundingClientRect();
         if (rect.width || rect.height) lastGaugeFlightRect = rect;
     }
     const ribbon = document.getElementById('skyRibbon');
@@ -248,9 +255,11 @@ const GLYPH_SIGNS = [
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
     'drop', 'flame', 'ring', 'ball', 'wave',
-    // O-07: крестик закрытия книги — единственный знак со своим (золотым)
-    // цветом вместо цвета строки, см. .book-close-sign в style.css
-    'cross'
+    // U-31: два знака одной ленты — на предмете, не в строке, поэтому со
+    // своим цветом вместо цвета строки (то же исключение, что раньше держал
+    // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css);
+    // «stars» на книжной стороне сменил «nightstar» по фидбегу с устройства.
+    'book', 'stars'
 ];
 
 /**
@@ -634,22 +643,81 @@ function dismissLevelBanner(immediate) {
 }
 
 /**
- * K-05/K-15: единственный сигнал на небе. «В книге что-то есть» — готовая
- * награда ИЛИ непрочитанное событие мира (запись в новостях «Сегодня»).
+ * K-05: единственный сигнал на небе. «В книге что-то есть» — готовая награда.
+ * U-33 сняла второе условие K-15 (непрочитанное событие мира) — то же сведение,
+ * что `todayHasSignal()` уже прошла в U-25.
  */
 function hasSkyWaxSignal() {
-    return (typeof hasClaimableAchievements === 'function' && hasClaimableAchievements())
-        || (typeof hasUnseenDailyNews === 'function' && hasUnseenDailyNews());
+    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
 }
 
-/** Капля сургуча на ленте-закладке: есть что прижать. Ни числа, ни цвета тревоги. */
+/**
+ * U-31: знак книги на небесной стороне ленты — погашен (--ink-faint) или
+ * золотом с сиянием (--gold), когда есть что забрать. Замена капли сургуча;
+ * ни числа, ни цвета тревоги.
+ */
 function updateRibbonSignal() {
     // K-04: заодно освежаем замер ленты — пока небо на экране, она измерима,
     // а к моменту полёта награды книга уже открыта и прячет её.
     getClaimFlightTargetRect();
-    const wax = document.getElementById('ribbonWax');
-    if (wax) wax.hidden = !hasSkyWaxSignal();
+    const sign = document.getElementById('ribbonSign');
+    if (sign) sign.classList.toggle('is-lit', hasSkyWaxSignal());
     renderSkyBookmark();
+}
+
+/**
+ * U-31: лента одна, две стороны — во время протяжки растёт вместе с пальцем,
+ * без перехода (1:1, прямое управление). `el` — узел стороны (`#skyRibbon`
+ * или `#bookCloseRibbon`), значения ставятся ему, а хвост (`.ribbon-tail`/
+ * `.book-close-ribbon-tail`) читает их через CSS-переменные — они наследуются.
+ * `stretchPx` — на сколько лента длиннее покоя (0…RIBBON_STRETCH_PX);
+ * `followPx` — на сколько сторона сдвинута вместе с краем книги сверх этого.
+ */
+function setRibbonPull(el, stretchPx, followPx) {
+    if (!el) return;
+    el.style.setProperty('--ribbon-pull', `${stretchPx}px`);
+    el.style.setProperty('--ribbon-follow', `${followPx}px`);
+}
+
+/**
+ * Ниже порога протяжки — лента пружинит в покой сама, книга не двигалась.
+ * Темп — `--t-micro` (тот же короткий отклик, что был у hover-сдвига хвоста),
+ * не сценовый довод книги: это не общее с ней движение, а обрыв натяжения.
+ */
+function settleRibbonPull(el) {
+    if (!el) return;
+    const tail = el.querySelector('.ribbon-tail, .book-close-ribbon-tail');
+    if (!tail || prefersReducedMotion()) {
+        setRibbonPull(el, 0, 0);
+        return;
+    }
+    tail.style.transition = 'height var(--t-micro) var(--ease), transform var(--t-micro) var(--ease)';
+    void tail.offsetHeight;
+    setRibbonPull(el, 0, 0);
+    let done = false;
+    const finish = () => {
+        if (done) return;
+        done = true;
+        tail.removeEventListener('transitionend', finish);
+        tail.style.transition = '';
+    };
+    tail.addEventListener('transitionend', finish);
+    setTimeout(finish, 260);
+}
+
+/**
+ * Обе стороны — в покой без перехода. Зовётся из `openBook()`/`closeBook()`
+ * (харнесс, Escape, доводы жеста) — состояние ленты обязано быть чистым на
+ * любом исходе, иначе книжная сторона рискует не появиться (риск дока).
+ */
+function resetRibbons() {
+    ['skyRibbon', 'bookCloseRibbon'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const tail = el.querySelector('.ribbon-tail, .book-close-ribbon-tail');
+        if (tail) tail.style.transition = '';
+        setRibbonPull(el, 0, 0);
+    });
 }
 
 /**
@@ -697,121 +765,179 @@ function renderSkyBookmark() {
 }
 
 // =============================================================================
-// K-08: СТРОКИ СЦЕПОК — общие для «Сегодня» (суточный квест) и Штампов
+// U-32: СТРОКИ СЦЕПОК — общие для «Сегодня» (суточный квест) и Штампов
 // =============================================================================
+//
+// Печать сцепки — круглая, 44 pt, пять на строку (по числу граней огранки).
+// Прогресс — только текущего шага, не всей цепочки: счёт в шапке строки и
+// полоска-бар K-08/U-24 сняты целиком, всё теперь внутри самого кольца.
+// Красный сургуч «готово, прижми» ушёл — сигнал «готово» стал золотым
+// (замкнутое кольцо + свечение), а не тревожным цветом (развилка 1 дока).
 
 /**
- * K-08: счёт в шапке сцепки — «23 / 25», «ready» сургучом или «done», когда
- * цепочка пройдена целиком. У шагов суточного квеста считать нечего (условие
- * бинарное, K-22: `getAchievementStepProgress` не знает проверок `dailyEntry`/
- * `dailyNight` и честно отдаёт null) — слот остаётся пустым, а не прочерком
- * (U-30: прочерк читался как отдельная лишняя полоска).
+ * U-32: прогресс текущего шага для печати. У бинарных условий (суточный
+ * квест M-05/K-22 — `dailyEntry`/`dailyNight`) `getAchievementStepProgress`
+ * честно отдаёт null (см. K-22) — печати нужно что-то нарисовать в кольце,
+ * синтезируем «0 / 1» → «1 / 1» из самого `claimable` (развилка 4 дока).
  */
-function buildAchievementHeadCount(chain, p, done) {
-    if (done) return { text: t('rewards.headDone'), ready: false };
-    if (p.claimable) return { text: t('rewards.headReady'), ready: true };
-    const prog = getAchievementStepProgress(chain.steps[p.stepIndex].check);
-    if (!prog) return { text: '', ready: false };
-    return { text: t('rewards.headProgress', { current: Math.min(prog.current, prog.target), target: prog.target }), ready: false };
+function getAchievementSealProgress(check, claimable) {
+    const prog = getAchievementStepProgress(check);
+    if (prog) return prog;
+    return { current: claimable ? 1 : 0, target: 1 };
 }
 
 /**
- * Одна марка сцепки. Три состояния и ни одного больше:
- * свет ждёт (число) → готово прижать (сургучная рамка, марка сама кликабельна)
- * → оттиск (число вылетело к корешку, на его месте знак цепочки).
- *
- * Прижимается сама марка — кнопки нет нигде. Зона касания шире марки на 6 pt
- * с каждой стороны (`.achv-tile-hit`): марка мелкая, палец крупный.
+ * Кольцо прогресса шага — SVG-дуга, растёт от 12 часов по часовой (rotate в CSS).
+ * U-34: R = 20.8 — внешний край дуги готовой печати (штрих 2.4) ложится ровно
+ * на край тела 44 px, как контур собранной/будущей; при 17.5 кольцо было на
+ * 3.5 px меньше соседей и читалось другим, мелким кружком.
  */
-function createAchievementTile(chain, stepIndex, p) {
-    const tile = document.createElement('div');
-    tile.className = 'achv-tile';
+function createAchievementSealRing(ratio) {
+    const NS = 'http://www.w3.org/2000/svg';
+    const SIZE = 44, R = 20.8;
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'achv-seal-ring');
+    svg.setAttribute('viewBox', `0 0 ${SIZE} ${SIZE}`);
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+
+    const track = document.createElementNS(NS, 'circle');
+    track.setAttribute('class', 'achv-seal-ring-track');
+    track.setAttribute('cx', SIZE / 2);
+    track.setAttribute('cy', SIZE / 2);
+    track.setAttribute('r', R);
+    svg.appendChild(track);
+
+    const c = 2 * Math.PI * R;
+    const fill = document.createElementNS(NS, 'circle');
+    fill.setAttribute('class', 'achv-seal-ring-fill');
+    fill.setAttribute('cx', SIZE / 2);
+    fill.setAttribute('cy', SIZE / 2);
+    fill.setAttribute('r', R);
+    fill.setAttribute('stroke-dasharray', c.toFixed(2));
+    fill.setAttribute('stroke-dashoffset', (c * (1 - Math.max(0, Math.min(1, ratio)))).toFixed(2));
+    svg.appendChild(fill);
+    return svg;
+}
+
+/**
+ * Два числа внутри кольца — текущее крупнее, «/ нужно» мельче (риск дока).
+ * Длинные пары («512 / 1000») сжимаются целиком через `-tight`, а не
+ * переносятся — переноситься в кольце 44 px попросту некуда.
+ */
+function createAchievementSealNumbers(prog) {
+    const wrap = document.createElement('span');
+    wrap.className = 'achv-seal-num';
+    if (String(prog.current).length + String(prog.target).length > 6) wrap.classList.add('achv-seal-num-tight');
+    const cur = document.createElement('span');
+    cur.className = 'achv-seal-num-cur';
+    cur.textContent = String(Math.min(prog.current, prog.target));
+    const req = document.createElement('span');
+    req.className = 'achv-seal-num-req';
+    req.textContent = ' / ' + prog.target;
+    wrap.appendChild(cur);
+    wrap.appendChild(req);
+    return wrap;
+}
+
+/**
+ * Одна печать сцепки. Три главных состояния и один служебный:
+ *   собранная — латунь: заливка и контур золотом, знак цепочки золотом;
+ *   текущая — тонкое кольцо, дуга прогресса, числа и подпись награды под ним,
+ *     кольцо замыкается и светится, когда шаг готов забрать (`-current-ready`);
+ *   будущая — серый кружок без числа и без замка;
+ *   пустая (слот сверх длины цепочки, развилка 2 дока — суточная цепочка
+ *     короче пяти) — тот же кружок, но заметно бледнее: ряд всегда из пяти.
+ *
+ * Прижимается сама печать — кнопки нет нигде, как и раньше (K-08).
+ */
+function createAchievementSeal(chain, stepIndex, p) {
+    const slot = document.createElement('div');
+    slot.className = 'achv-seal-slot';
+
+    const body = document.createElement('div');
+    body.className = 'achv-seal-body';
+    slot.appendChild(body);
+
+    const label = document.createElement('div');
+    label.className = 'achv-seal-label';
+    slot.appendChild(label);
 
     // K-22: суточная цепочка идёт тем же путём — stepIndex у неё выведен
     // recompute'ом из защёлок суток, «текущий» шаг всегда ровно один.
-    const pressed = stepIndex < p.stepIndex;
+    const collected = stepIndex < p.stepIndex;
     const isCurrent = stepIndex === p.stepIndex;
-    const ready = isCurrent && !pressed && p.claimable;
 
-    if (pressed) {
-        tile.classList.add('achv-tile-lit');
-        tile.appendChild(glyphSign(chain.sign || 'arc', 14));
-        return tile;
+    if (collected) {
+        slot.classList.add('achv-seal-collected');
+        body.appendChild(glyphSign(chain.sign || 'arc', 20));
+        return slot;
     }
 
-    const amt = document.createElement('span');
-    amt.className = 'achv-tile-amt';
-    amt.textContent = `${getAchievementChainStepReward(chain, stepIndex)} ✦`;
-    tile.appendChild(amt);
+    if (!isCurrent) {
+        slot.classList.add('achv-seal-future');
+        return slot;
+    }
+
+    const reward = getAchievementChainStepReward(chain, stepIndex);
+    const prog = getAchievementSealProgress(chain.steps[stepIndex].check, p.claimable);
+    const ratio = prog.target > 0 ? prog.current / prog.target : 0;
+    const ready = p.claimable;
+
+    slot.classList.add('achv-seal-current');
+    body.appendChild(createAchievementSealRing(ratio));
+    body.appendChild(createAchievementSealNumbers(prog));
+    // U-32: «take» капсом делает CSS (text-transform) — строка локали остаётся
+    // нижним регистром и в ru («забрать»), как везде в игре.
+    label.textContent = ready ? `${t('rewards.take')} ${reward} ✦` : `${reward} ✦`;
 
     if (ready) {
-        tile.classList.add('achv-tile-ready');
-        tile.dataset.chainId = chain.id;
-        tile.setAttribute('role', 'button');
-        tile.tabIndex = 0;
-        tile.title = t('rewards.claim');
+        slot.classList.add('achv-seal-current-ready');
+        slot.dataset.chainId = chain.id;
+        slot.setAttribute('role', 'button');
+        slot.tabIndex = 0;
+        slot.title = t('rewards.claim');
         const hit = document.createElement('span');
-        hit.className = 'achv-tile-hit';
+        hit.className = 'achv-seal-hit';
         hit.setAttribute('aria-hidden', 'true');
-        // U-20: сетка всегда до пяти клеток (createAchievementTiles) — хит-зона
-        // растягивается на соседей до краёв полоски через эти два безразмерных числа.
-        hit.style.setProperty('--hit-l', stepIndex);
-        hit.style.setProperty('--hit-r', 4 - stepIndex);
-        tile.appendChild(hit);
+        slot.appendChild(hit);
         // A-03: по data-chain-id `claimAchievementStep` находит точку старта перелёта ✦
-        tile.addEventListener('click', (e) => {
+        slot.addEventListener('click', (e) => {
             e.stopPropagation();
             claimAchievementStep(chain.id);
         });
-        tile.addEventListener('keydown', (e) => {
+        slot.addEventListener('keydown', (e) => {
             if (e.key !== 'Enter' && e.key !== ' ') return;
             e.preventDefault();
             claimAchievementStep(chain.id);
         });
     } else {
-        tile.title = t('rewards.claimIdle');
+        slot.title = t('rewards.claimIdle');
     }
-    return tile;
+    return slot;
 }
 
-/** Сетка на пять клеток всегда — столько же, сколько граней у фигуры атласа. */
-function createAchievementTiles(chain, p) {
-    const tiles = document.createElement('div');
-    tiles.className = 'achv-row-tiles';
+/** Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа. */
+function createAchievementSeals(chain, p) {
+    const row = document.createElement('div');
+    row.className = 'achv-row-seals';
     const total = chain.steps.length;
     for (let i = 0; i < 5; i++) {
         if (i < total) {
-            tiles.appendChild(createAchievementTile(chain, i, p));
-        } else {
-            const empty = document.createElement('div');
-            empty.className = 'achv-tile achv-tile-empty';
-            tiles.appendChild(empty);
+            row.appendChild(createAchievementSeal(chain, i, p));
+            continue;
         }
+        const empty = document.createElement('div');
+        empty.className = 'achv-seal-slot achv-seal-empty';
+        const body = document.createElement('div');
+        body.className = 'achv-seal-body';
+        empty.appendChild(body);
+        const label = document.createElement('div');
+        label.className = 'achv-seal-label';
+        empty.appendChild(label);
+        row.appendChild(empty);
     }
-    return tiles;
-}
-
-/**
- * U-24: заливка прогресса внутри текущего шага — «N из target» очков до
- * следующей марки, а не «шаг K из 5» (то уже видно клетками ниже). Короткая
- * полоска встаёт в конце строки описания, под счётом (два предыдущих места —
- * отдельной строкой под описанием, затем в шапке рядом со счётом — заказчик
- * поправил дважды по живому экрану до этой раскладки).
- *
- * Считается от того же чек-условия, что и `claimable` (`evaluateAchievementCheck`),
- * поэтому в момент готовности ratio сам приходит к 1 без отдельной ветки —
- * строка не дёргается, когда марка становится готова прижать (тот же принцип,
- * что уже чинила K-23 для другого сигнала).
- */
-function createAchievementProgressBar(prog) {
-    const bar = document.createElement('div');
-    bar.className = 'achv-row-bar';
-    const fill = document.createElement('div');
-    fill.className = 'achv-row-bar-fill';
-    const ratio = prog.target > 0 ? Math.max(0, Math.min(1, prog.current / prog.target)) : 0;
-    fill.style.width = (ratio * 100).toFixed(1) + '%';
-    bar.appendChild(fill);
-    return bar;
+    return row;
 }
 
 /** U-09: строка-замок — цепочка есть, но имя и знак ещё скрыты. */
@@ -842,11 +968,10 @@ function createAchievementLockedRow(reason) {
 }
 
 /**
- * K-08: достижение — сцепка марок, как в альбоме филателиста. Одна строка:
- * имя с линейкой из точек и счётом текущей ступени, курсивное описание того,
- * что именно считается, и полоска из пяти клеток — по ней сразу видно,
- * сколько света уже в книге и сколько ещё ждёт (getAchievementChainStepReward
- * на каждой клетке, суммы нигде не пересчитываются заново).
+ * K-08/U-32: достижение — сцепка печатей, как в альбоме филателиста. Одна
+ * строка: имя, курсивное описание текущего шага под ним, и ряд из пяти
+ * круглых печатей — прогресс виден в самом кольце текущей, счёта в шапке
+ * и полоски прогресса больше нет (U-32 сняла оба — дублировали кольцо).
  */
 function createAchievementRow(chain) {
     const lockReason = getChainLockReason(chain);
@@ -859,54 +984,29 @@ function createAchievementRow(chain) {
     const done = p.stepIndex >= chain.steps.length;
 
     const row = document.createElement('div');
-    row.className = 'achv-row'
-        + (done ? ' achv-row-done' : '')
-        + (p.claimable ? ' achv-row-claimable' : '');
+    row.className = 'achv-row' + (done ? ' achv-row-done' : '');
     row.dataset.chainId = chain.id;
 
-    // U-24: текущий шаг читается один раз — бар в шапке и описание ниже
-    // берут один и тот же stepEntry/prog, не пересчитывают их порознь.
-    const stepEntry = chain.steps[p.stepIndex];
-    const prog = stepEntry ? getAchievementStepProgress(stepEntry.check) : null;
-
-    const head = document.createElement('div');
-    head.className = 'achv-row-head';
-
-    const title = document.createElement('span');
+    const title = document.createElement('div');
     title.className = 'achv-row-title';
     title.textContent = chain.title;
-    head.appendChild(title);
-
-    const dots = document.createElement('span');
-    dots.className = 'achv-row-dots';
-    head.appendChild(dots);
-
-    const countInfo = buildAchievementHeadCount(chain, p, done);
-    const count = document.createElement('span');
-    count.className = 'achv-row-count' + (countInfo.ready ? ' achv-row-count-ready' : '');
-    count.textContent = countInfo.text;
-    head.appendChild(count);
-
-    row.appendChild(head);
+    row.appendChild(title);
 
     // K-29: описание строки — текущий шаг, а не вся цепочка (chain.desc печатал
     // оба шага «Вечернего обряда» разом); пройденная цепочка (stepIndex вне
-    // steps) описания не показывает — печатать нечего.
-    //
-    // U-24: бар — в одной строке с описанием, под счётом (первая версия
-    // ставила его в шапку рядом со счётом — по следующему фидбеку заказчика
-    // перенесён сюда); только у цепочек с числовым прогрессом (суточный
-    // квест и одношаговые условия дают null).
+    // steps) описания не показывает — печатать нечего, но строка не должна
+    // схлопнуться по высоте (риск дока) — `descText` остаётся в разметке
+    // пустым inline-узлом, а не исчезает вовсе.
+    const stepEntry = chain.steps[p.stepIndex];
     const desc = document.createElement('div');
     desc.className = 'achv-row-desc';
     const descText = document.createElement('span');
     descText.className = 'achv-row-desc-text';
     descText.textContent = stepEntry ? stepEntry.desc : '';
     desc.appendChild(descText);
-    if (prog) desc.appendChild(createAchievementProgressBar(prog));
     row.appendChild(desc);
 
-    row.appendChild(createAchievementTiles(chain, p));
+    row.appendChild(createAchievementSeals(chain, p));
 
     return row;
 }

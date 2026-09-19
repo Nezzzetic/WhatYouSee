@@ -215,10 +215,9 @@ en: {
     'rewardPage.cuttersHand': "The Cutter's Hand",
 
     // --- Награды: строки и замки ---------------------------------------------
-    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
-    'rewards.headReady': 'ready',
-    'rewards.headDone': 'done',
-    'rewards.headProgress': '{current} / {target}',
+    // U-32: печати сцепки несут прогресс сами (кольцо) — счёта в шапке строки
+    // больше нет, вместо него подпись под готовой печатью, капсом её ставит CSS.
+    'rewards.take': 'take',
     'rewards.claim': 'Claim reward',
     'rewards.claimIdle': 'Reward for the current step — meet its condition',
     'rewards.lockCollectPage': 'Collect every shape on page {n}',
@@ -293,10 +292,13 @@ en: {
         other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
     },
     'book.todayBookmarkPlain': 'Bookmarked: {name}.',
-    // S-03: уровень — в подвале рядом с брендом на любой странице; над верхней
-    // засечкой шкалы — номер следующего (правки заказчика 2026-09-10).
+    // S-03: уровень — в подвале рядом с брендом на любой странице.
     'book.footLevel': 'Level {n}',
-    'book.gaugeNextLevel': 'L.{n}',
+    // V-20: номер уровня в головке корешка (сменил «следующий уровень» над
+    // засечкой шкалы K-06/K-17 — нить не считает окно, только направление).
+    'book.spineLevel': 'L.{n}',
+    // V-20: счёт у бусины корешка, проявляется касанием нити и забором.
+    'book.spineScore': '{earned} / {ceil}',
     // S-03: выделенная золотом часть строк замков (атлас, Экслибрис).
     'book.lockLevel': 'level {n}',
 
@@ -554,10 +556,9 @@ ru: {
     'rewardPage.cuttersHand': 'Рука гранильщика',
 
     // --- Награды --------------------------------------------------------------
-    // K-08: сцепка марок — счёт переехал в шапку строки, у него три состояния.
-    'rewards.headReady': 'готово',
-    'rewards.headDone': 'пройдено',
-    'rewards.headProgress': '{current} / {target}',
+    // U-32: печати сцепки несут прогресс сами (кольцо) — счёта в шапке строки
+    // больше нет, вместо него подпись под готовой печатью, капсом её ставит CSS.
+    'rewards.take': 'забрать',
     'rewards.claim': 'Забрать награду',
     'rewards.claimIdle': 'Награда за текущую ступень — выполните её условие',
     'rewards.lockCollectPage': 'Соберите все фигуры страницы {n}',
@@ -617,7 +618,8 @@ ru: {
     },
     'book.todayBookmarkPlain': 'Закладка: «{name}».',
     'book.footLevel': 'Уровень {n}',
-    'book.gaugeNextLevel': 'Ур. {n}',
+    'book.spineLevel': 'Ур. {n}',
+    'book.spineScore': '{earned} / {ceil}',
     'book.lockLevel': 'уровне {n}',
 
     // O-03: одна строка — «ночь закончена» снято отдельной правкой заказчика,

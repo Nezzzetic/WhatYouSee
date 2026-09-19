@@ -535,7 +535,7 @@
      * открыта на верной странице и цепочка claimable) и, если передан
      * `stepIndex`, что показан именно этот шаг цепочки — тестирует то, что
      * видит и жмёт игрок, а не копию правил. Кнопки забора в игре больше нет —
-     * прижимается сама марка (`.achv-tile-ready`).
+     * прижимается сама печать (`.achv-seal-current-ready`, U-32).
      */
     function press(chainId, stepIndex) {
         const progress = achievementProgress[chainId];
@@ -544,8 +544,8 @@
             fail('press: цепочка «' + chainId + '» сейчас на шаге ' + progress.stepIndex
                 + ', а не ' + stepIndex);
         }
-        const tile = document.querySelector('.achv-tile-ready[data-chain-id="' + chainId + '"]');
-        if (!tile) fail('press: готовой марки цепочки «' + chainId + '» нет в DOM '
+        const tile = document.querySelector('.achv-seal-current-ready[data-chain-id="' + chainId + '"]');
+        if (!tile) fail('press: готовой печати цепочки «' + chainId + '» нет в DOM '
             + '(книга не на той странице или нечего забирать?)');
         const before = getMetaScore();
         tile.click();
@@ -588,9 +588,13 @@
      * тратящимся metaScore). K-16: псевдонима `ui()` больше нет, форма одна.
      */
     function book() {
-        const wax = document.getElementById('ribbonWax');
+        const sign = document.getElementById('ribbonSign');
         const ribbon = document.getElementById('skyRibbon');
-        const waxOn = !!(wax && !wax.hidden);
+        const closeRibbon = document.getElementById('bookCloseRibbon');
+        const waxOn = !!(sign && sign.classList.contains('is-lit'));
+        // U-31: --ribbon-pull/--ribbon-follow ставятся setRibbonPull() прямо
+        // инлайн-стилем на узел стороны — читаем оттуда же, а не вычисленным.
+        const pxOf = (el, name) => el ? (parseFloat(el.style.getPropertyValue(name)) || 0) : 0;
         return {
             open: bookOpen,
             cut: bookCut,
@@ -600,6 +604,14 @@
             gauge: getLevelProgress(),
             wax: waxOn,
             ribbon: !!(ribbon && ribbon.getBoundingClientRect().height > 0),
+            ribbonPull: pxOf(ribbon, '--ribbon-pull'),
+            ribbonFollow: pxOf(ribbon, '--ribbon-follow'),
+            closeRibbonPull: pxOf(closeRibbon, '--ribbon-pull'),
+            // Книжная сторона скрыта visibility:hidden (body.book-opening), а
+            // не hidden/display:none — «видимость» обязана читать вычисленный
+            // стиль, boundingRect у visibility:hidden всё равно ненулевой.
+            closeRibbonVisible: !!(closeRibbon && closeRibbon.getBoundingClientRect().height > 0
+                && getComputedStyle(closeRibbon).visibility !== 'hidden'),
             bottomReserve: typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : null,
             rewardsBadge: waxOn,
             hasClaimable: hasClaimableAchievements(),
@@ -623,18 +635,18 @@
                     : null;
                 const target = typeof getClaimFlightTargetRect === 'function'
                     ? getClaimFlightTargetRect() : null;
-                const flag = document.querySelector('#bookGauge .book-gauge-flag');
-                const flagBox = flag ? flag.getBoundingClientRect() : null;
+                const bead = document.querySelector('#bookGauge .book-spine-bead');
+                const beadBox = bead ? bead.getBoundingClientRect() : null;
                 const waxOf = (id) => {
                     const el = document.getElementById(id);
-                    return el ? !el.hidden : null;
+                    return el ? el.classList.contains('book-tab-wax-lit') : null;
                 };
                 return {
                     gaugeVisible: !!(box && box.width > 0 && hit && gauge.contains(hit)),
                     gaugeHit: hit ? (hit.id || hit.className || hit.tagName) : null,
-                    flightOnFlag: !!(target && flagBox && flagBox.width
-                        && Math.abs(target.left - flagBox.left) < 1
-                        && Math.abs(target.top - flagBox.top) < 1),
+                    flightOnBead: !!(target && beadBox && beadBox.width
+                        && Math.abs(target.left - beadBox.left) < 1
+                        && Math.abs(target.top - beadBox.top) < 1),
                     tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') },
                     todayState: [...document.querySelectorAll('#bookTodayState .book-state-row')]
                         .map(r => r.textContent)

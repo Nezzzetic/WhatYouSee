@@ -95,12 +95,15 @@
     /* K-05: лента-закладка. Видимый хвост — узкий, зона касания вокруг него
        шире (пальцу 24 px мало). Пропорции из концепта (18×64 при макете 320 px),
        пересчитанные на 412. Камера полосу под лентой больше НЕ резервирует —
-       резерв остался только на инсет системной панели (см. getBottomUIHeight). */
+       резерв остался только на инсет системной панели (см. getBottomUIHeight).
+       U-31: лента одна и двусторонняя, длина покоя — половина прежней (84→42),
+       зона касания укорочена вместе с хвостом (104→64), иначе над коротким
+       хвостом висела бы невидимая зона, крадущая касания у звёзд в углу. */
     --ribbon-w: 24px;
-    --ribbon-h: 84px;
+    --ribbon-h: 42px;
     --ribbon-right: 28px;
     --ribbon-hit-w: 56px;
-    --ribbon-hit-h: 104px;
+    --ribbon-hit-h: 64px;
     /* Лента — тёмный сургуч: тот же красный, уведённый в тень переплёта. */
     --ribbon-lo: #5E2F3C;
     --ribbon-hi: #7A3B4A;
@@ -110,10 +113,14 @@
     --font-text: 'EB Garamond', Georgia, 'Times New Roman', serif;
 
     /* --- Палитра: пять сред, три смысла ----------------------------------- */
-    /* Бумага — страницы книги. Три ступени: подложка, лист, приподнятое на нём. */
-    --paper: #0F2138;
-    --paper-deep: #0B1A2C;
-    --paper-raised: #142A46;
+    /* Бумага — страницы книги. Три ступени: подложка, лист, приподнятое на нём.
+       V-20: ночная бумага книги, висящей над небом — темнее и синее прежней
+       (была #0F2138/#0B1A2C/#142A46), чтобы лист не спорил с полосой живого
+       неба над ним. Токены остаются едиными на всю бумагу игры (развилка 9
+       дока V-20) — отдельного «листа V-20» нет. */
+    --paper: #111B30;
+    --paper-deep: #0D1527;
+    --paper-raised: #16223A;
     --paper-edge: #1A3355;       /* линия реза: рамки, разделители */
 
     /* Ночь — небо. Всё, что глубже бумаги. */
@@ -125,7 +132,9 @@
     --ink-muted: #A5B8CD;
     --ink-faint: #64809D;
 
-    /* Сургуч — «готово, прижми». Единственный сигнал во всей игре. */
+    /* Сургуч — было «готово, прижми», единственным сигналом во всей игре
+       (U-32 переселила его в золото ниже — красный остался только у кнопки
+       сброса прогресса, `.btn-danger`). */
     --wax: #C4553B;
     --wax-soft: #DE8B72;
 
@@ -143,9 +152,9 @@
     --star-ice: #86C8F2;
 
     /* Те же цвета тройками — для rgba(). Иначе прозрачность мимо палитры. */
-    --paper-rgb: 15, 33, 56;
-    --paper-deep-rgb: 11, 26, 44;
-    --paper-raised-rgb: 20, 42, 70;
+    --paper-rgb: 17, 27, 48;
+    --paper-deep-rgb: 13, 21, 39;
+    --paper-raised-rgb: 22, 34, 58;
     --night-rgb: 5, 9, 15;
     --ink-rgb: 234, 241, 249;
     --wax-rgb: 196, 85, 59;
@@ -173,8 +182,14 @@
        флажку с пятизначным числом (замер: 44 px от левого края экрана; ✦ за всё
        время не тратится и до пяти знаков дорастает). Единственный источник этой
        геометрии: страница отступает на него, .book-gauge им же и меряется. */
-    --page-pad-left: 46px;       /* слева — за шкалой света у корешка */
-    --page-pad-right: 16px;      /* справа — за высечками */
+    /* V-20: корешок 14 px + поле 20 px (было 46 px под шкалу-линейку K-17) */
+    --page-pad-left: 34px;       /* слева — за корешком с нитью уровня */
+    --page-pad-right: 16px;      /* справа — внутренний отступ листа (высечки — в обрезе, вне листа) */
+    /* U-34 (фидбек с телефона): высечки шире — 22 → 30 px, обрез под них 26 → 34 px.
+       Одна пара чисел на всё, что встаёт по обрезу: лист, колонка высечек, книжная
+       сторона ленты. */
+    --book-obrez: 34px;
+    --book-tab-w: 30px;
     --r-sm: 2px;                 /* радиусы книжные, 2–4 pt */
     --r-md: 3px;
     --r-lg: 4px;
@@ -391,7 +406,13 @@ button:disabled {
     position: fixed;
     right: calc(var(--ribbon-right) + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
     bottom: var(--safe-bottom);
-    z-index: 40;
+    /* U-31 (фидбек с устройства): пока книга открывается, её собственный
+       z-index (1200) выше ленты — с ростом --ribbon-follow верхний край
+       книги наезжал на угол экрана и визуально (и по хит-тесту) перекрывал
+       ленту прямо посреди протяжки, будто она «перестаёт тянуться».
+       За пределами открытия это не имеет цену: книга либо не отрисована
+       (hidden), либо уже официально open и ленту саму скрывает display:none. */
+    z-index: 1220;
     width: var(--ribbon-hit-w);
     height: var(--ribbon-hit-h);
     display: flex;
@@ -409,40 +430,83 @@ button:disabled {
     cursor: grabbing;
 }
 
-/* Хвост закладки: уголковый вырез сверху, тень из-под переплёта. */
+/* Хвост закладки: уголковый вырез сверху, тень из-под переплёта.
+   U-31: высота растёт протяжкой (--ribbon-pull), сдвиг вместе с краем книги —
+   отдельной переменной (--ribbon-follow), а не тем же transform, что хотел бы
+   взять hover, — иначе JS-протяжка и hover-твик спорили бы за одно свойство.
+   Обеих переменных по умолчанию нет — растёт/едет только во время жеста.
+   U-31 (фидбек с устройства, круг 3): глубина выреза считается от ПОКОЙНОЙ
+   --ribbon-h, а не от живой (растущей) высоты хвоста — раньше `50%` было
+   в процентах от высоты и глубина выреза росла вместе с протяжкой, вырез
+   визуально «деформировался» (заметно глубже вытянутого, чем в покое). */
 .ribbon-tail {
     position: relative;
     display: block;
     width: var(--ribbon-w);
-    height: var(--ribbon-h);
+    height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
+    transform: translateY(calc(-1 * var(--ribbon-follow, 0px)));
     background: linear-gradient(0deg, var(--ribbon-lo), var(--ribbon-hi));
-    clip-path: polygon(0 0, 50% 16%, 100% 0, 100% 100%, 0 100%);
+    clip-path: polygon(0 0, 50% calc(var(--ribbon-h) * 0.16), 100% 0, 100% 100%, 0 100%);
     box-shadow: 0 -4px 14px -4px rgba(var(--night-rgb), 0.7);
+}
+
+/* Hover/фокус двигают тем же --ribbon-follow, что и протяжка — во время
+   жеста инлайн-стиль (setRibbonPull) сильнее этого правила и просто берёт
+   верх, поэтому твик и протяжка не спорят за transform одновременно.
+   U-31 (фидбек с устройства, круг 3): только настоящий курсор — на
+   тач-экране касание может залипнуть в :hover (mouseleave не наступает),
+   и тогда ЭТА transition начинала гоняться за каждым JS-обновлением
+   --ribbon-follow во время протяжки (перетриггеривалась на каждый
+   touchmove чаще, чем успевала доиграть 240 мс) — лента визуально
+   перестаёт ехать дальше, хотя книга уже едет; тот же диагноз, что у
+   .book-tab чинила O-07/U-28. :focus-visible вне media — клавиатурный
+   фокус не залипает так же и должен подсвечиваться всегда. */
+@media (hover: hover) {
+    .ribbon:hover .ribbon-tail {
+        --ribbon-follow: 3px;
+        transition: transform var(--t-micro) var(--ease);
+    }
+}
+
+.ribbon:focus-visible .ribbon-tail {
+    --ribbon-follow: 3px;
     transition: transform var(--t-micro) var(--ease);
 }
 
-.ribbon:hover .ribbon-tail,
-.ribbon:focus-visible .ribbon-tail {
-    transform: translateY(-3px);
-}
-
-/* Книга открыта — лента ушла вместе с небом */
+/* Книга открыта — небесная сторона ушла вместе с небом */
 .book-open-body .ribbon {
     display: none;
 }
 
-/* Капля сургуча: единственный сигнал на небе. Ни числа, ни цвета тревоги —
-   «есть что прижать». Полное правило сигналов — K-15. */
-.ribbon-wax {
+/* U-31: знак книги на хвосте небесной стороны — замена капли сургуча.
+   Погашен без сигнала, золотом и сиянием — когда есть что забрать
+   (updateRibbonSignal, ui.js). Ни числа, ни цвета тревоги. Полное правило
+   сигналов — K-15. Свой цвет вместо цвета строки — знак на предмете, не в
+   строке сцепки (то же исключение, что раньше держал только крестик). */
+/* U-31 (фидбек с устройства, круг 2): знак стоит на ФИКСИРОВАННОМ расстоянии
+   от растущего конца хвоста, а не в середине текущей (растущей) высоты —
+   `top` считается от половины ПОКОЙНОЙ `--ribbon-h`, а не от 50% живой
+   высоты. У хвоста прибит низ (align-items:flex-end у `.ribbon`) и растёт
+   верх — собственный верх `.ribbon-tail` в его локальных координатах и есть
+   этот подвижный конец, поэтому фиксированный `top` от него сам едет вверх
+   вместе с протяжкой, без JS. В покое (--ribbon-pull: 0) это ровно середина
+   32×42; круг 1 центрировал по 50% ЖИВОЙ высоты — в покое давало то же самое,
+   но при протяжке знак «отставал» от кончика, оставаясь в геометрическом
+   центре уже вытянутого хвоста, а не на фиксированном расстоянии от края. */
+.ribbon-sign {
     position: absolute;
     left: 50%;
-    bottom: calc(var(--ribbon-h) * 0.47);
-    transform: translateX(-50%);
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    background: radial-gradient(circle at 36% 32%, var(--gold-light), var(--wax) 70%);
-    box-shadow: 0 0 12px 2px rgba(var(--wax-rgb), 0.55);
+    top: calc(var(--ribbon-h) / 2);
+    transform: translate(-50%, -50%);
+    /* Обычное состояние — золотой контур; сигнал — та же гравюра заливкой
+       (fill), а не сменой цвета: цвет остаётся золотым всегда. */
+    color: var(--gold);
+    transition: fill var(--t-micro) var(--ease);
+}
+
+.ribbon-sign.is-lit {
+    fill: currentColor;
+    filter: drop-shadow(0 0 4px rgba(var(--gold-rgb), 0.65));
 }
 
 /* --- K-11: чертёж закладки-цели — верхний левый угол неба -------------------
@@ -546,56 +610,90 @@ button:disabled {
 
 /* --- K-06: книга — полноэкранная страница, пять высечек, шкала света ------ */
 
+/* V-20: книга больше не заливка во весь экран — фон стал прозрачным, и над
+   листом видна полоса живого неба (`.book-sky-strip`); лист сам отступил от
+   верха и от правого края (обрез, где стоят высечки). */
 .book {
     position: fixed;
     inset: 0;
     z-index: 1200;
-    background: var(--night);
+    background: none;
 }
 
-/* Шкала и высечки лежат в собственных полях страницы (--page-pad-left/-right,
-   K-01) абсолютным наложением — как в концепте: страница читается на всю
-   ширину, поля просто заняты линейкой и стопкой высечек.
-   K-17: шкала — ребёнок листа, а не сосед. Соседом её закрашивал непрозрачный
-   фон `.book-page` (`inset: 0`), и в DOM она лежала до него. */
+/* V-20: полоса неба над листом — кнопка без вида, во всю ширину книги.
+   Живое поле видно сквозь неё (у `.book` фона больше нет), притемнено
+   отдельным неподвижным слоем `#bookScrim`. Тап — тот же довод закрытия,
+   что у потягивания страницы вниз (setupBookCloseGesture слушает сам `#book`
+   и ловит жест, начатый на любом его ребёнке, включая полосу). */
+.book-sky-strip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: calc(var(--safe-top) + 44px);
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Шкала света переехала в корешок (V-20, было отдельное поле --page-pad-left
+   под линейку K-17) — лист начинается ниже полосы неба и не доходит до правого
+   края экрана (обрез, где стоят высечки). Скруглён только левый верхний угол —
+   решение концепта. */
 .book-page {
     position: absolute;
-    inset: 0;
+    top: calc(var(--safe-top) + 44px);
+    right: var(--book-obrez);
+    bottom: 0;
+    left: 0;
     display: flex;
     flex-direction: column;
-    /* P-02 (регрессия найдена в P-09): страница книги — edge-to-edge, и без
-       --safe-bottom подвал с пейджером (.book-foot) уходит под нав-панель
-       Android целиком — в браузере env(...) = 0, поэтому баг был не виден
-       ни разу до сборки APK. */
-    padding: calc(var(--safe-top) + 18px) max(var(--page-pad-right), 34px)
+    border-radius: 3px 0 0 0;
+    /* P-02 (регрессия найдена в P-09): без --safe-bottom подвал с пейджером
+       (.book-foot) уходит под нав-панель Android целиком — в браузере
+       env(...) = 0, поэтому баг был не виден ни разу до сборки APK. */
+    padding: 18px max(var(--page-pad-right), 16px)
         calc(var(--safe-bottom) + 10px) max(var(--page-pad-left), 24px);
-    background:
-        radial-gradient(120% 70% at 50% 0%, var(--paper-raised) 0%, var(--paper) 55%, var(--paper-deep) 100%),
-        repeating-linear-gradient(90deg, transparent 0 2px, rgba(255, 255, 255, 0.006) 2px 3px);
+    /* Ночная бумага: сплошной цвет + слабое пятно света в верхней трети +
+       зерно (фрактальный шум data-URI, внешних запросов ноль). */
+    background-color: var(--paper);
+    background-image:
+        radial-gradient(60% 40% at 50% 18%, rgba(255, 240, 210, 0.035) 0%, transparent 70%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.045 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, repeat;
+    background-size: 100% 100%, 180px 180px;
     touch-action: pan-y;
 }
 
-/* K-27: книжные края — тень корешка слева (из концепта) и обрез справа
-   зеркалом той же кривой, но слабее: корешок в книге всегда темнее обреза
-   (в концепте правый край отдельно не нарисован — там одиночная страница). */
+/* V-20 (заменил тени K-27): слева — корешок 14 px (тёмный градиент,
+   отбрасывает тень на лист); справа — кромка 4 px волосяных линий толщины
+   блока страниц, по ней снаружи торчат высечки (обрез между кромкой и краем
+   экрана — уже не лист, а притемнённое небо). */
 .book-page::before,
 .book-page::after {
     content: '';
     position: absolute;
     top: 0;
     bottom: 0;
-    width: 22px;
     pointer-events: none;
 }
 
 .book-page::before {
     left: 0;
-    background: linear-gradient(90deg, rgba(0, 0, 0, 0.42), transparent);
+    width: 14px;
+    background: linear-gradient(180deg, #0A1122 0%, #0D1527 100%);
+    box-shadow: 6px 0 18px -4px rgba(0, 0, 0, 0.55);
 }
 
 .book-page::after {
     right: 0;
-    background: linear-gradient(270deg, rgba(0, 0, 0, 0.2), transparent);
+    width: 4px;
+    background: repeating-linear-gradient(180deg,
+        rgba(255, 255, 255, 0.05) 0 1px,
+        rgba(0, 0, 0, 0.12) 1px 2px);
 }
 
 .book-head {
@@ -710,8 +808,8 @@ button:disabled {
 /* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
    странно попадать пальцем даже с увеличенной зоной касания. Зона касания
    растёт ещё и через padding + отрицательный margin — тот же приём, что уже
-   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой марки
-   (K-08, `.achv-tile-ready` шире на 6pt). Горизонталь — асимметрично: сторона
+   держит зону касания ленты-закладки (K-05, шире хвоста) и готовой печати
+   сцепки (U-32, `.achv-seal-hit` шире печати). Горизонталь — асимметрично: сторона
    к колонцифре (`#bookFolio`) остаётся узкой (4px, в пределах gap:6px), чтобы
    хиткон стрелки не наезжал на число при наведении/касании (был баг — правка
    по фидбеку с телефона), наружная сторона (к пустому полю страницы) растёт
@@ -756,10 +854,10 @@ button:disabled {
     width: min(84.6%, 378px);
     padding: 14px 22px 16px;
     text-align: center;
-    border: 1px solid var(--wax);
+    border: 1px solid var(--gold);
     border-radius: var(--r-lg);
     background: linear-gradient(180deg, var(--paper-raised) 0%, var(--paper-deep) 100%);
-    box-shadow: 0 10px 26px rgba(var(--paper-deep-rgb), 0.55), 0 0 18px rgba(var(--wax-rgb), 0.4);
+    box-shadow: 0 10px 26px rgba(var(--paper-deep-rgb), 0.55), 0 0 18px rgba(var(--gold-rgb), 0.4);
     pointer-events: none;
     opacity: 0;
     transform: translate(-50%, -10px);
@@ -775,7 +873,7 @@ button:disabled {
     font-size: 10px;
     letter-spacing: 0.26em;
     text-transform: uppercase;
-    color: var(--wax-soft);
+    color: var(--gold);
 }
 
 .level-banner-title {
@@ -791,7 +889,7 @@ button:disabled {
 .level-banner-unlocks {
     margin-top: 9px;
     padding-top: 9px;
-    border-top: 1px solid rgba(var(--wax-rgb), 0.3);
+    border-top: 1px solid rgba(var(--gold-rgb), 0.3);
 }
 
 .level-banner-unlock-row {
@@ -962,17 +1060,27 @@ button:disabled {
 }
 
 /* K-24: точка садится в тот же жёлоб .book-index-row-icon, что и замок —
-   на одной строке они не встречаются, второй слот был лишним зазором. */
+   на одной строке они не встречаются, второй слот был лишним зазором.
+   U-32: красная сургучная точка сменилась золотой звёздочкой — сигнал
+   «есть что взять» больше не читается тревогой. */
 .book-index-row-wax {
     flex: none;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
+    width: 10px;
+    height: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    line-height: 1;
 }
 
 .book-index-row-wax-lit {
-    background: var(--wax);
-    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+    color: var(--gold);
+    text-shadow: 0 0 5px rgba(var(--gold-rgb), 0.65);
+}
+
+.book-index-row-wax-lit::before {
+    content: "✦";
 }
 
 .book-index-row-folio {
@@ -983,99 +1091,81 @@ button:disabled {
     white-space: nowrap;
 }
 
-/* --- шкала света у корешка: окно из двух засечек-сотен, K-06 -------------- */
-
+/* --- V-20: корешок вместо шкалы света — номер уровня, нить, бусина -------- */
+/* Заменяет K-06/K-17/K-25 (две засечки-сотни, флажок, слово «следующий
+   уровень»). Узел `#bookGauge` тот же — на нём стоят харнесс и верификаторы —
+   дети внутри переписаны целиком. Зона касания (32 px) шире визуального
+   корешка (14 px, `.book-page::before`), они делят одну левую координату. */
 .book-gauge {
     position: absolute;
-    left: 4px;
-    top: calc(var(--safe-top) + 60px);
-    bottom: 42px;
-    /* Ширина — всё поле листа минус её собственный отступ: засечки и флажок
-       обязаны помещаться в свою полосу и не наезжать на текст (K-17, риск 1). */
-    width: calc(var(--page-pad-left) - 6px);
-    /* Та же ось, что у страницы: полоса теперь ловит хит-тест, и жест
-       перелистывания не должен об неё спотыкаться. */
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 32px;
     touch-action: pan-y;
 }
 
-.book-gauge::before {
-    content: '';
+.book-spine-level {
     position: absolute;
-    left: 2px;
-    top: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--paper-edge);
-}
-
-.book-gauge-fill {
-    position: absolute;
-    left: 2px;
-    bottom: 0;
-    width: 1px;
-    background: var(--gold);
-    box-shadow: 0 0 6px rgba(var(--gold-rgb), 0.5);
-}
-
-.book-gauge-tick {
-    position: absolute;
-    left: 8px;
-    font-size: 10px;
-    color: var(--ink-faint);
-    font-variant-numeric: tabular-nums;
+    left: 0;
+    top: 10px;
+    width: 14px;
+    text-align: center;
     white-space: nowrap;
-}
-
-.book-gauge-tick-top {
-    top: 0;
-    transform: translateY(-50%);
-}
-
-/* S-03: над верхней засечкой — номер следующего уровня словом (правка
-   заказчика 2026-09-10: «указать про следующий уровень вверху шкалы»).
-   Знаков на шкале нет по-прежнему — только текст. */
-.book-gauge-next {
-    position: absolute;
-    left: 8px;
-    bottom: 100%;
-    margin-bottom: 10px;
     font-size: 10px;
-    color: var(--gold);
-    white-space: nowrap;
-}
-
-.book-gauge-tick-bottom {
-    bottom: 0;
-    transform: translateY(50%);
-}
-
-.book-gauge-flag {
-    position: absolute;
-    left: 6px;
-    transform: translateY(50%);
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    font-size: 11px;
     font-weight: 700;
-    color: var(--gold-light);
-    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    color: var(--gold);
 }
 
-/* K-25: на нуле «● 0» нечего показывать, но узел остаётся в разметке —
-   getClaimFlightTargetRect() целится в него же, и первый в жизни игрока
-   забор не должен искать устаревшую (и уже скрытую книгой) цель на ленте. */
-.book-gauge-flag-empty {
-    visibility: hidden;
+/* Пунктирная нить вдоль корешка — направление ступени задаёт номер уровня
+   выше, засечек и чисел ✦ на ней нет (развилка 8 дока: заливки «пройденной»
+   части нет, как в макете). */
+.book-spine-thread {
+    position: absolute;
+    left: 7px;
+    top: 32px;
+    bottom: 10px;
+    width: 0;
+    border-left: 1px dashed rgba(var(--gold-rgb), 0.35);
 }
 
-.book-gauge-flag::before {
-    content: '';
-    width: 5px;
-    height: 5px;
+/* Бусина — доля пути к следующему уровню (getLevelProgress().ratio), `bottom`
+   ставится в JS % от высоты самой нити (renderBookGauge). Видна и на нуле
+   (K-25: цель полёта первого забора — она же, устаревшего прямоугольника не
+   должно быть, узел не прячется никогда). */
+.book-spine-bead {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, 50%);
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
     background: var(--gold-light);
-    box-shadow: 0 0 6px rgba(var(--gold-rgb), 0.7);
+    box-shadow: 0 0 6px 1px rgba(var(--gold-rgb), 0.7);
+}
+
+/* Счёт «earned / ceil» — скрыт по умолчанию, проявляется касанием нити и
+   забором награды (showBookSpineScore, book.js) на BOOK_SPINE_SCORE_HOLD_MS,
+   повтор продлевает показ, а не переигрывает проявление. */
+.book-spine-score {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 10px;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--gold-light);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 400ms var(--ease);
+}
+
+.book-spine-score-on {
+    opacity: 1;
+    transition: opacity 240ms var(--ease);
 }
 
 /* --- пять высечек: сквозные, стопкой у правого края снизу, под большим
@@ -1083,30 +1173,47 @@ button:disabled {
    на маленьком экране знак читался бы быстрее, но вкладка со знаком перестаёт
    быть книжной высечкой и становится панелью приложения. --- */
 
+/* V-20: высечки торчат из кромки листа в обрез — привязаны к нему левым
+   (прямым) краем, свободный правый край смотрит в притемнённое небо и
+   скруглён (было наоборот: книга занимала весь экран, и высечки торчали за
+   правый край листа наружу). */
 .book-tabs {
     position: absolute;
-    right: 0;
+    right: 2px;
     bottom: calc(var(--safe-bottom) + 90px);
-    width: 30px;
+    width: var(--book-tab-w);
     display: flex;
     flex-direction: column;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: 5px;
 }
 
+/* U-34 (фидбек с телефона): слово у всех пяти высечек прижато к одному краю —
+   к нижнему на экране, с отступом 8 px (в развороте writing-mode + rotate(180deg)
+   начало строки — экранный низ), ✦ у Today/Stamps встаёт над словом. По центру
+   слова стояли вразнобой: где-то сдвинутые слотом звёздочки, где-то нет. */
 .book-tab {
     position: relative;
     flex: none;
-    width: 26px;
-    height: 58px;
+    width: var(--book-tab-w);
+    /* 62 → 72: отступ 8 + «EX LIBRIS» (самое длинное слово) или «STAMPS» + ✦
+       должны влезать целиком, без переноса и без упора в свободный конец. */
+    height: 72px;
     padding: 0;
+    padding-inline-start: 8px;
+    white-space: nowrap;
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     border: 1px solid var(--paper-edge);
-    border-radius: 5px 0 0 5px;
+    /* K-02/K-18 приём (rotate(180deg) + writing-mode ниже переворачивает
+       визуальные стороны): рисуем «скруглено слева, без бордера справа» здесь,
+       на экране после поворота получается ровно наоборот — скруглённый
+       свободный конец справа (в небо обреза), прямой привязанный слева
+       (к кромке листа) — см. развилку 5 дока V-20. */
+    border-radius: 4px 0 0 4px;
     border-right: none;
-    background: var(--paper-deep);
+    background: var(--paper-raised);
     color: var(--ink-faint);
     font-family: var(--font-text);
     font-size: 9.5px;
@@ -1118,24 +1225,52 @@ button:disabled {
     -webkit-tap-highlight-color: transparent;
 }
 
-.book-tab-on {
-    width: 30px;
-    background: var(--paper-raised);
-    color: var(--ink);
+/* Невидимая зона касания — растёт влево на экране, в поле листа (итог ≥ 40 px
+   в ширину: 22 px видимой высечки + 18 px внутрь бумаги). Как и border-radius
+   выше, отступ ставим на стороне, которая после rotate(180deg) окажется
+   экранной левой, — то есть на местной ПРАВОЙ. */
+.book-tab::before {
+    content: '';
+    position: absolute;
+    inset: 0 -18px 0 0;
 }
 
+.book-tab-on {
+    /* Активная слита с листом без шва: тот же цвет, что у бумаги, и сдвинута
+       ещё на 2 px в неё — граница высечки уходит под кромку. */
+    background: var(--paper);
+    color: var(--ink);
+    transform: rotate(180deg) translateX(2px);
+}
+
+/* U-32: красная сургучная точка сменилась золотой звёздочкой — принцип «есть
+   что взять», без тревожного цвета.
+   U-34: звёздочка ушла с угла высечки (вылезала за контур, у «STAMPS» касалась
+   буквы) внутрь — flex-элементом после слова: в развороте (writing-mode:
+   vertical-rl + rotate(180deg)) это на экране над словом, на оси высечки.
+   Место занято всегда, горит только класс -lit — слово не прыгает (K-23). */
 .book-tab-wax {
-    position: absolute;
-    /* Высечка развёрнута (writing-mode: vertical-rl + rotate(180deg)) — «левый
-       верхний» в экранных координатах читается как «правый нижний» в системе
-       координат до поворота. */
-    left: 3px;
-    bottom: 6px;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--wax);
-    box-shadow: 0 0 6px 1px rgba(var(--wax-rgb), 0.6);
+    flex: none;
+    margin-inline-start: 3px;
+    visibility: hidden;
+    pointer-events: none;
+    width: 9px;
+    height: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    line-height: 1;
+    color: var(--gold);
+    text-shadow: 0 0 5px rgba(var(--gold-rgb), 0.65);
+}
+
+.book-tab-wax::before {
+    content: "✦";
+}
+
+.book-tab-wax-lit {
+    visibility: visible;
 }
 
 /* --- O-07: постоянный знак закрытия книги -----------------------------------
@@ -1147,23 +1282,54 @@ button:disabled {
    уголковый вырез снизу вместо сверху, зеркально. Живёт углом, свободным от
    высечек (`.book-tabs` начинается заметно ниже) и от заголовка (по центру). */
 
+/* U-31: та же зона/хвост, что у небесной стороны, только сверху и вниз —
+   `.book-close-ribbon` — прозрачная зона касания, `.book-close-ribbon-tail` —
+   видимый хвост, растёт вниз от прибитого верха (у небесной — вверх от низа). */
 .book-close-ribbon {
     position: absolute;
-    top: 0;
-    right: var(--ribbon-right);
+    /* V-20: полоса неба (.book-sky-strip) заняла верх книги — знак закрытия
+       переехал на 10 px выше кромки листа (развилка 10 дока), а не с самого
+       верха экрана; --ribbon-right не трогаем (та же книжная сторона ленты).
+       U-34: обрез стал шире 26 px — лента сдвигается на ту же разницу, чтобы
+       висеть на листе, а не свисать за его кромку. */
+    top: calc(var(--safe-top) + 34px);
+    right: calc(var(--ribbon-right) + var(--book-obrez) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
     z-index: 1215;
-    width: var(--ribbon-w);
-    height: 34px;
-    padding: 4px 0 0;
+    width: var(--ribbon-hit-w);
+    height: var(--ribbon-hit-h);
     display: flex;
     align-items: flex-start;
     justify-content: center;
+    padding: 0;
     border: none;
-    background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
-    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 82%, 0 100%);
-    box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
-    cursor: pointer;
+    background: none;
+    touch-action: none; /* потягивание ленты вниз, а не прокрутка страницы */
+    cursor: grab;
     -webkit-tap-highlight-color: transparent;
+}
+
+.book-close-ribbon:active {
+    cursor: grabbing;
+}
+
+/* Пока книгу вытягивают вверх (U-31), книжной стороны не видно — появляется,
+   только когда книга зафиксировалась (открылась). Небесную на ходу закрытия
+   и так прячет .book-open-body .ribbon — снимается с closeBook(). */
+body.book-opening .book-close-ribbon {
+    visibility: hidden;
+}
+
+/* U-31 (фидбек с устройства, круг 3): та же правка, что у .ribbon-tail —
+   глубина выреза считается от ПОКОЙНОЙ --ribbon-h (18% сверху = зеркало
+   16% снизу у небесной стороны), а не от живой высоты хвоста. */
+.book-close-ribbon-tail {
+    position: relative;
+    display: block;
+    width: var(--ribbon-w);
+    height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px));
+    background: linear-gradient(180deg, var(--ribbon-hi), var(--ribbon-lo));
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - var(--ribbon-h) * 0.18), 0 100%);
+    box-shadow: 0 4px 14px -4px rgba(var(--night-rgb), 0.7);
 }
 
 /* Только устройства с настоящим курсором — на тачскрине тап навсегда «залипает»
@@ -1171,20 +1337,28 @@ button:disabled {
    книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
    media — клавиатурный фокус не залипает так же и должен подсвечиваться всегда. */
 @media (hover: hover) {
-    .book-close-ribbon:hover {
+    .book-close-ribbon:hover .book-close-ribbon-tail {
         filter: brightness(1.12);
     }
 }
 
-.book-close-ribbon:focus-visible {
+.book-close-ribbon:focus-visible .book-close-ribbon-tail {
     filter: brightness(1.12);
 }
 
-/* Крестик — единственный знак кассы K-02 со своим цветом вместо цвета строки
-   (правило концепта нарушено осознанно: это не строка сцепки, а предмет на
-   ленте, и золото здесь читается как «путь наверх», тот же смысл, что у шкалы
-   света и огранки). */
+/* Знак неба на книжной стороне — всегда золото, ему нечего сообщать (U-31,
+   было у крестика O-07 — единственный знак кассы K-02 со своим цветом вместо
+   цвета строки; теперь оба знака ленты делят это исключение — они на
+   предмете, не в строке сцепки). */
+/* U-31 (фидбек с устройства, круг 2): зеркало `.ribbon-sign` — у этого хвоста
+   прибит верх (align-items:flex-start у `.book-close-ribbon`) и растёт низ,
+   поэтому фиксированное расстояние держится от `bottom` (собственный низ
+   `.book-close-ribbon-tail` — подвижный конец), не от `top`. */
 .book-close-sign {
+    position: absolute;
+    left: 50%;
+    bottom: calc(var(--ribbon-h) / 2);
+    transform: translate(-50%, 50%);
     color: var(--gold);
 }
 
@@ -1303,6 +1477,21 @@ button:disabled {
 
 #skyBackdrop.sky-backdrop-on {
     display: block;
+}
+
+/* V-20: притемнение неба под книгой — между стоп-кадром (1100) и книгой
+   (1200), поэтому видно ровно в полосе и обрезе, которые открывает уезжающая
+   страница (и на Ex Libris — поверх стоп-кадра тоже). Прозрачность держит
+   --book-open (setBookTransform/setBookScrimOpen, book.js) — по умолчанию 0,
+   слой не тронут, пока книга ни разу не открывалась. Ничего не ловит: иначе
+   умерла бы протяжка ленты и жест страницы. */
+#bookScrim {
+    position: fixed;
+    inset: 0;
+    z-index: 1150;
+    background: rgba(var(--night-rgb), 0.4);
+    opacity: var(--book-open, 0);
+    pointer-events: none;
 }
 
 /* Двойная рамка гравюры — тот же приём, что у концепта (Табл. VII):
@@ -1577,10 +1766,13 @@ button:disabled {
     font-size: 13px;
 }
 
-/* --- K-08: награды — сцепка марок, как в альбоме филателиста ---------------
-   Достижение — одна строка: имя с линейкой из точек и счётом ступени, курсив
-   описания под ним, ниже полоска из пяти клеток. Кнопки забора нет нигде —
-   прижимается сама марка (см. `.achv-tile-ready`). */
+/* --- U-32 (заменила K-08/K-18/U-20/U-24): награды — сцепка печатей, как в
+   альбоме филателиста. Достижение — одна строка: имя, курсив описания
+   текущего шага под ним, ниже ряд из пяти круглых печатей 44 pt — прогресс
+   виден в кольце текущей, а не в счёте шапки и не в полоске (обе сняты,
+   дублировали кольцо). Красный сургуч ушёл целиком — сигнал «готово»
+   стал золотым (см. `.achv-seal-current-ready` ниже). Кнопки забора нет
+   нигде — прижимается сама печать. */
 
 .achv-list {
     display: flex;
@@ -1590,11 +1782,10 @@ button:disabled {
 /* K-18: строка книги, не карточка — волосяная линейка вместо рамки/подложки
    (Табл. IV/VI концепта: `.setenant` несёт только border-bottom). Последняя
    строка списка — без линейки. */
-/* K-23: жёлоб под сургучную полосу зарезервирован всегда — иначе появление
-   сигнала «готово прижать» расталкивает строку (padding был только у
-   `.achv-row-claimable`, box-shadow сам по себе на геометрию не влияет). */
+/* U-34: вертикальные зазоры ужаты (9/10 → 5/6 и ниже по строке) — пять
+   строк главы встают без прокрутки на окне 393×735 (Chrome на телефоне). */
 .achv-row {
-    padding: 9px 0 10px 9px;
+    padding: 5px 0 6px 9px;
     border-bottom: 1px solid var(--paper-edge);
 }
 
@@ -1604,13 +1795,6 @@ button:disabled {
 
 .achv-row-done {
     opacity: 0.55;
-}
-
-/* Носитель «готово прижать» на уровне строки — маргинальный акцент сургучом,
-   не рамка-карточка (риск 1: дублирует сургучный счёт шапки и кольцо готовой
-   марки — три независимых сигнала вместо одной рамки). */
-.achv-row-claimable {
-    box-shadow: inset 3px 0 0 var(--wax);
 }
 
 .achv-row-locked {
@@ -1637,11 +1821,14 @@ button:disabled {
     gap: 4px;
 }
 
-/* U-24: имя цепочки крупнее — 14px терялось рядом с укрупнённым счётом. */
 .achv-row-title {
     font-size: 16px;
+    line-height: 1.2;
     font-weight: 700;
     color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .achv-row-title-hidden {
@@ -1650,102 +1837,228 @@ button:disabled {
 }
 
 /* Строка-замок держит текст причины в том же классе, что раньше — прогресса
-   у неё нет, полосу и марки заменяет одна фраза. */
+   у неё нет, полосу и печати заменяет одна фраза. */
 .achv-row-step {
     font-size: 11.5px;
     line-height: 1.3;
     color: var(--ink-muted);
 }
 
-/* --- сцепка: шапка (имя · точки · счёт) ------------------------------------ */
-
-.achv-row-head {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-}
-
-.achv-row-head .achv-row-title {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.achv-row-dots {
-    flex: 1;
-    min-width: 10px;
-    border-bottom: 1px dotted rgba(var(--ink-rgb), 0.28);
-    transform: translateY(-4px);
-}
-
-/* U-24: счёт крупнее и светлее книжного «ink» — раньше терялся мелким
-   приглушённым текстом, фидбек с живого экрана («непонятно»). */
-.achv-row-count {
-    flex: none;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--ink);
-    white-space: nowrap;
-    font-variant-numeric: tabular-nums;
-}
-
-.achv-row-count-ready {
-    color: var(--wax-soft);
-}
-
-/* --- сцепка: описание — курсив под именем, бар прогресса в конце той же
-   строки (U-24: раньше стоял рядом со счётом в шапке — заказчик попросил
-   перенести под счёт, в одну линию с описанием шага). --- */
+/* --- сцепка: описание — курсив под именем ---------------------------------- */
 
 .achv-row-desc {
-    margin-top: 2px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    margin-top: 0;
 }
 
 .achv-row-desc-text {
-    flex: 1;
-    min-width: 0;
     font-style: italic;
     font-size: 13px;
-    line-height: 1.35;
+    line-height: 1.25;
     color: var(--ink-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    display: block;
 }
 
-/* U-24: заливка прогресса внутри текущего шага — короткая полоска, не
-   книжная волосяная линия: на такой ширине 1px рядом с текстом не читался
-   бы. Показывается только у цепочек с числовым прогрессом (суточный квест
-   и одношаговые условия дают null — createAchievementRow). */
-.achv-row-bar {
-    flex: none;
-    width: 64px;
-    height: 5px;
-    border-radius: 3px;
-    background: rgba(var(--ink-rgb), 0.16);
-    overflow: hidden;
-}
+/* --- U-32: ряд из пяти круглых печатей -------------------------------------- */
 
-.achv-row-bar-fill {
-    height: 100%;
-    width: 0;
-    border-radius: 3px;
-    background: var(--gold);
-    box-shadow: 0 0 4px rgba(var(--gold-rgb), 0.5);
-}
-
-/* --- сцепка: полоска из пяти клеток ----------------------------------------- */
-
-.achv-row-tiles {
-    --tile-gap: 6px;
+.achv-row-seals {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: var(--tile-gap);
-    margin-top: 7px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 5px;
 }
+
+/* U-34: слот — опора для растянутой .achv-seal-hit. Без position зона касания
+   считалась от ближайшего позиционированного предка и накрывала почти всю
+   страницу книги (398×864 на «Сегодня») — тап в любом месте забирал награду. */
+.achv-seal-slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.achv-seal-body {
+    position: relative;
+    width: min(44px, 100%);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ink-muted);
+}
+
+/* Подпись под текущей печатью — награда бледно или «TAKE N ✦» золотом капсом
+   готовности; строка всегда в разметке (даже пустой у собранной/будущей/
+   пустой печати), чтобы высота ряда не прыгала при смене состояния (риск
+   дока — «высота строки не должна прыгать»). */
+.achv-seal-label {
+    min-height: 11px;
+    font-size: 10px;
+    line-height: 1.1;
+    text-align: center;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+/* --- собранная печать: приглушённая латунь ---------------------------------- */
+
+.achv-seal-collected .achv-seal-body {
+    background: rgba(var(--gold-rgb), 0.12);
+    box-shadow: inset 0 0 0 1.5px rgba(var(--gold-rgb), 0.38);
+    color: var(--gold);
+}
+
+/* --- будущая / пустая (слот сверх длины цепочки, развилка 2 дока) ---------- */
+
+.achv-seal-future .achv-seal-body {
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.16);
+}
+
+.achv-seal-empty .achv-seal-body {
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.07);
+}
+
+/* --- текущая печать: тонкое кольцо, дуга прогресса, числа ------------------- */
+
+.achv-seal-ring {
+    position: absolute;
+    inset: 0;
+    /* Дуга растёт от 12 часов по часовой — <circle> в SVG начинается в 3
+       часа, поворот на -90° переносит старт наверх. */
+    transform: rotate(-90deg);
+}
+
+.achv-seal-ring-track {
+    fill: none;
+    stroke: rgba(var(--gold-rgb), 0.22);
+    stroke-width: 2;
+}
+
+.achv-seal-ring-fill {
+    fill: none;
+    stroke: var(--gold);
+    stroke-width: 2;
+    stroke-linecap: round;
+    transition: stroke-dashoffset var(--t-micro) var(--ease);
+}
+
+/* Фидбек с телефона: `align-items: baseline` не центрирует строку по высоте —
+   прижимает её к верху контейнера (баг самого свойства на разноразмерных
+   inline-детях, не браузера), числа наезжали на верхнюю дугу кольца. */
+.achv-seal-num {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    pointer-events: none;
+    font-variant-numeric: tabular-nums;
+}
+
+.achv-seal-num-cur {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--ink);
+}
+
+.achv-seal-num-req {
+    font-size: 8px;
+    color: var(--ink-faint);
+}
+
+/* Длинные пары («512 / 1000») сжимаются целиком — переноситься в кольце
+   44 px попросту некуда (риск дока). */
+.achv-seal-num-tight .achv-seal-num-cur {
+    font-size: 10px;
+}
+
+.achv-seal-num-tight .achv-seal-num-req {
+    font-size: 6.5px;
+}
+
+/* --- текущая печать, можно взять: кольцо замкнулось ярким золотом ---------- */
+/* z-index обязателен: opacity/filter дыхания создают контекст наложения, и
+   без него растянутая .achv-seal-hit уходит под соседние печати. */
+.achv-seal-current-ready {
+    z-index: 2;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Фидбек с телефона: отдельный `::after` со своим `inset` рисовал ВТОРОЕ
+   кольцо на фиксированном расстоянии от края (box-shadow без блюра
+   толком не смешивался с телом) — грязно, читалось как две обводки вместо
+   одного светящегося кольца. Свечение теперь — box-shadow самого тела
+   печати: растёт от истинного круглого края, поэтому выглядит как один
+   нимб, а не эхо-контур. Дышит именно этот box-shadow (см. keyframes ниже) —
+   заливка и цифры/кольцо остаются как есть. */
+.achv-seal-current-ready .achv-seal-body {
+    background: rgba(var(--gold-rgb), 0.14);
+    animation: achvSealBreathe 2.1s ease-in-out infinite alternate;
+}
+
+.achv-seal-current-ready .achv-seal-ring-fill {
+    stroke: var(--gold-light);
+    stroke-width: 2.4;
+}
+
+.achv-seal-current-ready .achv-seal-num-cur {
+    color: var(--gold-light);
+}
+
+.achv-seal-current-ready .achv-seal-num-req {
+    color: var(--gold);
+}
+
+.achv-seal-current-ready .achv-seal-label {
+    color: var(--gold);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.achv-seal-current-ready:focus-visible .achv-seal-body {
+    box-shadow: 0 0 0 2px rgba(var(--gold-light-rgb), 0.7);
+    outline: none;
+}
+
+/* Дышит только свечение вокруг тела печати — кольцо и числа не гаснут
+   (развилка 3 дока: два круга правки U-20 подняли прежнюю амплитуду/период
+   марки до заметности, тот же диапазон переносится сюда на новый носитель). */
+@keyframes achvSealBreathe {
+    from { box-shadow: 0 0 6px 1px rgba(var(--gold-rgb), 0.4); }
+    to   { box-shadow: 0 0 14px 3px rgba(var(--gold-rgb), 0.75); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .achv-seal-current-ready .achv-seal-body {
+        animation: none;
+        box-shadow: 0 0 10px 2px rgba(var(--gold-rgb), 0.6);
+    }
+}
+
+/* U-32 (было U-20): зона касания шире печати — печать мелкая, палец крупный.
+   Растёт и по вертикали, и по горизонтали вокруг самой печати (не через всю
+   полоску, как было у прямоугольной марки — круги соседей не перекрываются
+   заметно, второй круг не активируется мимо своего). Реальный узел (не
+   псевдоэлемент): надёжнее ловит тап в WebView. */
+.achv-seal-hit {
+    position: absolute;
+    inset: -10px -6px -6px;
+    z-index: 1;
+}
+
+/* --- K-14: настройки — тумблер книжный: пустая клетка / оттиск ------------
+   U-32 сняла достижения с `.achv-tile` целиком (печати сцепок теперь
+   `.achv-seal-*` выше) — эти четыре правила остались жить только ради
+   тумблера настроек, второго и последнего, кто их читает. */
 
 .achv-tile {
     position: relative;
@@ -1755,7 +2068,6 @@ button:disabled {
     align-items: center;
     justify-content: center;
     box-shadow: inset 0 0 0 1px var(--paper-edge);
-    font-variant-numeric: tabular-nums;
 }
 
 .achv-tile::before {
@@ -1767,21 +2079,11 @@ button:disabled {
     pointer-events: none;
 }
 
-/* K-18: было --gold-deep — на тёмной бумаге (--paper) почти нечитаемо;
-   --gold-light у готовой марки (ниже) остаётся ярче — двухступенчатая
-   лестница без нового токена. */
-.achv-tile-amt {
-    font-size: 11px;
-    color: var(--gold);
-    letter-spacing: 0.01em;
-}
-
 .achv-tile-empty {
     opacity: 0.3;
 }
 
-/* Оттиск: число вылетело к корешку, на его месте — знак цепочки. Свой цвет
-   знаку не идёт (K-02) — цепочки цвета красят его через inline style сами. */
+/* Оттиск: клетка тумблера включена — знак кассы «press» вместо пустоты. */
 .achv-tile-lit {
     background: rgba(var(--ink-rgb), 0.06);
     box-shadow: inset 0 0 0 1px var(--paper-edge);
@@ -1791,73 +2093,9 @@ button:disabled {
     color: var(--ink-faint);
 }
 
-/* U-20: готова прижать — сургуч заливкой, единственное закрашенное пятно
-   среди волосяных линеек страницы (было кольцо-рамка, на бумаге не читалось
-   как «нажми»). Дышит ровно эта клетка (K-03: яркость 0.8…1.0, период 5–9 с,
-   геометрия неподвижна — двигать нельзя, марка не должна елозить под пальцем).
-   z-index обязателен: opacity/filter дыхания создают контекст наложения, и без
-   него растянутая .achv-tile-hit уходит под соседние клетки ниже по DOM. */
-.achv-tile-ready {
-    z-index: 2;
-    background: var(--wax);
-    box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    animation: achvTileBreathe 2.1s ease-in-out infinite alternate;
-}
-
-.achv-tile-ready::before {
-    border-color: rgba(var(--gold-light-rgb), 0.35);
-}
-
-.achv-tile-ready .achv-tile-amt {
-    color: var(--gold-light);
-    font-weight: 650;
-}
-
-.achv-tile-ready:hover,
-.achv-tile-ready:focus-visible {
-    box-shadow: inset 0 0 0 2px rgba(var(--wax-rgb), 0.95);
-    outline: none;
-}
-
-/* Фидбек с плейтеста 2026-09-05, два круга: первая версия (0.82↔1, 6.4s) была
-   практически не видна — глаз не ловит 18% альфы на насыщенном сургучном пятне,
-   амплитуда и период подняты вместе с наружным свечением (0.6↔1, 4.2s); второй
-   круг — тот же диапазон вдвое быстрее (2.1s), период всё ещё не в счётчик
-   мигания. ::before/пунктир не трогаем, контур растёт вторым слоем поверх,
-   а не вместо заливки. Всё ещё только opacity/box-shadow — без transform,
-   марка не должна елозить под пальцем. */
-@keyframes achvTileBreathe {
-    from {
-        opacity: 0.6;
-        box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8);
-    }
-    to {
-        opacity: 1;
-        box-shadow: inset 0 0 0 1.5px rgba(var(--wax-rgb), 0.8), 0 0 9px 1px rgba(var(--wax-rgb), 0.6);
-    }
-}
-
-/* U-20: по вертикали зона касания заметно шире марки (48 px — под полоской
-   ~20 px мёртвого поля, отнять не у кого). По горизонтали растягивается до
-   краёв полоски через --hit-l/--hit-r (шаг клетки задаёт createAchievementTile,
-   потолок сетки всегда 5 — createAchievementTiles): вторая марка в строке не
-   активируется, пока не прижата первая (K-22), так что мишени соседних строк
-   не пересекаются. Реальный узел (не псевдоэлемент): надёжнее ловит тап в
-   WebView. */
-.achv-tile-hit {
-    position: absolute;
-    top: -8px;
-    bottom: -8px;
-    left: calc(-1 * var(--hit-l, 0) * (100% + var(--tile-gap)) - 6px);
-    right: calc(-1 * var(--hit-r, 0) * (100% + var(--tile-gap)) - 6px);
-    z-index: 1;
-}
-
-/* --- K-14: настройки — тумблер книжный: пустая клетка / оттиск (`.achv-tile`
-   выше), а не системный чекбокс. Своей иконки в тумблере нет — состоянию
-   нечего означать темой, это бинарный переключатель, а не оттиск цепочки. */
+/* Тумблер книжный: пустая клетка / оттиск (`.achv-tile` выше), а не
+   системный чекбокс. Своей иконки в тумблере нет — состоянию нечего
+   означать темой, это бинарный переключатель, а не оттиск цепочки. */
 
 .settings-list {
     display: flex;
@@ -1957,7 +2195,7 @@ button:disabled {
     top: 0;
     transform: translate(-50%, -50%);
     padding: 6px 11px;
-    border: 1px solid var(--wax);
+    border: 1px solid var(--gold);
     border-radius: 99px;
     background: rgba(var(--paper-raised-rgb), 0.95);
     color: var(--gold-light);
@@ -1987,10 +2225,11 @@ button:disabled {
 /* Прилёт: лента вздрагивает — награда доехала именно сюда. Раньше пульс жил
    на счётчике ✦ в шапке шторки (U-09); счётчика на небе больше нет, роль —
    у ленты, туда же летит и сама монета (getClaimFlightTargetRect). */
-/* K-17: пульс прилёта стоит там же, куда прилетела монета — на флажке шкалы,
-   пока книга открыта, и на ленте, когда закрыта. */
-.ribbon-tail.score-pulse,
-.book-gauge-flag.score-pulse {
+/* K-17/V-20: пульс прилёта стоит там же, куда прилетела монета — на бусине
+   корешка, пока книга открыта, и на знаке ленты, когда закрыта (U-31: не на
+   хвосте — его transform занят протяжкой). */
+.ribbon-sign.score-pulse,
+.book-spine-bead.score-pulse {
     animation: scorePulse var(--score-pulse-ms, 240ms) var(--ease);
 }
 
@@ -2016,9 +2255,8 @@ button:disabled {
     .claim-coin,
     .claim-coin-y,
     .claim-coin-pill,
-    .ribbon-tail.score-pulse,
-    .book-gauge-flag.score-pulse,
-    .achv-tile-ready {
+    .ribbon-sign.score-pulse,
+    .book-spine-bead.score-pulse {
         animation: none;
     }
 }

@@ -423,11 +423,7 @@ function makeDefaultDailyQuestState() {
         nightClaimed: false,
         // K-09: новости мира за текущую ночь — тот же терпимый блок, что и
         // защёлки квестов, обнуляется вместе с ним на смене суток.
-        newsLog: [],
-        // K-15: непрочитанное событие мира — второе условие капли сургуча на
-        // ленте (`hasSkyWaxSignal`), не только готовая награда. Флаг, а не счёт
-        // длины лога, — лог капается `DAILY_NEWS_LOG_MAX` и не годится в мерило.
-        newsUnseen: false
+        newsLog: []
     };
 }
 
@@ -461,15 +457,14 @@ function sanitizeDailyQuestState(raw) {
         nightDone: !!raw.nightDone,
         nightClaimed: !!raw.nightClaimed,
         // K-09: старый сейв блока не знает — пустая лента, версия не поднята.
+        // U-33: `newsUnseen` (K-15) снята с сейва — старый сейв с этим полем
+        // читается терпимо, поле просто больше не берётся отсюда.
         newsLog: Array.isArray(raw.newsLog)
             ? raw.newsLog
                 .filter(e => e && typeof e.key === 'string')
                 .slice(-DAILY_NEWS_LOG_MAX)
                 .map(e => ({ key: e.key, params: (e.params && typeof e.params === 'object') ? e.params : {} }))
-            : def.newsLog,
-        // K-15: аддитивное поле, старый сейв его не знает — читается как «нет
-        // непрочитанного», версия не поднята.
-        newsUnseen: !!raw.newsUnseen
+            : def.newsLog
     };
 }
 
@@ -485,14 +480,6 @@ function addDailyNewsEvent(key, params) {
     if (!Array.isArray(daily.newsLog)) daily.newsLog = [];
     daily.newsLog.push({ key, params: params || {} });
     if (daily.newsLog.length > DAILY_NEWS_LOG_MAX) daily.newsLog.shift();
-    // K-15: капля на ленте зовёт открыть книгу — гасится чтением «Сегодня».
-    daily.newsUnseen = true;
-}
-
-/** K-15: второе условие капли сургуча — есть непрочитанное событие мира. */
-function hasUnseenDailyNews() {
-    const daily = achievementCounters && achievementCounters.daily;
-    return !!(daily && daily.newsUnseen);
 }
 
 // =============================================================================
@@ -1150,10 +1137,10 @@ function afterAchievementStateChanged() {
  * Ищем по `data-chain-id`, а не через обработчик клика, — тогда точку старта
  * знает сам `claimAchievementStep`, и `__test.claim()` гоняет ровно ту же
  * анимацию, что палец: проверяется игра, а не копия правил. Кнопки забора
- * в игре больше нет — прижимается сама марка (`.achv-tile-ready`).
+ * в игре больше нет — прижимается сама печать (`.achv-seal-current-ready`, U-32).
  */
 function getClaimButtonRect(chainId) {
-    const btn = document.querySelector(`.achv-tile-ready[data-chain-id="${chainId}"]`);
+    const btn = document.querySelector(`.achv-seal-current-ready[data-chain-id="${chainId}"]`);
     return btn ? btn.getBoundingClientRect() : null;
 }
 
