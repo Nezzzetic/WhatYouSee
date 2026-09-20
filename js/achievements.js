@@ -482,6 +482,24 @@ function addDailyNewsEvent(key, params) {
     if (daily.newsLog.length > DAILY_NEWS_LOG_MAX) daily.newsLog.shift();
 }
 
+/**
+ * K-37: откат созвездия забирает свою новость. Ищет с конца последнюю строку с
+ * этим ключом и именем фигуры — та, что записал сам откатываемый коммит; если её
+ * нет (лог обрезан или начался новыми сутками), молча ничего не делает.
+ */
+function removeLastDailyNewsEvent(key, shapeName) {
+    const daily = getDailyQuestState();
+    if (!daily || !Array.isArray(daily.newsLog)) return;
+    const label = shapeLabel(shapeName);
+    for (let i = daily.newsLog.length - 1; i >= 0; i--) {
+        const e = daily.newsLog[i];
+        if (e.key === key && e.params && e.params.name === label) {
+            daily.newsLog.splice(i, 1);
+            return;
+        }
+    }
+}
+
 // =============================================================================
 // M-05: СУТОЧНЫЕ КВЕСТЫ
 // =============================================================================
@@ -1087,7 +1105,16 @@ function recordShapeUndoForFacets(constellation) {
     const ids = collectStarIdsFromLines(constellation.lines);
     const bucket = constellationColorBucket([...ids]);
     const counts = achievementCounters.shapeColors[name];
-    if (counts && bucket) counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
+    if (counts && bucket) {
+        counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
+        // K-37: новость, которую коммит написал, откат забирает — фигура снова
+        // «не создана», и её повторная сборка честно пишет «впервые» ещё раз.
+        // Без этого в ленте копились две одинаковые строки. Снимаем ту же ситуацию,
+        // что записывал `recordShapeCommitForFacets`: обнулилась вся фигура — строку
+        // «впервые», обнулилась только эта грань — строку грани.
+        if (shapeTotalCreations(counts) === 0) removeLastDailyNewsEvent('book.newsShapeOpened', name);
+        else if (counts[bucket] === 0) removeLastDailyNewsEvent('book.newsFacetLit', name);
+    }
 }
 
 

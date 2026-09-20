@@ -698,9 +698,14 @@ function dismissLevelBanner(immediate) {
  * K-05: единственный сигнал на небе. «В книге что-то есть» — готовая награда.
  * U-33 сняла второе условие K-15 (непрочитанное событие мира) — то же сведение,
  * что `todayHasSignal()` уже прошла в U-25.
+ * K-37: и второе правило K-12 — марка в неразрезанной главе штампов в счёт не идёт:
+ * капля зовёт только туда, где книга уже пускает. Считаем теми же двумя вопросами,
+ * что горят на высечках («Сегодня» + открытые главы Штампов), а не сырым
+ * `hasClaimableAchievements()` — иначе лента горела при пустой книге.
  */
 function hasSkyWaxSignal() {
-    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
+    return typeof todayHasSignal === 'function' && typeof stampsHaveClaimable === 'function'
+        && (todayHasSignal() || stampsHaveClaimable());
 }
 
 /**
