@@ -1051,12 +1051,12 @@ button:disabled {
     display: block;
 }
 
-/* Кружок достижения — собранная печать сцепки (U-32/U-34): золото 12%, кольцо 1.5 px. */
+/* Кружок достижения со счётом «0 / 5» — кольцо и числа те же, что у текущей печати
+   сцепки (U-32/U-34: .achv-seal-ring / .achv-seal-num), позиционируются от иконки. */
 .level-banner-icon-seal {
+    position: relative;
     border-radius: 50%;
     background: rgba(var(--gold-rgb), 0.12);
-    box-shadow: inset 0 0 0 1.5px rgba(var(--gold-rgb), 0.38);
-    color: var(--gold);
 }
 
 /* Экслибрис — то же место, без золота: волосяное кольцо будущей печати. */

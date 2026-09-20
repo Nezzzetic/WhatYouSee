@@ -589,7 +589,9 @@ function fillLevelLockText(el, templateKey, level) {
 
 let levelBannerLevels = [];
 let levelBannerUnlockKeys = [];
-let levelBannerTimer = null;
+let levelBannerHideTimer = null;
+let levelBannerShownAt = 0;
+let levelBannerTapArmed = false;
 
 /** Заголовок уровня(-ей) — одна ступень или список через запятую при мёрдже. */
 function levelBannerTitleText(levels) {
@@ -642,9 +644,12 @@ function levelBannerIconNode(category, key) {
         return icon;
     }
     if (category === 'stamps') {
-        const page = REWARD_PAGES[Number(key.split(':')[1])];
+        // Правка заказчика: не собранная печать, а кружок достижения со счётом
+        // «0 / 5» — тот же узел, что у текущей печати сцепки (U-32): дуга + два числа.
+        // Только что открытая глава — ни одной ступени ещё не взято.
         icon.classList.add('level-banner-icon-seal');
-        icon.appendChild(glyphSign((page && page.sign) || 'arc', 20));
+        icon.appendChild(createAchievementSealRing(0));
+        icon.appendChild(createAchievementSealNumbers({ current: 0, target: LEVEL_BANNER_SEAL_STEPS }));
         return icon;
     }
     icon.classList.add('level-banner-icon-plain');
@@ -662,7 +667,7 @@ function levelBannerCategoryText(category) {
 /**
  * Показать баннер. Батч: несколько уровней в одном заборе — один вызов с
  * массивом. Повторный клейм, пока баннер ещё виден, — мёрджит уровни и их
- * разблокировки в тот же баннер и продлевает таймер вместо второго баннера.
+ * разблокировки в тот же баннер вместо второго; окно висит до тапа (U-36).
  */
 function showLevelBanner(newLevels, newUnlockKeys) {
     if (!Array.isArray(newLevels) || newLevels.length === 0) return;
@@ -715,17 +720,34 @@ function showLevelBanner(newLevels, newUnlockKeys) {
     void el.offsetHeight;
     el.classList.add('level-banner-on');
 
-    if (levelBannerTimer) clearTimeout(levelBannerTimer);
-    levelBannerTimer = setTimeout(
-        () => dismissLevelBanner(false), LEVEL_BANNER_HOLD_MS
-    );
+    // U-36: таймера показа нет. Окно висит, пока игрок не тапнет куда угодно;
+    // первые LEVEL_BANNER_MIN_MS тап его не закрывает. Слушатель ловит касание на
+    // захвате и ничего не гасит — тап проходит к тому, во что попал.
+    if (levelBannerHideTimer) {
+        clearTimeout(levelBannerHideTimer);
+        levelBannerHideTimer = null;
+    }
+    levelBannerShownAt = performance.now();
+    if (!levelBannerTapArmed) {
+        levelBannerTapArmed = true;
+        document.addEventListener('pointerdown', onLevelBannerTap, true);
+    }
+}
+
+function onLevelBannerTap() {
+    if (performance.now() - levelBannerShownAt < LEVEL_BANNER_MIN_MS) return;
+    dismissLevelBanner(false);
 }
 
 /** immediate=true — обрыв без доигрывания (закрытие книги); false — гаснет плавно. */
 function dismissLevelBanner(immediate) {
-    if (levelBannerTimer) {
-        clearTimeout(levelBannerTimer);
-        levelBannerTimer = null;
+    if (levelBannerTapArmed) {
+        levelBannerTapArmed = false;
+        document.removeEventListener('pointerdown', onLevelBannerTap, true);
+    }
+    if (levelBannerHideTimer) {
+        clearTimeout(levelBannerHideTimer);
+        levelBannerHideTimer = null;
     }
     levelBannerLevels = [];
     levelBannerUnlockKeys = [];
@@ -736,7 +758,12 @@ function dismissLevelBanner(immediate) {
         el.hidden = true;
         return;
     }
-    setTimeout(() => { el.hidden = true; }, MOTION_SCENE_MS);
+    // Отложенное скрытие снимается показом нового окна: тап по готовой марке гасит
+    // старое на pointerdown, а click тут же поднимает новое.
+    levelBannerHideTimer = setTimeout(() => {
+        levelBannerHideTimer = null;
+        el.hidden = true;
+    }, MOTION_SCENE_MS);
 }
 
 /**
