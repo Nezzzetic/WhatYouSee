@@ -615,6 +615,43 @@ function levelBannerUnlockCategory(key) {
     return null;
 }
 
+/**
+ * U-36: иконка строки разблокировки. Атлас — трафарет созвездия: чертёж первой
+ * фигуры открывшейся главы, тем же режимом чертежа на бумаге, что у неразгаданной
+ * карточки атласа (K-18). Штампы — кружок достижения, как собранная печать сцепки
+ * (U-32/U-34) со знаком главы. Экслибрис — тот же кружок, но знак пера (K-21) на
+ * волосяном кольце: он не «достижение», золотить его незачем.
+ * `key` — первый ключ категории (`atlas:<idx>` / `stamps:<idx>` / `exlibris`).
+ */
+function levelBannerIconNode(category, key) {
+    const px = LEVEL_BANNER_ICON_PX;
+    const icon = document.createElement('span');
+    icon.className = 'level-banner-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    if (category === 'atlas') {
+        const shapeId = (ATLAS_PAGES[Number(key.split(':')[1])] || [])[0];
+        const pattern = (typeof SHAPE_PATTERNS !== 'undefined' && SHAPE_PATTERNS[shapeId]) || null;
+        icon.classList.add('level-banner-icon-stencil');
+        if (pattern) {
+            const canvas = document.createElement('canvas');
+            canvas.className = 'shape-glyph';
+            sizeGlyphCanvas(canvas, px);
+            drawShapeGlyph(canvas, pattern, INK_MUTED_RGB, true, true);
+            icon.appendChild(canvas);
+        }
+        return icon;
+    }
+    if (category === 'stamps') {
+        const page = REWARD_PAGES[Number(key.split(':')[1])];
+        icon.classList.add('level-banner-icon-seal');
+        icon.appendChild(glyphSign((page && page.sign) || 'arc', 20));
+        return icon;
+    }
+    icon.classList.add('level-banner-icon-plain');
+    icon.appendChild(glyphSign('pen', 20));
+    return icon;
+}
+
 function levelBannerCategoryText(category) {
     if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
     if (category === 'stamps') return t('book.levelBannerUnlockStamps');
@@ -648,14 +685,22 @@ function showLevelBanner(newLevels, newUnlockKeys) {
     titleEl.textContent = levelBannerTitleText(levelBannerLevels);
     unlocksEl.innerHTML = '';
     const categories = [];
+    const categoryKeys = {};
     for (const key of levelBannerUnlockKeys) {
         const cat = levelBannerUnlockCategory(key);
-        if (cat && !categories.includes(cat)) categories.push(cat);
+        if (cat && !categories.includes(cat)) {
+            categories.push(cat);
+            categoryKeys[cat] = key;
+        }
     }
     for (const cat of categories) {
         const row = document.createElement('div');
         row.className = 'level-banner-unlock-row';
-        row.textContent = levelBannerCategoryText(cat);
+        row.appendChild(levelBannerIconNode(cat, categoryKeys[cat]));
+        const text = document.createElement('span');
+        text.className = 'level-banner-unlock-text';
+        text.textContent = levelBannerCategoryText(cat);
+        row.appendChild(text);
         unlocksEl.appendChild(row);
     }
     // Ступень хвоста ничего не открывает — список пуст и скрыт, баннер несёт
