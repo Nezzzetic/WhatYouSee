@@ -175,4 +175,10 @@ function renderAtlasList() {
     for (const entry of getAtlasPageEntries(pageIndex)) {
         list.appendChild(createAtlasEntryCard(entry));
     }
+
+    // U-37: подсказка под сеткой — карточка кладёт закладку, а не «просто открывается».
+    const hint = document.createElement('p');
+    hint.className = 'atlas-hint';
+    hint.textContent = t('atlas.hint');
+    list.appendChild(hint);
 }

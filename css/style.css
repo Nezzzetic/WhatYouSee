@@ -1936,8 +1936,21 @@ body.book-opening .book-close-ribbon {
     gap: 10px;
     padding: 40px 16px;
     text-align: center;
+    color: var(--ink);
+    /* U-37: было 13px muted — плейтест: «очень мелко». */
+    font-size: 20px;
+    line-height: 1.35;
+}
+
+/* U-37: подсказка под карточками атласа. */
+.atlas-hint {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    text-align: center;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.35;
     color: var(--ink-muted);
-    font-size: 13px;
 }
 
 /* --- U-32 (заменила K-08/K-18/U-20/U-24): награды — сцепка печатей, как в
