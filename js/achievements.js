@@ -1299,6 +1299,7 @@ const REWARD_PAGES = [
         unlockAtIndex: 1
     },
     {
+        // B-06: порядок — как в balance2.csv (открытая Странник ночей → замки по главам I–IV).
         // O-08: «Долгий путь» вобрал остаток старой страницы (Огранщик, Странник
         // ночей) и всю бывшую Odd Nights (Радуга/Мозаика/Витраж/Калейдоскоп) —
         // четвёртой главы штампов больше нет. Заперта целиком до уровня 3
@@ -1306,7 +1307,7 @@ const REWARD_PAGES = [
         // держат свой отдельный замок requiresPageComplete/getChainLockReason
         // независимо от замка самой главы.
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['ogranshchik', 'nights', 'rainbow', 'mosaic', 'kaleidoscope'],
+        chainIds: ['nights', 'mosaic', 'rainbow', 'ogranshchik', 'kaleidoscope'],
         unlockAtIndex: 2
     }
 ];
