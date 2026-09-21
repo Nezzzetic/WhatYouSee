@@ -125,7 +125,6 @@ en: {
     'chain.color_blue.title': 'Azure',
     'chain.rainbow.title': 'Rainbow',
     'chain.mosaic.title': 'Mosaic',
-    'chain.vitrazh.title': 'Stained Glass',
     'chain.kaleidoscope.title': 'Kaleidoscope',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
@@ -176,8 +175,7 @@ en: {
         one: '{n} night: {desc}',
         other: '{n} nights: {desc}'
     },
-    'chain.vitrazh.desc': 'five colors among page 3 shapes',
-    'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
+    'chain.kaleidoscope.desc': 'one shape from each atlas chapter on the field',
     'chain.nights.step': {
         one: '{n} completed night',
         other: '{n} completed nights'
@@ -457,7 +455,6 @@ ru: {
     'chain.color_blue.title': 'Лазурные',
     'chain.rainbow.title': 'Радуга',
     'chain.mosaic.title': 'Мозаика',
-    'chain.vitrazh.title': 'Витраж',
     'chain.kaleidoscope.title': 'Калейдоскоп',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
@@ -515,8 +512,7 @@ ru: {
         few: '{n} ночи: {desc}',
         many: '{n} ночей: {desc}'
     },
-    'chain.vitrazh.desc': 'пять цветов среди фигур страницы 3',
-    'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
+    'chain.kaleidoscope.desc': 'по фигуре с каждой главы атласа на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
         few: '{n} завершённые ночи',
