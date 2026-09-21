@@ -589,7 +589,9 @@ function fillLevelLockText(el, templateKey, level) {
 
 let levelBannerLevels = [];
 let levelBannerUnlockKeys = [];
-let levelBannerTimer = null;
+let levelBannerHideTimer = null;
+let levelBannerShownAt = 0;
+let levelBannerTapArmed = false;
 
 /** Заголовок уровня(-ей) — одна ступень или список через запятую при мёрдже. */
 function levelBannerTitleText(levels) {
@@ -615,6 +617,46 @@ function levelBannerUnlockCategory(key) {
     return null;
 }
 
+/**
+ * U-36: иконка строки разблокировки. Атлас — трафарет созвездия: чертёж первой
+ * фигуры открывшейся главы, тем же режимом чертежа на бумаге, что у неразгаданной
+ * карточки атласа (K-18). Штампы — кружок достижения, как собранная печать сцепки
+ * (U-32/U-34) со знаком главы. Экслибрис — тот же кружок, но знак пера (K-21) на
+ * волосяном кольце: он не «достижение», золотить его незачем.
+ * `key` — первый ключ категории (`atlas:<idx>` / `stamps:<idx>` / `exlibris`).
+ */
+function levelBannerIconNode(category, key) {
+    const px = LEVEL_BANNER_ICON_PX;
+    const icon = document.createElement('span');
+    icon.className = 'level-banner-icon';
+    icon.setAttribute('aria-hidden', 'true');
+    if (category === 'atlas') {
+        const shapeId = (ATLAS_PAGES[Number(key.split(':')[1])] || [])[0];
+        const pattern = (typeof SHAPE_PATTERNS !== 'undefined' && SHAPE_PATTERNS[shapeId]) || null;
+        icon.classList.add('level-banner-icon-stencil');
+        if (pattern) {
+            const canvas = document.createElement('canvas');
+            canvas.className = 'shape-glyph';
+            sizeGlyphCanvas(canvas, px);
+            drawShapeGlyph(canvas, pattern, INK_MUTED_RGB, true, true);
+            icon.appendChild(canvas);
+        }
+        return icon;
+    }
+    if (category === 'stamps') {
+        // Правка заказчика: не собранная печать, а кружок достижения со счётом
+        // «0 / 5» — тот же узел, что у текущей печати сцепки (U-32): дуга + два числа.
+        // Только что открытая глава — ни одной ступени ещё не взято.
+        icon.classList.add('level-banner-icon-seal');
+        icon.appendChild(createAchievementSealRing(0));
+        icon.appendChild(createAchievementSealNumbers({ current: 0, target: LEVEL_BANNER_SEAL_STEPS }));
+        return icon;
+    }
+    icon.classList.add('level-banner-icon-plain');
+    icon.appendChild(glyphSign('pen', 20));
+    return icon;
+}
+
 function levelBannerCategoryText(category) {
     if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
     if (category === 'stamps') return t('book.levelBannerUnlockStamps');
@@ -625,7 +667,7 @@ function levelBannerCategoryText(category) {
 /**
  * Показать баннер. Батч: несколько уровней в одном заборе — один вызов с
  * массивом. Повторный клейм, пока баннер ещё виден, — мёрджит уровни и их
- * разблокировки в тот же баннер и продлевает таймер вместо второго баннера.
+ * разблокировки в тот же баннер вместо второго; окно висит до тапа (U-36).
  */
 function showLevelBanner(newLevels, newUnlockKeys) {
     if (!Array.isArray(newLevels) || newLevels.length === 0) return;
@@ -648,14 +690,22 @@ function showLevelBanner(newLevels, newUnlockKeys) {
     titleEl.textContent = levelBannerTitleText(levelBannerLevels);
     unlocksEl.innerHTML = '';
     const categories = [];
+    const categoryKeys = {};
     for (const key of levelBannerUnlockKeys) {
         const cat = levelBannerUnlockCategory(key);
-        if (cat && !categories.includes(cat)) categories.push(cat);
+        if (cat && !categories.includes(cat)) {
+            categories.push(cat);
+            categoryKeys[cat] = key;
+        }
     }
     for (const cat of categories) {
         const row = document.createElement('div');
         row.className = 'level-banner-unlock-row';
-        row.textContent = levelBannerCategoryText(cat);
+        row.appendChild(levelBannerIconNode(cat, categoryKeys[cat]));
+        const text = document.createElement('span');
+        text.className = 'level-banner-unlock-text';
+        text.textContent = levelBannerCategoryText(cat);
+        row.appendChild(text);
         unlocksEl.appendChild(row);
     }
     // Ступень хвоста ничего не открывает — список пуст и скрыт, баннер несёт
@@ -670,17 +720,34 @@ function showLevelBanner(newLevels, newUnlockKeys) {
     void el.offsetHeight;
     el.classList.add('level-banner-on');
 
-    if (levelBannerTimer) clearTimeout(levelBannerTimer);
-    levelBannerTimer = setTimeout(
-        () => dismissLevelBanner(false), LEVEL_BANNER_HOLD_MS
-    );
+    // U-36: таймера показа нет. Окно висит, пока игрок не тапнет куда угодно;
+    // первые LEVEL_BANNER_MIN_MS тап его не закрывает. Слушатель ловит касание на
+    // захвате и ничего не гасит — тап проходит к тому, во что попал.
+    if (levelBannerHideTimer) {
+        clearTimeout(levelBannerHideTimer);
+        levelBannerHideTimer = null;
+    }
+    levelBannerShownAt = performance.now();
+    if (!levelBannerTapArmed) {
+        levelBannerTapArmed = true;
+        document.addEventListener('pointerdown', onLevelBannerTap, true);
+    }
+}
+
+function onLevelBannerTap() {
+    if (performance.now() - levelBannerShownAt < LEVEL_BANNER_MIN_MS) return;
+    dismissLevelBanner(false);
 }
 
 /** immediate=true — обрыв без доигрывания (закрытие книги); false — гаснет плавно. */
 function dismissLevelBanner(immediate) {
-    if (levelBannerTimer) {
-        clearTimeout(levelBannerTimer);
-        levelBannerTimer = null;
+    if (levelBannerTapArmed) {
+        levelBannerTapArmed = false;
+        document.removeEventListener('pointerdown', onLevelBannerTap, true);
+    }
+    if (levelBannerHideTimer) {
+        clearTimeout(levelBannerHideTimer);
+        levelBannerHideTimer = null;
     }
     levelBannerLevels = [];
     levelBannerUnlockKeys = [];
@@ -691,16 +758,26 @@ function dismissLevelBanner(immediate) {
         el.hidden = true;
         return;
     }
-    setTimeout(() => { el.hidden = true; }, MOTION_SCENE_MS);
+    // Отложенное скрытие снимается показом нового окна: тап по готовой марке гасит
+    // старое на pointerdown, а click тут же поднимает новое.
+    levelBannerHideTimer = setTimeout(() => {
+        levelBannerHideTimer = null;
+        el.hidden = true;
+    }, MOTION_SCENE_MS);
 }
 
 /**
  * K-05: единственный сигнал на небе. «В книге что-то есть» — готовая награда.
  * U-33 сняла второе условие K-15 (непрочитанное событие мира) — то же сведение,
  * что `todayHasSignal()` уже прошла в U-25.
+ * K-37: и второе правило K-12 — марка в неразрезанной главе штампов в счёт не идёт:
+ * капля зовёт только туда, где книга уже пускает. Считаем теми же двумя вопросами,
+ * что горят на высечках («Сегодня» + открытые главы Штампов), а не сырым
+ * `hasClaimableAchievements()` — иначе лента горела при пустой книге.
  */
 function hasSkyWaxSignal() {
-    return typeof hasClaimableAchievements === 'function' && hasClaimableAchievements();
+    return typeof todayHasSignal === 'function' && typeof stampsHaveClaimable === 'function'
+        && (todayHasSignal() || stampsHaveClaimable());
 }
 
 /**

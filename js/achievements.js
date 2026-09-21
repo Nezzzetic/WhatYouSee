@@ -4,10 +4,9 @@
 // КОНСТАНТЫ
 // =============================================================================
 
-// B-05: ряд из dev/docs/concepts/balance1.csv, применён как есть (заказчик прямо
-// отменил пересчёт моделью — сравнение с B-04 см. в task-доке B-05). Кто задаёт
-// свою шкалу через chain.stepRewards (ниже) — общую не использует.
-const ACHIEVEMENT_STEP_REWARDS = [3, 5, 10, 15, 25];
+// B-06: ряд из dev/docs/concepts/balance2.csv, применён как есть (до него — balance1.csv,
+// B-05). Кто задаёт свою шкалу через chain.stepRewards (ниже) — общую не использует.
+const ACHIEVEMENT_STEP_REWARDS = [5, 10, 15, 20, 25];
 // Запасное значение для цепочек короче/длиннее пяти шагов (сейчас таких нет).
 const ACHIEVEMENT_STEP_REWARD_FALLBACK = 3;
 
@@ -15,18 +14,27 @@ const ACHIEVEMENT_STEP_REWARD_FALLBACK = 3;
 // у цветов и у каждого размерного бакета свой, потому что бакеты наполняются
 // с принципиально разной скоростью. Награда за шаг — общая лестница выше,
 // если явно не сказано иное.
-// B-05: пороги — ряд balance1.csv, у всех пяти цветов один и тот же.
-const ACHIEVEMENT_COLOR_TIERS = [1, 5, 10, 50, 100];
-const ACHIEVEMENT_SIZE_2_4_TIERS = [1, 10, 20, 50, 100];
-const ACHIEVEMENT_SIZE_5_7_TIERS = [1, 5, 10, 20, 50];
-// B-05: своя шкала наград снята — CSV даёт 8★+ ту же общую лестницу, что остальным.
-const ACHIEVEMENT_SIZE_8PLUS_TIERS = [1, 2, 5, 10, 25];
-// «Первооткрыватель» — на 24 фигуры атласа. B-05: тир 5 из CSV был 25 (недостижим
-// при 24 фигурах атласа) — заказчик поправил на 20, награды — ряд CSV как есть.
-const RAZVEDKA_TIERS = [1, 5, 10, 15, 20];
-const RAZVEDKA_STEP_REWARDS = [3, 20, 40, 75, 100];
-// «Огранщик» — тоже на 24 фигуры, общая лестница. B-05: пороги не изменились.
-const OGRANSHCHIK_TIERS = [1, 3, 6, 12, 24];
+// B-06: пороги и награды — ряд balance2.csv. У всех пяти цветов один и тот же.
+const ACHIEVEMENT_COLOR_TIERS = [3, 10, 15, 30, 60];
+const ACHIEVEMENT_COLOR_STEP_REWARDS = [5, 7, 10, 15, 20];
+const ACHIEVEMENT_SIZE_2_4_TIERS = [2, 12, 25, 50, 100];
+const ACHIEVEMENT_SIZE_5_7_TIERS = [1, 5, 10, 20, 40];
+const ACHIEVEMENT_SIZE_8PLUS_TIERS = [1, 4, 8, 15, 30];
+// «Первооткрыватель» — на 24 фигуры атласа: тир 5 = 24 — весь атлас (B-05 держал 20).
+const RAZVEDKA_TIERS = [1, 5, 10, 15, 24];
+const RAZVEDKA_STEP_REWARDS = [5, 15, 30, 40, 50];
+// «Огранщик» — тоже на 24 фигуры; свои награды (самая дорогая цепочка).
+const OGRANSHCHIK_TIERS = [1, 5, 10, 15, 24];
+const OGRANSHCHIK_STEP_REWARDS = [20, 30, 40, 50, 75];
+// Остальные — рядом, а не литералами внутри ACHIEVEMENT_CHAINS.
+const NIGHTS_TIERS = [1, 5, 10, 20, 30];
+const NIGHTS_STEP_REWARDS = [10, 20, 30, 40, 50];
+const CONSTELLATIONS_TIERS = [5, 25, 50, 100, 500];
+const MOSAIC_TIERS = [1, 5, 10, 20, 40];
+const MOSAIC_STEP_REWARDS = [10, 20, 30, 40, 50];
+const RAINBOW_TIERS = [1, 5, 10, 20, 30];
+// Страничные особые (сейчас — Калейдоскоп): общая лестница наград.
+const ATLAS_PAGE_SPECIAL_TIERS = [1, 5, 10, 20, 30];
 
 // M-05/B-04: суточные квесты. Раздача 5/10 — тот же принцип, что и в M-05
 // (приход платит мало и сразу, закрытая ночь — больше и в конце), масштаб
@@ -83,6 +91,7 @@ function buildColorChain(color) {
         sign: ACHIEVEMENT_COLOR_CHAIN_SIGNS[color],
         // K-08: описание сцепки — что именно считается, без числа ступени.
         desc: t('chain.color.desc', { color: achievementColorLabel(color) }),
+        stepRewards: ACHIEVEMENT_COLOR_STEP_REWARDS,
         steps: tiers.map(n => ({
             id: `color_${color}_${n}`,
             desc: tp('chain.color.step', n, { color: achievementColorLabel(color) }),
@@ -110,21 +119,16 @@ function buildSizeRangeChain(id, min, max, bucket, tiers) {
 
 const ACHIEVEMENT_ALL_ATLAS_SHAPES = ATLAS_PAGES.flat();
 
-// B-04: атлас сократился до 4 глав — «особых» на страницу теперь тоже четыре:
-// Радуга (глава I) и Мозаика (глава II) остались отдельными цепочками ниже,
-// а на главы III/IV достаточно двух записей здесь (было пять на семь старых
-// страниц). Сняты gobelen/orchestra/symphony вместе с бывшими главами
-// V/VI/VII; symphony к тому же завязана на Перфекциониста, который уехал
-// в резерв. Каждое — ночная коллекция (≤1/ночь, тиры 1→3→7→15→30), со своей
-// осью, видимость по полному комплекту созданных фигур страницы.
+// B-04: атлас сократился до 4 глав; Радуга (глава I) и Мозаика (глава II) — отдельные
+// цепочки ниже, здесь — страничные особые. B-06: «Витраж» снят (заказчик 2026-09-21),
+// остался «Калейдоскоп» — по фигуре с каждой главы атласа на поле (`oneFromEachPage`).
+// `page` задаёт гейт requiresPageComplete (комплект этой главы), а не то, что считается.
+// Механики pageColors/pageAllOnField/pageCountOnField/... живут в
+// isPageSpecialNightSatisfied и без пользователей — под C-01.
 const ATLAS_PAGE_SPECIALS = [
-    { page: 2, id: 'vitrazh', title: t('chain.vitrazh.title'), sign: 'comet', mechanic: 'pageColors',
-      desc: t('chain.vitrazh.desc') },
-    { page: 3, id: 'kaleidoscope', title: t('chain.kaleidoscope.title'), sign: 'comet', mechanic: 'pageAllOnField',
+    { page: 3, id: 'kaleidoscope', title: t('chain.kaleidoscope.title'), sign: 'comet', mechanic: 'oneFromEachPage',
       desc: t('chain.kaleidoscope.desc') }
 ];
-
-const ATLAS_PAGE_SPECIAL_TIERS = [1, 3, 7, 15, 30];
 
 function buildPageSpecialChain(spec) {
     return {
@@ -193,8 +197,8 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.rainbow.title'),
         sign: ACHIEVEMENT_COLOR_SIGN,
         desc: t('chain.rainbow.desc'),
-        requiresPageComplete: 0, // S-01: особенное достижение страницы 0
-        steps: [1, 3, 7, 15, 30].map(n => ({
+        requiresPageComplete: 1, // B-06: PageComplete2 — комплект главы II
+        steps: RAINBOW_TIERS.map(n => ({
             id: `rainbow_${n}`,
             desc: tp('chain.rainbow.step', n),
             check: { type: 'rainbowNights', n }
@@ -205,7 +209,8 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.nights.title'),
         sign: 'crescent',
         desc: t('chain.nights.desc'),
-        steps: [1, 5, 25, 100, 250].map(n => ({
+        stepRewards: NIGHTS_STEP_REWARDS,
+        steps: NIGHTS_TIERS.map(n => ({
             id: `nights_${n}`,
             desc: tp('chain.nights.step', n),
             check: { type: 'levelsCompleted', n }
@@ -216,7 +221,7 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.constellations.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.constellations.desc'),
-        steps: [10, 50, 250, 1000, 5000].map(n => ({
+        steps: CONSTELLATIONS_TIERS.map(n => ({
             id: `constellations_${n}`,
             desc: tp('chain.constellations.step', n),
             check: { type: 'totalConstellations', n }
@@ -227,8 +232,9 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.mosaic.title'),
         sign: ACHIEVEMENT_SIZE_SIGN,
         desc: t('chain.mosaic.desc'),
-        requiresPageComplete: 1, // S-01: особенное достижение страницы 1
-        steps: [1, 3, 7, 15, 30].map(n => ({
+        requiresPageComplete: 0, // B-06: PageComplete1 — комплект главы I
+        stepRewards: MOSAIC_STEP_REWARDS,
+        steps: MOSAIC_TIERS.map(n => ({
             id: `mosaic_${n}`,
             desc: tp('chain.mosaic.step', n),
             check: { type: 'mosaicNights', n }
@@ -267,7 +273,9 @@ const ACHIEVEMENT_CHAINS = [
         title: t('chain.ogranshchik.title'),
         sign: 'gem',
         desc: t('chain.ogranshchik.desc'),
-        // B-04: атлас сократился до 24 фигур (было 29) — пороги пересчитаны.
+        // B-06: PageComplete3 — замок комплекта главы III (раньше гейта не было).
+        requiresPageComplete: 2,
+        stepRewards: OGRANSHCHIK_STEP_REWARDS,
         steps: OGRANSHCHIK_TIERS.map(n => ({
             id: `ogranshchik_${n}`,
             desc: n === OGRANSHCHIK_TIERS[OGRANSHCHIK_TIERS.length - 1]
@@ -365,7 +373,7 @@ let announcedSpecialChains = new Set();
 // сведены к трём диапазонам (ключи starCountTotals и id цепочек — другие),
 // «Первооткрыватель»/«Огранщик» пересчитаны под 24 фигуры вместо 29 — мигрировать
 // нечего, полный сброс прогресса, версия сейва объявляется отдельно до релиза).
-const ACHIEVEMENTS_SAVE_VERSION = 8;
+const ACHIEVEMENTS_SAVE_VERSION = 9;
 
 // Размерные бакеты, нужные для «Мозаики» (все должны присутствовать на поле)
 const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
@@ -393,6 +401,7 @@ function makeDefaultAchievementCounters() {
         rainbowNights: 0,
         mosaicNights: 0,
         // atlas-pages-graph: id особого достижения страницы → всего засчитанных ночей
+        // vitrazh снят в B-06, ключ оставлен вместе с мёртвыми gobelen/orchestra/symphony
         pageSpecialNights: { vitrazh: 0, kaleidoscope: 0, gobelen: 0, orchestra: 0, symphony: 0 },
         // U-09: имя фигуры → { color: число засчитанных созданий } (≤1/ночь на фигуру).
         // Ненулевой счётчик = грань горит; число нужно только для корректного отката.
@@ -480,6 +489,24 @@ function addDailyNewsEvent(key, params) {
     if (!Array.isArray(daily.newsLog)) daily.newsLog = [];
     daily.newsLog.push({ key, params: params || {} });
     if (daily.newsLog.length > DAILY_NEWS_LOG_MAX) daily.newsLog.shift();
+}
+
+/**
+ * K-37: откат созвездия забирает свою новость. Ищет с конца последнюю строку с
+ * этим ключом и именем фигуры — та, что записал сам откатываемый коммит; если её
+ * нет (лог обрезан или начался новыми сутками), молча ничего не делает.
+ */
+function removeLastDailyNewsEvent(key, shapeName) {
+    const daily = getDailyQuestState();
+    if (!daily || !Array.isArray(daily.newsLog)) return;
+    const label = shapeLabel(shapeName);
+    for (let i = daily.newsLog.length - 1; i >= 0; i--) {
+        const e = daily.newsLog[i];
+        if (e.key === key && e.params && e.params.name === label) {
+            daily.newsLog.splice(i, 1);
+            return;
+        }
+    }
 }
 
 // =============================================================================
@@ -773,6 +800,9 @@ let achievementsMigrationNeedsFullReset = false;
  * - v<8 (B-05): ряд balance1.csv применён на пороги/награды цветов, размеров,
  *   «Первооткрывателя» и цену страниц атласа разом; цепочки «Минимализм»/
  *   «Созвездие-всё» сняты. Пересчитывать нечего — полный сброс (решение заказчика).
+ * - v<9 (B-06): ряд balance2.csv — пороги двигаются в обе стороны (size_2_4 тир 1
+ *   1→2, size_8plus тир 2 2→4, цвета тир 1 1→3), у Мозаики/Радуги меняются гейты,
+ *   у Калейдоскопа — условие ночи, «Витраж» снят. Полный сброс (решение заказчика).
  *
  * Home Demo, живых игроков нет — честный старт с нуля дешевле пересчёта.
  */
@@ -780,7 +810,7 @@ function migrateAchievementsToSpiral(state) {
     const version = Number(state.achievementsVersion) || 1;
     if (version >= ACHIEVEMENTS_SAVE_VERSION) return;
 
-    if (version < 8) {
+    if (version < 9) {
         // Сбрасывать по шагам смысла нет — обнуляем всё разом.
         initAchievementState();
         achievementsMigrationNeedsFullReset = true;
@@ -892,6 +922,10 @@ function isPageSpecialNightSatisfied(spec, snap) {
             const buckets = (snap.pageColorBuckets && snap.pageColorBuckets[page]) || new Set();
             return buckets.size >= ACHIEVEMENT_COLOR_KEYS.length; // все 5 цветов
         }
+        // B-06: по фигуре с каждой главы атласа на поле (Калейдоскоп)
+        case 'oneFromEachPage':
+            return ATLAS_PAGES.length > 0 && ATLAS_PAGES.every((_, i) =>
+                snap.pageShapesOnField && snap.pageShapesOnField[i] && snap.pageShapesOnField[i].size > 0);
         case 'pageAllOnField':
             return pageFigs.length > 0 && pageFigs.every(n => onField.has(n));
         case 'pageCountOnField':
@@ -1087,7 +1121,16 @@ function recordShapeUndoForFacets(constellation) {
     const ids = collectStarIdsFromLines(constellation.lines);
     const bucket = constellationColorBucket([...ids]);
     const counts = achievementCounters.shapeColors[name];
-    if (counts && bucket) counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
+    if (counts && bucket) {
+        counts[bucket] = Math.max(0, (counts[bucket] || 0) - 1);
+        // K-37: новость, которую коммит написал, откат забирает — фигура снова
+        // «не создана», и её повторная сборка честно пишет «впервые» ещё раз.
+        // Без этого в ленте копились две одинаковые строки. Снимаем ту же ситуацию,
+        // что записывал `recordShapeCommitForFacets`: обнулилась вся фигура — строку
+        // «впервые», обнулилась только эта грань — строку грани.
+        if (shapeTotalCreations(counts) === 0) removeLastDailyNewsEvent('book.newsShapeOpened', name);
+        else if (counts[bucket] === 0) removeLastDailyNewsEvent('book.newsFacetLit', name);
+    }
 }
 
 
@@ -1256,6 +1299,7 @@ const REWARD_PAGES = [
         unlockAtIndex: 1
     },
     {
+        // B-06: порядок — как в balance2.csv (открытая Странник ночей → замки по главам I–IV).
         // O-08: «Долгий путь» вобрал остаток старой страницы (Огранщик, Странник
         // ночей) и всю бывшую Odd Nights (Радуга/Мозаика/Витраж/Калейдоскоп) —
         // четвёртой главы штампов больше нет. Заперта целиком до уровня 3
@@ -1263,7 +1307,7 @@ const REWARD_PAGES = [
         // держат свой отдельный замок requiresPageComplete/getChainLockReason
         // независимо от замка самой главы.
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
-        chainIds: ['ogranshchik', 'nights', 'rainbow', 'mosaic', 'vitrazh', 'kaleidoscope'],
+        chainIds: ['nights', 'mosaic', 'rainbow', 'ogranshchik', 'kaleidoscope'],
         unlockAtIndex: 2
     }
 ];

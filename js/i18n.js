@@ -56,12 +56,12 @@ en: {
     'shape.unknown': 'Shape',
     // Каталог-29 (C-06: узнаваемые темы вместо бытовых предметов, одна фигура — одна тема)
     'shape.toothpick': 'Noodle',
-    'shape.checkmark': 'Shark',
+    'shape.checkmark': 'Shark Fin',
     'shape.chip': 'Pyramid',
     'shape.cookie': 'Robot',
     'shape.banana': 'Hook',
-    'shape.chicken-foot': 'T-Rex',
-    'shape.earthworm': 'Dragon',
+    'shape.chicken-foot': 'T-Rex Track',
+    'shape.earthworm': 'Caterpillar',
     'shape.spatula': 'Viking Axe',
     'shape.diamond': 'Shield',
     'shape.envelope': 'UFO',
@@ -125,7 +125,6 @@ en: {
     'chain.color_blue.title': 'Azure',
     'chain.rainbow.title': 'Rainbow',
     'chain.mosaic.title': 'Mosaic',
-    'chain.vitrazh.title': 'Stained Glass',
     'chain.kaleidoscope.title': 'Kaleidoscope',
     'chain.nights.title': 'Night Wanderer',
     'chain.constellations.title': 'Sky Architect',
@@ -176,8 +175,7 @@ en: {
         one: '{n} night: {desc}',
         other: '{n} nights: {desc}'
     },
-    'chain.vitrazh.desc': 'five colors among page 3 shapes',
-    'chain.kaleidoscope.desc': 'all 6 shapes of page 4 on the field',
+    'chain.kaleidoscope.desc': 'one shape from each atlas chapter on the field',
     'chain.nights.step': {
         one: '{n} completed night',
         other: '{n} completed nights'
@@ -334,6 +332,7 @@ en: {
     // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
     // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
     // K-31: подпись и число звёзд сняты — на карточке остаётся только «?».
+    'atlas.hint': 'Tap a shape to show its outline in the sky',
     'atlas.pinOn': 'Bookmark this shape to build tonight',
     'atlas.pinOff': 'Remove the bookmark',
     // Рабочие названия глав атласа (решение заказчика 2026-08-25: настоящие
@@ -387,12 +386,12 @@ ru: {
     'shape.unknown': 'Фигура',
     // Каталог-29 (C-06: узнаваемые темы вместо бытовых предметов, одна фигура — одна тема)
     'shape.toothpick': 'Макаронина',
-    'shape.checkmark': 'Акула',
+    'shape.checkmark': 'Плавник акулы',
     'shape.chip': 'Пирамида',
     'shape.cookie': 'Робот',
     'shape.banana': 'Крюк',
-    'shape.chicken-foot': 'Тираннозавр',
-    'shape.earthworm': 'Дракон',
+    'shape.chicken-foot': 'След тираннозавра',
+    'shape.earthworm': 'Гусеница',
     'shape.spatula': 'Секира',
     'shape.diamond': 'Щит',
     'shape.envelope': 'НЛО',
@@ -456,7 +455,6 @@ ru: {
     'chain.color_blue.title': 'Лазурные',
     'chain.rainbow.title': 'Радуга',
     'chain.mosaic.title': 'Мозаика',
-    'chain.vitrazh.title': 'Витраж',
     'chain.kaleidoscope.title': 'Калейдоскоп',
     'chain.nights.title': 'Странник ночей',
     'chain.constellations.title': 'Зодчий небес',
@@ -514,8 +512,7 @@ ru: {
         few: '{n} ночи: {desc}',
         many: '{n} ночей: {desc}'
     },
-    'chain.vitrazh.desc': 'пять цветов среди фигур страницы 3',
-    'chain.kaleidoscope.desc': 'все 6 фигур стр. 4 на поле',
+    'chain.kaleidoscope.desc': 'по фигуре с каждой главы атласа на поле',
     'chain.nights.step': {
         one: '{n} завершённая ночь',
         few: '{n} завершённые ночи',
@@ -649,6 +646,7 @@ ru: {
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',
     'atlas.pageLocked': 'Страница откроется сама на {level}.',
+    'atlas.hint': 'Нажми на фигуру — схема появится на небе',
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
     // B-04: атлас сжат до 4 глав — chapterTitle4..6 сняты вместе со страницами.

@@ -901,6 +901,8 @@ button:disabled {
 /* S-03: уровень в строке замка (атлас, Экслибрис) — тем же золотом, что и
    уровень в подвале: слово и число, остальная строка своим цветом. */
 .book-lock-level {
+    /* U-37: «level N» не рвётся — перенос строки только перед словом. */
+    white-space: nowrap;
     color: var(--gold);
 }
 
@@ -1014,13 +1016,54 @@ button:disabled {
 }
 
 .level-banner-unlock-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     font-size: 13px;
     line-height: 1.45;
     color: var(--ink);
+    text-align: left;
 }
 
 .level-banner-unlock-row + .level-banner-unlock-row {
-    margin-top: 2px;
+    margin-top: 6px;
+}
+
+.level-banner-unlock-text {
+    flex: 1;
+    min-width: 0;
+}
+
+/* U-36: иконка строки — квадрат 36 px (LEVEL_BANNER_ICON_PX), одна на все три
+   вида, чтобы текст не плясал от строки к строке. */
+.level-banner-icon {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+}
+
+/* Трафарет созвездия — чертёж без рамки, как на карточке атласа. */
+.level-banner-icon-stencil .shape-glyph {
+    display: block;
+}
+
+/* Кружок достижения со счётом «0 / 5» — кольцо и числа те же, что у текущей печати
+   сцепки (U-32/U-34: .achv-seal-ring / .achv-seal-num), позиционируются от иконки. */
+.level-banner-icon-seal {
+    position: relative;
+    border-radius: 50%;
+    background: rgba(var(--gold-rgb), 0.12);
+}
+
+/* Экслибрис — то же место, без золота: волосяное кольцо будущей печати. */
+.level-banner-icon-plain {
+    border-radius: 50%;
+    box-shadow: inset 0 0 0 1px rgba(var(--ink-rgb), 0.16);
+    color: var(--ink-muted);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1936,8 +1979,21 @@ body.book-opening .book-close-ribbon {
     gap: 10px;
     padding: 40px 16px;
     text-align: center;
+    color: var(--ink);
+    /* U-37: было 13px muted — плейтест: «очень мелко». */
+    font-size: 20px;
+    line-height: 1.35;
+}
+
+/* U-37: подсказка под карточками атласа. */
+.atlas-hint {
+    grid-column: 1 / -1;
+    margin: 6px 0 0;
+    text-align: center;
+    font-style: italic;
+    font-size: 14px;
+    line-height: 1.35;
     color: var(--ink-muted);
-    font-size: 13px;
 }
 
 /* --- U-32 (заменила K-08/K-18/U-20/U-24): награды — сцепка печатей, как в
