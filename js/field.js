@@ -470,11 +470,18 @@ function getStarBreathFactor(star, nowMs) {
 // =============================================================================
 
 function generateBackgroundStars() {
+    // V-24: засев шире поля по Y на BACKGROUND_STAR_MARGIN_Y — иначе на letterbox-
+    // полосе выше/ниже FIELD_HEIGHT (портретные телефоны на минимальном зуме,
+    // см. constants.js) не было ни одной звезды. Плотность (не голое число)
+    // сохраняем той же, что у самого поля, — иначе досев выглядел бы более
+    // разрежённым, чем поле.
+    const spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
+    const count = Math.round(BACKGROUND_STAR_COUNT * spanH / FIELD_HEIGHT);
     fieldBackgroundStars = [];
-    for (let i = 0; i < BACKGROUND_STAR_COUNT; i++) {
+    for (let i = 0; i < count; i++) {
         fieldBackgroundStars.push({
             x: random(0, FIELD_WIDTH),
-            y: random(0, FIELD_HEIGHT),
+            y: random(-BACKGROUND_STAR_MARGIN_Y, FIELD_HEIGHT + BACKGROUND_STAR_MARGIN_Y),
             size: random(1, 2.5),
             alpha: random(40, 120),
             phase: random(TWO_PI)
