@@ -1051,14 +1051,20 @@ function createAchievementSeal(chain, stepIndex, p) {
     return slot;
 }
 
-/** Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа. */
+/**
+ * Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа.
+ * U-39: цепочка может задать `sealPositions` — на каких из пяти слотов стоят её
+ * реальные шаги (по просьбе заказчика «Evening Rite» стоит на местах 2 и 4,
+ * а не подряд у начала); без поля шаги идут по порядку с нулевого слота.
+ */
 function createAchievementSeals(chain, p) {
     const row = document.createElement('div');
     row.className = 'achv-row-seals';
     const total = chain.steps.length;
     for (let i = 0; i < 5; i++) {
-        if (i < total) {
-            row.appendChild(createAchievementSeal(chain, i, p));
+        const stepIndex = chain.sealPositions ? chain.sealPositions.indexOf(i) : (i < total ? i : -1);
+        if (stepIndex >= 0 && stepIndex < total) {
+            row.appendChild(createAchievementSeal(chain, stepIndex, p));
             continue;
         }
         const empty = document.createElement('div');
