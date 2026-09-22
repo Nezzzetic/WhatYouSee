@@ -323,7 +323,7 @@ en: {
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Unknown constellation',
-    'atlas.pageLocked': 'This page opens on its own at {level}.',
+    'atlas.pageLocked': 'This page opens at {level}.',
     // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
     // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
     // K-31: подпись и число звёзд сняты — на карточке остаётся только «?».
@@ -342,8 +342,7 @@ en: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'This chapter opens on its own at level {n}.',
-    'stamps.chapterLockedProgress': 'Now: {current} / {target} ✦',
+    'stamps.chapterLocked': 'This chapter opens at level {n}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'bookmarked',
@@ -634,7 +633,7 @@ ru: {
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',
-    'atlas.pageLocked': 'Страница откроется сама на {level}.',
+    'atlas.pageLocked': 'Откроется на {level}.',
     'atlas.hint': 'Нажми на фигуру — схема появится на небе',
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
@@ -648,8 +647,7 @@ ru: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'Глава откроется сама на уровне {n}.',
-    'stamps.chapterLockedProgress': 'Сейчас: {current} / {target} ✦',
+    'stamps.chapterLocked': 'Откроется на уровне {n}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',

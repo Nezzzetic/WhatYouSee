@@ -352,13 +352,6 @@ button:disabled {
     cursor: default;
 }
 
-.atlas-page-locked-progress {
-    color: var(--ink-muted);
-    font-size: 12px;
-    font-variant-numeric: tabular-nums;
-}
-
-
 /* =============================================================================
    K-02: КАССА ЗНАКОВ — два регистра
    =============================================================================
