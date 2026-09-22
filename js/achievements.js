@@ -41,6 +41,9 @@ const ATLAS_PAGE_SPECIAL_TIERS = [1, 5, 10, 20, 30];
 // ужат вместе со всей общей лестницей ×¼.
 const DAILY_QUEST_ENTRY_REWARD = 5;
 const DAILY_QUEST_NIGHT_REWARD = 10;
+// U-39: печати «Evening Rite» короче ряда (2 из 5) и по просьбе заказчика стоят
+// не подряд у начала, а на местах 2 и 4 из пяти (0-индекс) — остальные слоты пустые.
+const DAILY_QUEST_SEAL_POSITIONS = [1, 3];
 
 // K-09: лента новостей мира на «Сегодня» — сколько строк держим за ночь про запас
 // (реальных источников за ночь единицы, потолок только страхует от разрастания).
@@ -166,6 +169,7 @@ const ACHIEVEMENT_CHAINS = [
         daily: true,
         desc: t('chain.evening_rite.desc'),
         stepRewards: [DAILY_QUEST_ENTRY_REWARD, DAILY_QUEST_NIGHT_REWARD],
+        sealPositions: DAILY_QUEST_SEAL_POSITIONS,
         steps: [
             { id: 'evening_rite_entry', desc: t('chain.evening_rite.stepEntry'), check: { type: 'dailyEntry' } },
             { id: 'evening_rite_night', desc: t('chain.evening_rite.stepNight'), check: { type: 'dailyNight' } }
