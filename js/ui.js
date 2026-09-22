@@ -853,15 +853,20 @@ function resetRibbons() {
  * K-11: чертёж закладки-цели в верхнем левом углу неба — DOM-узел, как лента
  * (см. «Согласованный план» дока), не мировой объект на канвасе: ему незачем
  * ходить за зумом и паном, он стоит на месте экрана. Прячется, если закладки
- * нет, книга открыта (CSS-правило `.book-open-body .sky-bookmark`) или игрок
- * в обсерватории — там это не его небо.
+ * нет, книга открыта (CSS-правило `.book-open-body .sky-bookmark`), игрок
+ * в обсерватории — там это не его небо, — или идёт сцена завершения ночи
+ * (V-13): решение заказчика (U-38), сцена гасит небо целиком, отметке
+ * закладки не место в ней. Вызывается заново на входе и на выходе из сцены
+ * (см. `skyEffects.js`), поэтому чертёж возвращается сразу же, как только
+ * она кончилась — естественно или пропуском тапом.
  */
 function renderSkyBookmark() {
     const el = document.getElementById('skyBookmark');
     if (!el) return;
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-    el.hidden = !shapeId || inObservatory;
+    const inFinale = typeof isLevelFinaleActive === 'function' && isLevelFinaleActive();
+    el.hidden = !shapeId || inObservatory || inFinale;
     if (!shapeId) return;
 
     // K-31: имя — сюрприз до первого создания фигуры, как на карточке атласа
