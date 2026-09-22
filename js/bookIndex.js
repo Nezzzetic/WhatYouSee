@@ -1,4 +1,5 @@
-// bookIndex.js — оглавление книги K-10/K-19 (R-05).
+// bookIndex.js — оглавление книги K-10/K-19 (R-05), U-41 дала Ex Libris и
+// Настройкам собственные заголовки категорий.
 
 /** K-19: строка оглавления — «Ch. <римская> · <имя>», одна форма для атласа и штампов. */
 function formatChapterIndexTitle(chapterNo, name) {
@@ -156,6 +157,10 @@ function renderBookIndex() {
 
     const exSec = document.createElement('div');
     exSec.className = 'book-index-sec';
+    const exTitle = document.createElement('div');
+    exTitle.className = 'book-index-sec-title';
+    exTitle.textContent = t('book.cutExLibris');
+    exSec.appendChild(exTitle);
     const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
     const exRow = createBookIndexRow(
         t('book.cutExLibris'),
@@ -169,9 +174,14 @@ function renderBookIndex() {
 
     // K-14: настройки — строкой в конце оглавления, единственный вход
     // (страница не висит на своей высечке). Ни счёта, ни замка — доступна
-    // всегда, у неё нет условия открытия.
+    // всегда, у неё нет условия открытия. U-41: собственная категория
+    // «Прочее» — без неё строка молча читалась продолжением Ex Libris.
     const settingsSec = document.createElement('div');
     settingsSec.className = 'book-index-sec';
+    const settingsTitle = document.createElement('div');
+    settingsTitle.className = 'book-index-sec-title';
+    settingsTitle.textContent = t('book.indexOther');
+    settingsSec.appendChild(settingsTitle);
     const settingsRow = createBookIndexRow(t('book.cutSettings'), getSettingsFolio(), '');
     settingsRow.addEventListener('click', () => switchBookCut('settings'));
     settingsSec.appendChild(settingsRow);
