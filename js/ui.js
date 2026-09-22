@@ -1053,18 +1053,30 @@ function createAchievementSeal(chain, stepIndex, p) {
 
 /**
  * Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа.
- * U-39: цепочка может задать `sealPositions` — на каких из пяти слотов стоят её
- * реальные шаги (по просьбе заказчика «Evening Rite» стоит на местах 2 и 4,
- * а не подряд у начала); без поля шаги идут по порядку с нулевого слота.
+ * U-39: цепочка может задать `sealPositions` — на каких из пяти слотов (сетка
+ * пятиколоночная, `grid-column` 1-индекс) стоят её реальные шаги; заглушки
+ * лишних слотов такая цепочка не получает вовсе — заказчик прямо отменил их
+ * («сразу говорю что второе» — ровно N кружков, не пять с бледными пустышками),
+ * но геометрия ряда не едет: реальные печати ставятся в исходные колонки сетки,
+ * а не переупаковываются к началу. Без поля шаги идут по порядку с нулевого слота.
  */
 function createAchievementSeals(chain, p) {
     const row = document.createElement('div');
     row.className = 'achv-row-seals';
     const total = chain.steps.length;
+
+    if (chain.sealPositions) {
+        for (let stepIndex = 0; stepIndex < total; stepIndex++) {
+            const seal = createAchievementSeal(chain, stepIndex, p);
+            seal.style.gridColumn = String(chain.sealPositions[stepIndex] + 1);
+            row.appendChild(seal);
+        }
+        return row;
+    }
+
     for (let i = 0; i < 5; i++) {
-        const stepIndex = chain.sealPositions ? chain.sealPositions.indexOf(i) : (i < total ? i : -1);
-        if (stepIndex >= 0 && stepIndex < total) {
-            row.appendChild(createAchievementSeal(chain, stepIndex, p));
+        if (i < total) {
+            row.appendChild(createAchievementSeal(chain, i, p));
             continue;
         }
         const empty = document.createElement('div');
