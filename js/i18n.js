@@ -285,11 +285,6 @@ en: {
         one: 'The sky above holds {n} star yet unjoined.',
         other: 'The sky above holds {n} stars yet unjoined.'
     },
-    'book.todayBookmark': {
-        one: 'Bookmarked: {name} — {n} star, chapter {ch}.',
-        other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
-    },
-    'book.todayBookmarkPlain': 'Bookmarked: {name}.',
     // S-03: уровень — в подвале рядом с брендом на любой странице.
     'book.footLevel': 'Level {n}',
     // V-20: номер уровня в головке корешка (сменил «следующий уровень» над
@@ -608,12 +603,6 @@ ru: {
         few: 'На небе ещё не соединены {n} звезды.',
         many: 'На небе ещё не соединено {n} звёзд.'
     },
-    'book.todayBookmark': {
-        one: 'Закладка: «{name}» — {n} звезда, глава {ch}.',
-        few: 'Закладка: «{name}» — {n} звезды, глава {ch}.',
-        many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
-    },
-    'book.todayBookmarkPlain': 'Закладка: «{name}».',
     'book.footLevel': 'Уровень {n}',
     'book.spineLevel': 'Ур. {n}',
     'book.spineScore': '{earned} / {ceil}',
