@@ -355,8 +355,10 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
     const ih = h - pad * 2;
 
     const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
-    // V-23: обводка точек на бумаге — тот же тон темнее; у градиента нейтральная.
-    const rimStyle = solidStyle(paper && !blueprint && !Array.isArray(color[0])
+    // V-23: подложка чертежа на бумаге — тот же тон темнее; у белого опала
+    // и у градиента нейтральная.
+    const inked = paper && !blueprint;
+    const rimStyle = solidStyle(inked && !Array.isArray(color[0]) && !isPaperOpalInk(color)
         ? paperRimRgb(color) : PAPER_OPAL_EDGE_RGB);
     let paintStyle;
     if (blueprint) {
@@ -372,14 +374,13 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
 
     const pts = pattern.stars.map(([nx, ny]) => [pad + nx * iw, pad + ny * ih]);
 
-    // V-23: светлый опал на бумаге — линия и точки шире и в тёмной кайме, иначе
-    // светлая заливка на светлом листе не видна.
-    const rimmed = paper && !blueprint
-        && (Array.isArray(color[0]) ? color.some(isPaperOpalInk) : isPaperOpalInk(color));
-    if (rimmed) {
+    // V-23: чертёж на бумаге — одно правило для любой фигуры: линия и точки шире,
+    // под ними тёмная подложка (у белого опала без неё светлая заливка на
+    // светлом листе не видна; остальные выровнены по нему — правка заказчика).
+    if (inked) {
         const lw = Math.max(1.6, side * 0.03);
         const rim = Math.max(0.9, side * 0.012);
-        const edge = solidStyle(PAPER_OPAL_EDGE_RGB);
+        const edge = rimStyle;
         ctx.lineCap = 'round';
         ctx.strokeStyle = edge;
         ctx.lineWidth = lw + rim * 2;
@@ -438,17 +439,6 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
             ctx.lineWidth = Math.max(0.8, side * 0.013);
             ctx.stroke();
             ctx.globalAlpha = 1;
-            continue;
-        }
-        if (paper) {
-            // V-23: на бумаге точка с обводкой вместо ореола.
-            ctx.beginPath();
-            ctx.arc(px, py, dot, 0, Math.PI * 2);
-            ctx.fillStyle = paintStyle;
-            ctx.fill();
-            ctx.strokeStyle = rimStyle;
-            ctx.lineWidth = Math.max(0.8, side * 0.012);
-            ctx.stroke();
             continue;
         }
         ctx.beginPath();
