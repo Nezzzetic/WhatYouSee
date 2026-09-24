@@ -1551,9 +1551,12 @@ body.book-opening .book-close-ribbon {
    в :hover (снять его нечем, mouseleave не наступает никогда), и после закрытия
    книги знак оставался подсвеченным при следующем открытии. :focus-visible вне
    media — клавиатурный фокус не залипает так же и должен подсвечиваться всегда. */
+/* Ховера у ленты нет (правка заказчика, P-03): общий `button:hover` сильнее
+   `background: none` выше и клал под неё плашку бумаги — гасим его здесь. */
 @media (hover: hover) {
-    .book-close-ribbon:hover .book-close-ribbon-tail {
-        filter: brightness(1.12);
+    .book-close-ribbon:hover {
+        border-color: transparent;
+        background: none;
     }
 }
 
