@@ -658,6 +658,12 @@ button:disabled {
     --star-copper: #86661A;
     --star-opal: #FCFAF3;
     --star-opal-edge: #60584E;
+    /* V-23 (3-й заход): у цветных камней обводка вместо свечения — тот же тон,
+       темнее (×0.55). Те же числа у канваса — paperRimRgb (ui.js). */
+    --star-garnet-edge: #65251A;
+    --star-amber-edge: #5B300E;
+    --star-copper-edge: #4A380E;
+    --star-ice-edge: #1A4664;
     --star-ice: #2F7FB5;
     --star-garnet-rgb: 184, 67, 47;
     --star-amber-rgb: 165, 88, 26;
@@ -1971,12 +1977,18 @@ body.book-opening .book-close-ribbon {
 .atlas-facet-yellow.atlas-facet-lit path { fill: var(--star-copper); filter: drop-shadow(0 0 3px rgba(var(--star-copper-rgb), 0.6)); }
 .atlas-facet-white.atlas-facet-lit  path { fill: var(--star-opal);   filter: drop-shadow(0 0 3px rgba(var(--star-opal-rgb), 0.6)); }
 .atlas-facet-blue.atlas-facet-lit   path { fill: var(--star-ice);    filter: drop-shadow(0 0 3px rgba(var(--star-ice-rgb), 0.6)); }
-/* V-23: на бумаге белая грань — светлая с тёмной каймой (у неба, вне .book, прежняя). */
-.book .atlas-facet-white.atlas-facet-lit path {
-    stroke: var(--star-opal-edge);
+/* V-23: на бумаге зажжённая грань — обводка вместо свечения; у белой заливка
+   светлая с тёмной каймой, у цветных заливка прежняя, кайма — их тон темнее
+   (у неба, вне .book, свечение прежнее). */
+.book .atlas-facet-lit path {
     stroke-width: 0.8;
     filter: none;
 }
+.book .atlas-facet-red.atlas-facet-lit    path { stroke: var(--star-garnet-edge); }
+.book .atlas-facet-orange.atlas-facet-lit path { stroke: var(--star-amber-edge); }
+.book .atlas-facet-yellow.atlas-facet-lit path { stroke: var(--star-copper-edge); }
+.book .atlas-facet-white.atlas-facet-lit  path { stroke: var(--star-opal-edge); }
+.book .atlas-facet-blue.atlas-facet-lit   path { stroke: var(--star-ice-edge); }
 
 .atlas-page-locked {
     grid-column: 1 / -1;
