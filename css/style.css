@@ -647,19 +647,23 @@ button:disabled {
     /* Звёздные цвета на бумаге — «чернилами»: тот же тон, что на небе, темнее
        (вариант B макета atlas-paper-variants). Те же числа у канваса —
        PAPER_STAR_INK, ui.js. Окошко закладки на небе живёт вне .book.
-       V-23: опал — нейтральный тёплый жемчужно-серый, а не сине-серый сланец —
-       небесный опал почти не насыщен, и прежнее значение усиливало его слабый
-       синий оттенок вместо того, чтобы гасить; на бумаге рядом с насыщенными
-       гранатом/янтарём/медью это читалось мёртвым серо-чёрным, а не белым. */
+       V-23: опал — светлая жемчужная заливка с тёмной каймой (--star-opal-edge).
+       Тёмная заливка, как у соседей, белого не даёт: без цвета затемнённый опал
+       — просто серый (два захода: сине-серый, потом нейтральный серый, оба
+       читались серо-чёрными). Светлая заливка на светлой бумаге исчезает —
+       её держит кайма. Те же числа у канваса — PAPER_STAR_INK и
+       PAPER_OPAL_EDGE_RGB (ui.js/constants.js). */
     --star-garnet: #B8432F;
     --star-amber: #A5581A;
     --star-copper: #86661A;
-    --star-opal: #6E6C70;
+    --star-opal: #FCFAF3;
+    --star-opal-edge: #60584E;
     --star-ice: #2F7FB5;
     --star-garnet-rgb: 184, 67, 47;
     --star-amber-rgb: 165, 88, 26;
     --star-copper-rgb: 134, 102, 26;
-    --star-opal-rgb: 110, 108, 112;
+    --star-opal-rgb: 252, 250, 243;
+    --star-opal-edge-rgb: 96, 88, 78;
     --star-ice-rgb: 47, 127, 181;
 }
 
@@ -1967,6 +1971,12 @@ body.book-opening .book-close-ribbon {
 .atlas-facet-yellow.atlas-facet-lit path { fill: var(--star-copper); filter: drop-shadow(0 0 3px rgba(var(--star-copper-rgb), 0.6)); }
 .atlas-facet-white.atlas-facet-lit  path { fill: var(--star-opal);   filter: drop-shadow(0 0 3px rgba(var(--star-opal-rgb), 0.6)); }
 .atlas-facet-blue.atlas-facet-lit   path { fill: var(--star-ice);    filter: drop-shadow(0 0 3px rgba(var(--star-ice-rgb), 0.6)); }
+/* V-23: на бумаге белая грань — светлая с тёмной каймой (у неба, вне .book, прежняя). */
+.book .atlas-facet-white.atlas-facet-lit path {
+    stroke: var(--star-opal-edge);
+    stroke-width: 0.8;
+    filter: none;
+}
 
 .atlas-page-locked {
     grid-column: 1 / -1;
