@@ -7,7 +7,7 @@ function createRewardPageLockedNotice(pageIndex) {
     locked.className = 'atlas-page-locked';
 
     const lockedText = document.createElement('p');
-    lockedText.textContent = t('stamps.chapterLocked', { n: getRewardPageUnlockLevel(pageIndex) });
+    fillLevelLockText(lockedText, 'stamps.chapterLocked', getRewardPageUnlockLevel(pageIndex));
     locked.appendChild(lockedText);
 
     return locked;

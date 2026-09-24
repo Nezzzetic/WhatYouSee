@@ -346,7 +346,7 @@ en: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'This chapter opens at level {n}.',
+    'stamps.chapterLocked': 'This chapter opens at {level}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'bookmarked',
@@ -368,7 +368,7 @@ en: {
     // и стоит один, без второй строки про звёзды (та переехала в plateHint,
     // где её видно уже после разблокировки, а не до неё).
     'observatory.lockedTitle': 'Create your own, unique constellation.',
-    'observatory.lockedLevel': 'Opens on its own at {level}.',
+    'observatory.lockedLevel': 'Ex Libris opens at {level}.',
     // K-34: та же строка, что раньше была под запертым хинтом — теперь под
     // гравюрой, когда холст уже открыт и объяснение к месту.
     'observatory.plateHint': 'Stars you can move, connect and recolour. It never resets.',
@@ -652,7 +652,7 @@ ru: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'Откроется на уровне {n}.',
+    'stamps.chapterLocked': 'Откроется на {level}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',
@@ -672,7 +672,7 @@ ru: {
     // один, без второй строки про звёзды (та переехала в plateHint, где её
     // видно уже после разблокировки, а не до неё).
     'observatory.lockedTitle': 'Создай своё, уникальное созвездие.',
-    'observatory.lockedLevel': 'Откроется сама на {level}.',
+    'observatory.lockedLevel': 'Экслибрис откроется на {level}.',
     // K-34: та же строка, что раньше была под запертым хинтом — теперь под
     // гравюрой, когда холст уже открыт и объяснение к месту.
     'observatory.plateHint': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',
