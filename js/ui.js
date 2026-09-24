@@ -355,6 +355,9 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
     const ih = h - pad * 2;
 
     const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    // V-23: обводка точек на бумаге — тот же тон темнее; у градиента нейтральная.
+    const rimStyle = solidStyle(paper && !blueprint && !Array.isArray(color[0])
+        ? paperRimRgb(color) : PAPER_OPAL_EDGE_RGB);
     let paintStyle;
     if (blueprint) {
         paintStyle = solidStyle(paper ? PAPER_INK_FAINT_RGB : INK_FAINT_RGB);
@@ -435,6 +438,17 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
             ctx.lineWidth = Math.max(0.8, side * 0.013);
             ctx.stroke();
             ctx.globalAlpha = 1;
+            continue;
+        }
+        if (paper) {
+            // V-23: на бумаге точка с обводкой вместо ореола.
+            ctx.beginPath();
+            ctx.arc(px, py, dot, 0, Math.PI * 2);
+            ctx.fillStyle = paintStyle;
+            ctx.fill();
+            ctx.strokeStyle = rimStyle;
+            ctx.lineWidth = Math.max(0.8, side * 0.012);
+            ctx.stroke();
             continue;
         }
         ctx.beginPath();
@@ -569,6 +583,11 @@ function paperInkRgb(rgb) {
 /** V-22: цвет глифа (один RGB или массив для градиента V-19) — чернилами бумаги. */
 function paperInkGlyphColor(color) {
     return Array.isArray(color[0]) ? color.map(paperInkRgb) : paperInkRgb(color);
+}
+
+/** V-23: обводка чернил бумаги — тот же тон, темнее (×0.55); числа = --star-*-edge в .book. */
+function paperRimRgb(rgb) {
+    return rgb.map(v => Math.round(v * 0.55));
 }
 
 /** V-23: чернила бумаги — светлый опал (его рисуют с каймой). */
