@@ -266,11 +266,15 @@ function updateExLibrisEmbedding() {
     const embed = isExLibrisEmbedActive() && slot && slot.offsetParent !== null;
     if (embed) {
         const rect = slot.getBoundingClientRect();
+        // P-03 (ветка itch): fixed-холст отсчитывается от колонки #app, а не
+        // от окна (у колонки transform) — вычитаем её угол. На телефоне он 0.
+        const app = document.getElementById('app');
+        const origin = app ? app.getBoundingClientRect() : { left: 0, top: 0 };
         // K-36: под книгу — стоп-кадр поля; без снятого кадра подложка не нужна.
         if (backdrop) backdrop.classList.toggle('sky-backdrop-on', fieldBackdropReady);
         container.classList.add('canvas-embedded');
-        container.style.left = Math.round(rect.left) + 'px';
-        container.style.top = Math.round(rect.top) + 'px';
+        container.style.left = Math.round(rect.left - origin.left) + 'px';
+        container.style.top = Math.round(rect.top - origin.top) + 'px';
         container.style.width = Math.round(rect.width) + 'px';
         container.style.height = Math.round(rect.height) + 'px';
         if (overlay) {
