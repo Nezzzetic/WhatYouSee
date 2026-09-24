@@ -354,8 +354,8 @@ en: {
     // --- O-01: тутор первых жестов -----------------------------------------------
     // Единственные две строки, которыми игра объясняет себя словами. Прямая
     // инструкция, а не образ: их читают ровно один раз и им следуют.
-    'tutor.connect': 'Drag from one star to the other, then lift your finger.',
-    'tutor.zoom': 'Now spread two fingers — pull the sky back.',
+    'tutor.connect': 'Drag from one star to the other, then let go.',
+    'tutor.zoom': 'Now pull the sky back — spread two fingers, or scroll.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Constellation',
@@ -658,8 +658,8 @@ ru: {
     'sky.bookmarkLabel': 'заложено',
 
     // --- O-01: тутор первых жестов -----------------------------------------------
-    'tutor.connect': 'Проведи пальцем от звезды к звезде и отпусти.',
-    'tutor.zoom': 'Теперь разведи пальцы — отдали небо.',
+    'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
+    'tutor.zoom': 'Теперь отдали небо — разведи два пальца или покрути колесо.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Созвездие',
