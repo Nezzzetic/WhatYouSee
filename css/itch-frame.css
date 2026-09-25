@@ -37,3 +37,63 @@
             0 0 60px rgba(0, 0, 0, 0.7);
     }
 }
+
+/* =============================================================================
+   P-12 · iOS внутри iframe itch: касания до игры не доходят — карточка со
+   ссылкой на игру в отдельной вкладке (js/itch-ios.js). Поверх всего,
+   включая книгу и ленту; на остальных устройствах узла нет вовсе.
+   ============================================================================= */
+
+.itch-ios-escape {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    background: rgba(var(--night-rgb), 0.88);
+}
+
+.itch-ios-escape-card {
+    max-width: 340px;
+    padding: 28px 24px 22px;
+    border: 1px solid var(--paper-edge);
+    border-radius: var(--r-lg);
+    background: var(--paper);
+    color: var(--ink-muted);
+    font-family: var(--font-text);
+    font-size: 17px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+.itch-ios-escape-card h2 {
+    margin: 0 0 12px;
+    color: var(--gold-light);
+    font-family: var(--font-title);
+    font-size: 22px;
+    font-weight: 400;
+}
+
+.itch-ios-escape-card p {
+    margin: 0 0 18px;
+}
+
+.itch-ios-escape-btn {
+    display: inline-block;
+    padding: 12px 28px;
+    border-radius: var(--r-md);
+    background: var(--ribbon-hi);
+    color: var(--ink);
+    font-family: var(--font-title);
+    font-size: 18px;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.itch-ios-escape-card .itch-ios-escape-note {
+    margin: 16px 0 0;
+    color: var(--ink-faint);
+    font-size: 14px;
+}

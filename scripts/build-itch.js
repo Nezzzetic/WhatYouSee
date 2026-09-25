@@ -31,6 +31,14 @@
 //
 //   node scripts/build-itch.js --no-analytics   → без аналитики, явно
 //
+//   • P-12: `--diag` — пробная сборка для опытов на закрытой странице itch.
+//     Кладёт `scripts/itch-diag.js` в архив как `js/itch-diag.js` (плашка
+//     диагностики ввода поверх игры) и подразумевает `--no-analytics`: опыты
+//     не засоряют статистику. Архив — `WhatYouSee-itch-<sha>-diag.zip`.
+//     Файл диагностики берётся с диска, а не из HEAD: сборка одноразовая.
+//
+//   node scripts/build-itch.js --diag           → с диагностикой, без аналитики
+//
 // Zip пишется руками (store/deflate + CRC32 из zlib) — ни одной зависимости.
 
 'use strict';
@@ -48,7 +56,7 @@ const ANALYTICS_LOCAL = path.join(ROOT, 'analytics.local.json');
 // Хост iframe itch: html.itch.zone / html-classic.itch.zone и т.п.
 const ITCH_HOST_RE = '/(^|\\.)itch\\.zone$/';
 
-const KNOWN_FLAGS = ['--no-analytics'];
+const KNOWN_FLAGS = ['--no-analytics', '--diag'];
 const FLAGS = process.argv.slice(2);
 for (const f of FLAGS) {
     if (!KNOWN_FLAGS.includes(f)) {
@@ -56,7 +64,9 @@ for (const f of FLAGS) {
         process.exit(1);
     }
 }
-const NO_ANALYTICS = FLAGS.includes('--no-analytics');
+const DIAG = FLAGS.includes('--diag');
+const NO_ANALYTICS = DIAG || FLAGS.includes('--no-analytics');
+const DIAG_SRC = path.join(ROOT, 'scripts', 'itch-diag.js');
 
 function git(args, opts) {
     return execFileSync('git', args, { cwd: ROOT, maxBuffer: 64 * 1024 * 1024, ...opts });
@@ -95,6 +105,16 @@ function stripDevPanel(html) {
 function stripAnalytics(html) {
     html = strip(html, /[ \t]*<script src="js\/analytics\.js"><\/script>\r?\n/, '<script src="js/analytics.js">');
     return html.replace(/[ \t]*<!-- P-05:[\s\S]*?-->\r?\n/, '');
+}
+
+/** P-12: плашка диагностики — сразу после p5, раньше скриптов игры. */
+function injectDiag(html) {
+    const re = /([ \t]*)<script src="js\/vendor\/p5\.min\.js"><\/script>\r?\n/;
+    const m = html.match(re);
+    if (!m) fail('не нашёл <script src="js/vendor/p5.min.js"> — диагностику подключить некуда');
+    const tag = `${m[1]}<!-- P-12: диагностика ввода (build-itch.js --diag) -->\n` +
+        `${m[1]}<script src="js/itch-diag.js"></script>\n`;
+    return html.replace(re, m[0] + tag);
 }
 
 function injectAnalyticsConfig(src, build) {
@@ -139,7 +159,7 @@ function main() {
     const sha = git(['rev-parse', '--short', 'HEAD']).toString().trim();
     const outDir = path.join(ROOT, 'dist', 'itch');
     fs.mkdirSync(outDir, { recursive: true });
-    const outFile = path.join(outDir, `WhatYouSee-itch-${sha}.zip`);
+    const outFile = path.join(outDir, `WhatYouSee-itch-${sha}${DIAG ? '-diag' : ''}.zip`);
 
     if (!NO_ANALYTICS && !fs.existsSync(ANALYTICS_LOCAL)) {
         fail('нет analytics.local.json в корне рабочей копии: положи файл (тот же, что у сборки APK) или собери явно с --no-analytics');
@@ -155,12 +175,18 @@ function main() {
     if (NO_ANALYTICS) {
         html = stripAnalytics(html);
         entries = entries.filter(e => e.name !== 'js/analytics.js');
-        console.log('[build-itch] [analytics] ВЫКЛЮЧЕНА явно (--no-analytics) — модуля в архиве нет');
+        console.log(`[build-itch] [analytics] ВЫКЛЮЧЕНА явно (${DIAG ? '--diag' : '--no-analytics'}) — модуля в архиве нет`);
     } else {
         const build = `itch ${sha}`;
         const { src, host } = injectAnalyticsConfig(text('js/analytics.js'), build);
         put('js/analytics.js', src);
         console.log(`[build-itch] [analytics] включена: ${host}, канал itch, сборка "${build}", только на *.itch.zone`);
+    }
+    if (DIAG) {
+        if (!fs.existsSync(DIAG_SRC)) fail('нет scripts/itch-diag.js — диагностику собрать не из чего');
+        html = injectDiag(html);
+        entries.push({ name: 'js/itch-diag.js', data: fs.readFileSync(DIAG_SRC) });
+        console.log('[build-itch] [diag] плашка диагностики ввода подключена (js/itch-diag.js)');
     }
     put('index.html', html);
 
