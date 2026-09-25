@@ -56,12 +56,11 @@
         card.className = 'itch-ios-escape';
         card.innerHTML =
             '<div class="itch-ios-escape-card">' +
-            '<h2>Open the sky in its own tab</h2>' +
-            '<p>On iPhone and iPad, the browser doesn\'t pass touches into a game ' +
-            'embedded in a page, so the stars won\'t respond here.</p>' +
-            '<a class="itch-ios-escape-btn" target="_blank" rel="noopener">Open game</a>' +
-            '<p class="itch-ios-escape-note">Your progress stays in that tab. ' +
-            'Next time, come back through this page the same way.</p>' +
+            '<h2>Play in a new tab</h2>' +
+            '<p>On iPhone and iPad this game only responds to touch in its own tab.</p>' +
+            '<a class="itch-ios-escape-btn" target="_blank" rel="noopener">Play</a>' +
+            '<p class="itch-ios-escape-note">Your progress is saved there — ' +
+            'come back through this page next time.</p>' +
             '</div>';
         card.querySelector('a').href = selfUrl();
         document.body.appendChild(card);
