@@ -57,7 +57,8 @@
         card.innerHTML =
             '<div class="itch-ios-escape-card">' +
             '<h2>Play in a new tab</h2>' +
-            '<p>On iPhone and iPad this game only responds to touch in its own tab.</p>' +
+            '<p>On iPhone and iPad, touch controls don’t work here. Tap the button ' +
+            'to open the game in a new tab, or use the link in the game description.</p>' +
             '<a class="itch-ios-escape-btn" target="_blank" rel="noopener">Play</a>' +
             '<p class="itch-ios-escape-note">Your progress is saved there — ' +
             'come back through this page next time.</p>' +
