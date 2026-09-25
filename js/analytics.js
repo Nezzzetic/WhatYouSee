@@ -223,14 +223,68 @@
      * «модель + версия», а отвечает на вопросы ровно так же.
      */
     function deviceLabel() {
-        const ua = (typeof navigator !== 'undefined' && navigator.userAgent) || '';
-        const m = ua.match(/Android\s+([\d.]+);\s*([^;)]+?)(?:\s+Build\/[^;)]*)?\)/);
-        if (m) return (m[2].trim() + ' / Android ' + m[1]).slice(0, 64);
+        const nav = (typeof navigator !== 'undefined' && navigator) || {};
+        return labelFromUA(nav.userAgent || '', nav.maxTouchPoints || 0, uaHints);
+    }
+
+    /**
+     * P-13: чистый разбор — без `navigator`, чтобы verify-analytics.js мог
+     * прогнать таблицу строк браузера через харнесс.
+     *
+     *   • Android WebView (весь APK) кончает скобку на `; wv)` — поэтому после
+     *     модели и `Build/…` терпим любые `; …`, а не ждём `)` сразу;
+     *   • Chrome на Android с 2023 года пишет всем `Android 10; K` — модель «K»
+     *     и версия заморожены. Настоящие отдаёт только `userAgentData`
+     *     (`hints`, см. `requestUAHints`); не пришли — остаётся как есть;
+     *   • iPhone содержит `like Mac OS X`, поэтому iOS проверяется раньше Mac.
+     *     iPad в Safari по умолчанию притворяется Mac целиком — выдаёт его
+     *     только сенсорный экран. Версию системы там берём из `Version/…`
+     *     Safari: у Safari она идёт вровень с iOS.
+     *   • Модель айфона браузер не отдаёт вовсе — только «iPhone».
+     */
+    function labelFromUA(ua, touchPoints, hints) {
+        ua = String(ua || '');
+        const m = ua.match(/Android\s+([\d.]+);\s*([^;)]+?)(?:\s+Build\/[^;)]*)?(?:;[^)]*)?\)/);
+        if (m) {
+            let model = m[2].trim();
+            let ver = m[1];
+            if (hints && hints.model) model = hints.model;
+            if (hints && hints.platformVersion) ver = hints.platformVersion.replace(/(\.0)+$/, '');
+            return (model + ' / Android ' + ver).slice(0, 64);
+        }
+        const ios = ua.match(/\b(iPhone|iPad|iPod)\b.*?OS (\d+(?:_\d+)*)/);
+        if (ios) return (ios[1] + ' / iOS ' + ios[2].replace(/_/g, '.')).slice(0, 64);
+        if (/Macintosh/.test(ua) && touchPoints > 1) {
+            const v = ua.match(/Version\/([\d.]+)/);
+            return v ? 'iPad / iOS ' + v[1] : 'iPad';
+        }
         if (/Windows/.test(ua)) return 'Windows';
         if (/Macintosh|Mac OS X/.test(ua)) return 'macOS';
-        if (/iPhone|iPad|iPod/.test(ua)) return 'iOS';
         if (/Linux/.test(ua)) return 'Linux';
         return 'other';
+    }
+
+    /**
+     * P-13: модель и версия Android из `userAgentData` — только Chromium и
+     * только асинхронно. Спрашиваем один раз при загрузке модуля, без `await`:
+     * ответ ложится в `uaHints`, и события после него несут настоящую модель.
+     * Не успел к первому `session_start` — тот уйдёт с урезанной строкой.
+     * Во фрейме чужого домена (itch) браузер вправе отказать — тогда молчим.
+     */
+    let uaHints = null;
+    let uaHintsAsked = false;
+    function requestUAHints() {
+        if (uaHintsAsked) return;
+        uaHintsAsked = true;
+        try {
+            const uad = navigator.userAgentData;
+            if (!uad || typeof uad.getHighEntropyValues !== 'function') return;
+            uad.getHighEntropyValues(['model', 'platformVersion']).then(function (h) {
+                if (h && (h.model || h.platformVersion)) {
+                    uaHints = { model: String(h.model || ''), platformVersion: String(h.platformVersion || '') };
+                }
+            }, function () { /* отказ — остаётся строка браузера */ });
+        } catch (e) { /* ignore */ }
     }
 
     /** 0 — ни одной линии, 1 — соединил, но тутор не закрыт, 2 — тутор закрыт. */
@@ -561,6 +615,7 @@
     function startAnalytics() {
         if (started || !configured()) return;
         started = true;
+        requestUAHints();
         sessionStartMs = Date.now();
         repeatEventsSent = 0;
         const loaded = loadState();
@@ -610,7 +665,10 @@
         window.addEventListener('pagehide', sendClose);
     }
 
-    if (configured()) installErrorReporter();
+    if (configured()) {
+        installErrorReporter();
+        requestUAHints();
+    }
 
     window.startAnalytics = startAnalytics;
 
@@ -624,6 +682,8 @@
                 config: function () { return Object.assign({}, CONFIG); },
                 state: function () { return state ? JSON.parse(JSON.stringify(state)) : null; },
                 snapshot: function () { return state ? snapshot() : null; },
+                /** P-13: разбор строки браузера — таблицей, без подмены navigator. */
+                deviceLabel: function (ua, touchPoints, hints) { return labelFromUA(ua, touchPoints, hints); },
                 milestones: function () { return MILESTONES.map(function (m) { return m.id; }); },
                 errorsSent: function () { return errorsSent; },
                 flush: flush,
