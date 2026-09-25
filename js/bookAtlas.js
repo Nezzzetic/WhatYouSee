@@ -129,7 +129,7 @@ function createAtlasEntryCard(entry) {
         title.className = 'atlas-card-title';
         title.textContent = getDisplayShapeName(entry.name);
         // V-22: подпись — тем же цветом «чернилами», что и глиф над ней.
-        paintGlyphTextColor(title, paperInkGlyphColor(glyphColor));
+        paintGlyphTextColor(title, paperInkTextColor(glyphColor));
     } else {
         // Имя фигуры — сюрприз до первого создания; вместо него — «?».
         title.className = 'atlas-card-title atlas-card-title-unknown';

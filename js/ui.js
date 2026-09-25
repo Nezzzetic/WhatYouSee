@@ -355,6 +355,11 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
     const ih = h - pad * 2;
 
     const solidStyle = (rgb) => `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+    // V-23: подложка чертежа на бумаге — тот же тон темнее; у белого опала
+    // и у градиента нейтральная.
+    const inked = paper && !blueprint;
+    const rimStyle = solidStyle(inked && !Array.isArray(color[0]) && !isPaperOpalInk(color)
+        ? paperRimRgb(color) : PAPER_OPAL_EDGE_RGB);
     let paintStyle;
     if (blueprint) {
         paintStyle = solidStyle(paper ? PAPER_INK_FAINT_RGB : INK_FAINT_RGB);
@@ -368,6 +373,45 @@ function drawShapeGlyph(canvas, pattern, color, blueprint, paper = false) {
     ctx.clearRect(0, 0, w, h);
 
     const pts = pattern.stars.map(([nx, ny]) => [pad + nx * iw, pad + ny * ih]);
+
+    // V-23: чертёж на бумаге — одно правило для любой фигуры: линия и точки шире,
+    // под ними тёмная подложка (у белого опала без неё светлая заливка на
+    // светлом листе не видна; остальные выровнены по нему — правка заказчика).
+    if (inked) {
+        const lw = Math.max(1.6, side * 0.03);
+        const rim = Math.max(0.9, side * 0.012);
+        const edge = rimStyle;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = edge;
+        ctx.lineWidth = lw + rim * 2;
+        for (const [a, b] of pattern.lines) {
+            ctx.beginPath();
+            ctx.moveTo(pts[a][0], pts[a][1]);
+            ctx.lineTo(pts[b][0], pts[b][1]);
+            ctx.stroke();
+        }
+        for (const [px, py] of pts) {
+            ctx.beginPath();
+            ctx.arc(px, py, dot * 1.35 + rim, 0, Math.PI * 2);
+            ctx.fillStyle = edge;
+            ctx.fill();
+        }
+        ctx.strokeStyle = paintStyle;
+        ctx.lineWidth = lw;
+        for (const [a, b] of pattern.lines) {
+            ctx.beginPath();
+            ctx.moveTo(pts[a][0], pts[a][1]);
+            ctx.lineTo(pts[b][0], pts[b][1]);
+            ctx.stroke();
+        }
+        for (const [px, py] of pts) {
+            ctx.beginPath();
+            ctx.arc(px, py, dot * 1.35, 0, Math.PI * 2);
+            ctx.fillStyle = paintStyle;
+            ctx.fill();
+        }
+        return;
+    }
 
     // K-31: контур чертежа неразгаданной был бледен дважды — здесь и через
     // `.atlas-card-unknown` (снята). Альфа поднята с 0.7 до 0.85, вровень
@@ -495,7 +539,7 @@ const PAPER_STAR_INK = {
     '240,122,103': [184, 67, 47],    // гранат
     '242,162,84': [165, 88, 26],     // янтарь
     '242,201,101': [134, 102, 26],   // медь
-    '237,239,245': [94, 107, 128],   // опал
+    '237,239,245': [252, 250, 243],  // опал (V-23: светлая заливка — читается только с каймой PAPER_OPAL_EDGE_RGB)
     '134,200,242': [47, 127, 181],   // лёд
     '255,211,92': [154, 106, 26]     // золото полной огранки (ATLAS_FACETED_COLOR)
 };
@@ -529,6 +573,27 @@ function paperInkRgb(rgb) {
 /** V-22: цвет глифа (один RGB или массив для градиента V-19) — чернилами бумаги. */
 function paperInkGlyphColor(color) {
     return Array.isArray(color[0]) ? color.map(paperInkRgb) : paperInkRgb(color);
+}
+
+/** V-23: обводка чернил бумаги — тот же тон, темнее (×0.55); числа = --star-*-edge в .book. */
+function paperRimRgb(rgb) {
+    return rgb.map(v => Math.round(v * 0.55));
+}
+
+/** V-23: чернила бумаги — светлый опал (его рисуют с каймой). */
+function isPaperOpalInk(rgb) {
+    const opal = PAPER_STAR_INK['237,239,245'];
+    return rgb[0] === opal[0] && rgb[1] === opal[1] && rgb[2] === opal[2];
+}
+
+/**
+ * V-23: цвет ТЕКСТА на бумаге — светлый опал буквами не прочесть, поэтому
+ * в подписи он заменён каймой (тёмной); остальные чернила как у глифа.
+ */
+function paperInkTextColor(color) {
+    const ink = paperInkGlyphColor(color);
+    const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB : rgb);
+    return Array.isArray(ink[0]) ? ink.map(fix) : fix(ink);
 }
 
 /**
@@ -853,15 +918,20 @@ function resetRibbons() {
  * K-11: чертёж закладки-цели в верхнем левом углу неба — DOM-узел, как лента
  * (см. «Согласованный план» дока), не мировой объект на канвасе: ему незачем
  * ходить за зумом и паном, он стоит на месте экрана. Прячется, если закладки
- * нет, книга открыта (CSS-правило `.book-open-body .sky-bookmark`) или игрок
- * в обсерватории — там это не его небо.
+ * нет, книга открыта (CSS-правило `.book-open-body .sky-bookmark`), игрок
+ * в обсерватории — там это не его небо, — или идёт сцена завершения ночи
+ * (V-13): решение заказчика (U-38), сцена гасит небо целиком, отметке
+ * закладки не место в ней. Вызывается заново на входе и на выходе из сцены
+ * (см. `skyEffects.js`), поэтому чертёж возвращается сразу же, как только
+ * она кончилась — естественно или пропуском тапом.
  */
 function renderSkyBookmark() {
     const el = document.getElementById('skyBookmark');
     if (!el) return;
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
-    el.hidden = !shapeId || inObservatory;
+    const inFinale = typeof isLevelFinaleActive === 'function' && isLevelFinaleActive();
+    el.hidden = !shapeId || inObservatory || inFinale;
     if (!shapeId) return;
 
     // K-31: имя — сюрприз до первого создания фигуры, как на карточке атласа
@@ -1046,11 +1116,29 @@ function createAchievementSeal(chain, stepIndex, p) {
     return slot;
 }
 
-/** Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа. */
+/**
+ * Пять печатей на строку всегда — столько же, сколько граней у фигуры атласа.
+ * U-39: цепочка может задать `sealPositions` — на каких из пяти слотов (сетка
+ * пятиколоночная, `grid-column` 1-индекс) стоят её реальные шаги; заглушки
+ * лишних слотов такая цепочка не получает вовсе — заказчик прямо отменил их
+ * («сразу говорю что второе» — ровно N кружков, не пять с бледными пустышками),
+ * но геометрия ряда не едет: реальные печати ставятся в исходные колонки сетки,
+ * а не переупаковываются к началу. Без поля шаги идут по порядку с нулевого слота.
+ */
 function createAchievementSeals(chain, p) {
     const row = document.createElement('div');
     row.className = 'achv-row-seals';
     const total = chain.steps.length;
+
+    if (chain.sealPositions) {
+        for (let stepIndex = 0; stepIndex < total; stepIndex++) {
+            const seal = createAchievementSeal(chain, stepIndex, p);
+            seal.style.gridColumn = String(chain.sealPositions[stepIndex] + 1);
+            row.appendChild(seal);
+        }
+        return row;
+    }
+
     for (let i = 0; i < 5; i++) {
         if (i < total) {
             row.appendChild(createAchievementSeal(chain, i, p));

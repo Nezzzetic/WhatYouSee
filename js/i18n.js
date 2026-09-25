@@ -258,6 +258,10 @@ en: {
     // на самой запертой странице, только короче. S-03: порог назван уровнем,
     // а не суммой ✦ — у суммы игроку не с чем сравнить.
     'book.indexOpensAtLevel': 'opens at level {n}',
+    // U-41: оглавление — Ex Libris своей категорией, Настройки в общей «Other»
+    // (нет других строк без условия открытия, заводить под них по отдельной
+    // категории на каждую не за чем).
+    'book.indexOther': 'Other',
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
@@ -285,11 +289,6 @@ en: {
         one: 'The sky above holds {n} star yet unjoined.',
         other: 'The sky above holds {n} stars yet unjoined.'
     },
-    'book.todayBookmark': {
-        one: 'Bookmarked: {name} — {n} star, chapter {ch}.',
-        other: 'Bookmarked: {name} — {n} stars, chapter {ch}.'
-    },
-    'book.todayBookmarkPlain': 'Bookmarked: {name}.',
     // S-03: уровень — в подвале рядом с брендом на любой странице.
     'book.footLevel': 'Level {n}',
     // V-20: номер уровня в головке корешка (сменил «следующий уровень» над
@@ -328,7 +327,7 @@ en: {
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Unknown constellation',
-    'atlas.pageLocked': 'This page opens on its own at {level}.',
+    'atlas.pageLocked': 'This page opens at {level}.',
     // K-11: разворот-определитель — ни одна фигура не спрятана. Карточек
     // «? ? ?» больше нет: неразгаданная показывает бледный полный чертёж.
     // K-31: подпись и число звёзд сняты — на карточке остаётся только «?».
@@ -347,8 +346,7 @@ en: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'This chapter opens on its own at level {n}.',
-    'stamps.chapterLockedProgress': 'Now: {current} / {target} ✦',
+    'stamps.chapterLocked': 'This chapter opens at {level}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'bookmarked',
@@ -356,8 +354,8 @@ en: {
     // --- O-01: тутор первых жестов -----------------------------------------------
     // Единственные две строки, которыми игра объясняет себя словами. Прямая
     // инструкция, а не образ: их читают ровно один раз и им следуют.
-    'tutor.connect': 'Drag from one star to the other, then lift your finger.',
-    'tutor.zoom': 'Now spread two fingers — pull the sky back.',
+    'tutor.connect': 'Drag from one star to the other, then let go.',
+    'tutor.zoom': 'Now pull the sky back — spread two fingers, or scroll.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Constellation',
@@ -370,7 +368,7 @@ en: {
     // и стоит один, без второй строки про звёзды (та переехала в plateHint,
     // где её видно уже после разблокировки, а не до неё).
     'observatory.lockedTitle': 'Create your own, unique constellation.',
-    'observatory.lockedLevel': 'Opens on its own at {level}.',
+    'observatory.lockedLevel': 'Ex Libris opens at {level}.',
     // K-34: та же строка, что раньше была под запертым хинтом — теперь под
     // гравюрой, когда холст уже открыт и объяснение к месту.
     'observatory.plateHint': 'Stars you can move, connect and recolour. It never resets.',
@@ -584,6 +582,7 @@ ru: {
     // K-12: главы штампов пронумерованы так же, как главы атласа.
     'book.eyebrowStampsChapter': 'Штампы · глава {n}',
     'book.indexOpensAtLevel': 'откроется на уровне {n}',
+    'book.indexOther': 'Прочее',
     'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
     // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из K-15.
@@ -608,12 +607,6 @@ ru: {
         few: 'На небе ещё не соединены {n} звезды.',
         many: 'На небе ещё не соединено {n} звёзд.'
     },
-    'book.todayBookmark': {
-        one: 'Закладка: «{name}» — {n} звезда, глава {ch}.',
-        few: 'Закладка: «{name}» — {n} звезды, глава {ch}.',
-        many: 'Закладка: «{name}» — {n} звёзд, глава {ch}.'
-    },
-    'book.todayBookmarkPlain': 'Закладка: «{name}».',
     'book.footLevel': 'Уровень {n}',
     'book.spineLevel': 'Ур. {n}',
     'book.spineScore': '{earned} / {ceil}',
@@ -645,7 +638,7 @@ ru: {
 
     // --- Атлас ------------------------------------------------------------------
     'atlas.unknownConstellation': 'Неизвестное созвездие',
-    'atlas.pageLocked': 'Страница откроется сама на {level}.',
+    'atlas.pageLocked': 'Откроется на {level}.',
     'atlas.hint': 'Нажми на фигуру — схема появится на небе',
     'atlas.pinOn': 'Заложить фигуру, чтобы построить её сегодня',
     'atlas.pinOff': 'Снять закладку',
@@ -659,15 +652,14 @@ ru: {
     'achv.lockedTitle': '? ? ?',
 
     // --- Штампы: неразрезанная глава (K-12) — тот же нож, что у атласа ----------
-    'stamps.chapterLocked': 'Глава откроется сама на уровне {n}.',
-    'stamps.chapterLockedProgress': 'Сейчас: {current} / {target} ✦',
+    'stamps.chapterLocked': 'Откроется на {level}.',
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',
 
     // --- O-01: тутор первых жестов -----------------------------------------------
-    'tutor.connect': 'Проведи пальцем от звезды к звезде и отпусти.',
-    'tutor.zoom': 'Теперь разведи пальцы — отдали небо.',
+    'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
+    'tutor.zoom': 'Теперь отдали небо — разведи два пальца или покрути колесо.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Созвездие',
@@ -680,7 +672,7 @@ ru: {
     // один, без второй строки про звёзды (та переехала в plateHint, где её
     // видно уже после разблокировки, а не до неё).
     'observatory.lockedTitle': 'Создай своё, уникальное созвездие.',
-    'observatory.lockedLevel': 'Откроется сама на {level}.',
+    'observatory.lockedLevel': 'Экслибрис откроется на {level}.',
     // K-34: та же строка, что раньше была под запертым хинтом — теперь под
     // гравюрой, когда холст уже открыт и объяснение к месту.
     'observatory.plateHint': 'Звёзды, которые можно двигать, соединять и красить. Она не сбрасывается.',

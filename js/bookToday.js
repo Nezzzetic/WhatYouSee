@@ -35,14 +35,14 @@ function renderBookTodayNews() {
 }
 
 /**
- * K-17: две строки состояния страницы — сколько звёзд на небе ещё не соединено
- * и что заложено закладкой. В концепте они стоят на «Сегодня» рядом с событиями
- * ночи, но событиями не являются: в `newsLog` не пишутся, в сейв не идут и
- * считаются заново на каждом рендере — поэтому и блок у них свой.
+ * K-17: строка состояния страницы — сколько звёзд на небе ещё не соединено.
+ * В концепте она стоит на «Сегодня» рядом с событиями ночи, но событием не
+ * является: в `newsLog` не пишется, в сейв не идёт и считается заново на
+ * каждом рендере — поэтому и блок у неё свой.
  *
- * Номер главы здесь арабский (`book.todayBookmark`) — это отсылка к главе
- * внутри предложения, не заголовок; римской цифрой (K-19) набираются только
- * надзаголовок разворота и строка оглавления.
+ * U-38: строку про закладку (`book.todayBookmark`/`book.todayBookmarkPlain`)
+ * заказчик снял отдельной правкой — сама закладка (булавка на карточке
+ * атласа, чертёж в углу неба, K-11) не трогалась, ушла только эта отметка.
  */
 function renderBookTodayState() {
     const el = document.getElementById('bookTodayState');
@@ -63,20 +63,6 @@ function renderBookTodayState() {
     if (!nightComplete) {
         const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
         addRow(tp('book.todayStarsLeft', free));
-    }
-
-    const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
-    if (!shapeId) return; // закладки нет — строки тоже нет, пустой строкой не занимаем
-    const name = getDisplayShapeName(shapeId);
-    const pattern = typeof SHAPE_PATTERNS !== 'undefined' ? SHAPE_PATTERNS[shapeId] : null;
-    const starCount = pattern && Array.isArray(pattern.stars) ? pattern.stars.length : 0;
-    const chapter = typeof getAtlasPageForShape === 'function' ? getAtlasPageForShape(shapeId) : -1;
-    // Закладку ставят с карточки разворота, то есть у фигуры всегда есть и
-    // чертёж, и глава; страховка — на случай закладки из будущего источника.
-    if (starCount > 0 && chapter >= 0) {
-        addRow(tp('book.todayBookmark', starCount, { name, ch: chapter + 1 }));
-    } else {
-        addRow(t('book.todayBookmarkPlain', { name }));
     }
 }
 

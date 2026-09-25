@@ -5,19 +5,10 @@
 function createRewardPageLockedNotice(pageIndex) {
     const locked = document.createElement('div');
     locked.className = 'atlas-page-locked';
-    const cost = getRewardPageUnlockCost(pageIndex);
 
     const lockedText = document.createElement('p');
-    lockedText.textContent = t('stamps.chapterLocked', { n: getRewardPageUnlockLevel(pageIndex) });
+    fillLevelLockText(lockedText, 'stamps.chapterLocked', getRewardPageUnlockLevel(pageIndex));
     locked.appendChild(lockedText);
-
-    const progressText = document.createElement('p');
-    progressText.className = 'atlas-page-locked-progress';
-    progressText.textContent = t('stamps.chapterLockedProgress', {
-        current: Math.min(getLifetimeMetaEarned(), cost),
-        target: cost
-    });
-    locked.appendChild(progressText);
 
     return locked;
 }

@@ -377,11 +377,16 @@ function startLevelFinale() {
             Math.max(LEVEL_FINALE_ZOOM_MS, LEVEL_FINALE_HIDE_MS)
         )
     };
+    // U-38: чертёж закладки прячется на время сцены — на всех остальных
+    // переходах (снятие, пропуск, естественный конец) это делает та же
+    // функция, см. ниже.
+    if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
 }
 
 /** Снять сцену без доигрывания (смена неба, откат) — камеру не трогаем. */
 function cancelLevelFinale() {
     levelFinale = null;
+    if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
 
 /**
@@ -393,6 +398,7 @@ function finishLevelFinaleNow() {
     if (!levelFinale) return;
     levelFinale = null;
     if (typeof centerCamera === 'function') centerCamera();
+    if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
 
 /** Прошедшее время сцены, или -1 если её нет / она уже отыграла. */
@@ -401,6 +407,11 @@ function getLevelFinaleElapsed() {
     const elapsed = millis() - levelFinale.startMs;
     if (elapsed < 0 || elapsed >= levelFinale.totalMs) {
         levelFinale = null;
+        // U-38: сцена отыграла сама, без пропуска, — чертёж закладки должен
+        // вернуться в этот же момент, а не ждать случайного следующего
+        // вызова renderSkyBookmark(). Функция и так не чистая (гасит слот),
+        // поэтому вызывается прямо отсюда, кто бы ни спросил elapsed первым.
+        if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
         return -1;
     }
     return elapsed;
