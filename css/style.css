@@ -603,28 +603,37 @@ button:disabled {
 }
 
 /* O-10: лента зовёт в книгу, пока её ни разу не открыли (класс ставит
-   updateTutorialUI, tutorial.js). Хвост растёт, покачивается вверх-вниз и
-   переливается цветом. Движение — отдельными свойствами `scale`/`translate`,
-   а не `transform`: тот занят протяжкой (--ribbon-follow, U-31), и анимация
-   перебила бы инлайн-стиль жеста. Цвет — однотонная заливка по кругу: градиент
-   покоя не анимируется. Задержка — чтобы отзум до кота (O-01) успел раскрыться. */
-.ribbon-invite .ribbon-tail {
-    transform-origin: 50% 100%;
-    animation:
-        ribbon-invite-bob 1.6s var(--ease) 1.2s infinite,
-        ribbon-invite-hue 4.8s linear 1.2s infinite;
+   updateTutorialUI, tutorial.js). Хвост раз в цикл вытягивается вверх тем же
+   ростом, что протяжка пальцем (U-31: прибит низ, растёт верх, знак едет с
+   кончиком), чуть крупнее, и еле заметно теплеет цветом. Отдельная переменная
+   --ribbon-invite-pull, а не --ribbon-pull: ту инлайн-стилем пишет жест, и
+   анимация перебила бы его. @property — чтобы длина интерполировалась, а не
+   прыгала. Движение занимает треть цикла, остальное — покой (фидбек
+   заказчика: «реже в 3 раза»). Задержка — чтобы отзум до кота (O-01) успел
+   раскрыться. Низ хвоста не отрывается от края экрана: ни translate, ни
+   масштаба от центра. */
+@property --ribbon-invite-pull {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
 }
 
-@keyframes ribbon-invite-bob {
-    0%, 100% { scale: 1;    translate: 0 0; }
-    50%      { scale: 1.45; translate: 0 -10px; }
+.ribbon-invite .ribbon-tail {
+    height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px) + var(--ribbon-invite-pull));
+    transform-origin: 50% 100%;
+    animation:
+        ribbon-invite-pull 4.8s var(--ease) 1.2s infinite,
+        ribbon-invite-hue 14.4s ease-in-out 1.2s infinite;
+}
+
+@keyframes ribbon-invite-pull {
+    0%, 33%, 100% { --ribbon-invite-pull: 0px;  scale: 1; }
+    16%           { --ribbon-invite-pull: 22px; scale: 1.06; }
 }
 
 @keyframes ribbon-invite-hue {
     0%, 100% { background: var(--ribbon-hi); }
-    25%      { background: var(--wax); }
-    50%      { background: var(--gold); }
-    75%      { background: var(--gold-light); }
+    50%      { background: #A83F33; }
 }
 
 /* Во время жеста лента идёт за пальцем — зов не должен с ней спорить. */
@@ -635,8 +644,7 @@ button:disabled {
 @media (prefers-reduced-motion: reduce) {
     .ribbon-invite .ribbon-tail {
         animation: none;
-        scale: 1.3;
-        background: var(--gold);
+        background: #A83F33;
     }
 }
 
