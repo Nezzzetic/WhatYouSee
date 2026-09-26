@@ -605,7 +605,7 @@ button:disabled {
 /* O-10: лента зовёт в книгу, пока её ни разу не открыли (класс ставит
    updateTutorialUI, tutorial.js). Хвост раз в цикл вытягивается вверх тем же
    ростом, что протяжка пальцем (U-31: прибит низ, растёт верх, знак едет с
-   кончиком), чуть крупнее, и еле заметно теплеет цветом. Отдельная переменная
+   кончиком), чуть крупнее и в тот же такт еле заметно теплеет цветом. Отдельная переменная
    --ribbon-invite-pull, а не --ribbon-pull: ту инлайн-стилем пишет жест, и
    анимация перебила бы его. @property — чтобы длина интерполировалась, а не
    прыгала. Движение занимает треть цикла, остальное — покой (фидбек
@@ -621,19 +621,14 @@ button:disabled {
 .ribbon-invite .ribbon-tail {
     height: calc(var(--ribbon-h) + var(--ribbon-pull, 0px) + var(--ribbon-invite-pull));
     transform-origin: 50% 100%;
-    animation:
-        ribbon-invite-pull 4.8s var(--ease) 1.2s infinite,
-        ribbon-invite-hue 14.4s ease-in-out 1.2s infinite;
+    animation: ribbon-invite-pull 4.8s var(--ease) 1.2s infinite;
 }
 
+/* Цвет — в тех же ключах, что рост: лента светлеет на вытягивании и гаснет
+   вместе с возвратом (фидбек заказчика, круг 2 — синхронно с движением). */
 @keyframes ribbon-invite-pull {
-    0%, 33%, 100% { --ribbon-invite-pull: 0px;  scale: 1; }
-    16%           { --ribbon-invite-pull: 22px; scale: 1.06; }
-}
-
-@keyframes ribbon-invite-hue {
-    0%, 100% { background: var(--ribbon-hi); }
-    50%      { background: #A83F33; }
+    0%, 33%, 100% { --ribbon-invite-pull: 0px;  scale: 1;    background: var(--ribbon-hi); }
+    16%           { --ribbon-invite-pull: 22px; scale: 1.15; background: #A83F33; }
 }
 
 /* Во время жеста лента идёт за пальцем — зов не должен с ней спорить. */
