@@ -146,6 +146,10 @@ function mousePressed(event) {
         return;
     }
 
+    // O-10: жёсткий шаг «открой книгу» — небо не отвечает ни на что, выход
+    // один: лента (DOM, мимо канваса).
+    if (typeof isBookGateActive === 'function' && isBookGateActive()) return;
+
     // K-04: пометка корректора — единственный вход в отмену. Проверяется раньше
     // звёзд: она висит поверх неба четыре секунды, и тап по ней ничей больше.
     if (hitUndoMark(mouseX, mouseY)) {
@@ -361,6 +365,7 @@ function updatePinchMode() {
     // по-прежнему отменяет черновик — это привычный отклик), но камеру не
     // двигает: ни зум, ни двухпальцевый пан.
     if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) return;
+    if (typeof isBookGateActive === 'function' && isBookGateActive()) return; // O-10
     const t0 = touches[0];
     const t1 = touches[1];
     const dist = Math.hypot(t1.x - t0.x, t1.y - t0.y);

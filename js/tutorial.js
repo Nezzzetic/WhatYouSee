@@ -184,9 +184,6 @@ function isTutorialBookLocked() {
  * «отзум» ограничения уже нет: игра открыта, звезда просто отдельно взятая.
  */
 function isTutorialAllowedStar(starId) {
-    // O-10: жёсткий шаг «открой книгу» гасит все звёзды — тем же видом и теми
-    // же путями (getStarAt, canAddConstellationEdge), что чужие звёзды шага 1.
-    if (isBookGateActive()) return false;
     if (getTutorialStep() !== TUTOR_STEP_CONNECT) return true;
     const pair = getTutorialPair();
     if (!pair) return true; // аварийный случай — не запираем игру своей же блокировкой
@@ -223,6 +220,13 @@ function getBookInviteStage() {
     return built >= BOOK_INVITE_GATE_CONSTELLATIONS ? BOOK_INVITE_GATE : BOOK_INVITE_PULSE;
 }
 
+/**
+ * Жёсткий шаг: небо не принимает ввод — ни соединения, ни пана, ни зума
+ * (mousePressed, updatePinchMode, zoomAtScreenPoint). Звёзды при этом НЕ
+ * гасятся: погашенные выпадали из проверки «остались ли пары», и ночь
+ * засчитывалась пройденной (фидбек заказчика, круг 3). Лента — DOM поверх
+ * канваса, её этот замок не касается.
+ */
 function isBookGateActive() {
     return getBookInviteStage() === BOOK_INVITE_GATE;
 }
