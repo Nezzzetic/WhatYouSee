@@ -54,6 +54,7 @@ function zoomAtScreenPoint(sx, sy, newZoom) {
     // centerCamera() и камера финала V-13 пишут zoomLevel напрямую и гейта
     // не касаются — это намеренно, тутор не должен мешать сценам.
     if (typeof isTutorialCameraLocked === 'function' && isTutorialCameraLocked()) return;
+    if (typeof isBookGateActive === 'function' && isBookGateActive()) return; // O-10: жёсткий шаг
     const worldX = sx / zoomLevel + camX;
     const worldY = sy / zoomLevel + camY;
     zoomLevel = constrain(newZoom, getMinZoomLevel(), MAX_ZOOM);

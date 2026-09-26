@@ -1008,6 +1008,17 @@
             pair,
             cameraLocked: typeof isTutorialCameraLocked === 'function' ? isTutorialCameraLocked() : false,
             bookLocked: typeof isTutorialBookLocked === 'function' ? isTutorialBookLocked() : false,
+            // O-10: 0 — зова нет, 1 — лента зовёт, 2 — жёсткий шаг «открой книгу».
+            // Классы body — то, что реально видит CSS, а не пересказ условия.
+            invite: typeof getBookInviteStage === 'function' ? getBookInviteStage() : 0,
+            inviteClasses: {
+                ribbonInvite: document.body.classList.contains('ribbon-invite'),
+                bookGate: document.body.classList.contains('book-gate')
+            },
+            ribbonAnimation: (() => {
+                const tail = ribbon ? ribbon.querySelector('.ribbon-tail') : null;
+                return tail ? window.getComputedStyle(tail).animationName : null;
+            })(),
             // Лента не `display:none`, а прозрачная и непрокликиваемая — проверяем
             // именно это, потому что от её прямоугольника зависит getBottomUIHeight().
             ribbon: ribbonStyle ? {
