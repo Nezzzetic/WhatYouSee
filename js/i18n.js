@@ -356,6 +356,7 @@ en: {
     // инструкция, а не образ: их читают ровно один раз и им следуют.
     'tutor.connect': 'Drag from one star to the other, then let go.',
     'tutor.zoom': 'Now pull the sky back — spread two fingers, or scroll.',
+    'tutor.book': 'Now open your book — tap or click the ribbon in the corner.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Constellation',
@@ -660,6 +661,7 @@ ru: {
     // --- O-01: тутор первых жестов -----------------------------------------------
     'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
     'tutor.zoom': 'Теперь отдали небо — разведи два пальца или покрути колесо.',
+    'tutor.book': 'Теперь открой книгу — нажми на ленту в углу.',
 
     // --- Поле -----------------------------------------------------------------
     'field.constellation': 'Созвездие',

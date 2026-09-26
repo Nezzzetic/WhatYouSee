@@ -184,10 +184,47 @@ function isTutorialBookLocked() {
  * «отзум» ограничения уже нет: игра открыта, звезда просто отдельно взятая.
  */
 function isTutorialAllowedStar(starId) {
+    // O-10: жёсткий шаг «открой книгу» гасит все звёзды — тем же видом и теми
+    // же путями (getStarAt, canAddConstellationEdge), что чужие звёзды шага 1.
+    if (isBookGateActive()) return false;
     if (getTutorialStep() !== TUTOR_STEP_CONNECT) return true;
     const pair = getTutorialPair();
     if (!pair) return true; // аварийный случай — не запираем игру своей же блокировкой
     return starId === pair[0].id || starId === pair[1].id;
+}
+
+// =============================================================================
+// O-10: ЛЕНТА ЗОВЁТ В КНИГУ
+// =============================================================================
+//
+// Продолжение тутора после отзума. Пока книгу ни разу не открыли, лента
+// анимирована (класс `ribbon-invite` на body, CSS). С BOOK_INVITE_GATE_CONSTELLATIONS
+// созвездий за игру зов становится жёстким шагом (`book-gate`): все звёзды
+// неиграбельны, строка тутора просит открыть книгу. Первое открытие
+// (bookFirstOpenDone, U-21) снимает и то и другое навсегда — своего поля в
+// сейве у зова нет.
+//
+// Условие «тутор пройден», а не «тутора нет»: харнесс с skipOnboarding тутор не
+// проходит (done=false), и процедурные сценарии зов и шаг не задевают.
+
+const BOOK_INVITE_NONE = 0;
+const BOOK_INVITE_PULSE = 1;
+const BOOK_INVITE_GATE = 2;
+
+// Последняя отрисованная стадия зова — DOM трогается только на смене.
+let bookInviteRenderedStage = -1;
+
+function getBookInviteStage() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return BOOK_INVITE_NONE;
+    const state = achievementCounters.tutorial;
+    if (!state || !state.done) return BOOK_INVITE_NONE;
+    if (achievementCounters.bookFirstOpenDone) return BOOK_INVITE_NONE;
+    const built = achievementCounters.totalConstellations || 0;
+    return built >= BOOK_INVITE_GATE_CONSTELLATIONS ? BOOK_INVITE_GATE : BOOK_INVITE_PULSE;
+}
+
+function isBookGateActive() {
+    return getBookInviteStage() === BOOK_INVITE_GATE;
 }
 
 function finishTutorial() {
@@ -260,7 +297,9 @@ function checkTutorialZoomStep() {
  */
 function updateTutorialProgress() {
     const step = getTutorialStep();
-    if (step !== tutorialRenderedStep) updateTutorialUI();
+    if (step !== tutorialRenderedStep || getBookInviteStage() !== bookInviteRenderedStage) {
+        updateTutorialUI();
+    }
     checkTutorialZoomStep();
 }
 
@@ -362,17 +401,26 @@ function drawTutorialGhostScreen() {
  */
 function updateTutorialUI() {
     const step = getTutorialStep();
+    const invite = getBookInviteStage();
     tutorialRenderedStep = step;
+    bookInviteRenderedStage = invite;
 
     if (typeof document === 'undefined' || !document.body) return;
     document.body.classList.toggle('tutor-locked', step !== TUTOR_STEP_NONE);
+    document.body.classList.toggle('ribbon-invite', invite !== BOOK_INVITE_NONE);
+    document.body.classList.toggle('book-gate', invite === BOOK_INVITE_GATE);
 
     const box = document.getElementById('skyTutor');
     const textEl = document.getElementById('skyTutorText');
     if (!box || !textEl) return;
 
     if (step === TUTOR_STEP_NONE) {
-        box.hidden = true;
+        if (invite === BOOK_INVITE_GATE) {
+            textEl.textContent = typeof t === 'function' ? t('tutor.book') : '';
+            box.hidden = false;
+        } else {
+            box.hidden = true;
+        }
         return;
     }
     textEl.textContent = typeof t === 'function'
