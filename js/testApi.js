@@ -476,14 +476,6 @@
             pictureFieldId: typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null,
             starCount: Array.isArray(fieldStars) ? fieldStars.length : 0,
             freeStarCount: getPlayableStars().length,
-            // O-11: подсветка последних пар — активна ли, сколько звёзд в кеше
-            // соединимых (count — всегда, даже выше порога, где сама подсветка
-            // молчит и starIds по построению пуст), и какие именно, пока активна.
-            lastPairsHint: {
-                active: typeof isLastPairsHintActive === 'function' ? isLastPairsHintActive() : false,
-                count: typeof getConnectableStarIds === 'function' ? getConnectableStarIds().size : 0,
-                starIds: typeof getLastPairsHintStarIds === 'function' ? getLastPairsHintStarIds() : []
-            },
             levelComplete: !!constellationArtRevealed,
             constellations: constellations.map(c => ({
                 shape: c.shape,
