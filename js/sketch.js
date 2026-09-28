@@ -539,6 +539,8 @@ function resetFieldSessionState() {
     if (typeof cancelCommitWave === 'function') cancelCommitWave();
     if (typeof cancelLevelFinale === 'function') cancelLevelFinale();
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
+    // O-11: новое поле — старый кеш соединимых звёзд ни на что не указывает.
+    if (typeof invalidateConnectableStarIdsCache === 'function') invalidateConnectableStarIdsCache();
 }
 
 function regenerateFieldStarsAfterReset() {

@@ -204,16 +204,17 @@
                 <div id="bookBody" class="book-body">
                     <div id="bookToday" class="book-section" hidden>
                         <div id="bookTodayList" class="achv-list"></div>
-                        <!-- O-03: конец ночи проговаривает только книга — небо молчит.
-                             Виден только на доигранной ночи (renderBookTodayDawn, ui.js). -->
-                        <div id="bookTodayDawn" class="book-dawn" hidden>
-                            <span class="book-dawn-label" data-i18n="book.dawnIn"></span>
+                        <!-- O-03/O-11: конец ночи проговаривает только книга — небо молчит.
+                             Виден всегда, два состояния (renderBookTodayDawn, bookToday.js):
+                             играется — счёт соединимых звёзд, доиграна — ожидание. Слова
+                             режутся вокруг числа (порядок разный в локалях), поэтому до/после
+                             числа — разные узлы. -->
+                        <div id="bookTodayDawn" class="book-dawn">
+                            <span id="bookTodayDawnBefore" class="book-dawn-label"></span>
                             <span id="bookTodayDawnClock" class="book-dawn-clock"></span>
+                            <span id="bookTodayDawnAfter" class="book-dawn-label"></span>
                         </div>
                         <div id="bookTodayNews" class="book-news-list"></div>
-                        <!-- K-17: строки состояния — не события мира: в `newsLog`
-                             они не идут и считаются на рендере, поэтому и блок свой -->
-                        <div id="bookTodayState" class="book-state-list"></div>
                     </div>
                     <div id="bookIndex" class="book-section book-index" hidden></div>
                     <!-- K-18: пейджер-строка над сеткой снята — прогресс главы и

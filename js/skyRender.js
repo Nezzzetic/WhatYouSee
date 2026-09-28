@@ -648,6 +648,16 @@ function drawVisibleStars() {
     // Проверка раз за вызов, а не на звезду: matchMedia в цикле по полю дорог.
     const nowMs = millis();
     const breathEnabled = !(typeof prefersReducedMotion === 'function' && prefersReducedMotion());
+    // O-11: подсветка последних пар — раз за кадр, как и проверка reduced-motion выше.
+    if (typeof updateLastPairsHintTiming === 'function') updateLastPairsHintTiming();
+    const lastPairsHintIds = (typeof getLastPairsHintStarIds === 'function') ? getLastPairsHintStarIds() : [];
+    const lastPairsHintSet = lastPairsHintIds.length > 0 ? new Set(lastPairsHintIds) : null;
+    const lastPairsHintBoost = lastPairsHintSet && typeof computeLastPairsHintBoost === 'function'
+        ? computeLastPairsHintBoost(
+            nowMs, lastPairsHintSinceMs, LAST_PAIRS_HINT_PERIOD_MS, LAST_PAIRS_HINT_APPEAR_MS,
+            LAST_PAIRS_HINT_GLOW_BOOST, !breathEnabled
+        )
+        : 0;
     noStroke();
     for (let star of fieldStars) {
         if (!star) continue;
@@ -757,8 +767,13 @@ function drawVisibleStars() {
         }
         // V-12: вспышка волны усиливает гало/свечение тем же множителем, что и
         // импульс V-07; пересечься они не могут (V-07 — только на не-locked).
+        // O-11: подсветка последних пар — тот же приём, общей фазой на группу
+        // вместо разовой вспышки; на locked-звезду не попадает по построению —
+        // подсветка живёт только на playable-звёздах (getConnectableStarIds).
+        const hintBoost = (lastPairsHintSet && lastPairsHintSet.has(star.id)) ? lastPairsHintBoost : 0;
         const feedbackBrighten = 1 + FEEDBACK_PULSE_BRIGHTEN * feedbackPulse
-            + COMMIT_WAVE_STAR_BRIGHTEN * commitFlash;
+            + COMMIT_WAVE_STAR_BRIGHTEN * commitFlash
+            + hintBoost;
         const effectiveAlpha = fadeAlpha * rangeDimFactor * finaleAlpha;
 
         const coreColor = getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual);
