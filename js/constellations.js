@@ -68,11 +68,21 @@ function rememberUndoneConstellationName(constellation) {
  * оно свободно, иначе обычная лотерея пула. Занятое имя не переиспользуется —
  * между откатом и повтором мог случиться коммит, которому пул выдал именно его,
  * а два одинаковых имени на одном небе игрок видит, в отличие от лотереи.
+ *
+ * T-09: свежее имя (не «запомненное этой связкой») обходит и живые созвездия,
+ * и весь undoneNameMemory — иначе игрок, вернувшийся к отменённой связке ПОСЛЕ
+ * того, как её имя случайно досталось другому набору рёбер, видел бы у себя
+ * не «то же имя», а лотерею (ровно баг M-10 п.4, ≈1/44 на прогон). Если так
+ * не осталось ни одного имени — единственный запасной путь: как раньше, без
+ * памяти, просто чтобы вообще выдать имя.
  */
 function pickConstellationFallbackName(lines) {
     const used = constellations.map(c => c.name);
     const remembered = undoneNameMemory.get(constellationEdgeKey(lines));
     if (remembered && !used.includes(remembered)) return remembered;
+    const usedOrRemembered = used.concat([...undoneNameMemory.values()]);
+    const fresh = pickFallbackName(usedOrRemembered);
+    if (fresh !== SHAPE_UNRECOGNIZED) return fresh;
     return pickFallbackName(used);
 }
 
