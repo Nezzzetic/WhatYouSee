@@ -147,8 +147,14 @@ function drawConstellationSkeletonLinesWorld() {
         const shapeInfo = prominent
             ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
             : SHAPES[SHAPE_UNRECOGNIZED];
-        // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
-        const lineColor = constellation.lineColor || LINE_COLOR;
+        // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR).
+        // V-28: на сцене финала и на её итоговом кадре — бакет цвета целиком
+        // (пять различимых тонов), а не мутное среднее: на обзоре всего поля
+        // созвездия иначе сливаются в один тон.
+        const useFinaleColor = typeof isFinaleLineColorActive === 'function' && isFinaleLineColorActive();
+        const lineColor = useFinaleColor && typeof colorValueToBucketRgb === 'function'
+            ? colorValueToBucketRgb(constellation.colorValue)
+            : (constellation.lineColor || LINE_COLOR);
         // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
         // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
         const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
@@ -465,9 +471,15 @@ function drawConstellationLabels() {
     // отыгрывает под нулевой альфой и к концу сцены все подписи уже на 255.
     if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return;
 
+    // V-28: на итоговом кадре (сцена уже отыграла) подписи видны мелко
+    // независимо от зума — гашение V-11 (дальний зум → ноль) сюда не доходит.
+    const finaleAftermathActive = typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed();
+
     // V-11: множитель считается один раз за кадр, до цикла по созвездиям.
     // На дальнем зуме подписей нет вовсе — выходим сразу, не перебирая небо.
-    const zoomAlpha = getLabelZoomAlphaFactor();
+    const zoomAlpha = finaleAftermathActive
+        ? Math.max(getLabelZoomAlphaFactor(), getFinaleLabelsZoomAlpha())
+        : getLabelZoomAlphaFactor();
     if (zoomAlpha <= 0) return;
 
     noStroke();
@@ -493,9 +505,14 @@ function drawConstellationLabels() {
             // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
             // волна отыгрывает своё независимо, и при обратном зуме после ночи
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
+            // V-28: на итоговом кадре финала кегль мельче обычного revealed —
+            // 40+ созвездий на одном обзоре, помельче читается спокойнее.
+            const labelSize = finaleAftermathActive
+                ? LEVEL_FINALE_LABEL_SIZE
+                : REVEALED_CONSTELLATION_LABEL_SIZE;
             drawSmallCapsLabelWorld(
                 getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
-                REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel, INK_RGB, alpha * zoomAlpha
+                labelSize / zoomLevel, INK_RGB, alpha * zoomAlpha
             );
             continue;
         }

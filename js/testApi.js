@@ -959,10 +959,27 @@
                 && Math.abs(snapY - target.camY) < 1e-6
         };
 
+        // V-28: итоговый кадр — сцена уже отыграла (сама или тапом), небо ещё
+        // смотрят. Живёт независимо от `scene` (снятый слот его не стирает) —
+        // поэтому и цвет линии считается той же формулой в обеих ветках ниже.
+        const lineColorActive = typeof isFinaleLineColorActive === 'function' && isFinaleLineColorActive();
+        const aftermath = {
+            active: typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed(),
+            lineColorActive,
+            labelsAlpha: typeof getFinaleLabelsZoomAlpha === 'function' ? getFinaleLabelsZoomAlpha() : 0
+        };
+        const lineColorOf = c => lineColorActive
+            ? colorValueToBucketRgb(c.colorValue)
+            : (c.lineColor || LINE_COLOR);
+
         if (!scene) {
             return {
                 active: false, elapsedMs: -1, totalMs: 0, stepMs: 0, count: 0,
-                camera, constellations: [], stars: []
+                camera, aftermath,
+                constellations: constellations.map((c, i) => ({
+                    index: i, shape: c.shape, birthMs: 0, alpha: 1, lineColor: lineColorOf(c)
+                })),
+                stars: []
             };
         }
 
@@ -973,11 +990,15 @@
             stepMs: scene.stepMs,
             count: scene.count,
             camera,
+            aftermath,
             constellations: constellations.map((c, i) => ({
                 index: i,
                 shape: c.shape,
                 birthMs: LEVEL_FINALE_WAVE_DELAY_MS + i * scene.stepMs,
-                alpha: getFinaleConstellationAlpha(c)
+                alpha: getFinaleConstellationAlpha(c),
+                // V-28: цвет линии, как её реально рисует небо в эту секунду —
+                // бакет во время сцены и на итоговом кадре, иначе — мутное среднее.
+                lineColor: lineColorOf(c)
             })),
             stars: [...scene.starBirthMs.entries()].map(([id, birthMs]) => ({
                 id,
