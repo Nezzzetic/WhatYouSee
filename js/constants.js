@@ -251,6 +251,12 @@ const LEVEL_FINALE_TOTAL_MAX_MS = 9800;  // потолок ВСЕЙ сцены �
 // разгорающуюся звезду, и короткая вспышка при длинном фейде просто не видна.
 const LEVEL_FINALE_STAR_FLASH_MS = 440;  // вспышка звезды в момент рождения её созвездия
 
+// V-28: итоговый кадр сцены (после того как все созвездия родились заново) —
+// линии красятся бакетом цвета, а не мутным средним, и на небе мелко проступают
+// имена; во время самой анимации подписей по-прежнему нет (решение V-13 не тронуто).
+const LEVEL_FINALE_LABEL_SIZE = 12;      // мельче REVEALED_CONSTELLATION_LABEL_SIZE (18)
+const LEVEL_FINALE_LABEL_FADE_MS = 450;  // плавное проявление подписей после сцены
+
 // =============================================================================
 // K-04: КОРРЕКТОРСКАЯ ПОМЕТКА
 // =============================================================================
@@ -969,6 +975,20 @@ function colorValueToRgb(value) {
         }
     }
     return tiers[tiers.length - 1].rgb.slice();
+}
+
+/** V-28: «бакет», а не интерполяция — ближайший тир целиком, без смешения
+ *  (мутного среднего между соседними тирами). Даёт 5 различимых тонов вместо
+ *  непрерывного градиента; та же логика «ничья → меньший тир», что у
+ *  constellationColorBucket (achievements.js) — здесь нужен цвет, не ключ бакета. */
+function colorValueToBucketRgb(value) {
+    const v = normalizeStarColorValue(value);
+    const tiers = STAR_COLOR_TIERS;
+    let best = tiers[0];
+    for (const t of tiers) {
+        if (Math.abs(t.value - v) < Math.abs(best.value - v)) best = t;
+    }
+    return best.rgb.slice();
 }
 
 function getStarColorValue(star) {

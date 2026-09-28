@@ -302,6 +302,39 @@ function hitUndoMark(screenX, screenY) {
 
 let levelFinale = null; // { startMs, camFrom, stepMs, count, totalMs, order, starBirthMs }
 
+// V-28: «итоговый кадр» — сцена уже отыграла (сама или тапом), небо ещё смотрят.
+// Живёт вне сейва, как и levelFinale: F5 сцену не проигрывает и в это состояние
+// не попадает (revealConstellationArt(false) сцену не ставит вовсе).
+let finaleAftermath = false;
+let finaleAftermathStartMs = 0;
+
+function beginFinaleAftermath() {
+    finaleAftermath = true;
+    finaleAftermathStartMs = millis();
+}
+
+function endFinaleAftermath() {
+    finaleAftermath = false;
+}
+
+/** V-28: линии красим бакетом цвета не только во время сцены, но и на
+ *  осевшем итоговом кадре после неё — ровно там, где заказчик увидел проблему. */
+function isFinaleLineColorActive() {
+    return isLevelFinaleActive() || finaleAftermath;
+}
+
+/** V-28: подписи на итоговом кадре — только после сцены (не во время неё). */
+function isFinaleLabelsRevealed() {
+    return finaleAftermath;
+}
+
+/** V-28: плавное проявление подписей на итоговом кадре, 0..1. */
+function getFinaleLabelsZoomAlpha() {
+    if (!finaleAftermath) return 0;
+    if (LEVEL_FINALE_LABEL_FADE_MS <= 0) return 1;
+    return constrain((millis() - finaleAftermathStartMs) / LEVEL_FINALE_LABEL_FADE_MS, 0, 1);
+}
+
 /** Сглаживание отзума: кривая книги (K-01) — камера трогается сразу и мягко
  *  встаёт, без рывка на старте и на остановке. Кривая в игре одна: та же
  *  `--ease` в CSS и тот же `easeBook` во всех сценах канваса. */
@@ -343,6 +376,7 @@ function computeFinaleTotal(count, stepMs, fadeMs, delayMs, minMs) {
  * `constellations` уже лежит в нём, сортировать нечего.
  */
 function startLevelFinale() {
+    endFinaleAftermath(); // V-28: новая сцена — итоговый кадр прошлой, если был, снят
     const list = Array.isArray(constellations) ? constellations : [];
     const count = list.length;
     // Шаг ужимается под потолок той же чистой функцией, что у волны создания:
@@ -386,6 +420,7 @@ function startLevelFinale() {
 /** Снять сцену без доигрывания (смена неба, откат) — камеру не трогаем. */
 function cancelLevelFinale() {
     levelFinale = null;
+    endFinaleAftermath(); // V-28: отменённая сцена не оставляет итогового кадра
     if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
 
@@ -397,6 +432,7 @@ function cancelLevelFinale() {
 function finishLevelFinaleNow() {
     if (!levelFinale) return;
     levelFinale = null;
+    beginFinaleAftermath(); // V-28: пропуск — тоже законченный итоговый кадр
     if (typeof centerCamera === 'function') centerCamera();
     if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
@@ -406,7 +442,11 @@ function getLevelFinaleElapsed() {
     if (!levelFinale) return -1;
     const elapsed = millis() - levelFinale.startMs;
     if (elapsed < 0 || elapsed >= levelFinale.totalMs) {
+        const finishedNaturally = elapsed >= levelFinale.totalMs;
         levelFinale = null;
+        // V-28: сцена доиграла сама (не отменена, не пропущена тапом) — то же
+        // условие, что раньше просто снимало слот.
+        if (finishedNaturally) beginFinaleAftermath();
         // U-38: сцена отыграла сама, без пропуска, — чертёж закладки должен
         // вернуться в этот же момент, а не ждать случайного следующего
         // вызова renderSkyBookmark(). Функция и так не чистая (гасит слот),
