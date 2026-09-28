@@ -11,7 +11,6 @@ function renderBookToday() {
     }
     renderBookTodayDawn();
     renderBookTodayNews();
-    renderBookTodayState();
 }
 
 /**
@@ -34,44 +33,23 @@ function renderBookTodayNews() {
     }
 }
 
-/**
- * K-17: строка состояния страницы — сколько звёзд на небе ещё не соединено.
- * В концепте она стоит на «Сегодня» рядом с событиями ночи, но событием не
- * является: в `newsLog` не пишется, в сейв не идёт и считается заново на
- * каждом рендере — поэтому и блок у неё свой.
- *
- * U-38: строку про закладку (`book.todayBookmark`/`book.todayBookmarkPlain`)
- * заказчик снял отдельной правкой — сама закладка (булавка на карточке
- * атласа, чертёж в углу неба, K-11) не трогалась, ушла только эта отметка.
- */
-function renderBookTodayState() {
-    const el = document.getElementById('bookTodayState');
-    if (!el) return;
-    el.innerHTML = '';
-
-    const addRow = (text) => {
-        const row = document.createElement('div');
-        row.className = 'book-state-row';
-        row.textContent = text;
-        el.appendChild(row);
-    };
-
-    // O-03: на доигранной ночи звёзды остаются (часть подавлена, часть погашена —
-    // M-07), просто пар для них больше нет; «ещё не соединено N звёзд» про такое
-    // небо врёт, поэтому строка снимается, а не дополняется.
-    const nightComplete = typeof isLevelComplete === 'function' && isLevelComplete();
-    if (!nightComplete) {
-        const free = typeof getPlayableStars === 'function' ? getPlayableStars().length : 0;
-        addRow(tp('book.todayStarsLeft', free));
-    }
-}
+// U-38: строку про закладку (`book.todayBookmark`/`book.todayBookmarkPlain`)
+// заказчик снял отдельной правкой — сама закладка (булавка на карточке
+// атласа, чертёж в углу неба, K-11) не трогалась, ушла только эта отметка.
+//
+// O-11: мелкая строка «ещё не соединено N звёзд» (K-17, `renderBookTodayState`,
+// `#bookTodayState`) снята вместе с ключом `book.todayStarsLeft` целиком — тот
+// же факт теперь крупно стоит в `#bookTodayDawn` (см. ниже), один факт в одном
+// месте, а не в двух кеглях сразу.
 
 // =============================================================================
-// O-03: КОНЕЦ НОЧИ — ТОЛЬКО КНИГА, «СЕГОДНЯ»
+// O-03/O-11: «СЕГОДНЯ» — СЧЁТ ДО КОНЦА НОЧИ ИЛИ ДО СЛЕДУЮЩЕЙ
 // =============================================================================
 // Небо молчит (решение заказчика: K-15 не отменяется, тоста не будет). Блок
-// стоит на «Сегодня» сразу после ежедневки и виден только на доигранной ночи —
-// F5 на уже завершённом небе его не прячет (это состояние, а не сцена V-13).
+// `#bookTodayDawn` стоит на «Сегодня» сразу после ежедневки и виден **всегда**
+// (O-11 сняла `hidden` по `isLevelComplete()`) — у него два состояния: ночь
+// играется — крупный счёт соединимых звёзд, доиграна — ожидание нового неба,
+// как раньше (O-03).
 
 /** Чистая: ms до ближайшего начала суток неба — M-09, местные 05:00 (`SKY_DAY_START_HOUR`), а не полночь. До этого часа цель сегодняшняя, после — завтрашняя, ровно как у `getLocalCalendarSkyDateInt()`. Dev-офсет/харнесс-дата на замер не влияют — считается от настоящих часов устройства, локальный конструктор `new Date(y, m, d, h)` сам переживает переход на летнее время. */
 function msUntilNextSkyDay() {
@@ -108,7 +86,7 @@ function stopBookTodayDawnTimer() {
     }
 }
 
-/** Тик и первая отрисовка. На нуле сам закрывает себя и дёргает штатную смену дня — только на доигранном поле, где терять нечего. */
+/** Тик и первая отрисовка ожидания. На нуле сам закрывает себя и дёргает штатную смену дня — только на доигранном поле, где терять нечего. */
 function updateBookTodayDawnText() {
     const clockEl = document.getElementById('bookTodayDawnClock');
     if (!clockEl) return;
@@ -122,24 +100,76 @@ function updateBookTodayDawnText() {
 }
 
 /**
+ * O-11: число «осталось звёзд» кладём в `.book-dawn-clock` в одиночестве, а
+ * слова вокруг него — в `.book-dawn-label` до и после (порядок слов у числа
+ * в локалях разный: «{n} stars left» против «Осталось {n} звёзд»). `tp()`
+ * этого не даёт — она уже подставляет число внутрь готовой строки, поэтому
+ * шаблон плюральной формы берём напрямую и режем по литералу «{n}» сами.
+ */
+function splitPluralAroundN(key, n) {
+    const entry = typeof lookupI18nEntry === 'function' ? lookupI18nEntry(key) : null;
+    let template = key;
+    if (entry !== null && entry !== undefined) {
+        if (typeof entry === 'object') {
+            const category = getI18nPluralRules().select(Number(n));
+            template = entry[category] || entry.other || entry.many || entry.few || entry.one || '';
+        } else {
+            template = entry;
+        }
+    }
+    const idx = template.indexOf('{n}');
+    if (idx < 0) return { before: template, after: '' };
+    return { before: template.slice(0, idx).trim(), after: template.slice(idx + 3).trim() };
+}
+
+/** Пишет три узла блока разом — общая точка и для счёта звёзд, и для ожидания. */
+function setBookTodayDawnParts(before, clock, after) {
+    const beforeEl = document.getElementById('bookTodayDawnBefore');
+    const clockEl = document.getElementById('bookTodayDawnClock');
+    const afterEl = document.getElementById('bookTodayDawnAfter');
+    if (beforeEl) { beforeEl.textContent = before || ''; beforeEl.hidden = !before; }
+    if (clockEl) clockEl.textContent = clock;
+    if (afterEl) { afterEl.textContent = after || ''; afterEl.hidden = !after; }
+}
+
+/**
+ * Ночь играется: крупно число соединимых звёзд (`getConnectableStarIds`,
+ * O-11) — не всех играбельных, чтобы счёт доходил ровно до нуля в момент
+ * конца ночи и не врал про звёзды, которым пары уже нет.
+ */
+function renderDawnStarsLeft() {
+    stopBookTodayDawnTimer();
+    const n = typeof getConnectableStarIds === 'function' ? getConnectableStarIds().size : 0;
+    const { before, after } = splitPluralAroundN('book.starsLeft', n);
+    setBookTodayDawnParts(before, String(n), after);
+}
+
+/** Ночь доиграна: часы до следующей — прежнее поведение O-03, тик раз в минуту. */
+function renderDawnCountdown() {
+    setBookTodayDawnParts(t('book.dawnIn'), '', '');
+    updateBookTodayDawnText();
+    if (!bookTodayDawnTimer) {
+        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, BOOK_DAWN_TICK_MS);
+    }
+}
+
+/**
  * Идемпотентна: `refreshBookIfOpen()` зовут из мест, не связанных с концом
- * ночи (забор марки, `afterAchievementStateChanged`), и повторный вызов не
- * должен ни ронять уже идущий интервал, ни плодить второй — только менять
- * видимость блока при смене состояния (например, откат последнего созвездия
- * вернул ночь из «доиграна» в «играется»).
+ * ночи (коммит/откат, забор марки, `afterAchievementStateChanged`), и
+ * повторный вызов не должен ни ронять уже идущий интервал, ни плодить
+ * второй — только переключать состояние (например, откат последнего
+ * созвездия вернул ночь из «доиграна» в «играется», и счёт звёзд сменяет
+ * собой ожидание). Блок больше не прячется целиком — `hidden` по
+ * `isLevelComplete()` снят вместе со второй строкой (O-11).
  */
 function renderBookTodayDawn() {
     const el = document.getElementById('bookTodayDawn');
     if (!el) return;
     const complete = typeof isLevelComplete === 'function' && isLevelComplete();
-    el.hidden = !complete;
-    if (!complete) {
-        stopBookTodayDawnTimer();
-        return;
-    }
-    updateBookTodayDawnText();
-    if (!bookTodayDawnTimer) {
-        bookTodayDawnTimer = setInterval(updateBookTodayDawnText, BOOK_DAWN_TICK_MS);
+    if (complete) {
+        renderDawnCountdown();
+    } else {
+        renderDawnStarsLeft();
     }
 }
 

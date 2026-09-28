@@ -278,6 +278,47 @@ function hasConnectablePair() {
     return false;
 }
 
+/**
+ * O-11: id играбельных звёзд, у которых есть хотя бы один валидный партнёр —
+ * «соединимые» звёзды. Кеш **не** пересчитывается каждый кадр: сбрасывается
+ * событиями поля (`invalidateConnectableStarIdsCache`), сам пересчёт ленивый,
+ * при первом запросе после сброса.
+ *
+ * Перебор — все пары `i < j` ровно по разу (тот же порядок, что у
+ * `hasConnectablePair`), без пропуска уже найденных `i`: звезда, чей
+ * единственный партнёр стоит раньше нее по списку, не будет обнаружена,
+ * если её собственный проход пропустить, — обратный перебор здесь не короче
+ * прямого. `isValidEdgeBetweenStars` сама сначала проверяет длину ребра
+ * (дёшево) и только потом пересечения с уже собранными (дорого, O(рёбер)) —
+ * короткое замыкание внутри `canAddConstellationEdge` даёт нужный порядок
+ * отсева без отдельного прохода.
+ */
+let connectableStarIdsCache = null;
+
+function invalidateConnectableStarIdsCache() {
+    connectableStarIdsCache = null;
+}
+
+function getConnectableStarIds() {
+    if (connectableStarIdsCache) return connectableStarIdsCache;
+    // Сандбоксы верификаторов рендера (verify-commit-wave.js и т.п.) дают свой
+    // fieldStars/getStarById, но не полный field.js — getPlayableStars там нет.
+    const playable = typeof getPlayableStars === 'function' ? getPlayableStars() : [];
+    const connectable = new Set();
+    for (let i = 0; i < playable.length; i++) {
+        const a = playable[i];
+        for (let j = i + 1; j < playable.length; j++) {
+            const b = playable[j];
+            if (isValidEdgeBetweenStars(a, b)) {
+                connectable.add(a.id);
+                connectable.add(b.id);
+            }
+        }
+    }
+    connectableStarIdsCache = connectable;
+    return connectableStarIdsCache;
+}
+
 function isDraftConstellationValid(lines) {
     if (!lines || lines.length < 1) return false;
     for (const seg of lines) {
@@ -418,6 +459,8 @@ function commitConstellationFromPayload(payload) {
     // M-07: звёзды, которых после этого коммита больше не с кем соединить.
     constellation.orphanExtinguishedIds = extinguishOrphanStars();
     recomputeAtlasCollectedStarColors();
+    // O-11: состав соединимых звёзд сменился — кеш протух.
+    invalidateConnectableStarIdsCache();
 
     updateScoreUI();
     updateProgressionUI();
@@ -491,6 +534,8 @@ function undoLastConstellation() {
     rebuildStarCountStateFromConstellations();
     recomputeSuppressedStars();
     recomputeAtlasCollectedStarColors();
+    // O-11: состав соединимых звёзд сменился — кеш протух.
+    invalidateConnectableStarIdsCache();
 
     // S-01: откат первого коммита фигуры невозможен (undoFloor поднят при
     // мгновенном клейме шага 1) — createdShapes здесь не трогаем; ночной
