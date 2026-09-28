@@ -135,12 +135,17 @@ const STAR_SIZE = 8;
 const STAR_COLOR = [237, 239, 245];
 /** Stars locked into a constellation (constellation vertices). */
 const USED_STAR_COLOR = [217, 164, 65];
-const LOCKED_STAR_SIZE_MULTIPLIER = 1.38;
+/** V-25: звезда созвездия мельче свободной (было ×1.38) — созвездие читается
+ *  линией, а вперёд выходит то, что ещё можно соединить. Чисто визуально. */
+const LOCKED_STAR_SIZE_MULTIPLIER = 0.72;
 /** V-10: зазор между концом линии и звездой — доля от диаметра отрисовки звезды
  *  (baseStarDrawSize). Задаётся долей, а не world-числом, чтобы ехать за размером
  *  звезды на любом зуме (на отзуме звезда крупнее в world-юнитах — зазор тоже).
  *  Значение подобрано в браузере (2.0). Чисто визуально. */
 const LINE_STAR_GAP_FACTOR = 2.00;
+/** V-25: зазор у звезды созвездия — в долях её СОБСТВЕННОГО диаметра, чтобы ехать
+ *  за LOCKED_STAR_SIZE_MULTIPLIER. 1.45 — прежняя пропорция (2.0 / 1.38). */
+const LOCKED_LINE_STAR_GAP_PER_DIAM = 1.45;
 /** Committed constellation lines at level reveal (no PNG on field). */
 const REVEALED_CONSTELLATION_STROKE_WEIGHT = 2.5;
 const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
@@ -168,10 +173,17 @@ const DRAFT_COUNT_LABEL_IN_MS = MOTION_MICRO_MS;  // всплывает: мик�
 const DRAFT_COUNT_LABEL_HOLD_MS = 2000;           // держится
 const DRAFT_COUNT_LABEL_OUT_MS = 400;             // тает
 
-const LOCKED_STAR_GLOW_ALPHA = 88;
-const LOCKED_STAR_HALO_WHITE_ALPHA = 34;
+/** V-25: звезда созвездия приглушена — ядро на 50 %, гало и свечение ещё и на
+ *  35 % от прежних (было 34 / 88 / 255). Множители макета запечены в числа, чтобы
+ *  константа по-прежнему значила «альфа слоя». */
+const LOCKED_STAR_GLOW_ALPHA = 15;
+const LOCKED_STAR_HALO_WHITE_ALPHA = 6;
+const LOCKED_STAR_CORE_ALPHA = 128;
+/** Атласное созвездие светится сильнее обычного (было +50 при 88 — та же пропорция). */
+const LOCKED_ATLAS_STAR_GLOW_BONUS = 9;
 const SUPPRESSED_STAR_COLOR = [100, 128, 157];
-const SUPPRESSED_STAR_SCALE = 0.6;
+/** V-25: подавленная ещё мельче (было 0.6), чтобы не путаться со звездой созвездия. */
+const SUPPRESSED_STAR_SCALE = 0.4;
 const STAR_SIZE_VARIATION_MIN = 0.88;
 const STAR_SIZE_VARIATION_MAX = 1.15;
 /** Discrete star temperature tiers (colorValue → RGB).
