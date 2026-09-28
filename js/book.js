@@ -520,6 +520,16 @@ function isMultiTouch(event) {
 }
 
 /**
+ * U-43: цель — поле ввода (переименование экслибриса, K-21, и всё похожее
+ * впредь). Клавиатура книги и мышиный жест книги не должны перехватывать
+ * событие, пока идёт ввод текста.
+ */
+function isEditableTarget(target) {
+    if (!target || typeof target.closest !== 'function') return false;
+    return !!target.closest('input, textarea, select, [contenteditable]');
+}
+
+/**
  * U-35: нижний инсет системной панели в px. `--safe-bottom` из JS напрямую не
  * прочесть (см. getBottomUIHeight в sketch.js) — меряем узлом с `height:
  * var(--safe-bottom)`. В браузере ноль; на Redmi с навигационной панелью 48.
@@ -742,10 +752,46 @@ function setupBookCloseGesture() {
     let closing = false;
     let tracking = false;
     let travel = 0; // V-20: снимается один раз на жест — см. setupRibbonPullGesture
+    let isMouseGesture = false; // U-43: только у мыши — выделение текста и клик после протяжки
+    let clickGateCleanup = null; // U-43: снятие одноразового гасителя клика после протяжки
+
+    // U-43: протяжка мышью, начатая на кликабельном (карточка атласа, строка
+    // оглавления), рождает click на mouseup над тем же элементом — у касания
+    // такого нет (жест и клик разведены изначально). Гасим ровно один
+    // следующий click в фазе захвата на #book, чтобы он не дошёл до цели.
+    const clearClickGate = () => {
+        if (!clickGateCleanup) return;
+        clickGateCleanup();
+        clickGateCleanup = null;
+    };
+    const armClickGate = () => {
+        clearClickGate();
+        const onClickCapture = (event) => {
+            event.stopPropagation();
+            event.preventDefault();
+            clearClickGate();
+        };
+        const onNextMousedown = () => clearClickGate();
+        const timer = setTimeout(clearClickGate, 0); // клика не было — снимаем сами
+        book.addEventListener('click', onClickCapture, { capture: true, once: true });
+        book.addEventListener('mousedown', onNextMousedown, { capture: true, once: true });
+        clickGateCleanup = () => {
+            book.removeEventListener('click', onClickCapture, true);
+            book.removeEventListener('mousedown', onNextMousedown, true);
+            clearTimeout(timer);
+        };
+    };
 
     const onStart = (event) => {
         if (isMultiTouch(event)) { tracking = false; return; }
         if (event.type === 'mousedown' && event.button !== 0) return;
+        // U-43: клик в поле ввода (переименование экслибриса) не должен
+        // запускать мышиный жест книги — иначе протяжка курсора по тексту
+        // читалась бы как попытка полистать/закрыть.
+        if (event.type === 'mousedown' && isEditableTarget(event.target)) {
+            tracking = false;
+            return;
+        }
         // U-31: касание на книжной стороне ленты — это её собственный жест
         // (setupCloseRibbonPullGesture), а не потягивание страницы вниз.
         // stopPropagation там уже гасит это на большинстве путей — эта
@@ -761,6 +807,7 @@ function setupBookCloseGesture() {
         axis = null;
         closing = false;
         tracking = true;
+        isMouseGesture = event.type === 'mousedown';
         travel = bookTravelPx();
     };
 
@@ -779,6 +826,12 @@ function setupBookCloseGesture() {
                 axis = 'vertical';
                 closing = dy > 0 && body.scrollTop <= 0;
             }
+            // U-43: ось решена — у мыши это уже жест книги, не выделение текста.
+            if (isMouseGesture) {
+                book.classList.add('book-dragging');
+                const sel = window.getSelection && window.getSelection();
+                if (sel) sel.removeAllRanges();
+            }
         }
 
         if (axis === 'horizontal') {
@@ -796,6 +849,11 @@ function setupBookCloseGesture() {
         if (!tracking) return;
         tracking = false;
         const p = getGesturePoint(event);
+        const axisDecided = axis !== null;
+        if (isMouseGesture) book.classList.remove('book-dragging');
+        // U-43: протяжка мышью решила ось — следующий click (мышь рождает его
+        // сама на mouseup) не должен дойти до кликабельного под пальцем.
+        if (isMouseGesture && axisDecided) armClickGate();
 
         if (axis === 'horizontal') {
             const dx = p ? p.clientX - startX : 0;
@@ -831,6 +889,28 @@ function setupBookCloseGesture() {
     if (ribbon) setupRibbonPullGesture(ribbon);
     // U-31: потягивание книжной стороны вниз — обратный жест к закрытию
     if (closeRibbon) setupCloseRibbonPullGesture(closeRibbon);
+
+    // U-43: горизонтальный жест тачпада приходит как wheel с deltaX — вертикальное
+    // колесо мыши книгу не листает и не трогается. Один жест тачпада = одна
+    // страница: копим deltaX до порога, потом запираемся до паузы без wheel
+    // (инерция колеса не должна листать дальше).
+    let wheelDeltaX = 0;
+    let wheelLocked = false;
+    let wheelIdleTimer = null;
+    book.addEventListener('wheel', (event) => {
+        if (event.ctrlKey) return; // щипок зума трекпада — не наш жест
+        if (Math.abs(event.deltaX) <= Math.abs(event.deltaY)) return;
+        if (event.cancelable) event.preventDefault(); // не даём браузеру принять жест за «назад»
+        clearTimeout(wheelIdleTimer);
+        wheelIdleTimer = setTimeout(() => { wheelDeltaX = 0; wheelLocked = false; }, BOOK_WHEEL_IDLE_MS);
+        if (wheelLocked) return;
+        wheelDeltaX += event.deltaX;
+        if (Math.abs(wheelDeltaX) >= BOOK_WHEEL_PAGE_PX) {
+            swipeBookPage(wheelDeltaX > 0 ? 1 : -1);
+            wheelLocked = true;
+            wheelDeltaX = 0;
+        }
+    }, { passive: false });
 
     bookHandlersBound = true;
 }
@@ -1164,6 +1244,11 @@ function setupBookControls() {
 }
 
 function onGlobalPopupKeydown(event) {
+    // U-43: пока идёт ввод (переименование экслибриса, K-21) или это
+    // браузерное сочетание (Alt/Ctrl/Meta+стрелка — «назад»/«вперёд» и т.п.),
+    // книга по стрелкам и Esc не реагирует — только сам ввод.
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (isEditableTarget(event.target)) return;
     if (event.key === 'Escape') {
         closeBook();
         return;
