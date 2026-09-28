@@ -62,9 +62,15 @@ function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, 
  * V-10: зазор между концом линии и звездой в world-юнитах. Повторяет формулу
  * baseStarDrawSize из drawVisibleStars, поэтому масштабируется зумом так же,
  * как сами звёзды (в т.ч. на отзуме, где действует пол STAR_SIZE/zoom·0.5).
+ * V-25: у звезды созвездия зазор — от её собственного (уменьшенного) диаметра.
+ * Берётся игровой `star.locked`, а не вид волны V-12: иначе конец ребра прыгал
+ * бы в момент прихода волны. Без звезды (обсерватория) — прежний зазор.
  */
-function getLineStarGapWorld() {
+function getLineStarGapWorld(star) {
     const base = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
+    if (star && star.locked) {
+        return base * LOCKED_STAR_SIZE_MULTIPLIER * LOCKED_LINE_STAR_GAP_PER_DIAM;
+    }
     return base * LINE_STAR_GAP_FACTOR;
 }
 
@@ -98,8 +104,8 @@ function trimSegmentEndsWorld(ax, ay, bx, by, gapA, gapB) {
  * обрезанный сегмент, чтобы вызывающий мог положить сверху огонёк на острие.
  */
 function drawSegmentWorld(startStar, endStar, progress = 1) {
-    const gap = getLineStarGapWorld();
-    const t = trimSegmentEndsWorld(startStar.x, startStar.y, endStar.x, endStar.y, gap, gap);
+    const t = trimSegmentEndsWorld(startStar.x, startStar.y, endStar.x, endStar.y,
+        getLineStarGapWorld(startStar), getLineStarGapWorld(endStar));
     if (!t) return null;
     if (progress >= 1) {
         line(t.ax, t.ay, t.bx, t.by);
@@ -545,7 +551,7 @@ function drawFieldMode() {
         const fieldMouseY = mouseY / zoomLevel + camY;
         const seg = getClampedDragEndpointWorld(currentStartStar, fieldMouseX, fieldMouseY);
         // V-10: зазор только у якорного конца (звезда); конец у курсора не трогаем
-        const t = trimSegmentEndsWorld(seg.ax, seg.ay, seg.bx, seg.by, getLineStarGapWorld(), 0);
+        const t = trimSegmentEndsWorld(seg.ax, seg.ay, seg.bx, seg.by, getLineStarGapWorld(currentStartStar), 0);
         if (t) line(t.ax, t.ay, t.bx, t.by);
     }
 
@@ -815,7 +821,8 @@ function getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual) {
         // V-09: атласные звёзды светятся своим tier-цветом, как обычные locked
         // (декоративный оверрайд фигуры убран). Признак «атласности» — только
         // усиленное свечение в getStarGlowColor и удлинённые лучи.
-        return [tierRgb[0], tierRgb[1], tierRgb[2], 255];
+        // V-25: ядро звезды созвездия приглушено — вперёд выходят свободные.
+        return [tierRgb[0], tierRgb[1], tierRgb[2], LOCKED_STAR_CORE_ALPHA];
     }
     if (isExtinguished) {
         const rgb = blendRgb(tierRgb, EXTINGUISHED_STAR_COLOR, 0.72);
@@ -831,9 +838,9 @@ function getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual) {
 function getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual) {
     const tierRgb = getStarTierRgb(star);
     if (lockedVisual === undefined ? star.locked : lockedVisual) {
-        // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (+50).
+        // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (LOCKED_ATLAS_STAR_GLOW_BONUS).
         const isAtlas = atlasCollectedStarColors && atlasCollectedStarColors.has(star.id);
-        const glowAlpha = isAtlas ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + 50) : LOCKED_STAR_GLOW_ALPHA;
+        const glowAlpha = isAtlas ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + LOCKED_ATLAS_STAR_GLOW_BONUS) : LOCKED_STAR_GLOW_ALPHA;
         return [tierRgb[0], tierRgb[1], tierRgb[2], glowAlpha];
     }
     if (isExtinguished) {
