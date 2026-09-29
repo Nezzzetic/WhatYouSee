@@ -527,7 +527,12 @@ function drawConstellationLabels() {
         const constellation = constellations[i];
         if (!isConstellationVisible(constellation)) continue;
 
-        const labelAnchor = constellation.labelAnchor || constellation.center;
+        // V-29: раскрытая ночь — место из батч-раскладки (учитывает чужие линии
+        // и другие подписи), если она уже посчитана; иначе — вслепую выбранный
+        // якорь, как до задачи (и как у синтетических созвездий инструментов).
+        const labelAnchor = (constellationArtRevealed && constellation.revealedLabelAnchor)
+            ? constellation.revealedLabelAnchor
+            : (constellation.labelAnchor || constellation.center);
         if (!labelAnchor || !constellation.name) continue;
 
         if (constellationArtRevealed) {
