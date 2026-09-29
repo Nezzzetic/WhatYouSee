@@ -141,6 +141,56 @@ function getCommitWaveStarFlash(starId) {
     return computeCommitWaveFlash(elapsed, arrival, COMMIT_WAVE_STAR_FLASH_MS);
 }
 
+/** V-26: гашение лепестков после прихода волны: 1 → 0 за `fadeMs`. */
+function computeStarPetalFade(elapsed, arrivalMs, fadeMs) {
+    const local = elapsed - arrivalMs;
+    if (local <= 0) return 1;
+    if (fadeMs <= 0 || local >= fadeMs) return 0;
+    return 1 - local / fadeMs;
+}
+
+/**
+ * V-26: видимость лепестков звезды СОЗВЕЗДИЯ (в locked-виде V-12), 0..1.
+ * Свободная звезда сюда не ходит — у неё лепестки горят всегда.
+ *
+ * - Созвездие дорисовано волной: лепестки гаснут, когда до звезды доходит
+ *   волна (`STAR_PETAL_FADE_MS`, укладывается в хвост волны — после снятия
+ *   слота гашение уже закончилось, и ноль не скачет).
+ * - Ночь раскрыта (`constellationArtRevealed`): лепестки горят. В сцене финала
+ *   V-13 звезда созвездия сама рождается из нуля вместе со своим созвездием
+ *   (`getFinaleStarAlpha`), поэтому отдельного таймера у лепестков нет — они
+ *   загораются с рождением. Только на занавесе (гаснущее небо) — ноль, иначе
+ *   лепестки вспыхнули бы на уходящих звёздах. После F5 завершённое небо —
+ *   с лепестками: флаг в сейве.
+ * - Откат сбрасывает звезде locked — снова свободная, лепестки сразу горят.
+ */
+function getStarPetalAlpha(starId) {
+    if (constellationArtRevealed) {
+        const finaleElapsed = typeof getLevelFinaleElapsed === 'function' ? getLevelFinaleElapsed() : -1;
+        if (finaleElapsed >= 0 && finaleElapsed < LEVEL_FINALE_HIDE_MS) return 0;
+        return 1;
+    }
+    if (!commitWave) return 0;
+    const arrival = commitWave.starArrivalMs.get(starId);
+    if (arrival === undefined) return 0;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return 0;
+    return computeStarPetalFade(elapsed, arrival, STAR_PETAL_FADE_MS);
+}
+
+/**
+ * V-26: видимость лепестков любой звезды поля — то же правило, что в
+ * drawVisibleStars (погасшая — 0, свободная и ждущая волну — 1, звезда
+ * созвездия — getStarPetalAlpha). Для харнесса: состояние проверяется
+ * числом, а не по пикселям.
+ */
+function getStarPetalVisibility(star) {
+    if (!star) return 0;
+    if (star.extinguished && !star.locked) return 0;
+    const lockedVisual = star.locked && !isCommitWavePending(star.id);
+    return lockedVisual ? getStarPetalAlpha(star.id) : 1;
+}
+
 /**
  * Проявление подписи атласного созвездия: отсчитывается от конца волны, чтобы
  * имя не выскакивало вместе с коммитом. Для всех прочих созвездий — 1.

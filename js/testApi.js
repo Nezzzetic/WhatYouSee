@@ -114,7 +114,9 @@
             dimmed: typeof isTutorialAllowedStar === 'function' ? !isTutorialAllowedStar(star.id) : false,
             // K-03: дышит ли звезда прямо сейчас (крупный узел, свободна и не в фигуре)
             twinkles: typeof isTwinklingStar === 'function' ? isTwinklingStar(star) : false,
-            twinklePeriodMs: typeof star.twinklePeriodMs === 'number' ? star.twinklePeriodMs : 0
+            twinklePeriodMs: typeof star.twinklePeriodMs === 'number' ? star.twinklePeriodMs : 0,
+            // V-26: видимость лепестков 0..1 (у звезды созвездия гаснут, в финале горят)
+            petals: typeof getStarPetalVisibility === 'function' ? getStarPetalVisibility(star) : 1
         };
     }
 
@@ -886,7 +888,8 @@
                 id,
                 arrivalMs,
                 pending: isCommitWavePending(id),
-                flash: getCommitWaveStarFlash(id)
+                flash: getCommitWaveStarFlash(id),
+                petals: getStarPetalVisibility(getStarById(id))
             }))
         };
     }
@@ -1002,7 +1005,8 @@
                 // Звезда гаснет и рождается вместе со своим созвездием, поэтому
                 // отдаём её альфу, а не флаг «придержан locked-вид».
                 alpha: getFinaleStarAlpha(id),
-                flash: getFinaleStarFlash(id)
+                flash: getFinaleStarFlash(id),
+                petals: getStarPetalVisibility(getStarById(id))
             }))
         };
     }
