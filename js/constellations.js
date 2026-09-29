@@ -427,9 +427,9 @@ function commitConstellationFromPayload(payload) {
     const displayName = finalShape === SHAPE_UNRECOGNIZED
         ? pickConstellationFallbackName(lines)
         : finalShape;
-    // V-28: colorValue хранится отдельно от lineColor (интерполированного между
-    // тирами) — по нему считается бакет-цвет линий на итоговом кадре финала,
-    // без повторного обхода звёзд на каждый кадр сцены.
+    // V-28: colorValue — среднее звёзд созвездия, хранится отдельно от lineColor
+    // (бакета палитры CONSTELLATION_LINE_TIERS, концепт C) на случай, если её
+    // формулу ещё раз поправят — не гонять звёзды заново.
     const colorValue = getMeanColorValue([...starIds]);
     const constellation = {
         lines,
@@ -442,7 +442,7 @@ function commitConstellationFromPayload(payload) {
         recognizedClass: scoreClass,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
-        lineColor: colorValueToRgb(colorValue),
+        lineColor: colorValueToConstellationLineRgb(colorValue),
         colorValue
     };
     constellations.push(constellation);

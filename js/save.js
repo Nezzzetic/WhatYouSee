@@ -115,11 +115,11 @@ function loadGame() {
                 c.labelAnchor = computeConstellationLabelAnchor(c.lines, fallbackStarIds, c.name || c.shape);
             }
             // V-03: lineColor не сохраняется — пересчитываем при загрузке.
-            // V-28: colorValue (для бакет-цвета финала) — тем же способом.
+            // V-28: colorValue (среднее звёзд) — тем же способом.
             if (Array.isArray(c.lines) && c.lines.length > 0) {
                 const ids = collectStarIdsFromLines(c.lines);
                 const colorValue = getMeanColorValue([...ids]);
-                c.lineColor = colorValueToRgb(colorValue);
+                c.lineColor = colorValueToConstellationLineRgb(colorValue);
                 c.colorValue = colorValue;
             }
         }

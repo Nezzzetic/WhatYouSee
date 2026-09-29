@@ -45,17 +45,29 @@ function getLabelZoomAlphaFactor() {
 // FIELD RENDERING
 // =============================================================================
 
-/** V-13: `alpha` (0..1) — видимость созвездия в сцене финала; вне сцены всегда 1. */
-function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, alpha = 1) {
-    const c = lineColor || shapeInfo.color;
+/**
+ * V-28 (концепт C): линия созвездия — тонкая, полупрозрачная, одна толщина
+ * всегда (было 2.5 у раскрытых созвездий / 2 у обычных, K-01 → одно число).
+ * `alpha` (0..1) — видимость созвездия в сцене финала (V-13); вне сцены всегда 1.
+ */
+function applyConstellationSkeletonStrokeStyle(lineColor, alpha = 1) {
+    const c = lineColor || LINE_COLOR;
     const a = Math.max(0, Math.min(1, alpha));
-    if (prominent) {
-        stroke(c[0], c[1], c[2], 255 * a);
-        strokeWeight(REVEALED_CONSTELLATION_STROKE_WEIGHT / zoomLevel);
-    } else {
-        stroke(c[0], c[1], c[2], 255 * a);
-        strokeWeight(2 / zoomLevel);
-    }
+    stroke(c[0], c[1], c[2], 255 * a * CONSTELLATION_LINE_ALPHA);
+    strokeWeight(CONSTELLATION_LINE_STROKE_WEIGHT / zoomLevel);
+}
+
+/**
+ * V-28 (концепт C): «глоу» под чёткой линией — она же шире и бледнее, дешёвый
+ * приём вместо canvas shadowBlur (дорог на Android WebView — прецедент V-09
+ * «без glow-ореола»). Зовётся ДО applyConstellationSkeletonStrokeStyle —
+ * рисуется первым слоем, крест поверх него.
+ */
+function applyConstellationGlowStrokeStyle(lineColor, alpha = 1) {
+    const c = lineColor || LINE_COLOR;
+    const a = Math.max(0, Math.min(1, alpha));
+    stroke(c[0], c[1], c[2], 255 * a * CONSTELLATION_LINE_GLOW_ALPHA);
+    strokeWeight(CONSTELLATION_LINE_GLOW_WEIGHT / zoomLevel);
 }
 
 /**
@@ -137,24 +149,35 @@ function drawCommitWaveCrestWorld(seg, progress, lineColor) {
     pop();
 }
 
+/**
+ * Один проход по рёбрам созвездия — общий код глоу-слоя и чёткой линии
+ * (V-28), чтобы не дублировать обход `constellation.lines`.
+ * `withCrest` — только у чёткого прохода: класть огонёк волны V-12 дважды
+ * (на глоу и на линию) незачем, он и так поверх обоих слоёв.
+ */
+function drawConstellationSegmentsWorld(constellation, lineColor, withCrest) {
+    for (let i = 0; i < constellation.lines.length; i++) {
+        const seg = constellation.lines[i];
+        const startStar = getStarById(seg.startId);
+        const endStar = getStarById(seg.endId);
+        if (!startStar || !endStar) continue;
+        // V-12: у волнового созвездия ребро чертится до своей доли длины,
+        // у всех прочих progress === 1 — путь ровно как до задачи.
+        const progress = getCommitWaveEdgeProgress(constellation, i);
+        const trimmed = drawSegmentWorld(startStar, endStar, progress);
+        if (withCrest && progress < 1) {
+            drawCommitWaveCrestWorld(trimmed, progress, lineColor);
+        }
+    }
+}
+
 function drawConstellationSkeletonLinesWorld() {
     for (let constellation of constellations) {
         if (!isConstellationVisible(constellation)) continue;
-        // V-09: атласные созвездия рисуются как обычные — prominent-стиль
-        // (жирная линия) остаётся только для финального раскрытия. Glow-ореол
-        // atlas-collected и prominent для recognizedAtlas убраны.
-        const prominent = constellationArtRevealed;
-        const shapeInfo = prominent
-            ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
-            : SHAPES[SHAPE_UNRECOGNIZED];
-        // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR).
-        // V-28: на сцене финала и на её итоговом кадре — бакет цвета целиком
-        // (пять различимых тонов), а не мутное среднее: на обзоре всего поля
-        // созвездия иначе сливаются в один тон.
-        const useFinaleColor = typeof isFinaleLineColorActive === 'function' && isFinaleLineColorActive();
-        const lineColor = useFinaleColor && typeof colorValueToBucketRgb === 'function'
-            ? colorValueToBucketRgb(constellation.colorValue)
-            : (constellation.lineColor || LINE_COLOR);
+        // V-03/V-28: цвет линии — бакет палитры CONSTELLATION_LINE_TIERS
+        // (концепт C), посчитан при коммите/загрузке (fallback: LINE_COLOR).
+        // Работает всегда, не только на итоговом кадре финала.
+        const lineColor = constellation.lineColor || LINE_COLOR;
         // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
         // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
         const finaleAlpha = typeof getFinaleConstellationAlpha === 'function'
@@ -162,20 +185,13 @@ function drawConstellationSkeletonLinesWorld() {
             : 1;
         if (finaleAlpha <= 0) continue;
 
-        applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, finaleAlpha);
-        for (let i = 0; i < constellation.lines.length; i++) {
-            const seg = constellation.lines[i];
-            const startStar = getStarById(seg.startId);
-            const endStar = getStarById(seg.endId);
-            if (!startStar || !endStar) continue;
-            // V-12: у волнового созвездия ребро чертится до своей доли длины,
-            // у всех прочих progress === 1 — путь ровно как до задачи.
-            const progress = getCommitWaveEdgeProgress(constellation, i);
-            const trimmed = drawSegmentWorld(startStar, endStar, progress);
-            if (progress < 1) {
-                drawCommitWaveCrestWorld(trimmed, progress, lineColor);
-            }
-        }
+        // V-28 (концепт C): глоу-слой первым (шире и бледнее), чёткая линия
+        // поверх — тот же приём, что у огонька волны V-12, только глубже и тусклее.
+        applyConstellationGlowStrokeStyle(lineColor, finaleAlpha);
+        drawConstellationSegmentsWorld(constellation, lineColor, false);
+
+        applyConstellationSkeletonStrokeStyle(lineColor, finaleAlpha);
+        drawConstellationSegmentsWorld(constellation, lineColor, true);
     }
 }
 
@@ -417,12 +433,14 @@ function measureSmallCapsWidth(str, sizePx) {
 /**
  * K-20: капитель — единственный способ набрать имя созвездия на небе. p5 не
  * умеет letter-spacing, поэтому буквы кладутся по одной с ручным шагом; под
- * именем — волосяная линейка в его ширину (Табл. II концепта). `sizePx` уже
+ * именем — волосяная линейка в его ширину (Табл. II концепта), кроме случая
+ * `withRule = false` — концепт C (V-28) снимает её у раскрытых созвездий на
+ * итоговом кадре, остальные подписи её по-прежнему держат. `sizePx` уже
  * в мировых единицах (поделено на zoomLevel вызывающим — тот же приём, что у
  * прежнего textSize(... / zoomLevel)), поэтому и tracking, и толщина линейки
  * считаются здесь же, без повторного деления.
  */
-function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
+function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha, withRule = true) {
     if (!str || alpha <= 0) return;
     const upper = str.toUpperCase();
     const tracking = sizePx * SMALL_CAPS_TRACKING_EM;
@@ -441,10 +459,12 @@ function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
         x += textWidth(ch) + tracking;
     }
 
-    const ruleY = cy + sizePx * SMALL_CAPS_RULE_OFFSET_EM;
-    stroke(rgb[0], rgb[1], rgb[2], alpha * SMALL_CAPS_RULE_ALPHA_MULT);
-    strokeWeight(1 / zoomLevel);
-    line(cx - totalW / 2, ruleY, cx + totalW / 2, ruleY);
+    if (withRule) {
+        const ruleY = cy + sizePx * SMALL_CAPS_RULE_OFFSET_EM;
+        stroke(rgb[0], rgb[1], rgb[2], alpha * SMALL_CAPS_RULE_ALPHA_MULT);
+        strokeWeight(1 / zoomLevel);
+        line(cx - totalW / 2, ruleY, cx + totalW / 2, ruleY);
+    }
     pop();
 }
 
@@ -505,14 +525,18 @@ function drawConstellationLabels() {
             // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
             // волна отыгрывает своё независимо, и при обратном зуме после ночи
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
-            // V-28: на итоговом кадре финала кегль мельче обычного revealed —
-            // 40+ созвездий на одном обзоре, помельче читается спокойнее.
-            const labelSize = finaleAftermathActive
-                ? LEVEL_FINALE_LABEL_SIZE
-                : REVEALED_CONSTELLATION_LABEL_SIZE;
+            // V-28 (концепт C): подпись раскрытого созвездия — цветом линии,
+            // высветленным к белому, без волосяной линейки, чуть тише самой
+            // линии — вместо прежних единых ink+линейка. Тот же кегль, что и у
+            // остальных подписей (REVEALED_CONSTELLATION_LABEL_SIZE), не отдельный
+            // мелкий для итогового кадра.
+            const tintColor = blendRgb(
+                constellation.lineColor || LINE_COLOR, [255, 255, 255], CONSTELLATION_LABEL_TINT_AMOUNT
+            );
             drawSmallCapsLabelWorld(
                 getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
-                labelSize / zoomLevel, INK_RGB, alpha * zoomAlpha
+                REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel, tintColor,
+                alpha * zoomAlpha * CONSTELLATION_LABEL_ALPHA_MULT, false
             );
             continue;
         }
