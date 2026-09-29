@@ -696,19 +696,22 @@ button:disabled {
        PAPER_OPAL_EDGE_RGB (ui.js/constants.js). */
     --star-garnet: #B8432F;
     --star-amber: #A5581A;
-    --star-copper: #86661A;
+    /* V-27: hue сдвинут ~42.5° → ~55° (ближе к истинному жёлтому, дальше от
+       ink-faint страницы), контраст к бумаге тот же порядок (было 4.15:1,
+       стало ≈4.37:1) — было #86661A (134,102,26), читалось оливково-коричневым. */
+    --star-copper: #F7CA18;
     --star-opal: #FCFAF3;
     --star-opal-edge: #60584E;
     /* V-23 (3-й заход): у цветных камней обводка вместо свечения — тот же тон,
        темнее (×0.55). Те же числа у канваса — paperRimRgb (ui.js). */
     --star-garnet-edge: #65251A;
     --star-amber-edge: #5B300E;
-    --star-copper-edge: #4A380E;
+    --star-copper-edge: #886F0D;
     --star-ice-edge: #1A4664;
     --star-ice: #2F7FB5;
     --star-garnet-rgb: 184, 67, 47;
     --star-amber-rgb: 165, 88, 26;
-    --star-copper-rgb: 134, 102, 26;
+    --star-copper-rgb: 247, 202, 24;
     --star-opal-rgb: 252, 250, 243;
     --star-opal-edge-rgb: 96, 88, 78;
     --star-ice-rgb: 47, 127, 181;
