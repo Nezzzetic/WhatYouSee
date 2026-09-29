@@ -960,17 +960,15 @@
         };
 
         // V-28: итоговый кадр — сцена уже отыграла (сама или тапом), небо ещё
-        // смотрят. Живёт независимо от `scene` (снятый слот его не стирает) —
-        // поэтому и цвет линии считается той же формулой в обеих ветках ниже.
-        const lineColorActive = typeof isFinaleLineColorActive === 'function' && isFinaleLineColorActive();
+        // смотрят. Живёт независимо от `scene` (снятый слот его не стирает).
+        // Цвет линии больше не финал-специфичен — constellation.lineColor уже
+        // посчитан бакетом палитры CONSTELLATION_LINE_TIERS при коммите/загрузке
+        // и одинаков в обеих ветках ниже.
         const aftermath = {
             active: typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed(),
-            lineColorActive,
             labelsAlpha: typeof getFinaleLabelsZoomAlpha === 'function' ? getFinaleLabelsZoomAlpha() : 0
         };
-        const lineColorOf = c => lineColorActive
-            ? colorValueToBucketRgb(c.colorValue)
-            : (c.lineColor || LINE_COLOR);
+        const lineColorOf = c => c.lineColor || LINE_COLOR;
 
         if (!scene) {
             return {
@@ -996,8 +994,6 @@
                 shape: c.shape,
                 birthMs: LEVEL_FINALE_WAVE_DELAY_MS + i * scene.stepMs,
                 alpha: getFinaleConstellationAlpha(c),
-                // V-28: цвет линии, как её реально рисует небо в эту секунду —
-                // бакет во время сцены и на итоговом кадре, иначе — мутное среднее.
                 lineColor: lineColorOf(c)
             })),
             stars: [...scene.starBirthMs.entries()].map(([id, birthMs]) => ({

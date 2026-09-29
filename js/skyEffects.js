@@ -304,7 +304,10 @@ let levelFinale = null; // { startMs, camFrom, stepMs, count, totalMs, order, st
 
 // V-28: «итоговый кадр» — сцена уже отыграла (сама или тапом), небо ещё смотрят.
 // Живёт вне сейва, как и levelFinale: F5 сцену не проигрывает и в это состояние
-// не попадает (revealConstellationArt(false) сцену не ставит вовсе).
+// не попадает (revealConstellationArt(false) сцену не ставит вовсе). Цвет линий
+// теперь не финал-специфичен — работает всегда (палитра в constellation.lineColor
+// уже посчитана бакетом при коммите/загрузке); аftermath остался только про
+// ПОДПИСИ — они появляются на итоговом кадре мелко, минуя гашение V-11.
 let finaleAftermath = false;
 let finaleAftermathStartMs = 0;
 
@@ -315,12 +318,6 @@ function beginFinaleAftermath() {
 
 function endFinaleAftermath() {
     finaleAftermath = false;
-}
-
-/** V-28: линии красим бакетом цвета не только во время сцены, но и на
- *  осевшем итоговом кадре после неё — ровно там, где заказчик увидел проблему. */
-function isFinaleLineColorActive() {
-    return isLevelFinaleActive() || finaleAftermath;
 }
 
 /** V-28: подписи на итоговом кадре — только после сцены (не во время неё). */

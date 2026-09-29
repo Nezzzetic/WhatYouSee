@@ -147,8 +147,7 @@ const LINE_STAR_GAP_FACTOR = 2.00;
  *  за LOCKED_STAR_SIZE_MULTIPLIER. 1.45 — прежняя пропорция (2.0 / 1.38). */
 const LOCKED_LINE_STAR_GAP_PER_DIAM = 1.45;
 /** Committed constellation lines at level reveal (no PNG on field). */
-const REVEALED_CONSTELLATION_STROKE_WEIGHT = 2.5;
-const REVEALED_CONSTELLATION_LABEL_SIZE = 18;
+const REVEALED_CONSTELLATION_LABEL_SIZE = 15;
 /** Собранное созвездие из атласа до финала уровня: подпись простым текстом.
  *  V-12: кольцо collect-пульса снесено вместе с `ATLAS_COLLECT_PULSE_MS`; ★-бейдж
  *  и glow-константы, осиротевшие ещё в V-09, убраны там же. */
@@ -205,6 +204,38 @@ const STAR_SUPPRESSION_LINE_RADIUS = 104;
 const STAR_SUPPRESSION_LOCKED_RADIUS = 144;
 const LINE_COLOR = [217, 164, 65];
 
+/**
+ * V-28: палитра линий и подписей созвездий — концепт C «Созвездие как целое»
+ * (dev/Prototypes/FinaleSkyPalette/index.html, заказчик выбрал вариант C).
+ * Отдельная от STAR_COLOR_TIERS: три тёплых тона там (Гранат/Янтарь/Медь) стоят
+ * слишком близко по оттенку и яркости и на тонкой линии сливаются в один цвет —
+ * здесь они разведены. Работает всегда, на любом созвездии, не только на
+ * итоговом кадре финала (V-13) — решение заказчика 2026-09-29. Звёзд эта
+ * палитра не касается: цвет самих звёзд остаётся STAR_COLOR_TIERS, отдельная
+ * задача.
+ */
+const CONSTELLATION_LINE_TIERS = [
+    { value: -100, rgb: [228, 80, 108] },   // было #F07A67 → #E4506C
+    { value: -50, rgb: [240, 138, 60] },    // было #F2A254 → #F08A3C
+    { value: 0, rgb: [246, 220, 120] },     // было #F2C965 → #F6DC78
+    { value: 50, rgb: [242, 244, 248] },    // было #EDEFF5 → #F2F4F8
+    { value: 100, rgb: [108, 182, 242] }    // было #86C8F2 → #6CB6F2
+];
+// Концепт C: линия тоньше и полупрозрачнее прежней (было 2.5 у раскрытых
+// созвездий, 2 у обычных — теперь одно число всегда).
+const CONSTELLATION_LINE_STROKE_WEIGHT = 2;
+const CONSTELLATION_LINE_ALPHA = 0.8;
+// «Глоу»: дешёвый приём вместо canvas shadowBlur (дорог на Android WebView —
+// прецедент V-09 «без glow-ореола» для atlas-collected) — под чёткой линией
+// лежит она же, шире и бледнее; тот же приём, что у огонька волны V-12
+// (COMMIT_WAVE_CREST), только в обратную сторону (глубже и тусклее, а не ярче).
+const CONSTELLATION_LINE_GLOW_WEIGHT = 6;
+const CONSTELLATION_LINE_GLOW_ALPHA = 0.22;
+// Подпись раскрытого созвездия — цветом линии, высветленным к белому, без
+// волосяной линейки K-20 и чуть тише самой линии (концепт C: `label: 'tint'`).
+const CONSTELLATION_LABEL_TINT_AMOUNT = 0.25;
+const CONSTELLATION_LABEL_ALPHA_MULT = 0.9;
+
 // V-07: фидбэк-анимация соединения. Досягаемые от якоря звёзды коротко
 // вспыхивают при каждом новом ребре; недосягаемые плавно гаснут (заменяет
 // статичный дим U-03).
@@ -252,9 +283,11 @@ const LEVEL_FINALE_TOTAL_MAX_MS = 9800;  // потолок ВСЕЙ сцены �
 const LEVEL_FINALE_STAR_FLASH_MS = 440;  // вспышка звезды в момент рождения её созвездия
 
 // V-28: итоговый кадр сцены (после того как все созвездия родились заново) —
-// линии красятся бакетом цвета, а не мутным средним, и на небе мелко проступают
-// имена; во время самой анимации подписей по-прежнему нет (решение V-13 не тронуто).
-const LEVEL_FINALE_LABEL_SIZE = 12;      // мельче REVEALED_CONSTELLATION_LABEL_SIZE (18)
+// на небе мелко проступают имена (гашение V-11 сюда не доходит); во время самой
+// анимации подписей по-прежнему нет (решение V-13 не тронуто). Кегль подписи —
+// REVEALED_CONSTELLATION_LABEL_SIZE, тот же, что и вне сцены: правки в цвете
+// стиля концепта C работают одинаково всегда, отдельного мелкого кегля больше
+// нет.
 const LEVEL_FINALE_LABEL_FADE_MS = 450;  // плавное проявление подписей после сцены
 
 // =============================================================================
@@ -982,13 +1015,15 @@ function colorValueToRgb(value) {
     return tiers[tiers.length - 1].rgb.slice();
 }
 
-/** V-28: «бакет», а не интерполяция — ближайший тир целиком, без смешения
- *  (мутного среднего между соседними тирами). Даёт 5 различимых тонов вместо
- *  непрерывного градиента; та же логика «ничья → меньший тир», что у
- *  constellationColorBucket (achievements.js) — здесь нужен цвет, не ключ бакета. */
-function colorValueToBucketRgb(value) {
+/** V-28: цвет линии/подписи созвездия — «бакет» палитры CONSTELLATION_LINE_TIERS
+ *  (концепт C), а не интерполяция STAR_COLOR_TIERS: ближайший тир целиком, без
+ *  смешения (мутного среднего между соседними тирами) — даёт 5 различимых тонов
+ *  вместо непрерывного градиента; та же логика «ничья → меньший тир», что у
+ *  constellationColorBucket (achievements.js) — здесь нужен цвет, не ключ бакета.
+ *  Звёзд не касается — те по-прежнему `colorValueToRgb` на STAR_COLOR_TIERS. */
+function colorValueToConstellationLineRgb(value) {
     const v = normalizeStarColorValue(value);
-    const tiers = STAR_COLOR_TIERS;
+    const tiers = CONSTELLATION_LINE_TIERS;
     let best = tiers[0];
     for (const t of tiers) {
         if (Math.abs(t.value - v) < Math.abs(best.value - v)) best = t;
