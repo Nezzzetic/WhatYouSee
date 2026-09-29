@@ -135,17 +135,16 @@ const STAR_SIZE = 8;
 const STAR_COLOR = [237, 239, 245];
 /** Stars locked into a constellation (constellation vertices). */
 const USED_STAR_COLOR = [217, 164, 65];
-/** V-25: звезда созвездия мельче свободной (было ×1.38) — созвездие читается
- *  линией, а вперёд выходит то, что ещё можно соединить. Чисто визуально. */
-const LOCKED_STAR_SIZE_MULTIPLIER = 0.72;
 /** V-10: зазор между концом линии и звездой — доля от диаметра отрисовки звезды
  *  (baseStarDrawSize). Задаётся долей, а не world-числом, чтобы ехать за размером
  *  звезды на любом зуме (на отзуме звезда крупнее в world-юнитах — зазор тоже).
  *  Значение подобрано в браузере (2.0). Чисто визуально. */
 const LINE_STAR_GAP_FACTOR = 2.00;
-/** V-25: зазор у звезды созвездия — в долях её СОБСТВЕННОГО диаметра, чтобы ехать
- *  за LOCKED_STAR_SIZE_MULTIPLIER. 1.45 — прежняя пропорция (2.0 / 1.38). */
-const LOCKED_LINE_STAR_GAP_PER_DIAM = 1.45;
+/** V-26: у звезды созвездия лепестки погашены и видна одна основа — зазор линии
+ *  считается в долях диаметра звезды (baseStarDrawSize) так, чтобы от основы
+ *  (половина диаметра) до конца линии оставался воздух на любом зуме. Было 1.45
+ *  от уменьшенной ×0.72 звезды V-25 (≈1.04 от полной). Чисто визуально. */
+const LOCKED_LINE_STAR_GAP_PER_DIAM = 0.9;
 /** Committed constellation lines at level reveal (no PNG on field). */
 const REVEALED_CONSTELLATION_LABEL_SIZE = 15;
 /** Собранное созвездие из атласа до финала уровня: подпись простым текстом.
@@ -172,14 +171,32 @@ const DRAFT_COUNT_LABEL_IN_MS = MOTION_MICRO_MS;  // всплывает: мик�
 const DRAFT_COUNT_LABEL_HOLD_MS = 2000;           // держится
 const DRAFT_COUNT_LABEL_OUT_MS = 400;             // тает
 
-/** V-25: звезда созвездия приглушена — ядро на 50 %, гало и свечение ещё и на
- *  35 % от прежних (было 34 / 88 / 255). Множители макета запечены в числа, чтобы
- *  константа по-прежнему значила «альфа слоя». */
-const LOCKED_STAR_GLOW_ALPHA = 15;
-const LOCKED_STAR_HALO_WHITE_ALPHA = 6;
-const LOCKED_STAR_CORE_ALPHA = 128;
-/** Атласное созвездие светится сильнее обычного (было +50 при 88 — та же пропорция). */
-const LOCKED_ATLAS_STAR_GLOW_BONUS = 9;
+/**
+ * V-26: звезда — основа (кружок) и лепестки (8 лучей искры). Макет —
+ * dev/Prototypes/StarPetals/index.html, форму выбрал заказчик.
+ * Состояния: свободная — основа + лепестки; в созвездии — лепестки погашены,
+ * основа того же размера и яркости (V-25 с её ×0.72 и приглушением снята —
+ * гашение лепестков само уводит звезду назад); погасшая — основа вдвое меньше,
+ * без лепестков; финал ночи (V-13) — лепестки созвездий загораются снова.
+ */
+/** Диаметр основы в долях starDrawSize. */
+const STAR_BASE_DIAM_MULT = 0.5;
+/** Основа светлее лепестков: доля белого, подмешанная в цвет тира. */
+const STAR_BASE_WHITEN = 0.3;
+/** Слой-ядро лепестков на 85 % яркости — чтобы основа читалась поверх него. */
+const STAR_PETAL_CORE_ALPHA = 217;
+/** Лепестки гаснут за это время с приходом волны V-12 к звезде. Микро-темп
+ *  книги (в макете было 300): ровно укладывается в хвост волны
+ *  (max(вспышка, проявление подписи) = 240), поэтому последняя звезда успевает
+ *  погаснуть до того, как слот волны снимется, и длительность волны не растёт. */
+const STAR_PETAL_FADE_MS = MOTION_MICRO_MS;
+/** Погасшая: основа — эта доля от основы свободной звезды того же sizeFactor. */
+const EXTINGUISHED_STAR_BASE_MULT = 0.5;
+/** Погасшая: мягкий ореол вокруг основы, в её диаметрах. */
+const EXTINGUISHED_STAR_HALO_MULT = 2.2;
+/** Атласное созвездие: лепестки (когда горят — в финале) светятся сильнее
+ *  обычных. +50 при свечении 90 — значение V-09 до приглушения V-25. */
+const LOCKED_ATLAS_STAR_GLOW_BONUS = 50;
 const SUPPRESSED_STAR_COLOR = [100, 128, 157];
 /** V-25: подавленная ещё мельче (было 0.6), чтобы не путаться со звездой созвездия. */
 const SUPPRESSED_STAR_SCALE = 0.4;
@@ -199,7 +216,6 @@ const STAR_COLOR_TIERS = [
 const STAR_COLOR_VALUES = STAR_COLOR_TIERS.map((t) => t.value);
 const EXTINGUISHED_STAR_CHANCE = 0.16;
 const EXTINGUISHED_STAR_COLOR = [78, 100, 124];
-const EXTINGUISHED_STAR_SCALE = 0.58;
 const STAR_SUPPRESSION_LINE_RADIUS = 104;
 const STAR_SUPPRESSION_LOCKED_RADIUS = 144;
 const LINE_COLOR = [217, 164, 65];
@@ -496,6 +512,28 @@ const TWINKLE_PERIOD_MAX_MS = 9000;
 const TWINKLE_AMP = 0.2;
 /** Atlas-collected: множитель длины лучей — чуть удлинённая «блик»-искра. */
 const SPARK_ATLAS_RAY_MULT = 1.22;
+/** V-26: лепестки звезды поля — 8 лучей: 4 длинных по осям и 4 коротких
+ *  (`STAR_PETAL_SHORT_RAY` от длинного) по диагоналям. Талия шире, чем у
+ *  4-лучевой искры (`SPARK_WAIST`), — иначе восемь лучей сливаются в ёжик.
+ *  `drawSparkleShape` (4 луча) остаётся за обсерваторией и гранями атласа. */
+const STAR_PETAL_SHORT_RAY = 0.55;
+const STAR_PETAL_WAIST = 0.2;
+/** Единичные направления: `tx/ty` — кончик луча с учётом длины, `cx/cy` —
+ *  контрольная точка вогнутой стороны перед ним (радиус талии, середина угла).
+ *  Считаются раз при загрузке — в кадре только умножение на радиус. */
+const STAR_PETAL_GEOMETRY = (() => {
+    const out = [];
+    for (let i = 0; i < 8; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 4;
+        const m = a - Math.PI / 8;
+        const len = i % 2 ? STAR_PETAL_SHORT_RAY : 1;
+        out.push({
+            tx: Math.cos(a) * len, ty: Math.sin(a) * len,
+            cx: Math.cos(m) * STAR_PETAL_WAIST, cy: Math.sin(m) * STAR_PETAL_WAIST
+        });
+    }
+    return out;
+})();
 /** Фоновые звёзды — плотные точки: минимальный экранный диаметр (px), чтобы
  *  суб-пиксельный антиалиасинг не превращал их в «полые» кольца. */
 const BG_STAR_MIN_SCREEN_DIAM = 1.6;

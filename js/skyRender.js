@@ -74,14 +74,15 @@ function applyConstellationGlowStrokeStyle(lineColor, alpha = 1) {
  * V-10: зазор между концом линии и звездой в world-юнитах. Повторяет формулу
  * baseStarDrawSize из drawVisibleStars, поэтому масштабируется зумом так же,
  * как сами звёзды (в т.ч. на отзуме, где действует пол STAR_SIZE/zoom·0.5).
- * V-25: у звезды созвездия зазор — от её собственного (уменьшенного) диаметра.
+ * V-25/V-26: у звезды созвездия зазор свой — у неё видна одна основа без
+ * лепестков, и прежний зазор оставлял бы линию висеть далеко от неё.
  * Берётся игровой `star.locked`, а не вид волны V-12: иначе конец ребра прыгал
  * бы в момент прихода волны. Без звезды (обсерватория) — прежний зазор.
  */
 function getLineStarGapWorld(star) {
     const base = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
     if (star && star.locked) {
-        return base * LOCKED_STAR_SIZE_MULTIPLIER * LOCKED_LINE_STAR_GAP_PER_DIAM;
+        return base * LOCKED_LINE_STAR_GAP_PER_DIAM;
     }
     return base * LINE_STAR_GAP_FACTOR;
 }
@@ -678,6 +679,29 @@ function drawSparkleShape(x, y, diam, rayMult) {
     endShape(CLOSE);
 }
 
+/**
+ * V-26: один слой лепестков звезды поля — 8 вогнутых лучей (4 длинных по осям,
+ * 4 коротких по диагоналям, `STAR_PETAL_GEOMETRY`). Тот же приём, что у
+ * `drawSparkleShape`: кончики — вершины, вогнутые стороны — quadratic-безье
+ * через точку на радиусе талии. Вызывающий сам делает fill(...).
+ * На минимальном зуме лучи нечитаемы — точка, как у искры.
+ */
+function drawStarPetalsShape(x, y, diam, rayMult) {
+    if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
+        circle(x, y, diam);
+        return;
+    }
+    const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1);
+    const g = STAR_PETAL_GEOMETRY;
+    beginShape();
+    vertex(x + g[0].tx * R, y + g[0].ty * R);
+    for (let i = 1; i <= 8; i++) {
+        const p = g[i % 8];
+        quadraticVertex(x + p.cx * R, y + p.cy * R, x + p.tx * R, y + p.ty * R);
+    }
+    endShape(CLOSE);
+}
+
 // V-07: состояние фидбэк-анимации соединения. Обновляется раз за кадр
 // (гейт по frameCount): до R-03 drawVisibleStars звалась по разу на копию
 // поля wrap-режима, гейт оставлен страховкой от повторного вызова за кадр.
@@ -756,14 +780,12 @@ function drawVisibleStars() {
         const isTutorialDimmed = typeof isTutorialAllowedStar === 'function' && !isTutorialAllowedStar(star.id);
         const isSuppressed = (!!star.suppressed || isTutorialDimmed) && !star.locked;
         const isExtinguished = !!star.extinguished && !star.locked;
+        // V-26: у погасшей размер задаёт своя ветка ниже (основа вдвое меньше
+        // основы свободной), у звезды созвездия размер тот же, что у свободной, —
+        // её уводит назад гашение лепестков, а не уменьшение V-25.
         let starDrawSize = baseStarDrawSize * sizeFactor;
-        if (isExtinguished) {
-            starDrawSize *= EXTINGUISHED_STAR_SCALE;
-        } else if (isSuppressed) {
+        if (isSuppressed && !isExtinguished) {
             starDrawSize *= SUPPRESSED_STAR_SCALE;
-        }
-        if (lockedVisual) {
-            starDrawSize *= LOCKED_STAR_SIZE_MULTIPLIER;
         }
         if (commitFlash > 0) {
             starDrawSize *= 1 + COMMIT_WAVE_STAR_SCALE * commitFlash;
@@ -828,38 +850,54 @@ function drawVisibleStars() {
         const coreColor = getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual);
         const glowColor = getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual);
 
-        // Погасшие — приглушённый заполненный круг (без искры и без обводки):
-        // «выгоревшая» звезда, отличается округлой формой. Гибрид по ролям.
+        // V-26: погасшая — без лепестков, основа вдвое меньше основы свободной
+        // звезды того же sizeFactor, в мягком ореоле. Вспышки и импульсы её не
+        // касаются (она не соединяется и в созвездие не входит).
         if (isExtinguished) {
+            const extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
             fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
-            circle(star.x, star.y, starDrawSize * 1.5);
+            circle(star.x, star.y, extBase * EXTINGUISHED_STAR_HALO_MULT);
             fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
-            circle(star.x, star.y, starDrawSize);
+            circle(star.x, star.y, extBase);
             continue;
         }
 
-        // K-03: спокойное дыхание вместо вспышки. Множитель яркости у всех трёх
-        // слоёв один — звезда целиком становится тише и снова разгорается.
-        // Дышат только крупные узлы; в фигуре, на подавлённой и на погасшей
-        // getStarBreathFactor вернёт 1.
+        // V-26: лепестки звезды созвездия гаснут с приходом волны и загораются
+        // в финале ночи (getStarPetalAlpha); у всех прочих горят всегда.
+        const petalAlpha = lockedVisual
+            ? (typeof getStarPetalAlpha === 'function' ? getStarPetalAlpha(star.id) : 0)
+            : 1;
+
+        // K-03: спокойное дыхание вместо вспышки. V-26: дышат только лепестки —
+        // основа держит звезду на месте. Дышат только крупные узлы; в фигуре,
+        // на подавлённой и на погасшей getStarBreathFactor вернёт 1.
         const isAtlas = !!(lockedVisual && atlasCollectedStarColors && atlasCollectedStarColors.get(star.id));
         const breath = (breathEnabled && typeof getStarBreathFactor === 'function')
             ? getStarBreathFactor(star, nowMs)
             : 1;
-        const breathAlpha = effectiveAlpha * breath;
+        const petalLayerAlpha = effectiveAlpha * breath * petalAlpha;
         const rayMult = isAtlas ? SPARK_ATLAS_RAY_MULT : 1;
 
-        // Три вложенных слоя искры: белое гало → цветное свечение → ядро.
-        const haloWhiteAlpha = lockedVisual ? LOCKED_STAR_HALO_WHITE_ALPHA : 25;
-        // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
-        fill(255, 255, 255, Math.min(255, haloWhiteAlpha * breathAlpha * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 2, rayMult);
+        // Лепестки — три вложенных слоя: белое гало → цветное свечение → ядро.
+        // Погашенные не рисуются вовсе: у звезды созвездия кадр легче, чем был.
+        if (petalLayerAlpha > 0.004) {
+            // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
+            fill(255, 255, 255, Math.min(255, 25 * petalLayerAlpha * feedbackBrighten));
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult);
 
-        fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * breathAlpha * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 1.5, rayMult);
+            fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * petalLayerAlpha * feedbackBrighten));
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult);
 
-        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * breathAlpha);
-        drawSparkleShape(star.x, star.y, starDrawSize, rayMult);
+            fill(coreColor[0], coreColor[1], coreColor[2],
+                coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * petalLayerAlpha);
+            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult);
+        }
+
+        // Основа — поверх лепестков, чуть светлее тира (у подавленной — её же
+        // приглушённый цвет). Не дышит и не гаснет вместе с лепестками.
+        const baseRgb = isSuppressed ? coreColor : blendRgb(coreColor, [255, 255, 255], STAR_BASE_WHITEN);
+        fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * effectiveAlpha);
+        circle(star.x, star.y, starDrawSize * STAR_BASE_DIAM_MULT);
     }
 }
 
@@ -879,8 +917,8 @@ function getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual) {
         // V-09: атласные звёзды светятся своим tier-цветом, как обычные locked
         // (декоративный оверрайд фигуры убран). Признак «атласности» — только
         // усиленное свечение в getStarGlowColor и удлинённые лучи.
-        // V-25: ядро звезды созвездия приглушено — вперёд выходят свободные.
-        return [tierRgb[0], tierRgb[1], tierRgb[2], LOCKED_STAR_CORE_ALPHA];
+        // V-26: приглушение V-25 снято — основа созвездия на полной яркости.
+        return [tierRgb[0], tierRgb[1], tierRgb[2], 255];
     }
     if (isExtinguished) {
         const rgb = blendRgb(tierRgb, EXTINGUISHED_STAR_COLOR, 0.72);
@@ -898,7 +936,9 @@ function getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual) {
     if (lockedVisual === undefined ? star.locked : lockedVisual) {
         // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (LOCKED_ATLAS_STAR_GLOW_BONUS).
         const isAtlas = atlasCollectedStarColors && atlasCollectedStarColors.has(star.id);
-        const glowAlpha = isAtlas ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + LOCKED_ATLAS_STAR_GLOW_BONUS) : LOCKED_STAR_GLOW_ALPHA;
+        // V-26: свечение — это слой лепестков, а они у звезды созвездия горят
+        // только в финале; там оно как у свободной (V-25 гасила его до 15).
+        const glowAlpha = isAtlas ? Math.min(255, 90 + LOCKED_ATLAS_STAR_GLOW_BONUS) : 90;
         return [tierRgb[0], tierRgb[1], tierRgb[2], glowAlpha];
     }
     if (isExtinguished) {
