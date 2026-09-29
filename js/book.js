@@ -499,6 +499,12 @@ function switchBookCut(cut) {
     if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
     closeObservatoryRenameField();
     bookCut = cut;
+    // U-45: клик идёт по DOM (кнопка высечки/строка оглавления/пейджер), не по
+    // канвасу p5 — initAudio() явно, тем же приёмом, что toggleHapticSetting/
+    // toggleMusicSetting (bookSettings.js), иначе первый в жизни игрока тап
+    // именно сюда не разбудит _interacted.
+    if (typeof initAudio === 'function') initAudio();
+    if (typeof hapticPulse === 'function') hapticPulse(HAPTIC_BOOK_TAB_MS);
     renderBook();
     syncExLibrisAppMode();
 }
