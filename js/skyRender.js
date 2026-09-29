@@ -491,15 +491,32 @@ function drawConstellationLabels() {
     // отыгрывает под нулевой альфой и к концу сцены все подписи уже на 255.
     if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return;
 
-    // V-28: на итоговом кадре (сцена уже отыграла) подписи видны мелко
-    // независимо от зума — гашение V-11 (дальний зум → ноль) сюда не доходит.
+    // V-28: на итоговом кадре (сцена уже отыграла в ЭТУ сессию) подписи видны
+    // мелко независимо от зума — гашение V-11 (дальний зум → ноль) сюда не
+    // доходит, проявление идёт плавным фейдом.
     const finaleAftermathActive = typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed();
+
+    // V-28 (круг 3): `finaleAftermath` — флаг вне сейва (живёт только в памяти
+    // вкладки), а `constellationArtRevealed` — персистентный (пишется в сейв
+    // на раскрытии). После перезагрузки страницы/возврата в выгруженную
+    // Android-вкладку ночь по-прежнему полностью раскрыта, а флаг аftermath
+    // уже false — без этой ветки подписи гасли V-11 на дальнем зуме итогового
+    // кадра НАВСЕГДА (баг с реального устройства: линии на месте, подписей
+    // нет вовсе). Раскрытая ночь — трофейный обзор в любой сессии, не только
+    // в той, где доиграла сцена: показываем сразу на полную, без фейда (его
+    // уже отыграла сессия, которая закончила ночь).
+    const nightRevealed = typeof constellationArtRevealed !== 'undefined' && constellationArtRevealed;
 
     // V-11: множитель считается один раз за кадр, до цикла по созвездиям.
     // На дальнем зуме подписей нет вовсе — выходим сразу, не перебирая небо.
-    const zoomAlpha = finaleAftermathActive
-        ? Math.max(getLabelZoomAlphaFactor(), getFinaleLabelsZoomAlpha())
-        : getLabelZoomAlphaFactor();
+    let zoomAlpha;
+    if (finaleAftermathActive) {
+        zoomAlpha = Math.max(getLabelZoomAlphaFactor(), getFinaleLabelsZoomAlpha());
+    } else if (nightRevealed) {
+        zoomAlpha = 1;
+    } else {
+        zoomAlpha = getLabelZoomAlphaFactor();
+    }
     if (zoomAlpha <= 0) return;
 
     noStroke();
