@@ -211,15 +211,21 @@ const STAR_SIZE_VARIATION_MAX = 1.15;
 /** Discrete star temperature tiers (colorValue → RGB).
  *  K-01: пять звёздных книги — Гранат, Янтарь, Медь, Опал, Лёд. Значения
  *  `value` (−100…100) НЕ меняются: по ним считаются бакеты цвета, огранка
- *  и цветовые цепочки, и правка палитры их не должна касаться. */
+ *  и цветовые цепочки, и правка палитры их не должна касаться.
+ *  M-13: тиры −50/50 (Янтарь/Опал) красят только созвездия, линии, грани и
+ *  атлас — на самих звёздах поля их с M-13 не бывает, см. STAR_FIELD_COLOR_VALUES. */
 const STAR_COLOR_TIERS = [
     { value: -100, rgb: [240, 122, 103] },  // Гранат #F07A67
     { value: -50, rgb: [242, 162, 84] },    // Янтарь #F2A254
-    { value: 0, rgb: [242, 201, 101] },     // Медь   #F2C965
+    { value: 0, rgb: [246, 220, 120] },     // Медь   #F6DC78 (M-13: было #F2C965, спутать больше не с чем)
     { value: 50, rgb: [237, 239, 245] },    // Опал   #EDEFF5
     { value: 100, rgb: [134, 200, 242] }    // Лёд    #86C8F2
 ];
 const STAR_COLOR_VALUES = STAR_COLOR_TIERS.map((t) => t.value);
+/** M-13: звёзды поля красятся только тремя крайними тирами — жёлтый и оранжевый
+ *  было не отличить. Оранжевое/белое созвездие всё ещё собираются смешением
+ *  соседних цветов (constellationColorBucket, achievements.js). */
+const STAR_FIELD_COLOR_VALUES = [-100, 0, 100];
 const EXTINGUISHED_STAR_CHANCE = 0.16;
 const EXTINGUISHED_STAR_COLOR = [78, 100, 124];
 const STAR_SUPPRESSION_LINE_RADIUS = 104;
@@ -1018,8 +1024,8 @@ const CATALOG_29_NAMES = Object.keys(CATALOG_29);
 // =============================================================================
 
 function pickRandomStarColorValue() {
-    const idx = Math.floor(random(STAR_COLOR_VALUES.length));
-    return STAR_COLOR_VALUES[idx];
+    const idx = Math.floor(random(STAR_FIELD_COLOR_VALUES.length));
+    return STAR_FIELD_COLOR_VALUES[idx];
 }
 
 function normalizeStarColorValue(value) {
