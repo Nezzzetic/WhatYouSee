@@ -1012,6 +1012,50 @@
     }
 
     /**
+     * V-29: срез подписей на текущем кадре, В ЭКРАННЫХ координатах — то, что
+     * реально видит игрок на этом зуме/пане, а не мировая раскладка. Только
+     * созвездия, у которых сейчас есть видимая подпись (та же логика, что
+     * drawConstellationLabels: в кадре и с якорем); `overlaps` — число
+     * пересекающихся пар прямоугольников.
+     */
+    function labelsState() {
+        const items = [];
+        for (const c of constellations) {
+            if (typeof isConstellationVisible === 'function' && !isConstellationVisible(c)) continue;
+            const anchor = (constellationArtRevealed && c.revealedLabelAnchor)
+                ? c.revealedLabelAnchor
+                : (c.labelAnchor || c.center);
+            if (!anchor || !c.name) continue;
+
+            const name = getConstellationDisplayName(c);
+            const sizePx = constellationArtRevealed ? REVEALED_CONSTELLATION_LABEL_SIZE : COLLECTED_ATLAS_LABEL_SIZE;
+            const worldSize = sizePx / zoomLevel;
+            const w = measureSmallCapsWidth(name, worldSize) * zoomLevel;
+            const h = sizePx;
+            items.push({
+                id: c.name,
+                name,
+                x: (anchor.x - camX) * zoomLevel,
+                y: (anchor.y - camY) * zoomLevel,
+                w, h
+            });
+        }
+
+        let overlaps = 0;
+        for (let i = 0; i < items.length; i++) {
+            for (let j = i + 1; j < items.length; j++) {
+                const a = items[i];
+                const b = items[j];
+                const overlapX = Math.abs(a.x - b.x) < (a.w + b.w) / 2;
+                const overlapY = Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+                if (overlapX && overlapY) overlaps++;
+            }
+        }
+
+        return { items, overlaps };
+    }
+
+    /**
      * O-01: срез тутора первых жестов. Отдаёт и состояние, и то, что заперто, —
      * иначе сценарий утверждал бы «шаг второй», ничего не зная про блокировку.
      *
@@ -1119,6 +1163,7 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
+        labels: labelsState,
         levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,

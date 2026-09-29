@@ -124,6 +124,16 @@ function loadGame() {
             }
         }
 
+        // V-29: старый сейв раскрытой ночи (до задачи) не несёт revealedLabelAnchor —
+        // раскладываем недостающие один раз здесь (p5 уже умеет мерить текст —
+        // грузимся из setup(), после createCanvas) и сразу сохраняем; дальше
+        // ночь живёт как обычная раскрытая, без повторного пересчёта.
+        if (constellationArtRevealed && constellations.some(c =>
+            Array.isArray(c.lines) && c.lines.length > 0 && !c.revealedLabelAnchor)) {
+            if (typeof layoutAndStoreRevealedLabels === 'function') layoutAndStoreRevealedLabels();
+            saveGame();
+        }
+
         recomputeAtlasCollectedStarColors();
         recomputeSuppressedStars();
         // O-11: загруженное поле — свой состав соединимых звёзд, старый кеш не годится.

@@ -44,6 +44,45 @@ function clampZoomToField() {
 }
 
 /**
+ * V-29: размеры ПОЛНОЭКРАННОГО неба для раскладки подписей раскрытой ночи —
+ * не текущего канваса. Раскрытие может случиться, пока холст вклеен в рамку
+ * Ex Libris (K-13, меньше экрана): раскладка вслепую по этому размеру была бы
+ * теснее, чем реально увидит игрок, открыв небо целиком. `#app` всегда
+ * 100vw×100vh независимо от встраивания — оно двигает только `#canvas-container`
+ * внутри него (sketch.js). Резерв под лентой — последний ненулевой замер
+ * `lastBottomInset` (sketch.js), тот же, что держит getBottomUIHeight() для
+ * полноэкранного вида.
+ */
+function getFinaleLayoutFullScreenSize() {
+    const app = typeof document !== 'undefined' ? document.getElementById('app') : null;
+    const w = Math.max(app ? app.clientWidth : width, 1);
+    const h = Math.max(app ? app.clientHeight : height, 1);
+    const bottomInset = typeof lastBottomInset === 'number' ? lastBottomInset : 0;
+    return { w, h: Math.max(h - bottomInset, 1) };
+}
+
+/** V-29: мин-зум полноэкранного неба — см. getFinaleLayoutFullScreenSize(). */
+function getFinaleLayoutMinZoom() {
+    const { w, h } = getFinaleLayoutFullScreenSize();
+    return Math.min(w / FIELD_WIDTH, h / FIELD_HEIGHT);
+}
+
+/**
+ * V-29: видимый мировой прямоугольник на этом мин-зуме — включает
+ * letterbox-полосы (V-24), в которые тоже можно ставить подписи. Та же
+ * формула центрирования, что clampCamera(), просто без обращения к текущим
+ * camX/camY/zoomLevel.
+ */
+function getFinaleLayoutVisibleRect(minZoom) {
+    const { w, h } = getFinaleLayoutFullScreenSize();
+    const viewW = w / minZoom;
+    const viewH = h / minZoom;
+    const left = (FIELD_WIDTH - viewW) / 2;
+    const top = (FIELD_HEIGHT - viewH) / 2;
+    return { left, top, right: left + viewW, bottom: top + viewH };
+}
+
+/**
  * D-01/U-05: зум с якорем — мировая точка под экранной (sx, sy) остаётся на месте.
  * Общая логика для колеса мыши, кнопок «+»/«−» и pinch.
  */
