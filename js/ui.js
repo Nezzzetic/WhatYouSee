@@ -538,7 +538,10 @@ const ATLAS_FACET_GLYPH_COLORS = {
 const PAPER_STAR_INK = {
     '240,122,103': [184, 67, 47],    // гранат
     '242,162,84': [165, 88, 26],     // янтарь
-    '242,201,101': [134, 102, 26],   // медь
+    // V-27: hue сдвинут ~42.5° → ~55° — было [134,102,26], читалось оливково-
+    // коричневым, а не жёлтым; контраст к бумаге тот же порядок (было 4.15:1,
+    // стало ≈4.37:1).
+    '242,201,101': [247, 202, 24],   // медь
     '237,239,245': [252, 250, 243],  // опал (V-23: светлая заливка — читается только с каймой PAPER_OPAL_EDGE_RGB)
     '134,200,242': [47, 127, 181],   // лёд
     '255,211,92': [154, 106, 26]     // золото полной огранки (ATLAS_FACETED_COLOR)
@@ -586,13 +589,22 @@ function isPaperOpalInk(rgb) {
     return rgb[0] === opal[0] && rgb[1] === opal[1] && rgb[2] === opal[2];
 }
 
+/** V-27: чернила бумаги — яркая жёлтая медь (та же причина, что у опала —
+ *  буквами этого тона на светлой бумаге не прочесть, см. PAPER_COPPER_EDGE_RGB). */
+function isPaperCopperInk(rgb) {
+    const copper = PAPER_STAR_INK['242,201,101'];
+    return rgb[0] === copper[0] && rgb[1] === copper[1] && rgb[2] === copper[2];
+}
+
 /**
  * V-23: цвет ТЕКСТА на бумаге — светлый опал буквами не прочесть, поэтому
  * в подписи он заменён каймой (тёмной); остальные чернила как у глифа.
+ * V-27: яркая медь по той же причине заменена своей каймой.
  */
 function paperInkTextColor(color) {
     const ink = paperInkGlyphColor(color);
-    const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB : rgb);
+    const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB
+        : isPaperCopperInk(rgb) ? PAPER_COPPER_EDGE_RGB : rgb);
     return Array.isArray(ink[0]) ? ink.map(fix) : fix(ink);
 }
 
