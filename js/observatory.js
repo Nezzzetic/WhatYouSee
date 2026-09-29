@@ -748,13 +748,20 @@ function getObservatoryStarAt(fieldX, fieldY) {
     return best;
 }
 
-/** Следующий цвет по кругу из STAR_COLOR_TIERS (красный→…→голубой→красный). */
+/** Следующий цвет по кругу из STAR_FIELD_COLOR_VALUES (красный→жёлтый→синий→красный).
+ *  M-13: старые звёзды холста могут стоять на -50/50 (оранжевый/белый, до сужения
+ *  палитры звёзд до трёх цветов) — первый тап переводит их на соседний из трёх
+ *  (-50 → 0, 50 → 100) вместо цикла с нуля. */
 function cycleObservatoryStarColor(star) {
     if (!star) return;
-    const values = STAR_COLOR_VALUES;
-    let index = values.indexOf(normalizeStarColorValue(star.colorValue));
-    if (index < 0) index = values.indexOf(0);
-    star.colorValue = values[(index + 1) % values.length];
+    const values = STAR_FIELD_COLOR_VALUES;
+    const current = normalizeStarColorValue(star.colorValue);
+    const index = values.indexOf(current);
+    if (index < 0) {
+        star.colorValue = current < 0 ? values[1] : values[2];
+    } else {
+        star.colorValue = values[(index + 1) % values.length];
+    }
     scheduleObservatorySave();
 }
 
