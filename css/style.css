@@ -148,7 +148,7 @@
        это один и тот же цвет — на канвасе и в интерфейсе. */
     --star-garnet: #F07A67;
     --star-amber: #F2A254;
-    --star-copper: #F2C965;
+    --star-copper: #F6DC78;  /* M-13: было #F2C965 — спутать с оранжевым больше не с чем */
     --star-opal: #EDEFF5;
     --star-ice: #86C8F2;
 
@@ -164,7 +164,7 @@
     --gold-deep-rgb: 122, 90, 32;
     --star-garnet-rgb: 240, 122, 103;
     --star-amber-rgb: 242, 162, 84;
-    --star-copper-rgb: 242, 201, 101;
+    --star-copper-rgb: 246, 220, 120;
     --star-opal-rgb: 237, 239, 245;
     --star-ice-rgb: 134, 200, 242;
 
