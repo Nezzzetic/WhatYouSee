@@ -537,7 +537,9 @@ const ATLAS_FACET_GLYPH_COLORS = {
  */
 const PAPER_STAR_INK = {
     '240,122,103': [184, 67, 47],    // гранат
-    '242,162,84': [165, 88, 26],     // янтарь
+    // V-30: было [165,88,26] — тёмный оранжевый читался коричневым; яркая
+    // заливка, контраст несёт кайма (тот же приём, что у меди V-27).
+    '242,162,84': [240, 138, 28],    // янтарь
     // V-27: hue сдвинут ~42.5° → ~55° — было [134,102,26], читалось оливково-
     // коричневым, а не жёлтым; контраст к бумаге тот же порядок (было 4.15:1,
     // стало ≈4.37:1). M-13 перекрасила саму звезду неба #F2C965 → #F6DC78 —
@@ -597,15 +599,22 @@ function isPaperCopperInk(rgb) {
     return rgb[0] === copper[0] && rgb[1] === copper[1] && rgb[2] === copper[2];
 }
 
+/** V-30: чернила бумаги — яркий оранжевый янтарь (та же причина, что у меди). */
+function isPaperAmberInk(rgb) {
+    const amber = PAPER_STAR_INK['242,162,84'];
+    return rgb[0] === amber[0] && rgb[1] === amber[1] && rgb[2] === amber[2];
+}
+
 /**
  * V-23: цвет ТЕКСТА на бумаге — светлый опал буквами не прочесть, поэтому
  * в подписи он заменён каймой (тёмной); остальные чернила как у глифа.
- * V-27: яркая медь по той же причине заменена своей каймой.
+ * V-27: яркая медь по той же причине заменена своей каймой; V-30 — янтарь.
  */
 function paperInkTextColor(color) {
     const ink = paperInkGlyphColor(color);
     const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB
-        : isPaperCopperInk(rgb) ? PAPER_COPPER_EDGE_RGB : rgb);
+        : isPaperCopperInk(rgb) ? PAPER_COPPER_EDGE_RGB
+        : isPaperAmberInk(rgb) ? PAPER_AMBER_EDGE_RGB : rgb);
     return Array.isArray(ink[0]) ? ink.map(fix) : fix(ink);
 }
 
