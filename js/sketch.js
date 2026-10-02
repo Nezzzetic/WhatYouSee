@@ -385,6 +385,7 @@ function setup() {
         devControls.hidden = false;
     }
     setupDevToggleButton();
+    updateDevSkyNumber();
     // O-01: действия, меняющие небо, закрывают панель за собой — иначе она
     // стоит поверх того, ради чего её нажали (тьюторный кадр она закрывала целиком).
     resetBtn?.addEventListener("click", () => { hideDevControls(); onResetSky(); });
@@ -489,6 +490,12 @@ function hideDevControls() {
     if (el) el.hidden = true;
 }
 
+/** M-14: служебная строка «Небо №N» — номер неба эффективной даты. */
+function updateDevSkyNumber() {
+    const el = document.getElementById("devSkyNumber");
+    if (el) el.textContent = `Небо №${getSkyNumber(getEffectiveSkyDateInt())}`;
+}
+
 /** Невидимая кнопка в левом верхнем углу: тройной быстрый тап — показать/скрыть панель. */
 function setupDevToggleButton() {
     const btn = document.getElementById("devToggleBtn");
@@ -565,6 +572,7 @@ function startNewDailySky(options) {
     clearSave();
 
     regenerateFieldStarsAfterReset();
+    updateDevSkyNumber();
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
@@ -756,6 +764,7 @@ function performFullReset(options) {
     if (typeof grantObservatoryStarsDue === 'function') grantObservatoryStarsDue();
 
     regenerateFieldStarsAfterReset();
+    updateDevSkyNumber();
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();

@@ -128,9 +128,36 @@
     // RESET
     // =========================================================================
 
+    const TEST_SKY_SALT_KEY = 'starsReborn_testSkySalt';
+
+    // M-14: шов соли неба для field.js (getSkySeedString). Глобал существует
+    // только под `?test=1` — у игрока соли нет физически.
+    window.getTestSkySeedSalt = function () {
+        try {
+            return localStorage.getItem(TEST_SKY_SALT_KEY);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    function setTestSkySeedSalt(salt) {
+        try {
+            if (salt === null) localStorage.removeItem(TEST_SKY_SALT_KEY);
+            else localStorage.setItem(TEST_SKY_SALT_KEY, salt);
+        } catch (e) { /* ignore */ }
+    }
+
+    function setPlayerIdForTest(id) {
+        playerId = id;
+        try {
+            localStorage.setItem('starsReborn_playerId', playerId);
+        } catch (e) { /* ignore */ }
+    }
+
     /**
-     * @param {{seed?, date?, picture?, pages?, skipOnboarding?}} [options]
-     *   seed           — подменяет playerId (раскладка поля, воскресная картинка, цели);
+     * @param {{seed?, playerId?, date?, picture?, pages?, skipOnboarding?}} [options]
+     *   seed           — подменяет playerId и солит сид неба (раскладка как до M-14);
+     *   playerId       — только подменяет playerId, соль снимает: небо общее (M-14);
      *   date           — эффективная дата неба (число 20260802 или '2026-08-02');
      *   picture        — id поля-картинки (перебивает обычную генерацию), null снимает;
      *   pages          — сколько первых страниц атласа открыть бесплатно (по умолчанию 0,
@@ -144,11 +171,16 @@
     function reset(options) {
         const o = options || {};
 
+        // M-14: `seed` — и подмена playerId, и соль неба (строка сида `${seed}:${дата}`,
+        // как до общего неба, — раскладки сценариев не едут); `playerId` — только
+        // подмена игрока, соль снимает. Без обоих — всё как было (соль, как и
+        // playerId раньше, живёт в localStorage и переживает перезагрузку).
         if (o.seed !== undefined && o.seed !== null) {
-            playerId = String(o.seed);
-            try {
-                localStorage.setItem('starsReborn_playerId', playerId);
-            } catch (e) { /* ignore */ }
+            setPlayerIdForTest(String(o.seed));
+            setTestSkySeedSalt(String(o.seed));
+        } else if (o.playerId !== undefined && o.playerId !== null) {
+            setPlayerIdForTest(String(o.playerId));
+            setTestSkySeedSalt(null);
         }
 
         setTestSkyDateOverride(parseDateInput(o.date));
@@ -472,6 +504,8 @@
             level: getPlayerLevel(),
             fieldScore: typeof getFieldScore === 'function' ? getFieldScore() : 0,
             skyDate: getEffectiveSkyDateInt(),
+            // M-14: номер неба эффективной даты
+            skyNumber: getSkyNumber(getEffectiveSkyDateInt()),
             playerId,
             // O-02: реально загруженная картинка (оверрайд/воскресенье/первые
             // ночи), а не только ручной оверрайд, как было раньше.

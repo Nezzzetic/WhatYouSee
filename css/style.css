@@ -263,6 +263,12 @@ body {
     text-align: left;
 }
 
+/* M-14: служебная строка «Небо №N» */
+.dev-sky-number {
+    color: var(--ink-faint);
+    font-size: 12px;
+}
+
 /* D-01: кнопки зума в dev-панели */
 .dev-zoom-row {
     display: flex;

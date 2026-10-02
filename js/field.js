@@ -73,7 +73,7 @@ function nearestHorizontalCopy(px, py, targetX, targetY) {
 }
 
 // =============================================================================
-// DAILY SKY (персональный seed: playerId + эффективная дата)
+// DAILY SKY (общий seed: эффективная дата, M-14)
 // =============================================================================
 
 function hashStringToSeed(str) {
@@ -125,14 +125,62 @@ function getEffectiveSkyDateInt() {
     return addDaysToSkyDateInt(getLocalCalendarSkyDateInt(), offset);
 }
 
-function getPersonalDailySeed() {
-    ensurePlayerId();
-    return hashStringToSeed(`${playerId}:${getEffectiveSkyDateInt()}`);
+// M-14: сид неба без игрока — в одну эффективную дату у всех одно поле.
+// Тестовый харнесс может подмешать соль (`reset({seed})`): тогда строка сида
+// побайтно прежняя `${соль}:${дата}`, и раскладки старых сценариев не едут.
+// Вне `?test=1` getTestSkySeedSalt не определена — соли нет никогда.
+function getSkySeedString(dateInt) {
+    const salt = typeof getTestSkySeedSalt === 'function' ? getTestSkySeedSalt() : null;
+    return salt !== null && salt !== undefined ? `${salt}:${dateInt}` : `sky:${dateInt}`;
+}
+
+function getSharedDailySeed() {
+    return hashStringToSeed(getSkySeedString(getEffectiveSkyDateInt()));
 }
 
 /** Вызывать сразу перед generateStars / generateBackgroundStars (p5 random). */
 function seedSkyRandomForToday() {
-    randomSeed(getPersonalDailySeed());
+    randomSeed(getSharedDailySeed());
+}
+
+// --- M-14: расписание неба -------------------------------------------------
+// Что за небо в эту дату — для всех одинаково. Порядок: календарь (ручные
+// назначения на даты) → правила (воскресенье → картинка недели) → по умолчанию
+// процедурное поле. Ручной override (dev/URL) и первые ночи (O-02) стоят выше
+// и сюда не доходят. ⚠ Генератор меняется только с даты: новая версия —
+// `gen: 'v2'` с ближайшего понедельника, прошлые даты остаются на `v1`.
+
+/** Ручные назначения: { 20261225: { picture: 'tree' } }. В v0 пуст. */
+const SKY_CALENDAR = {};
+
+function getSkySourceForDate(dateInt) {
+    const entry = SKY_CALENDAR[dateInt];
+    if (entry && entry.picture) {
+        if (typeof getPictureFieldById === 'function' && getPictureFieldById(entry.picture)) {
+            return { kind: 'picture', id: entry.picture };
+        }
+        // Без засеянной картинки generatePictureField откатился бы на generateStars()
+        // мимо общего сида — небо перестало бы быть общим. Запись пропускаем.
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[sky] SKY_CALENDAR: нет картинки', entry.picture, 'на', dateInt, '— запись пропущена');
+        }
+    }
+    const scheduledId = getScheduledPictureFieldId(dateInt);
+    if (scheduledId) return { kind: 'picture', id: scheduledId };
+    return { kind: 'procedural', gen: 'v1' };
+}
+
+/** Номер неба: дни от SKY_NUMBER_EPOCH_DATE_INT + 1 (до точки отсчёта — ≤ 0). */
+function getSkyNumber(dateInt) {
+    return skyDateIntToUtcDay(dateInt) - skyDateIntToUtcDay(SKY_NUMBER_EPOCH_DATE_INT) + 1;
+}
+
+/** Дата YYYYMMDD → номер суток календарём UTC (без локальных переводов часов). */
+function skyDateIntToUtcDay(dateInt) {
+    const y = Math.floor(dateInt / 10000);
+    const m = Math.floor((dateInt % 10000) / 100);
+    const d = dateInt % 100;
+    return Math.round(Date.UTC(y, m - 1, d) / 86400000);
 }
 
 function generateDailyField() {
@@ -149,14 +197,18 @@ function generateDailyField() {
         return;
     }
 
-    // C-02: штатный воскресный показ (если нет ручного override — он выше по коду).
-    const scheduledId = getScheduledPictureFieldId();
-    if (scheduledId) {
-        generatePictureField(scheduledId);
+    // M-14: источник неба — только из расписания (календарь → воскресенье →
+    // процедурное). Ручной override стоит выше по коду, в точках генерации.
+    const source = getSkySourceForDate(getEffectiveSkyDateInt());
+    if (source.kind === 'picture') {
+        // M-14: засеваем и картинку — позиции из пресета общие и так, а размеры,
+        // задержки появления и пыль без сида были бы у каждого свои.
+        seedSkyRandomForToday();
+        generatePictureField(source.id);
         assignStarAppearDelays();
         generateBackgroundStars();
         if (typeof console !== 'undefined' && console.info) {
-            console.info('[picture] Воскресная картинка:', scheduledId);
+            console.info('[picture] Картинка по расписанию:', source.id);
         }
         return;
     }
@@ -293,30 +345,27 @@ function generatePictureField(pictureId) {
 }
 
 // --- Штатный воскресный показ --------------------------------------------
-// Каждое воскресенье процедурное поле заменяется случайной силуэтной картинкой.
-// Выбор детерминирован по (playerId + воскресная дата), поэтому ресет/перезаход
-// в тот же день дают ту же картинку. Ручной override (dev/URL) перебивает это
+// Каждое воскресенье процедурное поле заменяется силуэтной картинкой.
+// M-14: одна на всех — пул идёт по кругу по номеру недели, все картинки по разу
+// за цикл. Порядок и состав PICTURE_FIELD_IDS — тоже часть расписания: их смена
+// сдвигает будущие воскресенья у всех. Ручной override (dev/URL) перебивает это
 // выше по коду (см. shouldLoadPictureField в точках генерации).
 
 const PICTURE_SUNDAY_ENABLED = true;
 
-/** День недели эффективного неба: 0 = воскресенье. */
-function getSkyWeekdayFromEffectiveDate() {
-    const dateInt = getEffectiveSkyDateInt();
-    const y = Math.floor(dateInt / 10000);
-    const m = Math.floor((dateInt % 10000) / 100);
-    const d = dateInt % 100;
-    return new Date(y, m - 1, d).getDay();
+/** Номер недели даты: соседние воскресенья — соседние целые, пояс и DST не влияют. */
+function getSkyWeekIndex(dateInt) {
+    return Math.floor(skyDateIntToUtcDay(dateInt) / 7);
 }
 
 /** id картинки для штатного показа (только по воскресеньям) или null. */
-function getScheduledPictureFieldId() {
+function getScheduledPictureFieldId(dateInt) {
     if (!PICTURE_SUNDAY_ENABLED) return null;
+    if (dateInt === undefined) dateInt = getEffectiveSkyDateInt();
     if (typeof PICTURE_FIELD_IDS === 'undefined' || !Array.isArray(PICTURE_FIELD_IDS) || PICTURE_FIELD_IDS.length === 0) return null;
-    if (getSkyWeekdayFromEffectiveDate() !== 0) return null;
-    const seed = hashStringToSeed(`${ensurePlayerId()}:${getEffectiveSkyDateInt()}:picture`);
-    const idx = seed % PICTURE_FIELD_IDS.length;
-    return PICTURE_FIELD_IDS[idx];
+    const utcDay = skyDateIntToUtcDay(dateInt);
+    if (new Date(utcDay * 86400000).getUTCDay() !== 0) return null;
+    return PICTURE_FIELD_IDS[getSkyWeekIndex(dateInt) % PICTURE_FIELD_IDS.length];
 }
 
 // --- O-02: фиксированные поля первых двух ночей -------------------------
