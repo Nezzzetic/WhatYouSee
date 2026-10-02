@@ -475,6 +475,7 @@ function loadProgression() {
         if (!raw) {
             if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(null);
             if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+            if (typeof ensureFirstSkyDate === 'function') ensureFirstSkyDate(); // S-06
             // B-04: глава I стоит 0 ✦ намеренно — игрок без единого ✦ обязан
             // увидеть её открытой сразу, а не после первого начисления.
             maybeAutoUnlockAtlasPages();
@@ -524,6 +525,7 @@ function loadProgression() {
             && consumeAchievementsFullResetFlag()) {
             resetProgressionForFullReset();
             if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+            if (typeof ensureFirstSkyDate === 'function') ensureFirstSkyDate(); // S-06
             saveProgression();
             return true;
         }
@@ -539,6 +541,9 @@ function loadProgression() {
         // зависит getEffectiveSkyDateInt(). Игрок, не заходивший неделю, получает
         // свежую пару квестов; зашедший второй раз за вечер — свои забранные.
         if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+        // S-06: сейв до календаря — первый день = день первого запуска новой
+        // версии; пишем сразу, иначе до первого сохранения дата могла бы уйти.
+        if (typeof ensureFirstSkyDate === 'function' && ensureFirstSkyDate()) saveProgression();
 
         // S-01: если накопленных ✦ уже хватает — страница открывается сразу
         maybeAutoUnlockAtlasPages();

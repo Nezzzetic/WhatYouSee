@@ -228,6 +228,8 @@ en: {
     'book.cutIndex': 'Index',
     'book.cutAtlas': 'Atlas',
     'book.cutStamps': 'Stamps',
+    // S-06: шестая высечка; месяцы и дни недели — Intl, не словарь.
+    'book.cutCalendar': 'Calendar',
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
@@ -244,6 +246,7 @@ en: {
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
     // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
     'book.eyebrowExLibris': 'EX LIBRIS',
+    'book.eyebrowCalendar': 'CALENDAR',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
     // подставляется на вызове, отдельного ключа под него не заводим.
@@ -569,6 +572,7 @@ ru: {
     'book.cutIndex': 'Оглавление',
     'book.cutAtlas': 'Атлас',
     'book.cutStamps': 'Штампы',
+    'book.cutCalendar': 'Календарь',
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
@@ -580,6 +584,7 @@ ru: {
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
+    'book.eyebrowCalendar': 'КАЛЕНДАРЬ',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.

@@ -13,10 +13,11 @@
 // Свайп же на краю раздела не останавливается, а переводит в соседнюю
 // высечку (swipeBookPage) — сквозная последовательность страниц всей книги.
 
-// K-14: 'settings' — валидная цель openBook/switchBookCut, но не шестая
-// высечка — вход только строкой из «Index» (решение заказчика 2026-08-25:
-// высечек пять, см. K-06). Своей кнопки в #bookTabs у неё нет и не будет.
-const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'exlibris', 'settings'];
+// K-14: 'settings' — валидная цель openBook/switchBookCut, но не высечка —
+// вход только строкой из «Index». Своей кнопки в #bookTabs у неё нет и не будет.
+// S-06: шестая высечка «Calendar» — между Stamps и Ex Libris (отменила «высечек
+// пять» K-06/K-14).
+const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'calendar', 'exlibris', 'settings'];
 
 let bookCut = 'today';
 let bookOpen = false;
@@ -71,8 +72,13 @@ function getStampsChapterFolio(idx) {
     return 3 + ATLAS_PAGE_COUNT + (idx - 1);
 }
 
-function getExLibrisFolio() {
+/** S-06: календарь встал на колонцифру, которую держал Ex Libris. */
+function getCalendarFolio() {
     return 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
+}
+
+function getExLibrisFolio() {
+    return getCalendarFolio() + 1;
 }
 
 /** K-14: настройки — последняя колонцифра книги, строкой после Ex Libris. */
@@ -164,6 +170,11 @@ function renderBookHead() {
         folioN = getStampsChapterFolio(idx);
         // O-08: «N of M pressed» снято — подвал падает на бренд ALMANAC, как
         // на остальных страницах книги. Счёт главы остался в оглавлении (K-19).
+    } else if (bookCut === 'calendar') {
+        // S-06: титул — месяц с годом по дате неба, колонтитул — CALENDAR.
+        eyebrow = t('book.eyebrowCalendar');
+        title = getCalendarPageTitle();
+        folioN = getCalendarFolio();
     } else if (bookCut === 'exlibris') {
         eyebrow = t('book.eyebrowExLibris');
         title = t('book.headExLibris');
@@ -333,7 +344,7 @@ function stepBookPage(delta) {
  * «Index»/«Ex Libris») — переходит в соседнюю высечку по порядку
  * BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли, чтобы
  * номера страниц шли подряд по всей книге. «Settings» в эту цепочку не входит
- * (K-14, решение заказчика — высечек пять); край книги (до «Today», после
+ * (K-14); S-06 вставила «Calendar» между Stamps и Ex Libris; край книги (до «Today», после
  * «Ex Libris») жест молчит, без зацикливания.
  */
 function swipeBookPage(delta) {
@@ -377,6 +388,7 @@ function renderBook() {
         index: document.getElementById('bookIndex'),
         atlas: document.getElementById('bookAtlasSection'),
         stamps: document.getElementById('bookStampsSection'),
+        calendar: document.getElementById('bookCalendarSection'),
         exlibris: document.getElementById('bookExLibris'),
         settings: document.getElementById('bookSettingsSection')
     };
@@ -397,6 +409,8 @@ function renderBook() {
         renderAtlasList();
     } else if (bookCut === 'stamps') {
         renderAchievementsList();
+    } else if (bookCut === 'calendar') {
+        renderBookCalendar();
     } else if (bookCut === 'exlibris') {
         renderBookExLibris();
     } else if (bookCut === 'settings') {

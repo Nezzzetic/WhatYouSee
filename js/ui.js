@@ -249,7 +249,7 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все двадцать пять имён кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все двадцать семь имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
     'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'crown', 'arc', 'lock',
@@ -259,7 +259,9 @@ const GLYPH_SIGNS = [
     // своим цветом вместо цвета строки (то же исключение, что раньше держал
     // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css);
     // «stars» на книжной стороне сменил «nightstar» по фидбегу с устройства.
-    'book', 'stars'
+    'book', 'stars',
+    // S-06: вход в календарь — статус строки оглавления (как crescent у Ex Libris)
+    'calendar'
 ];
 
 /**
