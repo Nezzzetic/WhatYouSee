@@ -86,7 +86,7 @@ function createAtlasEntryCard(entry) {
     });
 
     if (faceted) {
-        const crown = glyphSign('corona', 16, 'atlas-card-crown');
+        const crown = glyphSign('crown', 16, 'atlas-card-crown');
         card.appendChild(crown);
     }
 
