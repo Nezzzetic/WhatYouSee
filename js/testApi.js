@@ -540,6 +540,8 @@
             observatory: observatoryState(),
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.
             bookmarkedShape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
+            // S-06: первый день игрока — начало сетки календаря (0 = не задан).
+            firstSkyDate: typeof getFirstSkyDate === 'function' ? getFirstSkyDate() : 0,
             // L-01: язык рядом с версиями сейва — сценарий должен видеть, в какой
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
@@ -1187,6 +1189,20 @@
         return { active: getActiveSkySlotId(), ids, bytes };
     }
 
+    /**
+     * S-06: модель страницы «Календарь» — та же, из которой строится DOM:
+     * месяц, первый день игрока, клетки (state/day/date/slot/selected), активный
+     * слот S-05. Без DOM — сценарий сверяет её с разметкой сам.
+     */
+    function calendar() {
+        const model = getCalendarModel();
+        return Object.assign({}, model, {
+            activeSlot: getActiveSkySlotId(),
+            todaySlot: getTodaySkySlotId(),
+            cells: model.cells.map(c => Object.assign({}, c))
+        });
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -1221,6 +1237,7 @@
         proof: proofState,
         tutorial: tutorialState,
         skySlots,
+        calendar,
         setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },

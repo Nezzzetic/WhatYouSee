@@ -1401,7 +1401,7 @@ button:disabled {
     transition: opacity 240ms var(--ease);
 }
 
-/* --- пять высечек: сквозные, стопкой у правого края снизу, под большим
+/* --- шесть высечек (S-06; было пять): сквозные, стопкой у правого края снизу, под большим
    пальцем правой руки. Подписаны словами — решение концепта (спорный вопрос 4):
    на маленьком экране знак читался бы быстрее, но вкладка со знаком перестаёт
    быть книжной высечкой и становится панелью приложения. --- */
@@ -1413,12 +1413,16 @@ button:disabled {
 .book-tabs {
     position: absolute;
     right: 2px;
-    bottom: calc(var(--safe-bottom) + 90px);
+    /* S-06: шесть высечек на 320×568 — стопка опущена (90 → 40 px) и зазор
+       поджат (5 → 4 px): по-английски 5 × 72 + 75 + 5 × 4 = 455 px, по-русски
+       (слова длиннее) ≈ 486 px — верх стопки остаётся ниже полосы неба; кегль
+       прежний. */
+    bottom: calc(var(--safe-bottom) + 40px);
     width: var(--book-tab-w);
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 5px;
+    gap: 4px;
 }
 
 /* U-34 (фидбек с телефона): слово у всех пяти высечек прижато к одному краю —
@@ -1430,10 +1434,13 @@ button:disabled {
     flex: none;
     width: var(--book-tab-w);
     /* 62 → 72: отступ 8 + «EX LIBRIS» (самое длинное слово) или «STAMPS» + ✦
-       должны влезать целиком, без переноса и без упора в свободный конец. */
-    height: 72px;
+       должны влезать целиком, без переноса и без упора в свободный конец.
+       S-06: 72 — нижняя граница, а не жёсткая высота: «CALENDAR» и русские
+       слова длиннее, высечка дорастает под своё слово, а не режет его. */
+    min-height: 72px;
     padding: 0;
     padding-inline-start: 8px;
+    padding-inline-end: 2px;
     white-space: nowrap;
     display: flex;
     align-items: center;
@@ -1479,6 +1486,14 @@ button:disabled {
 .book-tab[data-cut="index"] { --tab-bg: #D9CFE6; }
 .book-tab[data-cut="atlas"] { --tab-bg: #CFE0CF; }
 .book-tab[data-cut="stamps"] { --tab-bg: #E9C77E; }
+/* S-06: русские подписи длиннее английских («ОГЛАВЛЕНИЕ», «ЭКСЛИБРИС»,
+   «КАЛЕНДАРЬ») — разрядка плотнее, чтобы шесть высечек влезли на 320×568
+   целиком; английский вид высечек прежний. */
+html[lang="ru"] .book-tab {
+    letter-spacing: 0.1em;
+}
+
+.book-tab[data-cut="calendar"] { --tab-bg: #C4DDD8; } /* S-06: шестая — бирюзовая пастель */
 .book-tab[data-cut="exlibris"] { --tab-bg: #E6CFC6; }
 
 .book-tab-on {
@@ -2576,3 +2591,77 @@ body.book-opening .book-close-ribbon {
         animation: none;
     }
 }
+
+/* --- S-06: страница «Календарь» — сетка месяца по дате неба ----------------
+   Семь столбцов с понедельника, клетка — квадрат по ширине столбца (на 320 px
+   ≈ 34 px). Сегодня — полужирное число чернилами и живая кнопка; выбранное
+   небо — золотое кольцо (в S-07 они разойдутся); прошлое — бледное число и
+   знак замка, ни курсора, ни ховера; пустые места сетки — ничего. */
+
+.book-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 4px 1px;
+    max-width: 360px;
+    margin: 4px auto 0;
+}
+
+.book-cal-wd {
+    padding-bottom: 4px;
+    text-align: center;
+    font-family: var(--font-text);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.book-cal-cell {
+    position: relative;
+    aspect-ratio: 1;
+    min-height: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    font-family: var(--font-text);
+    font-size: 15px;
+    line-height: 1;
+    color: var(--ink);
+    cursor: default;
+}
+
+.book-cal-num {
+    font-variant-numeric: lining-nums tabular-nums;
+}
+
+.book-cal-today {
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .book-cal-today:hover {
+        background: rgba(var(--ink-rgb), 0.06);
+    }
+}
+
+.book-cal-cell[data-selected="true"] {
+    box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.book-cal-past {
+    color: rgba(var(--ink-rgb), 0.42);
+    font-size: 13px;
+}
+
+.book-cal-past .book-cal-lock {
+    color: rgba(var(--ink-rgb), 0.42);
+}
+

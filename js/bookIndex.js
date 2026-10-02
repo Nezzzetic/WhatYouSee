@@ -1,5 +1,5 @@
 // bookIndex.js — оглавление книги K-10/K-19 (R-05), U-41 дала Ex Libris и
-// Настройкам собственные заголовки категорий.
+// Настройкам собственные заголовки категорий, S-06 — категория Calendar.
 
 /** K-19: строка оглавления — «Ch. <римская> · <имя>», одна форма для атласа и штампов. */
 function formatChapterIndexTitle(chapterNo, name) {
@@ -154,6 +154,19 @@ function renderBookIndex() {
         stampsSec.appendChild(row);
     }
     el.appendChild(stampsSec);
+
+    // S-06: категория календаря — одна строка-вход, в статусе знак `calendar`
+    // (как `crescent` у Ex Libris); условия открытия у страницы нет.
+    const calSec = document.createElement('div');
+    calSec.className = 'book-index-sec';
+    const calTitle = document.createElement('div');
+    calTitle.className = 'book-index-sec-title';
+    calTitle.textContent = t('book.cutCalendar');
+    calSec.appendChild(calTitle);
+    const calRow = createBookIndexRow(t('book.cutCalendar'), getCalendarFolio(), '', { countSign: 'calendar' });
+    calRow.addEventListener('click', () => switchBookCut('calendar'));
+    calSec.appendChild(calRow);
+    el.appendChild(calSec);
 
     const exSec = document.createElement('div');
     exSec.className = 'book-index-sec';

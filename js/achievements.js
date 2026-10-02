@@ -398,6 +398,10 @@ function makeDefaultAchievementCounters() {
         // не получает никогда, GDD). Флаг аддитивный, дефолт false, версия
         // сейва НЕ поднимается — тем же приёмом, что tutorial.done (O-01).
         bookFirstOpenDone: false,
+        // S-06: первый день игрока для календаря (dateInt эффективных суток,
+        // 0 = не задан). Пишется один раз — ensureFirstSkyDate() — и дальше не
+        // перезаписывается. Аддитивное поле, версия сейва НЕ поднимается (U-21).
+        firstSkyDate: 0,
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
@@ -548,6 +552,24 @@ function ensureDailyQuestsForToday() {
     achievementCounters.daily = makeDefaultDailyQuestState();
     achievementCounters.daily.date = today;
     return true;
+}
+
+/**
+ * S-06: первый день игрока — с него начинается сетка календаря. Ставится
+ * эффективной датой неба (M-09), только если поля ещё нет: смена суток,
+ * перезагрузка и даже дата, ушедшая назад, его не переписывают. Зовётся с тех
+ * же путей загрузки/вайпа, что и сутки квестов (loadProgression, performFullReset).
+ * @returns {boolean} поле только что поставлено (сейв прогрессии надо записать)
+ */
+function ensureFirstSkyDate() {
+    if (!achievementCounters || achievementCounters.firstSkyDate > 0) return false;
+    if (typeof getEffectiveSkyDateInt !== 'function') return false;
+    achievementCounters.firstSkyDate = getEffectiveSkyDateInt();
+    return true;
+}
+
+function getFirstSkyDate() {
+    return achievementCounters ? (achievementCounters.firstSkyDate || 0) : 0;
 }
 
 /**
@@ -739,6 +761,9 @@ function applyAchievementSaveData(state) {
             // до этой задачи его нет — игрок с прогрессом получит разворот
             // атласа один раз, и это не вредно.
             bookFirstOpenDone: !!s.bookFirstOpenDone,
+            // S-06: аддитивное поле; в сейве до задачи его нет — 0, и
+            // ensureFirstSkyDate() поставит день первого запуска новой версии.
+            firstSkyDate: Math.max(0, Math.floor(Number(s.firstSkyDate) || 0)),
             totalConstellations: Number(s.totalConstellations) || 0,
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),

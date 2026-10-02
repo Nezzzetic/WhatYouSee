@@ -757,6 +757,8 @@ function performFullReset(options) {
     // проставляем текущие сутки, иначе первый же коммит взвёл бы защёлку
     // в блоке несуществующего дня.
     if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+    // S-06: вайп начинает календарь заново — первый день = сегодня.
+    if (typeof ensureFirstSkyDate === 'function') ensureFirstSkyDate();
     // U-21: бесплатная глава I открывается сразу и после вайпа — тем же вызовом,
     // что и у игрока без сейва вообще (loadProgression, B-04). Без этого дев-сброс
     // оставлял разворот атласа запертым до первого начисления ✦ или до F5, и
