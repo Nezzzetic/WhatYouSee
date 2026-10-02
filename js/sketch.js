@@ -351,6 +351,8 @@ function setup() {
     // сразу после прогрессии (нужен playerId) и до генерации поля.
     initObservatory();
 
+    // S-05: старый единый ключ неба → слот сегодняшнего дня, строго до loadGame().
+    migrateLegacySkySave();
     if (!loadGame()) {
         startNewDailySky({ saveAfter: true });
     } else {
@@ -569,7 +571,8 @@ function startNewDailySky(options) {
     // день», харнесс. `onResetSky` ниже эту функцию не зовёт намеренно —
     // он перегенерирует поле тех же суток, и квесты обязаны остаться забранными.
     if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
-    clearSave();
+    // S-05: смена суток отпускает все слоты дня; слоты Пролога не трогаются.
+    clearAllDaySkySlots();
 
     regenerateFieldStarsAfterReset();
     updateDevSkyNumber();
@@ -587,7 +590,9 @@ function startNewDailySky(options) {
     updateRibbonSignal();
 
     if (opts.saveAfter !== false) {
-        autoSave();
+        // S-05: новое небо дня пишется в слот дня, даже если активный закреплён
+        // за Прологом (S-07) — иначе слот уровня перезаписался бы небом дня.
+        saveGame(getTodaySkySlotId());
         // M-12: сброшенные ночные флаги достижений и новые сутки квестов живут
         // в сейве прогрессии, а не неба. Без этой записи перезапуск до первого
         // созвездия поднимал вчерашние флаги поверх сегодняшнего поля.
@@ -779,7 +784,8 @@ function performFullReset(options) {
     updateRibbonSignal();
     updateObservatoryUI();
 
-    clearSave();
+    // S-05: полный сброс — все слоты, старый ключ и закрепление активного.
+    clearAllSkySlots();
     autoSave();
 }
 
