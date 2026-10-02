@@ -252,7 +252,7 @@ function onConstellationCreated(shapeName) {
 /** Все двадцать пять имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
-    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
+    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'crown', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
     'drop', 'flame', 'ring', 'ball', 'wave',
     // U-31: два знака одной ленты — на предмете, не в строке, поэтому со
@@ -272,7 +272,7 @@ function glyphSign(name, size = 24, className = '') {
         console.error('K-02: знака «' + name + '» в кассе нет');
         name = 'arc';
     }
-    const wide = name === 'corona';
+    const wide = name === 'crown';
     svg.setAttribute('class', 'ic' + (size <= 16 ? ' ic-sm' : '') + (className ? ' ' + className : ''));
     svg.setAttribute('width', wide ? Math.round(size * 26 / 16) : size);
     svg.setAttribute('height', wide ? Math.round(size * 16 / 16) : size);
