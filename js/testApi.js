@@ -12,7 +12,8 @@
 // поэтому проверяет игру, а не свою копию правил.
 //
 // ⚠ `__test.reset()` — это полный сброс: он стирает локальный прогресс
-// (`starsReborn_v03`, `starsReborn_progression`) и, если передан `seed`,
+// (слоты неба `starsReborn_sky_*` — S-05, старый `starsReborn_v03`,
+// `starsReborn_progression`) и, если передан `seed`,
 // подменяет playerId. Открывать `?test=1` на профиле, где играют, не стоит.
 //
 // Эталонный сценарий — `dev/docs/tools/smoke.js`.
@@ -1168,6 +1169,24 @@
         return { zoom: zoomLevel, minZoom: getMinZoomLevel(), maxZoom: MAX_ZOOM };
     }
 
+    /**
+     * S-05: слоты неба — активный, какие лежат в localStorage и их размер
+     * в символах значения. Только чтение.
+     */
+    function skySlots() {
+        const ids = listSkySlotIds();
+        const bytes = {};
+        for (const id of ids) {
+            try {
+                const raw = localStorage.getItem(skySlotStorageKey(parseSkySlotId(id)));
+                bytes[id] = raw ? raw.length : 0;
+            } catch (e) {
+                bytes[id] = 0;
+            }
+        }
+        return { active: getActiveSkySlotId(), ids, bytes };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -1201,6 +1220,7 @@
         levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,
+        skySlots,
         setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },
