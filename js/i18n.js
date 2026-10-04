@@ -230,6 +230,11 @@ en: {
     'book.cutStamps': 'Stamps',
     // S-06: шестая высечка; месяцы и дни недели — Intl, не словарь.
     'book.cutCalendar': 'Calendar',
+    // S-07: полоса Пролога над сеткой календаря
+    'prologue.title': 'Prologue',
+    'prologue.name1': 'Cat',
+    'prologue.name2': 'Twins',
+    'prologue.soon': 'More skies are coming soon',
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
@@ -573,6 +578,10 @@ ru: {
     'book.cutAtlas': 'Атлас',
     'book.cutStamps': 'Штампы',
     'book.cutCalendar': 'Календарь',
+    'prologue.title': 'Пролог',
+    'prologue.name1': 'Кот',
+    'prologue.name2': 'Близнецы',
+    'prologue.soon': 'Новые небеса скоро появятся',
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',

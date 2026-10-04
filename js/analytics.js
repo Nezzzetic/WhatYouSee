@@ -311,6 +311,11 @@
      * это проверяется статикой в verify-analytics.js и переносится дословно
      * на страницу политики (P-06).
      */
+    /** S-07: тип неба для `k` — только два значения, остальное читается как день. */
+    function skyKindOf(kind) {
+        return kind === 'prologue' ? 'prologue' : 'day';
+    }
+
     function snapshot() {
         const ac = counters() || {};
         const scr = (typeof window !== 'undefined' && window.screen) || {};
@@ -325,7 +330,8 @@
             days: state.days,
             sess: state.sess,
             tut: tutorStage(),
-            onb: int(ac.onboardingFieldsShown),
+            // S-07: число пройденных уровней Пролога (имя поля прежнее — воронка).
+            onb: Array.isArray(ac.prologuePassed) ? ac.prologuePassed.length : 0,
             nights: int(ac.levelsCompleted),
             cons: int(ac.totalConstellations),
             shapes: (typeof createdShapes !== 'undefined' && createdShapes) ? createdShapes.size : 0,
@@ -380,7 +386,8 @@
 
         const nc = int(ac.levelsCompleted);
         if (nc > state.nc) {
-            enqueue('night_completed', { n: nc });
+            // S-07: k — род раскрытого неба ('day' | 'prologue'), его запоминает игра.
+            enqueue('night_completed', { n: nc, k: skyKindOf(typeof getLastRevealedSkyKind === 'function' ? getLastRevealedSkyKind() : null) });
             hit = true;
         }
         state.nc = nc;
@@ -649,7 +656,8 @@
         // «Начало ночи» — сутки неба, а не сессия и не опрос: посреди уже
         // открытого приложения небо не меняется (M-08), так что событие
         // достоверно только на запуске.
-        if (isNewSkyDay) enqueue('night_start');
+        // S-07: k — род неба на экране при запуске ('day' | 'prologue').
+        if (isNewSkyDay) enqueue('night_start', { k: skyKindOf(safe(() => (typeof getActiveSkyKind === 'function' ? getActiveSkyKind() : 'day'), 'day')) });
 
         // Вехи и повторяющиеся события, взятые до этого запуска, уходят
         // разом — иначе игрок с прогрессом никогда бы не попал в воронку.

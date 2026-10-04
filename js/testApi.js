@@ -163,11 +163,11 @@
      *   picture        — id поля-картинки (перебивает обычную генерацию), null снимает;
      *   pages          — сколько первых страниц атласа открыть бесплатно (по умолчанию 0,
      *                    как у нового игрока: до 80 ✦ имён у фигур нет);
-     *   skipOnboarding — true: пропустить фиксированные картинки первых ночей
-     *                    (O-02) — как у чистого reset() без него, поле сразу
-     *                    процедурное/воскресное. По умолчанию false — свежий
-     *                    reset() ведёт себя как у настоящего нового игрока и
-     *                    показывает «Кота» первым, это и есть штатный сценарий.
+     *   skipOnboarding — true: Пролог пройден (S-07: prologuePassed = [1, 2],
+     *                    activeSky = 'day') — поле сразу процедурное/воскресное
+     *                    небо дня. По умолчанию false — свежий reset() ведёт
+     *                    себя как у настоящего нового игрока: первое небо —
+     *                    Пролог · Кот с тутором, это и есть штатный сценарий.
      */
     function reset(options) {
         const o = options || {};
@@ -196,11 +196,11 @@
         performFullReset({
             beforeFieldRegen: function () {
                 for (let i = 0; i < pages; i++) unlockedPageIndices.add(i);
-                // O-02: часть сценариев тестирует процедурное поле как таковое
-                // (раскладку, разброс звёзд) и картинка первых ночей им мешает —
-                // явный флаг отводит счётчик за пределы ONBOARDING_FIXED_PICTURE_IDS.
-                if (o.skipOnboarding && achievementCounters && typeof ONBOARDING_FIXED_PICTURE_IDS !== 'undefined') {
-                    achievementCounters.onboardingFieldsShown = ONBOARDING_FIXED_PICTURE_IDS.length;
+                // S-07: часть сценариев тестирует небо дня как таковое (раскладку,
+                // разброс звёзд) и Пролог им мешает — флаг проходит его целиком.
+                if (o.skipOnboarding && achievementCounters) {
+                    achievementCounters.prologuePassed = PROLOGUE_PICTURE_IDS.map((_, i) => i + 1);
+                    achievementCounters.activeSky = 'day';
                 }
             }
         });
@@ -1203,6 +1203,47 @@
         });
     }
 
+    /**
+     * S-07: какое небо на экране, Пролог и ночные флаги поля. Только чтение.
+     * levels[].slot — id слота уровня с полем (как data-slot клетки), у 3–7 null;
+     * saved — лежит ли слот в localStorage.
+     */
+    function sky() {
+        const passed = getProloguePassed();
+        const levels = [];
+        for (let n = 1; n <= PROLOGUE_LEVEL_COUNT; n++) {
+            const slot = n <= PROLOGUE_PICTURE_IDS.length ? 'prologue:' + n : null;
+            levels.push({ n, state: getPrologueLevelState(n), slot, saved: !!slot && hasSkySlot(slot) });
+        }
+        const f = getPerNightAchievementFlags();
+        const ac = achievementCounters || {};
+        return {
+            active: getActiveSkySlotId(),
+            activeSky: getActiveSky(),
+            kind: getActiveSkyKind(),
+            passed,
+            levels,
+            lastRevealedKind: getLastRevealedSkyKind(),
+            flags: {
+                rainbow: f.rainbowCountedThisNight,
+                mosaic: f.mosaicCountedThisNight,
+                pageSpecials: f.pageSpecialsCountedThisNight.slice(),
+                shapes: f.shapesCountedThisNight.slice()
+            },
+            counters: {
+                levelsCompleted: ac.levelsCompleted || 0,
+                rainbowNights: ac.rainbowNights || 0,
+                mosaicNights: ac.mosaicNights || 0
+            }
+        };
+    }
+
+    /** S-07: выбор неба движком — в обход замка книги тутора (это не интерфейс). */
+    function selectSkyForTest(slotId) {
+        const r = selectSky(slotId);
+        return r && r.ok ? { ok: true } : { ok: false, reason: r ? r.reason : 'unknown' };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -1238,6 +1279,8 @@
         tutorial: tutorialState,
         skySlots,
         calendar,
+        sky,
+        selectSky: selectSkyForTest,
         setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },

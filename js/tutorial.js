@@ -64,15 +64,11 @@ function isTutorialDone() {
 }
 
 /**
- * Ночь тутора — ПЕРВАЯ ночь новичка и только она.
+ * Ночь тутора — небо Пролога · Кот (`prologue:1`, S-07) и только оно.
  *
- * Единственный признак, которому можно верить, — счётчик показанных картинок
- * O-02: он равен 1 ровно на первой ночи и лежит в сейве прогрессии.
- *
- * Отсюда следует, что игрока с прогрессом тутор не увидит по построению — его
- * счётчик давно израсходован. И ручной override (`?picture=`, dev-дропдаун)
- * тутор не поднимает: он идёт мимо `consumeOnboardingFixedPictureId()` и
- * счётчика не трогает, так что на чистом профиле тот остаётся нулём.
+ * Признак лежит в сейве прогрессии — `activeSky`; пройденный Кот тутор не
+ * возвращает (финальный кадр после F5). Ручной override картинки (`?picture=`,
+ * dev-дропдаун) тутор не поднимает — см. правило про известный id ниже.
  *
  * ⚠ `activeFieldPictureId` в это условие ВХОДИТЬ НЕ МОЖЕТ, хотя и просится.
  * Он живёт только в памяти вкладки: после F5 небо поднимается из сейва
@@ -84,16 +80,16 @@ function isTutorialDone() {
  */
 function isTutorialNight() {
     if (typeof achievementCounters === 'undefined' || !achievementCounters) return false;
-    if (typeof ONBOARDING_FIXED_PICTURE_IDS === 'undefined') return false;
-    if ((achievementCounters.onboardingFieldsShown || 0) !== 1) return false;
+    if (typeof getActivePrologueLevel !== 'function' || getActivePrologueLevel() !== 1) return false;
+    if (isPrologueLevelPassed(1)) return false;
     const activeId = typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null;
-    return activeId === null || activeId === ONBOARDING_FIXED_PICTURE_IDS[0];
+    return activeId === null || activeId === PROLOGUE_PICTURE_IDS[0];
 }
 
 /**
  * Пара звёзд тьюторной ночи, либо null.
  *
- * Картинка берётся по её id, а когда он неизвестен — по первой из фиксированных
+ * Картинка берётся по её id, а когда он неизвестен — по Коту, уровню 1 Пролога
  * (см. предупреждение в isTutorialNight: после F5 сейв неба поднимается без
  * `activeFieldPictureId`). Спросить id и сдаться значило бы уронить тутор в
  * аварийное снятие на каждой перезагрузке — то есть молча объявить его
@@ -102,7 +98,7 @@ function isTutorialNight() {
 function getTutorialPair() {
     if (typeof getPictureFieldTutorPair !== 'function') return null;
     const activeId = typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null;
-    const pictureId = activeId === null ? ONBOARDING_FIXED_PICTURE_IDS[0] : activeId;
+    const pictureId = activeId === null ? PROLOGUE_PICTURE_IDS[0] : activeId;
     const pair = getPictureFieldTutorPair(pictureId);
     if (!pair) return null;
     const a = getStarById(pair[0]);

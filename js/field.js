@@ -146,8 +146,8 @@ function seedSkyRandomForToday() {
 // --- M-14: расписание неба -------------------------------------------------
 // Что за небо в эту дату — для всех одинаково. Порядок: календарь (ручные
 // назначения на даты) → правила (воскресенье → картинка недели) → по умолчанию
-// процедурное поле. Ручной override (dev/URL) и первые ночи (O-02) стоят выше
-// и сюда не доходят. ⚠ Генератор меняется только с даты: новая версия —
+// процедурное поле. Ручной override (dev/URL) стоит выше и сюда не доходит;
+// уровни Пролога (S-07) — отдельные небеса, не даты, и сюда не ходят вовсе. ⚠ Генератор меняется только с даты: новая версия —
 // `gen: 'v2'` с ближайшего понедельника, прошлые даты остаются на `v1`.
 
 /** Ручные назначения: { 20261225: { picture: 'tree' } }. В v0 пуст. */
@@ -184,19 +184,8 @@ function skyDateIntToUtcDay(dateInt) {
 }
 
 function generateDailyField() {
-    // O-02: первые две ночи новичка — фиксированные картинки, приоритет выше
-    // воскресенья (первое впечатление не должно зависеть от дня недели).
-    const onboardingId = consumeOnboardingFixedPictureId();
-    if (onboardingId) {
-        generatePictureField(onboardingId);
-        assignStarAppearDelays();
-        generateBackgroundStars();
-        if (typeof console !== 'undefined' && console.info) {
-            console.info('[picture] Фиксированное поле первых ночей:', onboardingId);
-        }
-        return;
-    }
-
+    // S-07: ветки «первых ночей» O-02 здесь больше нет — Кот и Близнецы живут
+    // уровнями Пролога (prologue.js), небо дня новичка — общее, как у всех.
     // M-14: источник неба — только из расписания (календарь → воскресенье →
     // процедурное). Ручной override стоит выше по коду, в точках генерации.
     const source = getSkySourceForDate(getEffectiveSkyDateInt());
@@ -366,30 +355,6 @@ function getScheduledPictureFieldId(dateInt) {
     const utcDay = skyDateIntToUtcDay(dateInt);
     if (new Date(utcDay * 86400000).getUTCDay() !== 0) return null;
     return PICTURE_FIELD_IDS[getSkyWeekIndex(dateInt) % PICTURE_FIELD_IDS.length];
-}
-
-// --- O-02: фиксированные поля первых двух ночей -------------------------
-// Первая ночь — «Кот», вторая — «Близнецы», дальше обычный выбор. Считается
-// не завершёнными ночами (levelsCompleted), а именно ПОКАЗАННЫМИ картинками
-// (achievementCounters.onboardingFieldsShown) — недоигранная первая ночь при
-// возврате другим днём не должна снова показать «Кота» (решение заказчика).
-
-const ONBOARDING_FIXED_PICTURE_IDS = ['cat', 'gemini'];
-
-/**
- * Следующая фиксированная картинка первых ночей, или null, если обе уже
- * показаны. Каждый вызов, вернувший id, СРАЗУ продвигает счётчик и сохраняет
- * прогрессию — иначе показ, не подтверждённый другим событием сейва
- * (коммит/забор), потерялся бы при перезагрузке другим днём.
- */
-function consumeOnboardingFixedPictureId() {
-    if (typeof achievementCounters === 'undefined' || !achievementCounters) return null;
-    const n = achievementCounters.onboardingFieldsShown || 0;
-    const id = ONBOARDING_FIXED_PICTURE_IDS[n];
-    if (!id) return null;
-    achievementCounters.onboardingFieldsShown = n + 1;
-    if (typeof saveProgression === 'function') saveProgression();
-    return id;
 }
 
 function generateStars() {
