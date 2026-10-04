@@ -126,7 +126,7 @@ en: {
     'chain.rainbow.title': 'Rainbow',
     'chain.mosaic.title': 'Mosaic',
     'chain.kaleidoscope.title': 'Kaleidoscope',
-    'chain.nights.title': 'Night Wanderer',
+    'chain.nights.title': 'Sky Wanderer',
     'chain.constellations.title': 'Sky Architect',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
@@ -162,30 +162,30 @@ en: {
     },
     'chain.size8plus.desc': 'Constellations of 8 stars or more',
     'chain.rainbow.step': {
-        one: '{n} night: constellations of all 5 colors',
-        other: '{n} nights: constellations of all 5 colors'
+        one: '{n} sky: constellations of all 5 colors',
+        other: '{n} skies: constellations of all 5 colors'
     },
-    'chain.rainbow.desc': 'Nights with constellations of all five colors on the field',
+    'chain.rainbow.desc': 'Skies with constellations of all five colors on the field',
     'chain.mosaic.step': {
-        one: '{n} night with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
-        other: '{n} nights with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
+        one: '{n} sky with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
+        other: '{n} skies with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
     },
-    'chain.mosaic.desc': 'Nights with every size on the field',
+    'chain.mosaic.desc': 'Skies with every size on the field',
     'chain.pageSpecial.step': {
-        one: '{n} night: {desc}',
-        other: '{n} nights: {desc}'
+        one: '{n} sky: {desc}',
+        other: '{n} skies: {desc}'
     },
     'chain.kaleidoscope.desc': 'one shape from each atlas chapter on the field',
     'chain.nights.step': {
-        one: '{n} completed night',
-        other: '{n} completed nights'
+        one: '{n} completed sky',
+        other: '{n} completed skies'
     },
-    'chain.nights.desc': 'Nights completed to the end',
+    'chain.nights.desc': 'Skies completed to the end',
     'chain.constellations.step': {
         one: '{n} constellation created in total',
         other: '{n} constellations created in total'
     },
-    'chain.constellations.desc': 'Constellations drawn, across all nights',
+    'chain.constellations.desc': 'Constellations drawn, across all skies',
     'chain.razvedka.step': {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
@@ -465,7 +465,7 @@ ru: {
     'chain.rainbow.title': 'Радуга',
     'chain.mosaic.title': 'Мозаика',
     'chain.kaleidoscope.title': 'Калейдоскоп',
-    'chain.nights.title': 'Странник ночей',
+    'chain.nights.title': 'Странник небес',
     'chain.constellations.title': 'Зодчий небес',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
@@ -505,35 +505,35 @@ ru: {
     },
     'chain.size8plus.desc': 'Созвездия от 8 звёзд и больше',
     'chain.rainbow.step': {
-        one: '{n} ночь: созвездия всех 5 цветов',
-        few: '{n} ночи: созвездия всех 5 цветов',
-        many: '{n} ночей: созвездия всех 5 цветов'
+        one: '{n} небо: созвездия всех 5 цветов',
+        few: '{n} неба: созвездия всех 5 цветов',
+        many: '{n} небес: созвездия всех 5 цветов'
     },
-    'chain.rainbow.desc': 'Ночи с созвездиями всех пяти цветов на поле',
+    'chain.rainbow.desc': 'Небеса с созвездиями всех пяти цветов на поле',
     'chain.mosaic.step': {
-        one: '{n} ночь с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
-        few: '{n} ночи с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
-        many: '{n} ночей с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)'
+        one: '{n} небо с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
+        few: '{n} неба с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
+        many: '{n} небес с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)'
     },
-    'chain.mosaic.desc': 'Ночи со всеми размерами на поле',
+    'chain.mosaic.desc': 'Небеса со всеми размерами на поле',
     'chain.pageSpecial.step': {
-        one: '{n} ночь: {desc}',
-        few: '{n} ночи: {desc}',
-        many: '{n} ночей: {desc}'
+        one: '{n} небо: {desc}',
+        few: '{n} неба: {desc}',
+        many: '{n} небес: {desc}'
     },
     'chain.kaleidoscope.desc': 'по фигуре с каждой главы атласа на поле',
     'chain.nights.step': {
-        one: '{n} завершённая ночь',
-        few: '{n} завершённые ночи',
-        many: '{n} завершённых ночей'
+        one: '{n} завершённое небо',
+        few: '{n} завершённых неба',
+        many: '{n} завершённых небес'
     },
-    'chain.nights.desc': 'Ночи, доведённые до конца',
+    'chain.nights.desc': 'Небеса, доведённые до конца',
     'chain.constellations.step': {
         one: '{n} созвездие создано всего',
         few: '{n} созвездия создано всего',
         many: '{n} созвездий создано всего'
     },
-    'chain.constellations.desc': 'Созвездия за все ночи вместе',
+    'chain.constellations.desc': 'Созвездия за все небеса вместе',
     'chain.razvedka.step': {
         one: '{n} открытая фигура атласа',
         few: '{n} открытые фигуры атласа',
@@ -753,7 +753,7 @@ function getI18nPluralRules() {
 }
 
 /**
- * Множественное число: tp('chain.nights.step', 5) → «5 завершённых ночей».
+ * Множественное число: tp('chain.nights.step', 5) → «5 завершённых небес».
  * `n` всегда доступен в шаблоне как {n}; остальные параметры — из `params`.
  */
 function tp(key, n, params) {
