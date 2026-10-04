@@ -27,7 +27,7 @@ function getCalendarIntlLocale() {
     return getLocale() === 'ru' ? 'ru' : 'en-US';
 }
 
-/** «October 2026» / «Октябрь 2026»: месяц словом в именительном, год числом. */
+/** «October» / «Октябрь»: месяц словом в именительном; год убран (второй круг правок S-07). */
 function formatCalendarMonthTitle(y, m) {
     let month = '';
     try {
@@ -35,7 +35,7 @@ function formatCalendarMonthTitle(y, m) {
     } catch (e) {
         month = String(m).padStart(2, '0');
     }
-    return month.charAt(0).toLocaleUpperCase(getCalendarIntlLocale()) + month.slice(1) + ' ' + y;
+    return month.charAt(0).toLocaleUpperCase(getCalendarIntlLocale()) + month.slice(1);
 }
 
 /** Заголовок дней недели с понедельника (в обеих локалях) — Intl, не словарь. */
@@ -171,15 +171,16 @@ function renderBookPrologueStrip() {
     title.textContent = t('prologue.title');
     el.appendChild(title);
 
-    const row = document.createElement('div');
-    row.className = 'book-prologue-row';
-    for (const level of model.levels) row.appendChild(createPrologueCell(level));
-    el.appendChild(row);
-
+    // Второй круг правок: имя уровня — между «PROLOGUE» и полосой.
     const caption = document.createElement('div');
     caption.className = 'book-prologue-caption';
     caption.textContent = model.caption;
     el.appendChild(caption);
+
+    const row = document.createElement('div');
+    row.className = 'book-prologue-row';
+    for (const level of model.levels) row.appendChild(createPrologueCell(level));
+    el.appendChild(row);
 }
 
 function createCalendarCell(cell) {
