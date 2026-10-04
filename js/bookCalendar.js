@@ -1,5 +1,5 @@
 // bookCalendar.js — страница «Календарь» (S-06): сетка текущего месяца по дате
-// неба, сегодня — живая клетка, прошлое — заперто, будущего нет.
+// неба, сегодня — живая клетка, остальные числа месяца — серые, не нажимаются.
 //
 // «Сегодня» берётся только у неба — getEffectiveSkyDateInt() (сутки с 05:00,
 // M-09, плюс dev-смещение и харнесс). Своих часов страница не читает: с 00:00
@@ -57,9 +57,11 @@ function getCalendarWeekdayLabels() {
 
 /**
  * Модель сетки — чистая от DOM, её же отдаёт харнесс `__test.calendar()`.
- * Состояния клетки: `today` · `past` (от первого дня игрока до вчера) ·
- * `none` (пустое место). Дата ушла назад (today < firstSkyDate) — прошлых нет,
- * только сегодня; сохранённое поле при этом не трогается.
+ * Состояния клетки: `today` · `past` (до сегодня) · `future` (после) ·
+ * `none` (пустое место сетки до 1-го и после последнего числа). Число стоит
+ * у каждого дня месяца; всё, кроме сегодня, — серое и не нажимается
+ * (правка S-06 после устройства). firstSkyDate сетку больше не ограничивает —
+ * поле живёт в сейве и отдаётся в модели как есть.
  */
 function getCalendarModel() {
     const today = getEffectiveSkyDateInt();
@@ -75,13 +77,8 @@ function getCalendarModel() {
     for (let i = 0; i < lead; i++) cells.push({ state: 'none', day: 0, date: 0, slot: null });
     for (let d = 1; d <= daysInMonth; d++) {
         const date = calendarDateInt(y, m, d);
-        let state = 'none';
-        if (d === todayD) state = 'today';
-        else if (first > 0 && date >= first && date < today) state = 'past';
-        // Число стоит только у дней от первого дня игрока до сегодня — дни до
-        // первого запуска и будущие остаются пустыми местами сетки.
-        if (state === 'none') cells.push({ state, day: 0, date: 0, slot: null });
-        else cells.push({ state, day: d, date, slot: state === 'today' ? todaySlot : null });
+        const state = d === todayD ? 'today' : (d < todayD ? 'past' : 'future');
+        cells.push({ state, day: d, date, slot: state === 'today' ? todaySlot : null });
     }
     while (cells.length % 7) cells.push({ state: 'none', day: 0, date: 0, slot: null });
 
@@ -200,9 +197,8 @@ function createCalendarCell(cell) {
     if (isToday) {
         el.type = 'button';
         el.addEventListener('click', () => selectSkyFromCalendar(cell.slot));
-    } else if (cell.state === 'past') {
+    } else if (cell.day) {
         el.setAttribute('aria-disabled', 'true');
-        el.appendChild(glyphSign('lock', 10, 'book-cal-lock'));
     }
     return el;
 }
