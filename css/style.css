@@ -1777,20 +1777,6 @@ body.book-spread .book-spine-bead {
     top: calc(100% - var(--gauge-ratio, 0%));
 }
 
-/* Звёзды неба по бокам — под листами, только в развороте. */
-.book-side-stars {
-    display: none;
-}
-
-body.book-spread .book-side-stars {
-    display: block;
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
 /* Высечки «Today» в развороте нет: «Сегодня» — левая страница разворота 1,
    туда ведёт высечка «Index». */
 body.book-spread .book-tab[data-cut="today"] {
@@ -1823,8 +1809,12 @@ body.book-spread .book-tabs {
     right: calc(var(--spread-r) - var(--book-obrez) + 2px);
 }
 
+/* Четвёртая правка заказчика: лист в развороте поднят к верху экрана
+   (--spread-top), и лента выходит из-под его верхнего обреза, как в портрете,
+   а не висит посреди листа на высоте прежней полосы неба. */
 body.book-spread .book-close-ribbon {
-    right: calc(var(--ribbon-right) + var(--spread-r) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
+    top: calc(var(--safe-top) + var(--spread-top, 14px));
+    right:calc(var(--ribbon-right) + var(--spread-r) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
 }
 
 /* Третья правка заказчика: лента на небе висит у кромки разворота, а не у

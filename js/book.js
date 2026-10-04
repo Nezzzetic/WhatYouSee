@@ -213,66 +213,11 @@ function updateBookSpreadPageWidth() {
     root.setProperty('--spread-side', Math.max(0, Math.floor((w - 2 * pageW - obrez) / 2)) + 'px');
 }
 
-/**
- * Разреженные звёзды неба по бокам разворота (вторая правка заказчика):
- * декоративный холст под листами, только в боковых полосах. Своё зерно и
- * свой генератор — поле, его звёзды и Math.random не трогаются (M-14).
- */
-function renderBookSideStars() {
-    const canvas = document.getElementById('bookSideStars');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!bookSpread) {
-        canvas.width = canvas.height = 0;
-        return;
-    }
-    const left = document.getElementById('bookPage');
-    const right = document.getElementById('bookPageRight');
-    const tabs = document.getElementById('bookTabs');
-    if (!left || !right) return;
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    if (!w || !h) return;
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, w, h);
-    // Меряем от холста: он едет вместе с книгой, сдвиг протяжки вычитается сам.
-    const base = canvas.getBoundingClientRect();
-    const gap = 6;
-    const l = left.getBoundingClientRect().left - base.left - gap;
-    const rightEdge = Math.max(right.getBoundingClientRect().right,
-        tabs ? tabs.getBoundingClientRect().right : 0) - base.left + gap;
-    let seed = 0x9E3779B9;
-    const rnd = () => {
-        seed = (seed + 0x6D2B79F5) | 0;
-        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-    for (const [x0, x1] of [[0, l], [rightEdge, w]]) {
-        const bw = x1 - x0;
-        if (bw <= 4) continue;
-        const n = Math.round(bw * h / BOOK_SPREAD_STAR_AREA_PX);
-        for (let i = 0; i < n; i++) {
-            const x = x0 + rnd() * bw, y = rnd() * h;
-            const r = 0.45 + rnd() * rnd() * 1.1;
-            ctx.fillStyle = `rgba(234, 241, 249, ${(0.22 + rnd() * 0.55).toFixed(2)})`;
-            ctx.beginPath();
-            ctx.arc(x, y, r, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-}
-
 /** Переключатель по размеру #app — на загрузке, ресайзе и повороте. */
 function updateBookSpreadMode() {
     updateBookSpreadPageWidth();
     const next = computeBookSpreadMode();
-    if (next === bookSpread) {
-        if (bookOpen) renderBookSideStars();
-        return;
-    }
+    if (next === bookSpread) return;
     bookSpread = next;
     if (document.body) document.body.classList.toggle('book-spread', next);
     const right = ensureBookRightPage();
@@ -290,7 +235,6 @@ function updateBookSpreadMode() {
         renderBook();
         syncExLibrisAppMode();
     }
-    renderBookSideStars();
 }
 
 /** K-19: римские цифры генерируются, не заводятся в словарь — до VII хватает. */
@@ -789,7 +733,6 @@ function openBook(cut) {
     setBookScrimOpen(1);
     renderBook();
     syncExLibrisAppMode();
-    renderBookSideStars();
     // U-31: лента одна — на любом исходе (харнесс, Escape, доводы жеста) обе
     // стороны обязаны прийти в покой, иначе книжная рискует не появиться.
     resetRibbons();
@@ -999,6 +942,22 @@ function settleBookTransform(book, targetPx, onSettled) {
  * классом `book-opening`, пока довод не закончился, — тот же приём, что у
  * протяжки за палец (setupRibbonPullGesture).
  */
+/**
+ * Высота неба над листом — книга выше неё прозрачна (V-20). В портрете это
+ * полоса неба `.book-sky-strip`; в развороте полоса — всё небо вокруг книги
+ * (P-17), поэтому меряется отступ самого листа от верха книги: иначе протяжка
+ * ленты вычитала бы целый экран, и разворот вставал на место сразу.
+ */
+function bookSheetTopPx() {
+    if (bookSpread) {
+        const book = document.getElementById('book');
+        const page = document.getElementById('bookPage');
+        if (book && page) return Math.max(0, page.getBoundingClientRect().top - book.getBoundingClientRect().top);
+    }
+    const strip = document.getElementById('bookSkyStrip');
+    return strip ? strip.getBoundingClientRect().height : 0;
+}
+
 function openBookAnimated(cut) {
     const book = document.getElementById('book');
     const ribbon = document.getElementById('skyRibbon');
@@ -1015,8 +974,7 @@ function openBookAnimated(cut) {
     // V-20 (фидбек с устройства 2026-09-17, круг 2): та же поправка, что у
     // интерактивной протяжки (setupRibbonPullGesture) — без нее лента тут
     // тоже доезжала бы дальше книги и улетала за экран.
-    const strip = document.getElementById('bookSkyStrip');
-    const stripPx = strip ? strip.getBoundingClientRect().height : 0;
+    const stripPx = bookSheetTopPx();
     document.body.classList.add('book-opening');
     setBookTransition(book, 'none');
     setBookTransform(book, `translateY(${travel}px)`, travel);
@@ -1335,8 +1293,7 @@ function setupRibbonPullGesture(ribbon) {
         // пока лента уже заметно отъехала: между лентой и книгой была видна
         // пустота. Замеряется, как и travel, один раз на весь жест — высота
         // строки зависит от --safe-top и не меняется посреди протяжки.
-        const strip = document.getElementById('bookSkyStrip');
-        stripPx = strip ? strip.getBoundingClientRect().height : 0;
+        stripPx = bookSheetTopPx();
         setBookTransform(book, `translateY(${travel}px)`, travel);
     };
 
