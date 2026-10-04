@@ -285,9 +285,14 @@
                          звук; список рассчитан на второй (вибро, A-05/U-14). -->
                     <!-- S-06: календарь — сетка месяца по дате неба (bookCalendar.js) -->
                     <div id="bookCalendarSection" class="book-section" hidden>
-                        <!-- S-07: полоса Пролога над сеткой — семь уровней-небес -->
+                        <!-- S-07: полоса Пролога над сеткой — семь уровней-небес.
+                             Правка после устройства: Пролог и месяц — два блока,
+                             титул месяца стоит у своей сетки, не в шапке страницы. -->
                         <div id="bookCalendarPrologue" class="book-prologue"></div>
-                        <div id="bookCalendarGrid" class="book-cal-grid"></div>
+                        <div class="book-cal-month">
+                            <div id="bookCalendarMonth" class="book-cal-month-title"></div>
+                            <div id="bookCalendarGrid" class="book-cal-grid"></div>
+                        </div>
                     </div>
                     <div id="bookSettingsSection" class="book-section" hidden>
                         <div id="bookSettingsList" class="settings-list"></div>

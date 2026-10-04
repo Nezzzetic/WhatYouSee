@@ -2674,13 +2674,31 @@ body.book-opening .book-close-ribbon {
    Семь клеток в одну строку, римская цифра (на 320 px слово не влезает);
    имя доступного уровня — одной подписью под полосой. Доступный — живая
    кнопка; пройденный — золотая ✦ (обычный CSS content, как точки высечек
-   U-32); заперт — знак замка; «coming soon» — бледная цифра. Небо на экране —
+   U-32); заперт — серая цифра без замка; «coming soon» — бледная цифра. Небо на экране —
    то же золотое кольцо, что у сетки. */
 
+/* Правка после устройства: Пролог и месяц — два блока. Подпись имени стоит
+   вплотную под полосой, блок Пролога закрыт волосяной линейкой; ниже —
+   титул месяца у своей сетки. Замков нет: запертый уровень — просто серый. */
 .book-prologue {
     max-width: 360px;
-    margin: 2px auto 14px;
+    margin: 2px auto 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(var(--ink-rgb), 0.18);
     text-align: center;
+}
+
+.book-cal-month {
+    margin-top: 16px;
+}
+
+.book-cal-month-title {
+    text-align: center;
+    font-family: var(--font-title);
+    font-size: 20px;
+    line-height: 1.2;
+    color: var(--ink);
+    padding-bottom: 8px;
 }
 
 .book-prologue-title {
@@ -2755,17 +2773,13 @@ body.book-opening .book-close-ribbon {
     font-size: 13px;
 }
 
-.book-prologue-locked .book-prologue-lock {
-    color: rgba(var(--ink-rgb), 0.42);
-}
-
 .book-prologue-soon {
     color: rgba(var(--ink-rgb), 0.24);
     font-size: 13px;
 }
 
 .book-prologue-caption {
-    padding-top: 6px;
+    padding-top: 2px;
     font-family: var(--font-text);
     font-style: italic;
     font-size: 13px;

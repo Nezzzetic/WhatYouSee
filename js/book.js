@@ -171,9 +171,10 @@ function renderBookHead() {
         // O-08: «N of M pressed» снято — подвал падает на бренд ALMANAC, как
         // на остальных страницах книги. Счёт главы остался в оглавлении (K-19).
     } else if (bookCut === 'calendar') {
-        // S-06: титул — месяц с годом по дате неба, колонтитул — CALENDAR.
+        // S-06: колонтитул — CALENDAR. Правка S-07 после устройства: титул
+        // страницы — «Calendar», месяц с годом стоит у своей сетки (под Прологом).
         eyebrow = t('book.eyebrowCalendar');
-        title = getCalendarPageTitle();
+        title = t('book.cutCalendar');
         folioN = getCalendarFolio();
     } else if (bookCut === 'exlibris') {
         eyebrow = t('book.eyebrowExLibris');
