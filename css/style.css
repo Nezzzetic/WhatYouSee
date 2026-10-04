@@ -2653,11 +2653,14 @@ body.book-opening .book-close-ribbon {
     font-weight: 700;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    /* Второй круг правок S-07: нажимаемое — на подложке-круге другого оттенка,
+       не золотом (золотое кольцо — «небо на экране»). */
+    background: rgba(var(--ink-rgb), 0.09);
 }
 
 @media (hover: hover) {
     .book-cal-today:hover {
-        background: rgba(var(--ink-rgb), 0.06);
+        background: rgba(var(--ink-rgb), 0.15);
     }
 }
 
@@ -2695,7 +2698,7 @@ body.book-opening .book-close-ribbon {
 .book-cal-month-title {
     text-align: center;
     font-family: var(--font-title);
-    font-size: 20px;
+    font-size: 15px;
     line-height: 1.2;
     color: var(--ink);
     padding-bottom: 8px;
@@ -2707,7 +2710,6 @@ body.book-opening .book-close-ribbon {
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--ink-faint);
-    padding-bottom: 6px;
 }
 
 .book-prologue-row {
@@ -2745,11 +2747,12 @@ body.book-opening .book-close-ribbon {
     font-weight: 700;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    background: rgba(var(--ink-rgb), 0.09);
 }
 
 @media (hover: hover) {
     .book-prologue-available:hover {
-        background: rgba(var(--ink-rgb), 0.06);
+        background: rgba(var(--ink-rgb), 0.15);
     }
 }
 
@@ -2762,7 +2765,13 @@ body.book-opening .book-close-ribbon {
 }
 
 .book-prologue-passed::after {
+    /* Второй круг правок: ✦ под цифрой, вне потока — цифра стоит на одной
+       линии с соседями при любом состоянии клетки. */
     content: "✦";
+    position: absolute;
+    left: 50%;
+    top: calc(50% + 9px);
+    transform: translateX(-50%);
     font-size: 9px;
     line-height: 1;
     color: var(--gold);
@@ -2779,7 +2788,7 @@ body.book-opening .book-close-ribbon {
 }
 
 .book-prologue-caption {
-    padding-top: 2px;
+    padding: 2px 0 6px;
     font-family: var(--font-text);
     font-style: italic;
     font-size: 13px;
