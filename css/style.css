@@ -1729,9 +1729,72 @@ body.book-spread .book-gutter {
         rgba(90, 64, 28, 0) 100%);
 }
 
-/* Нить уровня — над всем разворотом, от корешка до обреза. */
+/* Вторая правка заказчика: над разворотом больше нет полосы неба — лист
+   поднят к верху экрана (над ним только каптальчик и слои обреза), всё небо
+   вокруг книги — та же кнопка закрытия, что была полосой. */
+body.book-spread .book-sky-strip {
+    height: auto;
+    bottom: 0;
+}
+
+body.book-spread .book-page,
+body.book-spread .book-gutter {
+    top: calc(var(--safe-top) + var(--spread-top, 14px));
+}
+
+/* Нить уровня — вертикально в небе слева от книги, посередине левого бока:
+   снизу текущий уровень, сверху следующий, бусина поднимается по нити. */
 body.book-spread #bookGauge {
-    right: -100%;
+    left: calc(var(--spread-side, 56px) / -2 - 20px);
+    right: auto;
+    top: 0;
+    bottom: calc(var(--safe-bottom) + 24px);
+    width: 40px;
+    height: auto;
+    flex-direction: column-reverse;
+    gap: 8px;
+    padding: 0;
+    touch-action: none;
+}
+
+body.book-spread .book-spine-thread {
+    flex: 1;
+    width: 0;
+    border-top: none;
+    border-left: 1.5px dotted rgba(var(--gold-rgb), 0.5);
+}
+
+body.book-spread .book-spine-fill {
+    left: -1.5px;
+    top: auto;
+    bottom: 0;
+    width: 1.5px !important;
+    height: var(--gauge-ratio, 0%);
+}
+
+body.book-spread .book-spine-bead {
+    left: -0.75px !important;
+    top: calc(100% - var(--gauge-ratio, 0%));
+}
+
+/* Звёзды неба по бокам — под листами, только в развороте. */
+.book-side-stars {
+    display: none;
+}
+
+body.book-spread .book-side-stars {
+    display: block;
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+/* Высечки «Today» в развороте нет: «Сегодня» — левая страница разворота 1,
+   туда ведёт высечка «Index». */
+body.book-spread .book-tab[data-cut="today"] {
+    display: none;
 }
 
 /* Баннер уровня — по центру разворота, а не левой страницы. */

@@ -202,16 +202,77 @@ function updateBookSpreadPageWidth() {
     const w = app ? app.clientWidth : window.innerWidth;
     const h = Math.min(app ? app.clientHeight : window.innerHeight, window.innerHeight || Infinity);
     const obrez = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--book-obrez')) || 34;
-    const byHeight = Math.max(BOOK_SPREAD_PAGE_MIN_W, Math.round((h - 44) * BOOK_SPREAD_PAGE_RATIO));
+    const byHeight = Math.max(BOOK_SPREAD_PAGE_MIN_W, Math.round((h - BOOK_SPREAD_TOP_PX) * BOOK_SPREAD_PAGE_RATIO));
     const byWidth = Math.floor((w - obrez - 2 * BOOK_SPREAD_SIDE_PX) / 2);
-    document.documentElement.style.setProperty('--spread-page-w', Math.min(byHeight, byWidth) + 'px');
+    const pageW = Math.min(byHeight, byWidth);
+    const root = document.documentElement.style;
+    root.setProperty('--spread-page-w', pageW + 'px');
+    root.setProperty('--spread-top', BOOK_SPREAD_TOP_PX + 'px');
+    // Ширина неба сбоку от разворота — по ней нить уровня встаёт посередине
+    // левого бока (безопасные зоны разворот делит поровну, см. style.css).
+    root.setProperty('--spread-side', Math.max(0, Math.floor((w - 2 * pageW - obrez) / 2)) + 'px');
+}
+
+/**
+ * Разреженные звёзды неба по бокам разворота (вторая правка заказчика):
+ * декоративный холст под листами, только в боковых полосах. Своё зерно и
+ * свой генератор — поле, его звёзды и Math.random не трогаются (M-14).
+ */
+function renderBookSideStars() {
+    const canvas = document.getElementById('bookSideStars');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!bookSpread) {
+        canvas.width = canvas.height = 0;
+        return;
+    }
+    const left = document.getElementById('bookPage');
+    const right = document.getElementById('bookPageRight');
+    const tabs = document.getElementById('bookTabs');
+    if (!left || !right) return;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (!w || !h) return;
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    // Меряем от холста: он едет вместе с книгой, сдвиг протяжки вычитается сам.
+    const base = canvas.getBoundingClientRect();
+    const gap = 6;
+    const l = left.getBoundingClientRect().left - base.left - gap;
+    const rightEdge = Math.max(right.getBoundingClientRect().right,
+        tabs ? tabs.getBoundingClientRect().right : 0) - base.left + gap;
+    let seed = 0x9E3779B9;
+    const rnd = () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    for (const [x0, x1] of [[0, l], [rightEdge, w]]) {
+        const bw = x1 - x0;
+        if (bw <= 4) continue;
+        const n = Math.round(bw * h / BOOK_SPREAD_STAR_AREA_PX);
+        for (let i = 0; i < n; i++) {
+            const x = x0 + rnd() * bw, y = rnd() * h;
+            const r = 0.45 + rnd() * rnd() * 1.1;
+            ctx.fillStyle = `rgba(234, 241, 249, ${(0.22 + rnd() * 0.55).toFixed(2)})`;
+            ctx.beginPath();
+            ctx.arc(x, y, r, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
 }
 
 /** Переключатель по размеру #app — на загрузке, ресайзе и повороте. */
 function updateBookSpreadMode() {
     updateBookSpreadPageWidth();
     const next = computeBookSpreadMode();
-    if (next === bookSpread) return;
+    if (next === bookSpread) {
+        if (bookOpen) renderBookSideStars();
+        return;
+    }
     bookSpread = next;
     if (document.body) document.body.classList.toggle('book-spread', next);
     const right = ensureBookRightPage();
@@ -229,6 +290,7 @@ function updateBookSpreadMode() {
         renderBook();
         syncExLibrisAppMode();
     }
+    renderBookSideStars();
 }
 
 /** K-19: римские цифры генерируются, не заводятся в словарь — до VII хватает. */
@@ -429,6 +491,9 @@ function renderBookGauge() {
     const fill = document.createElement('div');
     fill.className = 'book-spine-fill';
     fill.style.width = `${Math.round(ratio * 100)}%`;
+    // Вторая правка P-17: в развороте нить стоит вертикально — та же доля
+    // уходит в высоту (style.css читает --gauge-ratio).
+    thread.style.setProperty('--gauge-ratio', `${Math.round(ratio * 100)}%`);
     thread.appendChild(fill);
 
     const bead = document.createElement('div');
@@ -724,6 +789,7 @@ function openBook(cut) {
     setBookScrimOpen(1);
     renderBook();
     syncExLibrisAppMode();
+    renderBookSideStars();
     // U-31: лента одна — на любом исходе (харнесс, Escape, доводы жеста) обе
     // стороны обязаны прийти в покой, иначе книжная рискует не появиться.
     resetRibbons();
