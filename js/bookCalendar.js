@@ -153,8 +153,9 @@ function createPrologueCell(level) {
         el.type = 'button';
         el.addEventListener('click', () => selectSkyFromCalendar(level.slot));
     } else {
+        // Правка после устройства: замка нет — запертый уровень просто серый,
+        // как числа месяца (правка S-06).
         el.setAttribute('aria-disabled', 'true');
-        if (level.state === 'locked') el.appendChild(glyphSign('lock', 10, 'book-prologue-lock'));
     }
     return el;
 }
@@ -205,6 +206,8 @@ function createCalendarCell(cell) {
 
 function renderBookCalendar() {
     renderBookPrologueStrip();
+    const monthEl = document.getElementById('bookCalendarMonth');
+    if (monthEl) monthEl.textContent = getCalendarPageTitle();
     const el = document.getElementById('bookCalendarGrid');
     if (!el) return;
     el.innerHTML = '';
