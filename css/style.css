@@ -1827,6 +1827,16 @@ body.book-spread .book-close-ribbon {
     right: calc(var(--ribbon-right) + var(--spread-r) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
 }
 
+/* Третья правка заказчика: лента на небе висит у кромки разворота, а не у
+   края экрана — как в портрете, где край листа и есть край экрана. Сдвиг
+   на (--spread-r − обрез): `.ribbon` вне `.book`, поэтому --spread-r
+   раскрыт здесь же (50% — ширина вьюпорта, как у fixed-книги). */
+body.book-spread .ribbon {
+    right: calc(var(--ribbon-right) + 50% - (var(--safe-left) - var(--safe-right)) / 2
+        - var(--spread-page-w, 300px) - var(--book-obrez) / 2
+        + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
+}
+
 /* Телефон на боку: высоты мало — шапка, подвал и высечки компактнее, чтобы
    тело страницы оставалось не ниже 200 px, а шесть высечек влезали в обрез. */
 @media (max-height: 520px) {
