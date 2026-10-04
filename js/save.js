@@ -248,7 +248,11 @@ function saveGame(slotId) {
             // читается как ночь, в которой ещё ничего не отменяли.
             undoneConstellationNames: typeof dumpUndoneNameMemory === 'function'
                 ? dumpUndoneNameMemory()
-                : []
+                : [],
+            // S-07: ночные флаги достижений — свойство поля, едут с небом.
+            nightFlags: typeof getPerNightAchievementFlags === 'function'
+                ? getPerNightAchievementFlags()
+                : undefined
             // M-05: `levelCompletePointsAwarded` убран вместе с выплатой за ночь.
             // «Ночь уже оплачена» теперь живёт в блоке суток достижений и привязано
             // к дате, а не к сессии поля: дев-сброс неба больше не позволяет
@@ -297,6 +301,13 @@ function loadGame() {
         // на настоящие связки.
         if (typeof restoreUndoneNameMemory === 'function') {
             restoreUndoneNameMemory(state.undoneConstellationNames);
+        }
+
+        // S-07: ночные флаги из слота. Поля нет — флаги не трогаются: на
+        // запуске остаются поднятые прогрессией, при выборе неба — пустые
+        // (resetFieldSessionState уже сбросил их до загрузки).
+        if (state.nightFlags && typeof applyPerNightAchievementFlags === 'function') {
+            applyPerNightAchievementFlags(state.nightFlags);
         }
 
         rebuildStarCountStateFromConstellations();

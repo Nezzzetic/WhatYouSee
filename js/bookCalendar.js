@@ -8,8 +8,8 @@
 //
 // Контракт клетки (для S-07): клетка, за которой стоит небо, несёт data-slot —
 // id слота S-05; data-selected="true" — у клетки активного слота
-// (getActiveSkySlotId()), не у «клетки сегодня». Полосу Пролога S-07 вставит
-// над сеткой.
+// (getActiveSkySlotId()), не у «клетки сегодня». Над сеткой — полоса Пролога
+// (S-07) с тем же контрактом клетки.
 
 function calendarDateParts(dateInt) {
     return {
@@ -105,16 +105,83 @@ function getCalendarPageTitle() {
 }
 
 /**
- * Общий выбор неба из календаря — имя согласовано со S-07, которая заменит тело
- * вызовом selectSky. В S-06 небо одно — сегодняшнее: его слот закрывает книгу
- * (небо на экране уже то же), любой другой слот — отказ без эффекта.
+ * Общий выбор неба из календаря (S-06) — тело S-07: selectSky (prologue.js).
+ * Сегодняшний день и доступный уровень Пролога переключают небо и закрывают
+ * книгу; прошлые дни, пройденные/запертые/«coming soon» уровни — отказ без эффекта.
  * @returns {boolean} принят ли выбор
  */
 function selectSkyFromCalendar(slotId) {
-    if (slotId !== getTodaySkySlotId()) return false;
-    if (typeof closeBookAnimated === 'function') closeBookAnimated();
-    else closeBook();
-    return true;
+    return selectSky(slotId, { animate: true }).ok;
+}
+
+// =============================================================================
+// S-07: ПОЛОСА ПРОЛОГА — над сеткой месяца
+// =============================================================================
+
+const PROLOGUE_ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII'];
+
+/** Модель полосы — та же, из которой строится DOM. */
+function getPrologueStripModel() {
+    const activeSlot = typeof getActiveSkySlotId === 'function' ? getActiveSkySlotId() : null;
+    const levels = [];
+    for (let n = 1; n <= PROLOGUE_LEVEL_COUNT; n++) {
+        const state = getPrologueLevelState(n);
+        const slot = n <= PROLOGUE_PICTURE_IDS.length ? 'prologue:' + n : null;
+        levels.push({ n, state, slot, selected: !!slot && slot === activeSlot });
+    }
+    // Подпись: имя первого доступного уровня; доступных нет — «скоро ещё».
+    const next = levels.find(l => l.state === 'available');
+    const caption = next ? t('prologue.name' + next.n) : t('prologue.soon');
+    return { levels, caption };
+}
+
+function createPrologueCell(level) {
+    const clickable = level.state === 'available';
+    const el = document.createElement(clickable ? 'button' : 'div');
+    el.className = 'book-prologue-cell book-prologue-' + level.state;
+    el.dataset.level = String(level.n);
+    el.dataset.state = level.state;
+    if (level.slot) el.dataset.slot = level.slot;
+    if (level.selected) el.dataset.selected = 'true';
+    el.setAttribute('aria-label', level.n <= PROLOGUE_PICTURE_IDS.length
+        ? PROLOGUE_ROMAN[level.n - 1] + ' · ' + t('prologue.name' + level.n)
+        : PROLOGUE_ROMAN[level.n - 1] + ' · ' + t('prologue.soon'));
+
+    const num = document.createElement('span');
+    num.className = 'book-prologue-num';
+    num.textContent = PROLOGUE_ROMAN[level.n - 1];
+    el.appendChild(num);
+
+    if (clickable) {
+        el.type = 'button';
+        el.addEventListener('click', () => selectSkyFromCalendar(level.slot));
+    } else {
+        el.setAttribute('aria-disabled', 'true');
+        if (level.state === 'locked') el.appendChild(glyphSign('lock', 10, 'book-prologue-lock'));
+    }
+    return el;
+}
+
+function renderBookPrologueStrip() {
+    const el = document.getElementById('bookCalendarPrologue');
+    if (!el) return;
+    el.innerHTML = '';
+    const model = getPrologueStripModel();
+
+    const title = document.createElement('div');
+    title.className = 'book-prologue-title';
+    title.textContent = t('prologue.title');
+    el.appendChild(title);
+
+    const row = document.createElement('div');
+    row.className = 'book-prologue-row';
+    for (const level of model.levels) row.appendChild(createPrologueCell(level));
+    el.appendChild(row);
+
+    const caption = document.createElement('div');
+    caption.className = 'book-prologue-caption';
+    caption.textContent = model.caption;
+    el.appendChild(caption);
 }
 
 function createCalendarCell(cell) {
@@ -141,6 +208,7 @@ function createCalendarCell(cell) {
 }
 
 function renderBookCalendar() {
+    renderBookPrologueStrip();
     const el = document.getElementById('bookCalendarGrid');
     if (!el) return;
     el.innerHTML = '';

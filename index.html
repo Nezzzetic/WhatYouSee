@@ -285,6 +285,8 @@
                          звук; список рассчитан на второй (вибро, A-05/U-14). -->
                     <!-- S-06: календарь — сетка месяца по дате неба (bookCalendar.js) -->
                     <div id="bookCalendarSection" class="book-section" hidden>
+                        <!-- S-07: полоса Пролога над сеткой — семь уровней-небес -->
+                        <div id="bookCalendarPrologue" class="book-prologue"></div>
                         <div id="bookCalendarGrid" class="book-cal-grid"></div>
                     </div>
                     <div id="bookSettingsSection" class="book-section" hidden>
@@ -382,6 +384,8 @@
     <script src="js/achievements.js"></script>
     <script src="js/bookStamps.js"></script>
     <script src="js/save.js"></script>
+    <!-- S-07: Пролог — опирается на слоты save.js -->
+    <script src="js/prologue.js"></script>
     <script src="js/tutorial.js"></script>
     <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после
          loadProgression() (startAnalytics() зовётся из setup()). Раннее

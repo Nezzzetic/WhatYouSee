@@ -166,7 +166,15 @@ function renderBookTodayDawn() {
     const el = document.getElementById('bookTodayDawn');
     if (!el) return;
     const complete = typeof isLevelComplete === 'function' && isLevelComplete();
-    if (complete) {
+    // S-07 (развилка 4): на Прологе после конца уровня блок пуст — ни отсчёта
+    // «New sky in…» (уровень от суток не зависит), ни другой строки.
+    const prologueDone = complete && typeof getActiveSkyKind === 'function'
+        && getActiveSkyKind() === 'prologue';
+    el.hidden = prologueDone;
+    if (prologueDone) {
+        stopBookTodayDawnTimer();
+        setBookTodayDawnParts('', '', '');
+    } else if (complete) {
         renderDawnCountdown();
     } else {
         renderDawnStarsLeft();

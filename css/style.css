@@ -1175,6 +1175,11 @@ button:disabled {
     margin-top: 6px;
 }
 
+/* S-07: на Прологе после конца уровня блок пуст и спрятан. */
+.book-dawn[hidden] {
+    display: none;
+}
+
 .book-dawn-label {
     font-family: var(--font-title);
     font-weight: 500;
@@ -2663,5 +2668,107 @@ body.book-opening .book-close-ribbon {
 
 .book-cal-past .book-cal-lock {
     color: rgba(var(--ink-rgb), 0.42);
+}
+
+/* --- S-07: полоса «Пролог» над сеткой календаря -----------------------------
+   Семь клеток в одну строку, римская цифра (на 320 px слово не влезает);
+   имя доступного уровня — одной подписью под полосой. Доступный — живая
+   кнопка; пройденный — золотая ✦ (обычный CSS content, как точки высечек
+   U-32); заперт — знак замка; «coming soon» — бледная цифра. Небо на экране —
+   то же золотое кольцо, что у сетки. */
+
+.book-prologue {
+    max-width: 360px;
+    margin: 2px auto 14px;
+    text-align: center;
+}
+
+.book-prologue-title {
+    font-family: var(--font-text);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    padding-bottom: 6px;
+}
+
+.book-prologue-row {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 1px;
+}
+
+.book-prologue-cell {
+    position: relative;
+    aspect-ratio: 1;
+    min-height: 32px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: none;
+    font-family: var(--font-title);
+    font-size: 15px;
+    line-height: 1;
+    color: var(--ink);
+    cursor: default;
+}
+
+.book-prologue-num {
+    font-variant-numeric: lining-nums;
+}
+
+.book-prologue-available {
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .book-prologue-available:hover {
+        background: rgba(var(--ink-rgb), 0.06);
+    }
+}
+
+.book-prologue-cell[data-selected="true"] {
+    box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+.book-prologue-passed {
+    color: rgba(var(--ink-rgb), 0.55);
+}
+
+.book-prologue-passed::after {
+    content: "✦";
+    font-size: 9px;
+    line-height: 1;
+    color: var(--gold);
+}
+
+.book-prologue-locked {
+    color: rgba(var(--ink-rgb), 0.42);
+    font-size: 13px;
+}
+
+.book-prologue-locked .book-prologue-lock {
+    color: rgba(var(--ink-rgb), 0.42);
+}
+
+.book-prologue-soon {
+    color: rgba(var(--ink-rgb), 0.24);
+    font-size: 13px;
+}
+
+.book-prologue-caption {
+    padding-top: 6px;
+    font-family: var(--font-text);
+    font-style: italic;
+    font-size: 13px;
+    color: var(--ink-faint);
 }
 
