@@ -77,7 +77,8 @@ function commitObservatoryRenameField() {
  * изменения состояния книги (открыть/закрыть/переключить высечку).
  */
 function syncExLibrisAppMode() {
-    const shouldBeObservatory = bookOpen && bookCut === 'exlibris'
+    // P-17: на развороте Ex Libris видна и тогда, когда фокус — соседняя Settings.
+    const shouldBeObservatory = bookOpen && isBookCutVisible('exlibris')
         && typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
     if (shouldBeObservatory !== inObservatory) {
@@ -107,7 +108,7 @@ function updateObservatoryUI() {
         if (moveBtn) moveBtn.classList.toggle('seg-btn-on', mode === 'move');
     }
 
-    if (bookOpen && bookCut === 'exlibris') renderBookExLibris();
+    if (bookOpen && isBookCutVisible('exlibris')) renderBookExLibris();
 
     // K-11: обсерватория — не то небо, для которого закладывают фигуру.
     renderSkyBookmark();

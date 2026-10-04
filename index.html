@@ -317,6 +317,10 @@
                     </span>
                 </div>
             </div>
+            <!-- P-17: жёлоб разворота — тень переплёта между левой страницей
+                 (#bookPage) и правой (#bookPageRight, копия листа, её вставляет
+                 ensureBookRightPage() в book.js). Виден только в развороте. -->
+            <div class="book-gutter" aria-hidden="true"></div>
             <div id="bookTabs" class="book-tabs" role="tablist">
                 <button type="button" class="book-tab" data-cut="today" role="tab">
                     <!-- K-17: та же пара «локализуемый span + своя капля», что у Штампов -->

@@ -639,6 +639,10 @@
             cut: bookCut,
             page: bookCut === 'stamps' ? getBookPageIndex('rewards') : getBookPageIndex('atlas'),
             pageCount: bookCut === 'stamps' ? getBookPageCount('rewards') : getBookPageCount('atlas'),
+            // P-17: разворот в альбомной ориентации — видимые страницы слева
+            // направо (в портрете одна, она же страница-фокус cut/page).
+            spread: bookSpread,
+            pages: getVisibleBookPages().map(p => ({ cut: p.cut, chapter: p.chapter, folio: getBookPageFolio(p) })),
             // S-03: окно шкалы — ступень лестницы уровней, та же функция, что рисует шкалу.
             gauge: getLevelProgress(),
             wax: waxOn,

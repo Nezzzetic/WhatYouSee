@@ -91,6 +91,9 @@
        упирается в верх — там тот же приём нужен и сверху. */
     --safe-bottom: env(safe-area-inset-bottom, 0px);
     --safe-top: env(safe-area-inset-top, 0px);
+    /* P-17: боковые инсеты (вырез камеры) — нужны только развороту в альбоме. */
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
 
     /* K-05: лента-закладка. Видимый хвост — узкий, зона касания вокруг него
        шире (пальцу 24 px мало). Пропорции из концепта (18×64 при макете 320 px),
@@ -1020,8 +1023,9 @@ button:disabled {
     color: var(--ink);
 }
 
-#bookFootPrev { padding-left: 20px; margin-left: -20px; }
-#bookFootNext { padding-right: 20px; margin-right: -20px; }
+/* P-17: по data-dir, а не по id — у правой страницы разворота id нет. */
+.book-foot-nav-btn[data-dir="-1"] { padding-left: 20px; margin-left: -20px; }
+.book-foot-nav-btn[data-dir="1"] { padding-right: 20px; margin-right: -20px; }
 
 /* --- U-29 (выросло из V-16): баннер уровня — единственный тост в игре, узкое
    исключение из K-15 («тостов нет вовсе»). Решение заказчика: баннер разреза
@@ -1648,6 +1652,133 @@ body.book-opening .book-close-ribbon {
     /* V-22: золото книги на свету темнее — знак ленты берёт светлое золото
        неба (#E3C27A — нить каптальчика), на красной ленте оно читается. */
     color: #E3C27A;
+}
+
+/* --- P-17: разворот — две страницы сразу в альбомной ориентации -------------
+   Класс body.book-spread ставит updateBookSpreadMode() (book.js), когда #app
+   шире высоты и не уже BOOK_SPREAD_MIN_WIDTH. Без класса (портрет) ни одно
+   правило ниже не действует. Область книги — между корешком (слева, отступ
+   на --safe-left) и обрезом с высечками (справа, плюс --safe-right); левая
+   страница — прежний #bookPage, правая — его копия #bookPageRight; между ними
+   жёлоб — тень переплёта. */
+
+.book-page-right,
+.book-gutter {
+    display: none;
+}
+
+body.book-spread .book {
+    --book-area-l: var(--safe-left);
+    --book-area-r: calc(var(--book-obrez) + var(--safe-right));
+    /* Сдвиг середины области от середины экрана — из-за несимметричных краёв. */
+    --book-mid-shift: calc((var(--book-area-r) - var(--book-area-l)) / 2);
+}
+
+body.book-spread .book-page {
+    left: var(--book-area-l);
+    right: calc(50% + var(--book-mid-shift));
+    padding-right: 22px;
+}
+
+body.book-spread .book-page-right {
+    display: flex;
+    left: calc(50% - var(--book-mid-shift));
+    right: var(--book-area-r);
+    padding-left: 22px;
+    padding-right: max(var(--page-pad-right), 16px);
+    border-radius: 0;
+}
+
+/* Корешок один — у левой страницы. */
+body.book-spread .book-page-right::before,
+body.book-spread .book-page-right::after {
+    display: none;
+}
+
+body.book-spread .book-gutter {
+    display: block;
+    position: absolute;
+    top: calc(var(--safe-top) + 44px);
+    bottom: 0;
+    left: calc(50% - var(--book-mid-shift) - 14px);
+    width: 28px;
+    pointer-events: none;
+    background: linear-gradient(90deg,
+        rgba(90, 64, 28, 0) 0%,
+        rgba(90, 64, 28, 0.20) 38%,
+        rgba(60, 42, 18, 0.42) 50%,
+        rgba(90, 64, 28, 0.20) 62%,
+        rgba(90, 64, 28, 0) 100%);
+}
+
+/* Нить уровня — над всем разворотом, от корешка до обреза. */
+body.book-spread #bookGauge {
+    right: -100%;
+}
+
+/* Баннер уровня — по центру разворота, а не левой страницы. */
+body.book-spread .level-banner {
+    left: 100%;
+}
+
+/* Колонка содержимого ≈ 560 px по центру страницы: на мониторе строки и
+   карточки не растягиваются на половину экрана. */
+body.book-spread .book-head,
+body.book-spread .book-body,
+body.book-spread .book-foot {
+    width: 100%;
+    max-width: 560px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Колонцифра — у внешнего края: у левой страницы слева, у правой справа. */
+body.book-spread #bookPage .book-foot {
+    flex-direction: row-reverse;
+}
+
+body.book-spread .book-tabs {
+    right: calc(2px + var(--safe-right));
+}
+
+body.book-spread .book-close-ribbon {
+    right: calc(var(--ribbon-right) + var(--book-obrez) + var(--safe-right) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
+}
+
+/* Телефон на боку: высоты мало — шапка, подвал и высечки компактнее, чтобы
+   тело страницы оставалось не ниже 200 px, а шесть высечек влезали в обрез. */
+@media (max-height: 520px) {
+    body.book-spread .book-page {
+        padding-top: 10px;
+        padding-bottom: calc(var(--safe-bottom) + 12px);
+    }
+    body.book-spread .book-head {
+        margin-bottom: 2px;
+    }
+    body.book-spread .book-title {
+        font-size: 17px;
+        margin-top: 1px;
+    }
+    body.book-spread .book-rule {
+        margin-top: 5px;
+    }
+    body.book-spread .book-body {
+        padding-top: 6px;
+        padding-bottom: 4px;
+    }
+    body.book-spread .book-foot {
+        padding-top: 4px;
+    }
+    body.book-spread .book-tabs {
+        bottom: calc(var(--safe-bottom) + 6px);
+        gap: 3px;
+    }
+    body.book-spread .book-tab {
+        min-height: 0;
+        padding-inline-start: 5px;
+        letter-spacing: 0.08em;
+        font-size: 8.5px;
+    }
 }
 
 /* --- B-02: хинт запертой обсерватории — теперь строкой на странице Ex Libris,

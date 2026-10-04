@@ -161,7 +161,7 @@ function createPrologueCell(level) {
 }
 
 function renderBookPrologueStrip() {
-    const el = document.getElementById('bookCalendarPrologue');
+    const el = bookPart('bookCalendarPrologue');
     if (!el) return;
     el.innerHTML = '';
     const model = getPrologueStripModel();
@@ -207,9 +207,9 @@ function createCalendarCell(cell) {
 
 function renderBookCalendar() {
     renderBookPrologueStrip();
-    const monthEl = document.getElementById('bookCalendarMonth');
+    const monthEl = bookPart('bookCalendarMonth');
     if (monthEl) monthEl.textContent = getCalendarPageTitle();
-    const el = document.getElementById('bookCalendarGrid');
+    const el = bookPart('bookCalendarGrid');
     if (!el) return;
     el.innerHTML = '';
     const model = getCalendarModel();
