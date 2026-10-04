@@ -661,26 +661,20 @@ function drawVisibleBackgroundStars() {
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
         circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
     }
-    // P-17 (пятая правка): неактивные звёзды за боками — вид свободной звезды
-    // поля (слои лепестков и основа, как в drawVisibleStars), но без дыхания,
-    // импульсов и ввода: их нет в fieldStars, getStarAt их не видит.
+    // P-17 (шестая правка): неактивные звёзды за боками — фон, не цель: без
+    // цвета, лучей и основы звезды поля, серо-белая точка с тусклым ореолом,
+    // крупнее пыли. Их нет в fieldStars, getStarAt их не видит.
     const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
     for (let s of getSkySideStars()) {
         if (s.x < camX - 30 || s.x > camX + viewW + 30 ||
             s.y < camY - 30 || s.y > camY + viewH + 30) continue;
         const a = s.bright * bgFadeAlpha;
-        const size = baseStarDrawSize * s.sizeFactor;
-        const coreColor = getStarCoreColor(s, false, false, false);
-        const glowColor = getStarGlowColor(s, false, false, false);
-        fill(255, 255, 255, 25 * a);
-        drawStarPetalsShape(s.x, s.y, size * 2, 1);
-        fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * a);
-        drawStarPetalsShape(s.x, s.y, size * 1.5, 1);
-        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * a);
-        drawStarPetalsShape(s.x, s.y, size, 1);
-        const baseRgb = blendRgb(coreColor, [255, 255, 255], STAR_BASE_WHITEN);
-        fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * a);
-        circle(s.x, s.y, size * STAR_BASE_DIAM_MULT);
+        const core = Math.max(baseStarDrawSize * s.sizeFactor * SKY_SIDE_STAR_CORE_MULT,
+            SKY_SIDE_STAR_MIN_SCREEN_DIAM / zoomLevel);
+        fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 22 * a);
+        circle(s.x, s.y, core * 2.4);
+        fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 150 * a);
+        circle(s.x, s.y, core);
     }
 }
 
@@ -716,7 +710,6 @@ function getSkySideStars() {
                 x: side < 0 ? -d : FIELD_WIDTH + d,
                 y: y0 + rnd() * spanH,
                 sizeFactor: STAR_SIZE_VARIATION_MIN + rnd() * (STAR_SIZE_VARIATION_MAX - STAR_SIZE_VARIATION_MIN),
-                colorValue: STAR_FIELD_COLOR_VALUES[Math.floor(rnd() * STAR_FIELD_COLOR_VALUES.length)],
                 bright: SKY_SIDE_STAR_BRIGHT_MIN + rnd() * (1 - SKY_SIDE_STAR_BRIGHT_MIN)
             });
         }
