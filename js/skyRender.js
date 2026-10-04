@@ -651,6 +651,46 @@ function drawVisibleBackgroundStars() {
         const bgDiam = Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel);
         circle(s.x, s.y, bgDiam);
     }
+    // P-17 (четвёртая правка заказчика): в альбомном окне поле — узкая полоса
+    // по центру, и небо слева/справа было пустым. Та же пыль, той же плотности,
+    // продолжается за боковые края поля — только отрисовка: поле, сейв и
+    // random() неба не трогаются (M-14), в портрете бока не видны.
+    for (let s of getSkySideDust()) {
+        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
+            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        fill(255, 255, 255, s.alpha * bgFadeAlpha);
+        circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
+    }
+}
+
+let skySideDust = null;
+
+/** Пыль неба за боковыми краями поля: своё постоянное зерно, один раз. */
+function getSkySideDust() {
+    if (skySideDust) return skySideDust;
+    let seed = 0x5EED17;
+    const rnd = () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const y0 = -BACKGROUND_STAR_MARGIN_Y, spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
+    const gap = SKY_SIDE_DUST_GAP, spanW = SKY_SIDE_DUST_MARGIN_X - gap;
+    const count = Math.round(BACKGROUND_STAR_COUNT * spanW * spanH / (FIELD_WIDTH * FIELD_HEIGHT));
+    skySideDust = [];
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < count; i++) {
+            const d = gap + rnd() * spanW;
+            skySideDust.push({
+                x: side < 0 ? -d : FIELD_WIDTH + d,
+                y: y0 + rnd() * spanH,
+                size: 1 + rnd() * 1.5,
+                alpha: 40 + rnd() * 80
+            });
+        }
+    }
+    return skySideDust;
 }
 
 // -----------------------------------------------------------------------------
