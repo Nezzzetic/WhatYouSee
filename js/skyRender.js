@@ -661,6 +661,67 @@ function drawVisibleBackgroundStars() {
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
         circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
     }
+    // P-17 (пятая правка): неактивные звёзды за боками — вид свободной звезды
+    // поля (слои лепестков и основа, как в drawVisibleStars), но без дыхания,
+    // импульсов и ввода: их нет в fieldStars, getStarAt их не видит.
+    const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
+    for (let s of getSkySideStars()) {
+        if (s.x < camX - 30 || s.x > camX + viewW + 30 ||
+            s.y < camY - 30 || s.y > camY + viewH + 30) continue;
+        const a = s.bright * bgFadeAlpha;
+        const size = baseStarDrawSize * s.sizeFactor;
+        const coreColor = getStarCoreColor(s, false, false, false);
+        const glowColor = getStarGlowColor(s, false, false, false);
+        fill(255, 255, 255, 25 * a);
+        drawStarPetalsShape(s.x, s.y, size * 2, 1);
+        fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * a);
+        drawStarPetalsShape(s.x, s.y, size * 1.5, 1);
+        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * a);
+        drawStarPetalsShape(s.x, s.y, size, 1);
+        const baseRgb = blendRgb(coreColor, [255, 255, 255], STAR_BASE_WHITEN);
+        fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * a);
+        circle(s.x, s.y, size * STAR_BASE_DIAM_MULT);
+    }
+}
+
+/** Детерминированный генератор (mulberry32) — не трогает random() неба (M-14). */
+function makeSkySideRng(seed) {
+    return () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+let skySideStars = null;
+let skySideStarsKey = null;
+
+/** Неактивные звёзды за боками поля: зерно — playerId, пересчёт при его смене. */
+function getSkySideStars() {
+    const key = (typeof playerId === 'string' && playerId) ? playerId : 'sky';
+    if (skySideStars && skySideStarsKey === key) return skySideStars;
+    let h = 0x811C9DC5;
+    for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+    const rnd = makeSkySideRng(h ^ 0x51DE57A5);
+    const y0 = -BACKGROUND_STAR_MARGIN_Y, spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
+    const gap = SKY_SIDE_STAR_GAP, spanW = SKY_SIDE_DUST_MARGIN_X - gap;
+    const count = Math.round(spanW * spanH / SKY_SIDE_STAR_AREA);
+    skySideStars = [];
+    skySideStarsKey = key;
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < count; i++) {
+            const d = gap + rnd() * spanW;
+            skySideStars.push({
+                x: side < 0 ? -d : FIELD_WIDTH + d,
+                y: y0 + rnd() * spanH,
+                sizeFactor: STAR_SIZE_VARIATION_MIN + rnd() * (STAR_SIZE_VARIATION_MAX - STAR_SIZE_VARIATION_MIN),
+                colorValue: STAR_FIELD_COLOR_VALUES[Math.floor(rnd() * STAR_FIELD_COLOR_VALUES.length)],
+                bright: SKY_SIDE_STAR_BRIGHT_MIN + rnd() * (1 - SKY_SIDE_STAR_BRIGHT_MIN)
+            });
+        }
+    }
+    return skySideStars;
 }
 
 let skySideDust = null;
@@ -668,13 +729,7 @@ let skySideDust = null;
 /** Пыль неба за боковыми краями поля: своё постоянное зерно, один раз. */
 function getSkySideDust() {
     if (skySideDust) return skySideDust;
-    let seed = 0x5EED17;
-    const rnd = () => {
-        seed = (seed + 0x6D2B79F5) | 0;
-        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
+    const rnd = makeSkySideRng(0x5EED17);
     const y0 = -BACKGROUND_STAR_MARGIN_Y, spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
     const gap = SKY_SIDE_DUST_GAP, spanW = SKY_SIDE_DUST_MARGIN_X - gap;
     const count = Math.round(BACKGROUND_STAR_COUNT * spanW * spanH / (FIELD_WIDTH * FIELD_HEIGHT));
