@@ -192,8 +192,24 @@ function ensureBookRightPage() {
     return right;
 }
 
+/**
+ * Ширина страницы разворота (--spread-page-w): книжная пропорция от высоты
+ * листа, но не шире, чем позволяет экран с полосами неба по бокам. Высоту
+ * берём из #app, а не 100vh — панель адреса мобильного браузера (V-20/P-09).
+ */
+function updateBookSpreadPageWidth() {
+    const app = document.getElementById('app');
+    const w = app ? app.clientWidth : window.innerWidth;
+    const h = Math.min(app ? app.clientHeight : window.innerHeight, window.innerHeight || Infinity);
+    const obrez = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--book-obrez')) || 34;
+    const byHeight = Math.max(BOOK_SPREAD_PAGE_MIN_W, Math.round((h - 44) * BOOK_SPREAD_PAGE_RATIO));
+    const byWidth = Math.floor((w - obrez - 2 * BOOK_SPREAD_SIDE_PX) / 2);
+    document.documentElement.style.setProperty('--spread-page-w', Math.min(byHeight, byWidth) + 'px');
+}
+
 /** Переключатель по размеру #app — на загрузке, ресайзе и повороте. */
 function updateBookSpreadMode() {
+    updateBookSpreadPageWidth();
     const next = computeBookSpreadMode();
     if (next === bookSpread) return;
     bookSpread = next;

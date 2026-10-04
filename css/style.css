@@ -1657,10 +1657,13 @@ body.book-opening .book-close-ribbon {
 /* --- P-17: разворот — две страницы сразу в альбомной ориентации -------------
    Класс body.book-spread ставит updateBookSpreadMode() (book.js), когда #app
    шире высоты и не уже BOOK_SPREAD_MIN_WIDTH. Без класса (портрет) ни одно
-   правило ниже не действует. Область книги — между корешком (слева, отступ
-   на --safe-left) и обрезом с высечками (справа, плюс --safe-right); левая
-   страница — прежний #bookPage, правая — его копия #bookPageRight; между ними
-   жёлоб — тень переплёта. */
+   правило ниже не действует. Левая страница — прежний #bookPage, правая — его
+   копия #bookPageRight, между ними жёлоб — тень переплёта.
+   Фидбек заказчика с телефона: разворот не во всю ширину — две страницы
+   книжной пропорции (--spread-page-w, updateBookSpreadPageWidth в book.js)
+   по центру безопасной области, по бокам видно небо; высечки примыкают к
+   правой странице; корешка слева нет — каптальчик стоит над жёлобом
+   посередине, синей части переплёта под книгой не видно. */
 
 .book-page-right,
 .book-gutter {
@@ -1668,31 +1671,46 @@ body.book-opening .book-close-ribbon {
 }
 
 body.book-spread .book {
-    --book-area-l: var(--safe-left);
-    --book-area-r: calc(var(--book-obrez) + var(--safe-right));
-    /* Сдвиг середины области от середины экрана — из-за несимметричных краёв. */
-    --book-mid-shift: calc((var(--book-area-r) - var(--book-area-l)) / 2);
+    /* Ширина двух страниц и левый край разворота (с обрезом под высечки). */
+    --spread-w: calc(2 * var(--spread-page-w, 300px));
+    --spread-l: calc(50% + (var(--safe-left) - var(--safe-right)) / 2 - (var(--spread-w) + var(--book-obrez)) / 2);
+    /* Расстояние от правого края экрана до правого края правой страницы. */
+    --spread-r: calc(100% - var(--spread-l) - var(--spread-w));
 }
 
 body.book-spread .book-page {
-    left: var(--book-area-l);
-    right: calc(50% + var(--book-mid-shift));
+    left: var(--spread-l);
+    right: calc(100% - var(--spread-l) - var(--spread-page-w, 300px));
     padding-right: 22px;
+    border-radius: 0;
 }
 
 body.book-spread .book-page-right {
     display: flex;
-    left: calc(50% - var(--book-mid-shift));
-    right: var(--book-area-r);
+    left: calc(var(--spread-l) + var(--spread-page-w, 300px));
+    right: var(--spread-r);
     padding-left: 22px;
     padding-right: max(var(--page-pad-right), 16px);
-    border-radius: 0;
 }
 
-/* Корешок один — у левой страницы. */
-body.book-spread .book-page-right::before,
-body.book-spread .book-page-right::after {
+/* Корешка у края нет ни у одной страницы — каптальчик над жёлобом. */
+body.book-spread .book-page::before,
+body.book-spread .book-page::after {
     display: none;
+}
+
+/* Каптальчик — красно-золотая нить по центру, над швом страниц: выступает
+   над листом на высоту стопки слоёв обреза. */
+body.book-spread .book-gutter::before {
+    content: '';
+    position: absolute;
+    top: -7px;
+    left: 7px;
+    width: 14px;
+    height: 7px;
+    border-radius: 2px 2px 0 0;
+    background: repeating-linear-gradient(90deg, #8E2B2B 0 2px, #E3C27A 2px 4px);
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.3);
 }
 
 body.book-spread .book-gutter {
@@ -1700,7 +1718,7 @@ body.book-spread .book-gutter {
     position: absolute;
     top: calc(var(--safe-top) + 44px);
     bottom: 0;
-    left: calc(50% - var(--book-mid-shift) - 14px);
+    left: calc(var(--spread-l) + var(--spread-page-w, 300px) - 14px);
     width: 28px;
     pointer-events: none;
     background: linear-gradient(90deg,
@@ -1737,12 +1755,13 @@ body.book-spread #bookPage .book-foot {
     flex-direction: row-reverse;
 }
 
+/* Высечки — у кромки правой страницы, как в портрете у кромки листа. */
 body.book-spread .book-tabs {
-    right: calc(2px + var(--safe-right));
+    right: calc(var(--spread-r) - var(--book-obrez) + 2px);
 }
 
 body.book-spread .book-close-ribbon {
-    right: calc(var(--ribbon-right) + var(--book-obrez) + var(--safe-right) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
+    right: calc(var(--ribbon-right) + var(--spread-r) - 26px + (var(--ribbon-hit-w) - var(--ribbon-w)) / -2);
 }
 
 /* Телефон на боку: высоты мало — шапка, подвал и высечки компактнее, чтобы
