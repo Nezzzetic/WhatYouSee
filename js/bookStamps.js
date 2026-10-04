@@ -14,7 +14,7 @@ function createRewardPageLockedNotice(pageIndex) {
 }
 
 function renderAchievementsList() {
-    const list = document.getElementById('achievementsList');
+    const list = bookPart('achievementsList');
     if (!list) return;
     list.innerHTML = '';
     const pageIndex = getBookPageIndex('rewards');

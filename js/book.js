@@ -50,6 +50,171 @@ function isBookOpen() {
     return bookOpen;
 }
 
+// =============================================================================
+// P-17: РАЗВОРОТ — две страницы сразу в альбомной ориентации
+// =============================================================================
+//
+// Страница книги — то, у чего есть колонцифра: «Сегодня» (1), оглавление (2),
+// главы атласа (3–6), главы штампов (7–9), Calendar (10), Ex Libris (11),
+// Settings (12). В альбомной ориентации книга показывает разворот — две
+// соседние страницы по колонцифре, считая от первой: (1,2), (3,4) … (11,12).
+//
+// Состояние прежнее: bookCut + bookPageIndices называют «страницу-фокус» —
+// последнюю, куда игрок перешёл сам. Разворот из неё выводится, а не хранится,
+// поэтому поворот телефона туда и обратно возвращает ту же страницу.
+//
+// Левая страница — прежний #bookPage со всеми id; правая — его копия
+// (#bookPageRight), у которой id переписаны в data-part: рендереры страниц
+// ищут свои узлы через bookPart(), а та на время отрисовки правой страницы
+// смотрит в неё (withBookPageContext).
+
+let bookSpread = false;
+let bookRenderRoot = null;
+
+/** Узел страницы по прежнему id — в правой странице разворота он data-part. */
+function bookPart(id) {
+    if (bookRenderRoot) return bookRenderRoot.querySelector('[data-part="' + id + '"]');
+    return document.getElementById(id);
+}
+
+/** Чистая: все страницы книги в порядке колонцифр. */
+function getBookPageSequence() {
+    const pages = [{ cut: 'today', chapter: null }, { cut: 'index', chapter: null }];
+    for (let i = 0; i < ATLAS_PAGE_COUNT; i++) pages.push({ cut: 'atlas', chapter: i });
+    for (let i = 1; i < REWARD_PAGE_COUNT; i++) pages.push({ cut: 'stamps', chapter: i });
+    pages.push({ cut: 'calendar', chapter: null }, { cut: 'exlibris', chapter: null },
+        { cut: 'settings', chapter: null });
+    return pages;
+}
+
+function getBookPageFolio(page) {
+    if (page.cut === 'today') return 1;
+    if (page.cut === 'index') return 2;
+    if (page.cut === 'atlas') return getAtlasChapterFolio(page.chapter);
+    if (page.cut === 'stamps') return getStampsChapterFolio(page.chapter);
+    if (page.cut === 'calendar') return getCalendarFolio();
+    if (page.cut === 'exlibris') return getExLibrisFolio();
+    return getSettingsFolio();
+}
+
+/** Страница-фокус — то, что в портрете и есть единственная страница. */
+function getBookFocusPage() {
+    if (bookCut === 'atlas') return { cut: 'atlas', chapter: getBookPageIndex('atlas') };
+    if (bookCut === 'stamps') return { cut: 'stamps', chapter: getBookPageIndex('rewards') };
+    return { cut: bookCut, chapter: null };
+}
+
+function getBookSpreadCount() {
+    return Math.ceil(getBookPageSequence().length / 2);
+}
+
+/** Номер разворота (с нуля), в котором лежит страница. */
+function getBookSpreadIndexOf(page) {
+    return Math.floor((getBookPageFolio(page) - 1) / 2);
+}
+
+function getBookSpreadPages(spreadIndex) {
+    const seq = getBookPageSequence();
+    return seq.slice(spreadIndex * 2, spreadIndex * 2 + 2);
+}
+
+/** Видимые страницы: одна в портрете, левая и правая — в развороте. */
+function getVisibleBookPages() {
+    const focus = getBookFocusPage();
+    if (!bookSpread) return [focus];
+    return getBookSpreadPages(getBookSpreadIndexOf(focus));
+}
+
+function isBookCutVisible(cut) {
+    return getVisibleBookPages().some(page => page.cut === cut);
+}
+
+/** Ставит страницу-фокус (без отрисовки). */
+function setBookFocusPage(page) {
+    bookCut = page.cut;
+    if (page.cut === 'atlas') setBookPageIndex('atlas', page.chapter);
+    else if (page.cut === 'stamps') setBookPageIndex('rewards', page.chapter);
+}
+
+/**
+ * Рисует одну страницу: на время вызова fn страница-фокус подменяется ею, а
+ * bookPart() смотрит в её корень. Всё, что рендереры читают из глобального
+ * состояния (bookCut, getBookPageIndex), отвечает про эту страницу.
+ */
+function withBookPageContext(page, root, fn) {
+    const saved = { cut: bookCut, atlas: bookPageIndices.atlas, rewards: bookPageIndices.rewards };
+    const savedRoot = bookRenderRoot;
+    setBookFocusPage(page);
+    bookRenderRoot = root;
+    try {
+        fn();
+    } finally {
+        bookCut = saved.cut;
+        bookPageIndices.atlas = saved.atlas;
+        bookPageIndices.rewards = saved.rewards;
+        bookRenderRoot = savedRoot;
+    }
+}
+
+/** Альбомная ориентация: область игры шире высоты и не уже порога. */
+function computeBookSpreadMode() {
+    const app = document.getElementById('app');
+    const w = app ? app.clientWidth : window.innerWidth;
+    const h = Math.min(app ? app.clientHeight : window.innerHeight, window.innerHeight || Infinity);
+    return w > h && w >= BOOK_SPREAD_MIN_WIDTH;
+}
+
+/**
+ * Правая страница — копия разметки листа: id → data-part, без того, что
+ * бывает только слева (нить уровня, баннер уровня, «Сегодня», Ex Libris).
+ */
+function ensureBookRightPage() {
+    let right = document.getElementById('bookPageRight');
+    if (right) return right;
+    const left = document.getElementById('bookPage');
+    if (!left) return null;
+    right = left.cloneNode(true);
+    ['bookGauge', 'levelBanner', 'bookToday', 'bookExLibris'].forEach(id => {
+        const el = right.querySelector('#' + id);
+        if (el) el.remove();
+    });
+    right.querySelectorAll('[id]').forEach(el => {
+        el.dataset.part = el.id;
+        el.removeAttribute('id');
+    });
+    right.id = 'bookPageRight';
+    right.classList.add('book-page-right');
+    right.hidden = true;
+    left.after(right);
+    right.querySelectorAll('.book-foot-nav-btn').forEach(btn => {
+        btn.addEventListener('click', (event) => swipeBookPage(Number(event.currentTarget.dataset.dir)));
+    });
+    return right;
+}
+
+/** Переключатель по размеру #app — на загрузке, ресайзе и повороте. */
+function updateBookSpreadMode() {
+    const next = computeBookSpreadMode();
+    if (next === bookSpread) return;
+    bookSpread = next;
+    if (document.body) document.body.classList.toggle('book-spread', next);
+    const right = ensureBookRightPage();
+    if (right) right.hidden = !next;
+    const book = document.getElementById('book');
+    if (book && bookOpen) {
+        // Поворот посреди протяжки — книга не остаётся в промежуточном сдвиге.
+        setBookTransition(book, '');
+        setBookTransform(book, '');
+        resetRibbons();
+        document.body.classList.remove('book-opening');
+    }
+    if (bookOpen) {
+        closeObservatoryRenameField();
+        renderBook();
+        syncExLibrisAppMode();
+    }
+}
+
 /** K-19: римские цифры генерируются, не заводятся в словарь — до VII хватает. */
 function toRoman(n) {
     const table = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
@@ -121,12 +286,12 @@ function renderBookRunningHead(el, eyebrow) {
 
 /** Шапка страницы: над-заголовок, титул, колонцифра — синтетическая, но сквозная. */
 function renderBookHead() {
-    const eyebrowEl = document.getElementById('bookEyebrow');
-    const titleEl = document.getElementById('bookTitle');
-    const footLeftEl = document.getElementById('bookFootLeft');
-    const folioEl = document.getElementById('bookFolio');
-    const prevBtn = document.getElementById('bookFootPrev');
-    const nextBtn = document.getElementById('bookFootNext');
+    const eyebrowEl = bookPart('bookEyebrow');
+    const titleEl = bookPart('bookTitle');
+    const footLeftEl = bookPart('bookFootLeft');
+    const folioEl = bookPart('bookFolio');
+    const prevBtn = bookPart('bookFootPrev');
+    const nextBtn = bookPart('bookFootNext');
     if (!eyebrowEl || !titleEl || !footLeftEl || !folioEl) return;
 
     let eyebrow = '';
@@ -190,7 +355,7 @@ function renderBookHead() {
     footLeftEl.textContent = footLeft;
     // S-03 (правка заказчика 2026-09-10): уровень — в подвале рядом с брендом
     // (на Штампах — рядом с прогрессом главы) на любой странице книги.
-    const footLevelEl = document.getElementById('bookFootLevel');
+    const footLevelEl = bookPart('bookFootLevel');
     if (footLevelEl) footLevelEl.textContent = t('book.footLevel', { n: getPlayerLevel() });
     folioEl.textContent = t('book.folio', { n: folioN });
 
@@ -201,8 +366,16 @@ function renderBookHead() {
         const pagerAttr = bookCut === 'stamps' ? 'rewards' : bookCut;
         prevBtn.dataset.pager = pagerAttr;
         nextBtn.dataset.pager = pagerAttr;
-        prevBtn.hidden = !canSwipeBookPage(-1);
-        nextBtn.hidden = !canSwipeBookPage(1);
+        if (bookSpread) {
+            // P-17: «назад» живёт только на левой странице, «вперёд» — только
+            // на правой; листают разворотами.
+            const isRight = !!bookRenderRoot;
+            prevBtn.hidden = isRight || !canSwipeBookPage(-1);
+            nextBtn.hidden = !isRight || !canSwipeBookPage(1);
+        } else {
+            prevBtn.hidden = !canSwipeBookPage(-1);
+            nextBtn.hidden = !canSwipeBookPage(1);
+        }
     }
 }
 
@@ -309,8 +482,10 @@ function todayHasSignal() {
  * не полагается никогда: она зовёт прижать, а прижимать там нечего.
  */
 function renderBookTabs() {
+    // P-17: на развороте подсвечены высечки обеих видимых страниц.
+    const visibleCuts = getVisibleBookPages().map(page => page.cut);
     document.querySelectorAll('.book-tab').forEach(btn => {
-        btn.classList.toggle('book-tab-on', btn.dataset.cut === bookCut);
+        btn.classList.toggle('book-tab-on', visibleCuts.includes(btn.dataset.cut));
     });
     // U-34: звёздочка горит классом, а не hidden — место под неё в высечке
     // занято всегда, и слово не прыгает, когда сигнал загорается/гаснет (K-23).
@@ -349,6 +524,23 @@ function stepBookPage(delta) {
  * «Ex Libris») жест молчит, без зацикливания.
  */
 function swipeBookPage(delta) {
+    if (bookSpread) {
+        // P-17: разворотами — фокус встаёт на левую страницу соседнего
+        // разворота; «Settings» здесь обычная правая страница последнего.
+        const next = getBookSpreadIndexOf(getBookFocusPage()) + delta;
+        if (next < 0 || next >= getBookSpreadCount()) return;
+        const page = getBookSpreadPages(next)[0];
+        if (page.cut === bookCut) {
+            setBookFocusPage(page);
+            renderBook();
+            syncExLibrisAppMode();
+        } else {
+            if (page.cut === 'atlas') setBookPageIndex('atlas', page.chapter);
+            else if (page.cut === 'stamps') setBookPageIndex('rewards', page.chapter);
+            switchBookCut(page.cut);
+        }
+        return;
+    }
     if (stepBookPage(delta)) return;
     const order = BOOK_CUT_LIST.filter(cut => cut !== 'settings');
     const i = order.indexOf(bookCut);
@@ -367,6 +559,10 @@ function swipeBookPage(delta) {
  * границы главы, иначе — на порядок высечек (BOOK_CUT_LIST без 'settings').
  */
 function canSwipeBookPage(delta) {
+    if (bookSpread) {
+        const next = getBookSpreadIndexOf(getBookFocusPage()) + delta;
+        return next >= 0 && next < getBookSpreadCount();
+    }
     if (bookCut === 'atlas') {
         const idx = getBookPageIndex('atlas') + delta;
         if (idx >= 0 && idx < ATLAS_PAGE_COUNT) return true;
@@ -383,25 +579,18 @@ function canSwipeBookPage(delta) {
 // K-06: РЕНДЕР И ОТКРЫТИЕ/ЗАКРЫТИЕ КНИГИ
 // =============================================================================
 
-function renderBook() {
-    const sections = {
-        today: document.getElementById('bookToday'),
-        index: document.getElementById('bookIndex'),
-        atlas: document.getElementById('bookAtlasSection'),
-        stamps: document.getElementById('bookStampsSection'),
-        calendar: document.getElementById('bookCalendarSection'),
-        exlibris: document.getElementById('bookExLibris'),
-        settings: document.getElementById('bookSettingsSection')
-    };
-    for (const cut in sections) {
-        if (sections[cut]) sections[cut].hidden = cut !== bookCut;
-    }
-    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
-    // (renderBookToday() его при надобности заведёт заново).
-    if (bookCut !== 'today') stopBookTodayDawnTimer();
+const BOOK_SECTION_PARTS = {
+    today: 'bookToday',
+    index: 'bookIndex',
+    atlas: 'bookAtlasSection',
+    stamps: 'bookStampsSection',
+    calendar: 'bookCalendarSection',
+    exlibris: 'bookExLibris',
+    settings: 'bookSettingsSection'
+};
 
-    recomputeAchievementsClaimable();
-
+/** Содержимое одного раздела — в текущем контексте страницы. */
+function renderBookSectionContent() {
     if (bookCut === 'today') {
         renderBookToday();
     } else if (bookCut === 'index') {
@@ -417,15 +606,50 @@ function renderBook() {
     } else if (bookCut === 'settings') {
         renderBookSettings();
     }
+}
 
-    renderBookHead();
+/** P-17: корни видимых страниц — левая (#bookPage, root null) и правая. */
+function getVisibleBookPageRoots() {
+    const pages = getVisibleBookPages();
+    const right = bookSpread ? ensureBookRightPage() : null;
+    return pages.map((page, i) => ({ page, root: i === 1 ? right : null }));
+}
+
+/**
+ * Перерисовать содержимое видимых страниц раздела без сброса прокрутки
+ * (булавка атласа: в развороте рядом бывают две главы).
+ */
+function rerenderVisibleBookPages(cut) {
+    for (const { page, root } of getVisibleBookPageRoots()) {
+        if (page.cut !== cut) continue;
+        withBookPageContext(page, root, renderBookSectionContent);
+    }
+}
+
+function renderBook() {
+    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
+    // (renderBookToday() его при надобности заведёт заново).
+    if (!isBookCutVisible('today')) stopBookTodayDawnTimer();
+
+    recomputeAchievementsClaimable();
+
+    for (const { page, root } of getVisibleBookPageRoots()) {
+        withBookPageContext(page, root, () => {
+            for (const cut in BOOK_SECTION_PARTS) {
+                const section = bookPart(BOOK_SECTION_PARTS[cut]);
+                if (section) section.hidden = cut !== bookCut;
+            }
+            renderBookSectionContent();
+            renderBookHead();
+            const body = bookPart('bookBody');
+            if (body) body.scrollTop = 0;
+        });
+    }
+
     renderBookGauge();
     renderBookTabs();
     updateScoreUI();
     updateRibbonSignal();
-
-    const body = document.getElementById('bookBody');
-    if (body) body.scrollTop = 0;
 }
 
 function refreshBookIfOpen() {
@@ -773,6 +997,7 @@ function setupBookCloseGesture() {
     let closing = false;
     let tracking = false;
     let travel = 0; // V-20: снимается один раз на жест — см. setupRibbonPullGesture
+    let gestureBody = body;
     let isMouseGesture = false; // U-43: только у мыши — выделение текста и клик после протяжки
     let clickGateCleanup = null; // U-43: снятие одноразового гасителя клика после протяжки
 
@@ -830,6 +1055,11 @@ function setupBookCloseGesture() {
         tracking = true;
         isMouseGesture = event.type === 'mousedown';
         travel = bookTravelPx();
+        // P-17: у каждой страницы разворота своя прокрутка — закрытие смотрит
+        // на ту, с которой начат жест.
+        const pageBody = event.target.closest && event.target.closest('.book-page')
+            ? event.target.closest('.book-page').querySelector('.book-body') : null;
+        gestureBody = pageBody || body;
     };
 
     const onMove = (event) => {
@@ -845,7 +1075,7 @@ function setupBookCloseGesture() {
                 axis = 'horizontal';
             } else {
                 axis = 'vertical';
-                closing = dy > 0 && body.scrollTop <= 0;
+                closing = dy > 0 && gestureBody.scrollTop <= 0;
             }
             // U-43: ось решена — у мыши это уже жест книги, не выделение текста.
             if (isMouseGesture) {
@@ -1262,6 +1492,11 @@ function setupBookControls() {
     }
 
     setupBookCloseGesture();
+
+    // P-17: разворот включается и снимается на лету — поворот телефона, ресайз окна.
+    ensureBookRightPage();
+    updateBookSpreadMode();
+    window.addEventListener('resize', updateBookSpreadMode);
 }
 
 function onGlobalPopupKeydown(event) {

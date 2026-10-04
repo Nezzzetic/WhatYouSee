@@ -46,7 +46,7 @@ function createSettingsToggleRow(labelKey, getOn, onToggle) {
 }
 
 function renderBookSettings() {
-    const el = document.getElementById('bookSettingsList');
+    const el = bookPart('bookSettingsList');
     if (!el) return;
     el.innerHTML = '';
     el.appendChild(createSettingsToggleRow('settings.sound', isSoundEnabled, setSoundEnabled));

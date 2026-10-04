@@ -79,7 +79,7 @@ function createBookIndexRow(title, folioN, countText, opts) {
 }
 
 function renderBookIndex() {
-    const el = document.getElementById('bookIndex');
+    const el = bookPart('bookIndex');
     if (!el) return;
     el.innerHTML = '';
 

@@ -246,7 +246,7 @@ function releaseFieldBackdrop() {
 
 /** Встроенный вид активен, когда страница «Ex Libris» открыта и небо — второе. */
 function isExLibrisEmbedActive() {
-    return typeof bookOpen !== 'undefined' && bookOpen && bookCut === 'exlibris'
+    return typeof bookOpen !== 'undefined' && bookOpen && isBookCutVisible('exlibris')
         && appMode === 'observatory';
 }
 
