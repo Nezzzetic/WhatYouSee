@@ -141,6 +141,56 @@ function getCommitWaveStarFlash(starId) {
     return computeCommitWaveFlash(elapsed, arrival, COMMIT_WAVE_STAR_FLASH_MS);
 }
 
+/** V-26: гашение лепестков после прихода волны: 1 → 0 за `fadeMs`. */
+function computeStarPetalFade(elapsed, arrivalMs, fadeMs) {
+    const local = elapsed - arrivalMs;
+    if (local <= 0) return 1;
+    if (fadeMs <= 0 || local >= fadeMs) return 0;
+    return 1 - local / fadeMs;
+}
+
+/**
+ * V-26: видимость лепестков звезды СОЗВЕЗДИЯ (в locked-виде V-12), 0..1.
+ * Свободная звезда сюда не ходит — у неё лепестки горят всегда.
+ *
+ * - Созвездие дорисовано волной: лепестки гаснут, когда до звезды доходит
+ *   волна (`STAR_PETAL_FADE_MS`, укладывается в хвост волны — после снятия
+ *   слота гашение уже закончилось, и ноль не скачет).
+ * - Ночь раскрыта (`constellationArtRevealed`): лепестки горят. В сцене финала
+ *   V-13 звезда созвездия сама рождается из нуля вместе со своим созвездием
+ *   (`getFinaleStarAlpha`), поэтому отдельного таймера у лепестков нет — они
+ *   загораются с рождением. Только на занавесе (гаснущее небо) — ноль, иначе
+ *   лепестки вспыхнули бы на уходящих звёздах. После F5 завершённое небо —
+ *   с лепестками: флаг в сейве.
+ * - Откат сбрасывает звезде locked — снова свободная, лепестки сразу горят.
+ */
+function getStarPetalAlpha(starId) {
+    if (constellationArtRevealed) {
+        const finaleElapsed = typeof getLevelFinaleElapsed === 'function' ? getLevelFinaleElapsed() : -1;
+        if (finaleElapsed >= 0 && finaleElapsed < LEVEL_FINALE_HIDE_MS) return 0;
+        return 1;
+    }
+    if (!commitWave) return 0;
+    const arrival = commitWave.starArrivalMs.get(starId);
+    if (arrival === undefined) return 0;
+    const elapsed = getCommitWaveElapsed();
+    if (elapsed < 0) return 0;
+    return computeStarPetalFade(elapsed, arrival, STAR_PETAL_FADE_MS);
+}
+
+/**
+ * V-26: видимость лепестков любой звезды поля — то же правило, что в
+ * drawVisibleStars (погасшая — 0, свободная и ждущая волну — 1, звезда
+ * созвездия — getStarPetalAlpha). Для харнесса: состояние проверяется
+ * числом, а не по пикселям.
+ */
+function getStarPetalVisibility(star) {
+    if (!star) return 0;
+    if (star.extinguished && !star.locked) return 0;
+    const lockedVisual = star.locked && !isCommitWavePending(star.id);
+    return lockedVisual ? getStarPetalAlpha(star.id) : 1;
+}
+
 /**
  * Проявление подписи атласного созвездия: отсчитывается от конца волны, чтобы
  * имя не выскакивало вместе с коммитом. Для всех прочих созвездий — 1.
@@ -302,6 +352,36 @@ function hitUndoMark(screenX, screenY) {
 
 let levelFinale = null; // { startMs, camFrom, stepMs, count, totalMs, order, starBirthMs }
 
+// V-28: «итоговый кадр» — сцена уже отыграла (сама или тапом), небо ещё смотрят.
+// Живёт вне сейва, как и levelFinale: F5 сцену не проигрывает и в это состояние
+// не попадает (revealConstellationArt(false) сцену не ставит вовсе). Цвет линий
+// теперь не финал-специфичен — работает всегда (палитра в constellation.lineColor
+// уже посчитана бакетом при коммите/загрузке); аftermath остался только про
+// ПОДПИСИ — они появляются на итоговом кадре мелко, минуя гашение V-11.
+let finaleAftermath = false;
+let finaleAftermathStartMs = 0;
+
+function beginFinaleAftermath() {
+    finaleAftermath = true;
+    finaleAftermathStartMs = millis();
+}
+
+function endFinaleAftermath() {
+    finaleAftermath = false;
+}
+
+/** V-28: подписи на итоговом кадре — только после сцены (не во время неё). */
+function isFinaleLabelsRevealed() {
+    return finaleAftermath;
+}
+
+/** V-28: плавное проявление подписей на итоговом кадре, 0..1. */
+function getFinaleLabelsZoomAlpha() {
+    if (!finaleAftermath) return 0;
+    if (LEVEL_FINALE_LABEL_FADE_MS <= 0) return 1;
+    return constrain((millis() - finaleAftermathStartMs) / LEVEL_FINALE_LABEL_FADE_MS, 0, 1);
+}
+
 /** Сглаживание отзума: кривая книги (K-01) — камера трогается сразу и мягко
  *  встаёт, без рывка на старте и на остановке. Кривая в игре одна: та же
  *  `--ease` в CSS и тот же `easeBook` во всех сценах канваса. */
@@ -343,6 +423,7 @@ function computeFinaleTotal(count, stepMs, fadeMs, delayMs, minMs) {
  * `constellations` уже лежит в нём, сортировать нечего.
  */
 function startLevelFinale() {
+    endFinaleAftermath(); // V-28: новая сцена — итоговый кадр прошлой, если был, снят
     const list = Array.isArray(constellations) ? constellations : [];
     const count = list.length;
     // Шаг ужимается под потолок той же чистой функцией, что у волны создания:
@@ -386,6 +467,7 @@ function startLevelFinale() {
 /** Снять сцену без доигрывания (смена неба, откат) — камеру не трогаем. */
 function cancelLevelFinale() {
     levelFinale = null;
+    endFinaleAftermath(); // V-28: отменённая сцена не оставляет итогового кадра
     if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
 
@@ -397,6 +479,7 @@ function cancelLevelFinale() {
 function finishLevelFinaleNow() {
     if (!levelFinale) return;
     levelFinale = null;
+    beginFinaleAftermath(); // V-28: пропуск — тоже законченный итоговый кадр
     if (typeof centerCamera === 'function') centerCamera();
     if (typeof renderSkyBookmark === 'function') renderSkyBookmark(); // U-38: вернуть чертёж закладки
 }
@@ -406,7 +489,11 @@ function getLevelFinaleElapsed() {
     if (!levelFinale) return -1;
     const elapsed = millis() - levelFinale.startMs;
     if (elapsed < 0 || elapsed >= levelFinale.totalMs) {
+        const finishedNaturally = elapsed >= levelFinale.totalMs;
         levelFinale = null;
+        // V-28: сцена доиграла сама (не отменена, не пропущена тапом) — то же
+        // условие, что раньше просто снимало слот.
+        if (finishedNaturally) beginFinaleAftermath();
         // U-38: сцена отыграла сама, без пропуска, — чертёж закладки должен
         // вернуться в этот же момент, а не ждать случайного следующего
         // вызова renderSkyBookmark(). Функция и так не чистая (гасит слот),

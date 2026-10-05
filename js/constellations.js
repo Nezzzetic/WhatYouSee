@@ -68,11 +68,21 @@ function rememberUndoneConstellationName(constellation) {
  * оно свободно, иначе обычная лотерея пула. Занятое имя не переиспользуется —
  * между откатом и повтором мог случиться коммит, которому пул выдал именно его,
  * а два одинаковых имени на одном небе игрок видит, в отличие от лотереи.
+ *
+ * T-09: свежее имя (не «запомненное этой связкой») обходит и живые созвездия,
+ * и весь undoneNameMemory — иначе игрок, вернувшийся к отменённой связке ПОСЛЕ
+ * того, как её имя случайно досталось другому набору рёбер, видел бы у себя
+ * не «то же имя», а лотерею (ровно баг M-10 п.4, ≈1/44 на прогон). Если так
+ * не осталось ни одного имени — единственный запасной путь: как раньше, без
+ * памяти, просто чтобы вообще выдать имя.
  */
 function pickConstellationFallbackName(lines) {
     const used = constellations.map(c => c.name);
     const remembered = undoneNameMemory.get(constellationEdgeKey(lines));
     if (remembered && !used.includes(remembered)) return remembered;
+    const usedOrRemembered = used.concat([...undoneNameMemory.values()]);
+    const fresh = pickFallbackName(usedOrRemembered);
+    if (fresh !== SHAPE_UNRECOGNIZED) return fresh;
     return pickFallbackName(used);
 }
 
@@ -268,6 +278,50 @@ function hasConnectablePair() {
     return false;
 }
 
+/**
+ * O-11: id играбельных звёзд, у которых есть хотя бы один валидный партнёр —
+ * «соединимые» звёзды. Кормит счёт «N stars left» на «Сегодня» (`bookToday.js`) —
+ * подсветку этих же звёзд на небе задача тоже заводила, но заказчик её не
+ * заметил на устройстве и попросил переделать иначе; подсветка снята тем же
+ * прогоном, кеш остался под счётчиком. Кеш **не** пересчитывается каждый
+ * кадр: сбрасывается событиями поля (`invalidateConnectableStarIdsCache`),
+ * сам пересчёт ленивый, при первом запросе после сброса.
+ *
+ * Перебор — все пары `i < j` ровно по разу (тот же порядок, что у
+ * `hasConnectablePair`), без пропуска уже найденных `i`: звезда, чей
+ * единственный партнёр стоит раньше нее по списку, не будет обнаружена,
+ * если её собственный проход пропустить, — обратный перебор здесь не короче
+ * прямого. `isValidEdgeBetweenStars` сама сначала проверяет длину ребра
+ * (дёшево) и только потом пересечения с уже собранными (дорого, O(рёбер)) —
+ * короткое замыкание внутри `canAddConstellationEdge` даёт нужный порядок
+ * отсева без отдельного прохода.
+ */
+let connectableStarIdsCache = null;
+
+function invalidateConnectableStarIdsCache() {
+    connectableStarIdsCache = null;
+}
+
+function getConnectableStarIds() {
+    if (connectableStarIdsCache) return connectableStarIdsCache;
+    // Сандбоксы верификаторов рендера (verify-commit-wave.js и т.п.) дают свой
+    // fieldStars/getStarById, но не полный field.js — getPlayableStars там нет.
+    const playable = typeof getPlayableStars === 'function' ? getPlayableStars() : [];
+    const connectable = new Set();
+    for (let i = 0; i < playable.length; i++) {
+        const a = playable[i];
+        for (let j = i + 1; j < playable.length; j++) {
+            const b = playable[j];
+            if (isValidEdgeBetweenStars(a, b)) {
+                connectable.add(a.id);
+                connectable.add(b.id);
+            }
+        }
+    }
+    connectableStarIdsCache = connectable;
+    return connectableStarIdsCache;
+}
+
 function isDraftConstellationValid(lines) {
     if (!lines || lines.length < 1) return false;
     for (const seg of lines) {
@@ -373,6 +427,10 @@ function commitConstellationFromPayload(payload) {
     const displayName = finalShape === SHAPE_UNRECOGNIZED
         ? pickConstellationFallbackName(lines)
         : finalShape;
+    // V-28: colorValue — среднее звёзд созвездия, хранится отдельно от lineColor
+    // (бакета палитры CONSTELLATION_LINE_TIERS, концепт C) на случай, если её
+    // формулу ещё раз поправят — не гонять звёзды заново.
+    const colorValue = getMeanColorValue([...starIds]);
     const constellation = {
         lines,
         name: displayName,
@@ -384,7 +442,8 @@ function commitConstellationFromPayload(payload) {
         recognizedClass: scoreClass,
         isFirstStarCountOnField,
         atlasCollected: isAtlasCollect,
-        lineColor: colorValueToRgb(getMeanColorValue([...starIds]))
+        lineColor: colorValueToConstellationLineRgb(colorValue),
+        colorValue
     };
     constellations.push(constellation);
 
@@ -408,6 +467,8 @@ function commitConstellationFromPayload(payload) {
     // M-07: звёзды, которых после этого коммита больше не с кем соединить.
     constellation.orphanExtinguishedIds = extinguishOrphanStars();
     recomputeAtlasCollectedStarColors();
+    // O-11: состав соединимых звёзд сменился — кеш протух.
+    invalidateConnectableStarIdsCache();
 
     updateScoreUI();
     updateProgressionUI();
@@ -481,6 +542,8 @@ function undoLastConstellation() {
     rebuildStarCountStateFromConstellations();
     recomputeSuppressedStars();
     recomputeAtlasCollectedStarColors();
+    // O-11: состав соединимых звёзд сменился — кеш протух.
+    invalidateConnectableStarIdsCache();
 
     // S-01: откат первого коммита фигуры невозможен (undoFloor поднят при
     // мгновенном клейме шага 1) — createdShapes здесь не трогаем; ночной
@@ -533,6 +596,10 @@ function revealConstellationArt(animate = true) {
         c.labelAnchor = computeConstellationLabelAnchor(c.lines, fallbackStarIds, c.name || c.shape);
     }
     recomputeAtlasCollectedStarColors();
+    // V-29: раскладка подписей раскрытой ночи — все созвездия разом, с учётом
+    // друг друга и чужих линий. Считается один раз здесь (не на каждом кадре
+    // и не на ресайзе) — c.revealedLabelAnchor дальше живёт в сейве.
+    if (typeof layoutAndStoreRevealedLabels === 'function') layoutAndStoreRevealedLabels();
 
     // V-13: сцена ставится ПОСЛЕ raiseUndoFloor и пересчёта якорей — окна
     // «сцена идёт, откат ещё жив» не возникает, а рождаться созвездия будут
@@ -644,12 +711,12 @@ function evaluateLabelCandidate(cx, y, labelHalfW, labelHalfH, segments) {
     return { intersections, minDistance };
 }
 
-function computeConstellationLabelAnchor(lines, starIds, shapeName) {
-    const stars = getConstellationStars(lines, starIds);
-    if (stars.length === 0) return null;
-
-    const segments = getConstellationSegments(lines);
-
+/**
+ * V-29: bbox фигуры — по рёбрам, а при их отсутствии по звёздам. Общий для
+ * computeConstellationLabelAnchor (вслепую, только своя фигура) и
+ * layoutRevealedLabels (все фигуры разом, ниже).
+ */
+function computeConstellationBBox(segments, stars) {
     let minX = Infinity;
     let minY = Infinity;
     let maxX = -Infinity;
@@ -663,13 +730,22 @@ function computeConstellationLabelAnchor(lines, starIds, shapeName) {
         }
     }
     if (!Number.isFinite(minX)) {
-        for (const star of stars) {
+        for (const star of stars || []) {
             minX = Math.min(minX, star.x);
             minY = Math.min(minY, star.y);
             maxX = Math.max(maxX, star.x);
             maxY = Math.max(maxY, star.y);
         }
     }
+    return { minX, minY, maxX, maxY };
+}
+
+function computeConstellationLabelAnchor(lines, starIds, shapeName) {
+    const stars = getConstellationStars(lines, starIds);
+    if (stars.length === 0) return null;
+
+    const segments = getConstellationSegments(lines);
+    const { minX, minY, maxX, maxY } = computeConstellationBBox(segments, stars);
 
     const safeMargin = 18;
     const cx = constrain((minX + maxX) / 2, safeMargin, FIELD_WIDTH - safeMargin);
@@ -726,4 +802,247 @@ function computeConstellationLabelAnchor(lines, starIds, shapeName) {
     });
     const chosen = evaluated[0];
     return { x: chosen.x, y: chosen.y, side: chosen.side };
+}
+
+// =============================================================================
+// V-29: РАСКЛАДКА ПОДПИСЕЙ РАСКРЫТОЙ НОЧИ — ВСЕ РАЗОМ
+// =============================================================================
+//
+// computeConstellationLabelAnchor() выше выбирает место вслепую — глядя только
+// на рёбра СВОЕЙ фигуры, в момент коммита, когда остальное небо ещё не готово.
+// На итоговом кадре (все фигуры видны разом) так расставленные подписи могут
+// наложиться друг на друга или на чужие линии — заметно на плотных полях-картинках.
+// layoutRevealedLabels() считается один раз при раскрытии (revealConstellationArt)
+// и раскладывает подписи ВСЕХ созвездий разом: крупные фигуры — первыми, дальше
+// в свободное место с учётом уже поставленных подписей и чужих линий. Итог живёт
+// в `constellation.revealedLabelAnchor` (сейв, save.js) — посчитан один раз,
+// дальше не пересчитывается.
+
+const LABEL_LAYOUT_OVERLAP_WEIGHT = 10;
+const LABEL_LAYOUT_FOREIGN_EDGE_WEIGHT = 3;
+const LABEL_LAYOUT_OWN_EDGE_WEIGHT = 1;
+
+function distToBBoxCenter(point, bbox) {
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cy = (bbox.minY + bbox.maxY) / 2;
+    return Math.hypot(point.x - cx, point.y - cy);
+}
+
+function rectsOverlapArea(a, b) {
+    const w = Math.min(a.right, b.right) - Math.max(a.left, b.left);
+    const h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top);
+    if (w <= 0 || h <= 0) return 0;
+    return w * h;
+}
+
+function circleIntersectsRect(cx, cy, r, rect) {
+    const nearestX = constrain(cx, rect.left, rect.right);
+    const nearestY = constrain(cy, rect.top, rect.bottom);
+    const dx = cx - nearestX;
+    const dy = cy - nearestY;
+    return dx * dx + dy * dy <= r * r;
+}
+
+/**
+ * 8 позиций вокруг bbox фигуры (над/под/слева/справа + четыре угла) на двух
+ * отступах — 16 кандидатов; первым в общем списке идёт `anchorCandidate` —
+ * место, которое выбрала бы computeConstellationLabelAnchor (подпись не
+ * прыгает без нужды, если ей и так никто не мешает).
+ */
+function buildLabelLayoutCandidates(bbox, anchorCandidate, halfW, halfH, pad) {
+    const cx = (bbox.minX + bbox.maxX) / 2;
+    const cy = (bbox.minY + bbox.maxY) / 2;
+    const nearAboveY = bbox.minY - halfH - pad;
+    const farAboveY = nearAboveY - (halfH * 2 + pad);
+    const nearBelowY = bbox.maxY + halfH + pad;
+    const farBelowY = nearBelowY + (halfH * 2 + pad);
+    const nearLeftX = bbox.minX - halfW - pad;
+    const farLeftX = nearLeftX - (halfW * 2 + pad);
+    const nearRightX = bbox.maxX + halfW + pad;
+    const farRightX = nearRightX + (halfW * 2 + pad);
+
+    const grid = [
+        { x: cx, y: nearAboveY }, { x: cx, y: farAboveY },
+        { x: cx, y: nearBelowY }, { x: cx, y: farBelowY },
+        { x: nearLeftX, y: cy }, { x: farLeftX, y: cy },
+        { x: nearRightX, y: cy }, { x: farRightX, y: cy },
+        { x: nearRightX, y: nearAboveY }, { x: farRightX, y: farAboveY },
+        { x: nearLeftX, y: nearAboveY }, { x: farLeftX, y: farAboveY },
+        { x: nearRightX, y: nearBelowY }, { x: farRightX, y: farBelowY },
+        { x: nearLeftX, y: nearBelowY }, { x: farLeftX, y: farBelowY }
+    ];
+
+    const list = [];
+    if (anchorCandidate) list.push({ x: anchorCandidate.x, y: anchorCandidate.y });
+    for (const g of grid) list.push(g);
+    return list;
+}
+
+function clampLabelCandidateToRect(candidate, halfW, halfH, bounds) {
+    return {
+        x: constrain(candidate.x, bounds.left + halfW, bounds.right - halfW),
+        y: constrain(candidate.y, bounds.top + halfH, bounds.bottom - halfH)
+    };
+}
+
+/**
+ * Раскладывает подписи ВСЕХ созвездий разом — учитывает чужие рёбра, все
+ * звёзды и уже поставленные подписи, а не только рёбра своей фигуры.
+ * Чистая функция — своя копия геометрии, но не своя копия правил распознавания:
+ * решает только «где нарисовать текст», ничего игрового не знает.
+ *
+ * @param items      [{ key, name, candidateAnchor, bbox, starCount, isCatalog, order }]
+ * @param obstacles  { edges: [{ax,ay,bx,by,ownerKey}], stars: [{x,y,r,ownerKey}] }
+ * @param opts       { pad, labelHalfH, bounds:{left,top,right,bottom}, measureWidth(name) => world-ширина }
+ * @returns Map key -> {x, y}
+ */
+function layoutRevealedLabels(items, obstacles, opts) {
+    const pad = opts.pad || 0;
+    const halfH = opts.labelHalfH;
+    const bounds = opts.bounds;
+    const measureWidth = opts.measureWidth;
+
+    // Больше звёзд — раньше; при равенстве фигура каталога раньше поэтичного
+    // имени (fb*); дальше порядок создания. Крупные фигуры получают лучшие места.
+    const ordered = items.slice().sort((a, b) => {
+        if (b.starCount !== a.starCount) return b.starCount - a.starCount;
+        if (a.isCatalog !== b.isCatalog) return a.isCatalog ? -1 : 1;
+        return a.order - b.order;
+    });
+
+    const placedRects = [];
+    const result = new Map();
+
+    for (const item of ordered) {
+        const halfW = Math.max(1, measureWidth(item.name)) / 2 + pad / 2;
+        const candidates = buildLabelLayoutCandidates(item.bbox, item.candidateAnchor, halfW, halfH, pad)
+            .map(c => clampLabelCandidateToRect(c, halfW, halfH, bounds));
+
+        let bestClean = null;
+        let bestAny = null;
+        let bestAnyCost = Infinity;
+
+        for (const c of candidates) {
+            const rect = { left: c.x - halfW, right: c.x + halfW, top: c.y - halfH, bottom: c.y + halfH };
+
+            let overlapArea = 0;
+            for (const pr of placedRects) overlapArea += rectsOverlapArea(rect, pr);
+
+            let ownHits = 0;
+            let foreignHits = 0;
+            for (const e of obstacles.edges) {
+                if (!segmentIntersectsRect(e.ax, e.ay, e.bx, e.by, rect)) continue;
+                if (e.ownerKey === item.key) ownHits++; else foreignHits++;
+            }
+            for (const s of obstacles.stars) {
+                if (!circleIntersectsRect(s.x, s.y, s.r, rect)) continue;
+                if (s.ownerKey === item.key) ownHits++; else foreignHits++;
+            }
+
+            const isClean = overlapArea === 0 && ownHits === 0 && foreignHits === 0;
+            if (isClean) {
+                // Связь «имя ↔ фигура»: чистый кандидат ближе к чужой фигуре,
+                // чем к своей, — штраф, берём следующий чистый, если он есть.
+                const ownDist = distToBBoxCenter(c, item.bbox);
+                let closerToForeign = false;
+                for (const other of ordered) {
+                    if (other === item) continue;
+                    if (distToBBoxCenter(c, other.bbox) < ownDist) { closerToForeign = true; break; }
+                }
+                if (!bestClean) bestClean = c; // запасной — вдруг лучшего не найдётся
+                if (!closerToForeign) { bestClean = c; break; }
+                continue;
+            }
+
+            const cost = overlapArea * LABEL_LAYOUT_OVERLAP_WEIGHT
+                + foreignHits * LABEL_LAYOUT_FOREIGN_EDGE_WEIGHT
+                + ownHits * LABEL_LAYOUT_OWN_EDGE_WEIGHT;
+            if (cost < bestAnyCost || (cost === bestAnyCost && bestAny
+                && distToBBoxCenter(c, item.bbox) < distToBBoxCenter(bestAny, item.bbox))) {
+                bestAnyCost = cost;
+                bestAny = c;
+            }
+        }
+
+        // Подпись не прячется никогда — при отсутствии чистого места берём
+        // минимальную цену, а не пустоту.
+        const chosen = bestClean || bestAny || candidates[0];
+        result.set(item.key, chosen);
+        placedRects.push({ left: chosen.x - halfW, right: chosen.x + halfW, top: chosen.y - halfH, bottom: chosen.y + halfH });
+    }
+
+    return result;
+}
+
+/** Мировой радиус звезды-препятствия на мин-зуме — тот же расчёт, что в
+ *  drawVisibleStars() (skyRender.js), без зависимости от текущего zoomLevel. */
+function getFinaleObstacleStarRadius(star, minZoom) {
+    const sizeFactor = typeof star.sizeFactor === 'number' ? star.sizeFactor : 1;
+    const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / minZoom * 0.5) * sizeFactor;
+    return baseStarDrawSize * STAR_BASE_DIAM_MULT / 2;
+}
+
+/**
+ * Собирает items/obstacles по текущему `constellations` и пишет
+ * `c.revealedLabelAnchor` каждому. Считается один раз — из revealConstellationArt()
+ * сразу после пересчёта c.labelAnchor, и из save.js при миграции старого сейва
+ * раскрытой ночи. Работает на мин-зуме ПОЛНОЭКРАННОГО неба (getFinaleLayoutMinZoom) —
+ * худший случай: на приближении подпись (постоянного экранного размера) в мире
+ * только мельчает, новых наложений не возникает.
+ */
+function layoutAndStoreRevealedLabels() {
+    if (!Array.isArray(constellations) || constellations.length === 0) return;
+
+    const minZoom = typeof getFinaleLayoutMinZoom === 'function'
+        ? getFinaleLayoutMinZoom()
+        : getMinZoomLevel();
+    const bounds = typeof getFinaleLayoutVisibleRect === 'function'
+        ? getFinaleLayoutVisibleRect(minZoom)
+        : { left: 0, top: 0, right: FIELD_WIDTH, bottom: FIELD_HEIGHT };
+
+    const worldLabelSize = REVEALED_CONSTELLATION_LABEL_SIZE / minZoom;
+    const pad = LABEL_LAYOUT_PAD_PX / minZoom;
+    const labelHalfH = worldLabelSize / 2;
+
+    const items = [];
+    const edges = [];
+    const stars = [];
+
+    constellations.forEach((c, index) => {
+        if (!Array.isArray(c.lines) || c.lines.length === 0) return;
+
+        const segments = getConstellationSegments(c.lines);
+        for (const seg of segments) edges.push({ ax: seg.ax, ay: seg.ay, bx: seg.bx, by: seg.by, ownerKey: index });
+
+        const fallbackStarIds = collectStarIdsFromLines(c.lines);
+        const constellationStars = getConstellationStars(c.lines, fallbackStarIds);
+        for (const s of constellationStars) {
+            stars.push({ x: s.x, y: s.y, r: getFinaleObstacleStarRadius(s, minZoom), ownerKey: index });
+        }
+
+        const bbox = computeConstellationBBox(segments, constellationStars);
+        items.push({
+            key: index,
+            name: getConstellationDisplayName(c),
+            candidateAnchor: c.labelAnchor,
+            bbox,
+            starCount: c.starCount || constellationStars.length,
+            isCatalog: c.shape !== SHAPE_UNRECOGNIZED,
+            order: index
+        });
+    });
+
+    if (items.length === 0) return;
+
+    const placement = layoutRevealedLabels(items, { edges, stars }, {
+        pad,
+        labelHalfH,
+        bounds,
+        measureWidth: name => measureSmallCapsWidth(name, worldLabelSize)
+    });
+
+    for (const item of items) {
+        const p = placement.get(item.key);
+        if (p) constellations[item.key].revealedLabelAnchor = { x: p.x, y: p.y };
+    }
 }

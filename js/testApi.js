@@ -4,7 +4,7 @@
 // первой строке: `window.__test` не создаётся, консоль не перехватывается,
 // поведение игры не меняется.
 //
-// Зачем: проверить сценарий «создать Банан жёлтым → загорелась грань → цепочка
+// Зачем: проверить сценарий «создать Крюк жёлтым → загорелась грань → цепочка
 // сдвинулась» руками можно только натыкав звёзды по экранным координатам, а они
 // зависят от зума, камеры и раскладки поля. Харнесс даёт программный доступ к
 // той же механике через штатный commit-путь
@@ -12,7 +12,8 @@
 // поэтому проверяет игру, а не свою копию правил.
 //
 // ⚠ `__test.reset()` — это полный сброс: он стирает локальный прогресс
-// (`starsReborn_v03`, `starsReborn_progression`) и, если передан `seed`,
+// (слоты неба `starsReborn_sky_*` — S-05, старый `starsReborn_v03`,
+// `starsReborn_progression`) и, если передан `seed`,
 // подменяет playerId. Открывать `?test=1` на профиле, где играют, не стоит.
 //
 // Эталонный сценарий — `dev/docs/tools/smoke.js`.
@@ -114,7 +115,9 @@
             dimmed: typeof isTutorialAllowedStar === 'function' ? !isTutorialAllowedStar(star.id) : false,
             // K-03: дышит ли звезда прямо сейчас (крупный узел, свободна и не в фигуре)
             twinkles: typeof isTwinklingStar === 'function' ? isTwinklingStar(star) : false,
-            twinklePeriodMs: typeof star.twinklePeriodMs === 'number' ? star.twinklePeriodMs : 0
+            twinklePeriodMs: typeof star.twinklePeriodMs === 'number' ? star.twinklePeriodMs : 0,
+            // V-26: видимость лепестков 0..1 (у звезды созвездия гаснут, в финале горят)
+            petals: typeof getStarPetalVisibility === 'function' ? getStarPetalVisibility(star) : 1
         };
     }
 
@@ -126,27 +129,59 @@
     // RESET
     // =========================================================================
 
+    const TEST_SKY_SALT_KEY = 'starsReborn_testSkySalt';
+
+    // M-14: шов соли неба для field.js (getSkySeedString). Глобал существует
+    // только под `?test=1` — у игрока соли нет физически.
+    window.getTestSkySeedSalt = function () {
+        try {
+            return localStorage.getItem(TEST_SKY_SALT_KEY);
+        } catch (e) {
+            return null;
+        }
+    };
+
+    function setTestSkySeedSalt(salt) {
+        try {
+            if (salt === null) localStorage.removeItem(TEST_SKY_SALT_KEY);
+            else localStorage.setItem(TEST_SKY_SALT_KEY, salt);
+        } catch (e) { /* ignore */ }
+    }
+
+    function setPlayerIdForTest(id) {
+        playerId = id;
+        try {
+            localStorage.setItem('starsReborn_playerId', playerId);
+        } catch (e) { /* ignore */ }
+    }
+
     /**
-     * @param {{seed?, date?, picture?, pages?, skipOnboarding?}} [options]
-     *   seed           — подменяет playerId (раскладка поля, воскресная картинка, цели);
+     * @param {{seed?, playerId?, date?, picture?, pages?, skipOnboarding?}} [options]
+     *   seed           — подменяет playerId и солит сид неба (раскладка как до M-14);
+     *   playerId       — только подменяет playerId, соль снимает: небо общее (M-14);
      *   date           — эффективная дата неба (число 20260802 или '2026-08-02');
      *   picture        — id поля-картинки (перебивает обычную генерацию), null снимает;
      *   pages          — сколько первых страниц атласа открыть бесплатно (по умолчанию 0,
      *                    как у нового игрока: до 80 ✦ имён у фигур нет);
-     *   skipOnboarding — true: пропустить фиксированные картинки первых ночей
-     *                    (O-02) — как у чистого reset() без него, поле сразу
-     *                    процедурное/воскресное. По умолчанию false — свежий
-     *                    reset() ведёт себя как у настоящего нового игрока и
-     *                    показывает «Кота» первым, это и есть штатный сценарий.
+     *   skipOnboarding — true: Пролог пройден (S-07: prologuePassed = [1, 2],
+     *                    activeSky = 'day') — поле сразу процедурное/воскресное
+     *                    небо дня. По умолчанию false — свежий reset() ведёт
+     *                    себя как у настоящего нового игрока: первое небо —
+     *                    Пролог · Кот с тутором, это и есть штатный сценарий.
      */
     function reset(options) {
         const o = options || {};
 
+        // M-14: `seed` — и подмена playerId, и соль неба (строка сида `${seed}:${дата}`,
+        // как до общего неба, — раскладки сценариев не едут); `playerId` — только
+        // подмена игрока, соль снимает. Без обоих — всё как было (соль, как и
+        // playerId раньше, живёт в localStorage и переживает перезагрузку).
         if (o.seed !== undefined && o.seed !== null) {
-            playerId = String(o.seed);
-            try {
-                localStorage.setItem('starsReborn_playerId', playerId);
-            } catch (e) { /* ignore */ }
+            setPlayerIdForTest(String(o.seed));
+            setTestSkySeedSalt(String(o.seed));
+        } else if (o.playerId !== undefined && o.playerId !== null) {
+            setPlayerIdForTest(String(o.playerId));
+            setTestSkySeedSalt(null);
         }
 
         setTestSkyDateOverride(parseDateInput(o.date));
@@ -161,11 +196,11 @@
         performFullReset({
             beforeFieldRegen: function () {
                 for (let i = 0; i < pages; i++) unlockedPageIndices.add(i);
-                // O-02: часть сценариев тестирует процедурное поле как таковое
-                // (раскладку, разброс звёзд) и картинка первых ночей им мешает —
-                // явный флаг отводит счётчик за пределы ONBOARDING_FIXED_PICTURE_IDS.
-                if (o.skipOnboarding && achievementCounters && typeof ONBOARDING_FIXED_PICTURE_IDS !== 'undefined') {
-                    achievementCounters.onboardingFieldsShown = ONBOARDING_FIXED_PICTURE_IDS.length;
+                // S-07: часть сценариев тестирует небо дня как таковое (раскладку,
+                // разброс звёзд) и Пролог им мешает — флаг проходит его целиком.
+                if (o.skipOnboarding && achievementCounters) {
+                    achievementCounters.prologuePassed = PROLOGUE_PICTURE_IDS.map((_, i) => i + 1);
+                    achievementCounters.activeSky = 'day';
                 }
             }
         });
@@ -340,7 +375,7 @@
     /**
      * L-01: принимает **только ASCII-ID** фигуры ('banana'), не локализованное
      * имя. Тест не должен зависеть от языка: со сменой локали ID не меняется,
-     * а «Банан»/«Banana» — меняется.
+     * а «Крюк»/«Hook» — меняется.
      *
      * @param {string} name ID фигуры каталога-29
      * @returns {{name, starIds, edges, visibleInAtlas, duplicateOnField} | null}
@@ -470,6 +505,8 @@
             level: getPlayerLevel(),
             fieldScore: typeof getFieldScore === 'function' ? getFieldScore() : 0,
             skyDate: getEffectiveSkyDateInt(),
+            // M-14: номер неба эффективной даты
+            skyNumber: getSkyNumber(getEffectiveSkyDateInt()),
             playerId,
             // O-02: реально загруженная картинка (оверрайд/воскресенье/первые
             // ночи), а не только ручной оверрайд, как было раньше.
@@ -503,6 +540,8 @@
             observatory: observatoryState(),
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.
             bookmarkedShape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
+            // S-06: первый день игрока — начало сетки календаря (0 = не задан).
+            firstSkyDate: typeof getFirstSkyDate === 'function' ? getFirstSkyDate() : 0,
             // L-01: язык рядом с версиями сейва — сценарий должен видеть, в какой
             // локали он прогнался, не разбирая URL сам.
             locale: typeof getLocale === 'function' ? getLocale() : null,
@@ -600,6 +639,10 @@
             cut: bookCut,
             page: bookCut === 'stamps' ? getBookPageIndex('rewards') : getBookPageIndex('atlas'),
             pageCount: bookCut === 'stamps' ? getBookPageCount('rewards') : getBookPageCount('atlas'),
+            // P-17: разворот в альбомной ориентации — видимые страницы слева
+            // направо (в портрете одна, она же страница-фокус cut/page).
+            spread: bookSpread,
+            pages: getVisibleBookPages().map(p => ({ cut: p.cut, chapter: p.chapter, folio: getBookPageFolio(p) })),
             // S-03: окно шкалы — ступень лестницы уровней, та же функция, что рисует шкалу.
             gauge: getLevelProgress(),
             wax: waxOn,
@@ -623,10 +666,12 @@
                 return { shape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
                     visible: !!(el && el.getBoundingClientRect().width > 0) };
             })(),
-            // K-17: шесть сигналов концепта — то, что сценарий не может увидеть
-            // ни по модели, ни по одному узлу: видна ли шкала физически (её
+            // K-17: сигналы концепта — то, что сценарий не может увидеть ни по
+            // модели, ни по одному узлу: видна ли шкала физически (её
             // закрашивала страница), куда целится монета и на какой высечке
-            // горит капля.
+            // горит капля. O-11 сняла отсюда `todayState` вместе с блоком
+            // `#bookTodayState` — тот же факт теперь виден проще, срезом
+            // `__test.todayDawn()`.
             signals: (() => {
                 const gauge = document.getElementById('bookGauge');
                 const box = gauge ? gauge.getBoundingClientRect() : null;
@@ -647,9 +692,7 @@
                     flightOnBead: !!(target && beadBox && beadBox.width
                         && Math.abs(target.left - beadBox.left) < 1
                         && Math.abs(target.top - beadBox.top) < 1),
-                    tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') },
-                    todayState: [...document.querySelectorAll('#bookTodayState .book-state-row')]
-                        .map(r => r.textContent)
+                    tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') }
                 };
             })(),
             // K-13: холст встроен в разворот страницы — канвас репозиционирован
@@ -661,14 +704,27 @@
         };
     }
 
-    /** O-03: срез блока «конец ночи» на «Сегодня» — виден ли, сколько осталось, что написано. */
+    /**
+     * O-03/O-11: срез блока «Сегодня» с двумя состояниями — виден **всегда**
+     * (`visible` держится для совместимости, теперь неизменно `true`, пока
+     * узел на странице), `complete` разводит их. Играется ночь — `starsLeft`
+     * и текст числа в `text`, слова вокруг него — `before`/`after`. Доиграна —
+     * `text` держит часы («10 hours» / «less than an hour»), `before` — «New
+     * sky in», `after` пуст.
+     */
     function todayDawnState() {
         const el = document.getElementById('bookTodayDawn');
+        const beforeEl = document.getElementById('bookTodayDawnBefore');
         const clock = document.getElementById('bookTodayDawnClock');
+        const afterEl = document.getElementById('bookTodayDawnAfter');
         return {
             visible: !!(el && !el.hidden),
+            complete: typeof isLevelComplete === 'function' ? isLevelComplete() : null,
             ms: typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : null,
-            text: clock ? clock.textContent : null
+            starsLeft: typeof getConnectableStarIds === 'function' ? getConnectableStarIds().size : null,
+            before: beforeEl ? beforeEl.textContent : null,
+            text: clock ? clock.textContent : null,
+            after: afterEl ? afterEl.textContent : null
         };
     }
 
@@ -873,7 +929,8 @@
                 id,
                 arrivalMs,
                 pending: isCommitWavePending(id),
-                flash: getCommitWaveStarFlash(id)
+                flash: getCommitWaveStarFlash(id),
+                petals: getStarPetalVisibility(getStarById(id))
             }))
         };
     }
@@ -946,10 +1003,25 @@
                 && Math.abs(snapY - target.camY) < 1e-6
         };
 
+        // V-28: итоговый кадр — сцена уже отыграла (сама или тапом), небо ещё
+        // смотрят. Живёт независимо от `scene` (снятый слот его не стирает).
+        // Цвет линии больше не финал-специфичен — constellation.lineColor уже
+        // посчитан бакетом палитры CONSTELLATION_LINE_TIERS при коммите/загрузке
+        // и одинаков в обеих ветках ниже.
+        const aftermath = {
+            active: typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed(),
+            labelsAlpha: typeof getFinaleLabelsZoomAlpha === 'function' ? getFinaleLabelsZoomAlpha() : 0
+        };
+        const lineColorOf = c => c.lineColor || LINE_COLOR;
+
         if (!scene) {
             return {
                 active: false, elapsedMs: -1, totalMs: 0, stepMs: 0, count: 0,
-                camera, constellations: [], stars: []
+                camera, aftermath,
+                constellations: constellations.map((c, i) => ({
+                    index: i, shape: c.shape, birthMs: 0, alpha: 1, lineColor: lineColorOf(c)
+                })),
+                stars: []
             };
         }
 
@@ -960,11 +1032,13 @@
             stepMs: scene.stepMs,
             count: scene.count,
             camera,
+            aftermath,
             constellations: constellations.map((c, i) => ({
                 index: i,
                 shape: c.shape,
                 birthMs: LEVEL_FINALE_WAVE_DELAY_MS + i * scene.stepMs,
-                alpha: getFinaleConstellationAlpha(c)
+                alpha: getFinaleConstellationAlpha(c),
+                lineColor: lineColorOf(c)
             })),
             stars: [...scene.starBirthMs.entries()].map(([id, birthMs]) => ({
                 id,
@@ -972,9 +1046,54 @@
                 // Звезда гаснет и рождается вместе со своим созвездием, поэтому
                 // отдаём её альфу, а не флаг «придержан locked-вид».
                 alpha: getFinaleStarAlpha(id),
-                flash: getFinaleStarFlash(id)
+                flash: getFinaleStarFlash(id),
+                petals: getStarPetalVisibility(getStarById(id))
             }))
         };
+    }
+
+    /**
+     * V-29: срез подписей на текущем кадре, В ЭКРАННЫХ координатах — то, что
+     * реально видит игрок на этом зуме/пане, а не мировая раскладка. Только
+     * созвездия, у которых сейчас есть видимая подпись (та же логика, что
+     * drawConstellationLabels: в кадре и с якорем); `overlaps` — число
+     * пересекающихся пар прямоугольников.
+     */
+    function labelsState() {
+        const items = [];
+        for (const c of constellations) {
+            if (typeof isConstellationVisible === 'function' && !isConstellationVisible(c)) continue;
+            const anchor = (constellationArtRevealed && c.revealedLabelAnchor)
+                ? c.revealedLabelAnchor
+                : (c.labelAnchor || c.center);
+            if (!anchor || !c.name) continue;
+
+            const name = getConstellationDisplayName(c);
+            const sizePx = constellationArtRevealed ? REVEALED_CONSTELLATION_LABEL_SIZE : COLLECTED_ATLAS_LABEL_SIZE;
+            const worldSize = sizePx / zoomLevel;
+            const w = measureSmallCapsWidth(name, worldSize) * zoomLevel;
+            const h = sizePx;
+            items.push({
+                id: c.name,
+                name,
+                x: (anchor.x - camX) * zoomLevel,
+                y: (anchor.y - camY) * zoomLevel,
+                w, h
+            });
+        }
+
+        let overlaps = 0;
+        for (let i = 0; i < items.length; i++) {
+            for (let j = i + 1; j < items.length; j++) {
+                const a = items[i];
+                const b = items[j];
+                const overlapX = Math.abs(a.x - b.x) < (a.w + b.w) / 2;
+                const overlapY = Math.abs(a.y - b.y) < (a.h + b.h) / 2;
+                if (overlapX && overlapY) overlaps++;
+            }
+        }
+
+        return { items, overlaps };
     }
 
     /**
@@ -1056,6 +1175,79 @@
         return { zoom: zoomLevel, minZoom: getMinZoomLevel(), maxZoom: MAX_ZOOM };
     }
 
+    /**
+     * S-05: слоты неба — активный, какие лежат в localStorage и их размер
+     * в символах значения. Только чтение.
+     */
+    function skySlots() {
+        const ids = listSkySlotIds();
+        const bytes = {};
+        for (const id of ids) {
+            try {
+                const raw = localStorage.getItem(skySlotStorageKey(parseSkySlotId(id)));
+                bytes[id] = raw ? raw.length : 0;
+            } catch (e) {
+                bytes[id] = 0;
+            }
+        }
+        return { active: getActiveSkySlotId(), ids, bytes };
+    }
+
+    /**
+     * S-06: модель страницы «Календарь» — та же, из которой строится DOM:
+     * месяц, первый день игрока, клетки (state/day/date/slot/selected), активный
+     * слот S-05. Без DOM — сценарий сверяет её с разметкой сам.
+     */
+    function calendar() {
+        const model = getCalendarModel();
+        return Object.assign({}, model, {
+            activeSlot: getActiveSkySlotId(),
+            todaySlot: getTodaySkySlotId(),
+            cells: model.cells.map(c => Object.assign({}, c))
+        });
+    }
+
+    /**
+     * S-07: какое небо на экране, Пролог и ночные флаги поля. Только чтение.
+     * levels[].slot — id слота уровня с полем (как data-slot клетки), у 3–7 null;
+     * saved — лежит ли слот в localStorage.
+     */
+    function sky() {
+        const passed = getProloguePassed();
+        const levels = [];
+        for (let n = 1; n <= PROLOGUE_LEVEL_COUNT; n++) {
+            const slot = n <= PROLOGUE_PICTURE_IDS.length ? 'prologue:' + n : null;
+            levels.push({ n, state: getPrologueLevelState(n), slot, saved: !!slot && hasSkySlot(slot) });
+        }
+        const f = getPerNightAchievementFlags();
+        const ac = achievementCounters || {};
+        return {
+            active: getActiveSkySlotId(),
+            activeSky: getActiveSky(),
+            kind: getActiveSkyKind(),
+            passed,
+            levels,
+            lastRevealedKind: getLastRevealedSkyKind(),
+            flags: {
+                rainbow: f.rainbowCountedThisNight,
+                mosaic: f.mosaicCountedThisNight,
+                pageSpecials: f.pageSpecialsCountedThisNight.slice(),
+                shapes: f.shapesCountedThisNight.slice()
+            },
+            counters: {
+                levelsCompleted: ac.levelsCompleted || 0,
+                rainbowNights: ac.rainbowNights || 0,
+                mosaicNights: ac.mosaicNights || 0
+            }
+        };
+    }
+
+    /** S-07: выбор неба движком — в обход замка книги тутора (это не интерфейс). */
+    function selectSkyForTest(slotId) {
+        const r = selectSky(slotId);
+        return r && r.ok ? { ok: true } : { ok: false, reason: r ? r.reason : 'unknown' };
+    }
+
     function errors() {
         return capturedErrors.map(e => Object.assign({}, e));
     }
@@ -1085,9 +1277,14 @@
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
+        labels: labelsState,
         levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,
+        skySlots,
+        calendar,
+        sky,
+        selectSky: selectSkyForTest,
         setZoom,
         /** V-13: доиграть сцену мгновенно — то же, что тап по полю посреди неё. */
         finaleSkip: () => { finishLevelFinaleNow(); return levelFinaleState(); },

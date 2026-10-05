@@ -249,17 +249,19 @@ function onConstellationCreated(shapeName) {
 // НИКОГДА не обозначает конкретную фигуру. Строка либо про путь игрока,
 // либо про фигуру.
 
-/** Все двадцать пять имён кассы — чтобы опечатка в имени падала, а не молчала. */
+/** Все двадцать семь имён кассы — чтобы опечатка в имени падала, а не молчала. */
 const GLYPH_SIGNS = [
     'undo', 'knife', 'press', 'ribbon', 'tel', 'crescent', 'nightstar', 'spark',
-    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'corona', 'arc', 'lock',
+    'gem', 'pillar', 'comet', 'loz', 'link', 'hand', 'pen', 'leaf', 'crown', 'arc', 'lock',
     // K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета
     'drop', 'flame', 'ring', 'ball', 'wave',
     // U-31: два знака одной ленты — на предмете, не в строке, поэтому со
     // своим цветом вместо цвета строки (то же исключение, что раньше держал
     // только крестик закрытия, см. .ribbon-sign/.book-close-sign в style.css);
     // «stars» на книжной стороне сменил «nightstar» по фидбегу с устройства.
-    'book', 'stars'
+    'book', 'stars',
+    // S-06: вход в календарь — статус строки оглавления (как crescent у Ex Libris)
+    'calendar'
 ];
 
 /**
@@ -272,7 +274,7 @@ function glyphSign(name, size = 24, className = '') {
         console.error('K-02: знака «' + name + '» в кассе нет');
         name = 'arc';
     }
-    const wide = name === 'corona';
+    const wide = name === 'crown';
     svg.setAttribute('class', 'ic' + (size <= 16 ? ' ic-sm' : '') + (className ? ' ' + className : ''));
     svg.setAttribute('width', wide ? Math.round(size * 26 / 16) : size);
     svg.setAttribute('height', wide ? Math.round(size * 16 / 16) : size);
@@ -523,7 +525,7 @@ const ATLAS_FACETED_COLOR = [255, 211, 92];
 const ATLAS_FACET_GLYPH_COLORS = {
     red: [240, 122, 103],    // --star-garnet
     orange: [242, 162, 84],  // --star-amber
-    yellow: [242, 201, 101], // --star-copper
+    yellow: [246, 220, 120], // --star-copper (M-13: было [242, 201, 101])
     white: [237, 239, 245],  // --star-opal
     blue: [134, 200, 242]    // --star-ice
 };
@@ -537,8 +539,14 @@ const ATLAS_FACET_GLYPH_COLORS = {
  */
 const PAPER_STAR_INK = {
     '240,122,103': [184, 67, 47],    // гранат
-    '242,162,84': [165, 88, 26],     // янтарь
-    '242,201,101': [134, 102, 26],   // медь
+    // V-30: было [165,88,26] — тёмный оранжевый читался коричневым; яркая
+    // заливка, контраст несёт кайма (тот же приём, что у меди V-27).
+    '242,162,84': [240, 138, 28],    // янтарь
+    // V-27: hue сдвинут ~42.5° → ~55° — было [134,102,26], читалось оливково-
+    // коричневым, а не жёлтым; контраст к бумаге тот же порядок (было 4.15:1,
+    // стало ≈4.37:1). M-13 перекрасила саму звезду неба #F2C965 → #F6DC78 —
+    // ключ переехал на новый RGB, яркое значение медали не менялось.
+    '246,220,120': [247, 202, 24],   // медь
     '237,239,245': [252, 250, 243],  // опал (V-23: светлая заливка — читается только с каймой PAPER_OPAL_EDGE_RGB)
     '134,200,242': [47, 127, 181],   // лёд
     '255,211,92': [154, 106, 26]     // золото полной огранки (ATLAS_FACETED_COLOR)
@@ -586,13 +594,29 @@ function isPaperOpalInk(rgb) {
     return rgb[0] === opal[0] && rgb[1] === opal[1] && rgb[2] === opal[2];
 }
 
+/** V-27: чернила бумаги — яркая жёлтая медь (та же причина, что у опала —
+ *  буквами этого тона на светлой бумаге не прочесть, см. PAPER_COPPER_EDGE_RGB). */
+function isPaperCopperInk(rgb) {
+    const copper = PAPER_STAR_INK['246,220,120'];
+    return rgb[0] === copper[0] && rgb[1] === copper[1] && rgb[2] === copper[2];
+}
+
+/** V-30: чернила бумаги — яркий оранжевый янтарь (та же причина, что у меди). */
+function isPaperAmberInk(rgb) {
+    const amber = PAPER_STAR_INK['242,162,84'];
+    return rgb[0] === amber[0] && rgb[1] === amber[1] && rgb[2] === amber[2];
+}
+
 /**
  * V-23: цвет ТЕКСТА на бумаге — светлый опал буквами не прочесть, поэтому
  * в подписи он заменён каймой (тёмной); остальные чернила как у глифа.
+ * V-27: яркая медь по той же причине заменена своей каймой; V-30 — янтарь.
  */
 function paperInkTextColor(color) {
     const ink = paperInkGlyphColor(color);
-    const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB : rgb);
+    const fix = rgb => (isPaperOpalInk(rgb) ? PAPER_OPAL_EDGE_RGB
+        : isPaperCopperInk(rgb) ? PAPER_COPPER_EDGE_RGB
+        : isPaperAmberInk(rgb) ? PAPER_AMBER_EDGE_RGB : rgb);
     return Array.isArray(ink[0]) ? ink.map(fix) : fix(ink);
 }
 

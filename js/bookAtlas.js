@@ -75,7 +75,8 @@ function createAtlasEntryCard(entry) {
     card.setAttribute('aria-label', t(bookmarked ? 'atlas.pinOff' : 'atlas.pinOn'));
     const togglePin = () => {
         if (typeof toggleShapeBookmark === 'function') toggleShapeBookmark(entry.name);
-        renderAtlasList();
+        // P-17: в развороте рядом бывают две главы — перерисовываются обе.
+        rerenderVisibleBookPages('atlas');
         if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
     };
     card.addEventListener('click', togglePin);
@@ -86,7 +87,7 @@ function createAtlasEntryCard(entry) {
     });
 
     if (faceted) {
-        const crown = glyphSign('corona', 16, 'atlas-card-crown');
+        const crown = glyphSign('crown', 16, 'atlas-card-crown');
         card.appendChild(crown);
     }
 
@@ -150,7 +151,7 @@ function createAtlasEntryCard(entry) {
 }
 
 function renderAtlasList() {
-    const list = document.getElementById('atlasList');
+    const list = bookPart('atlasList');
     if (!list) return;
     list.innerHTML = '';
 
