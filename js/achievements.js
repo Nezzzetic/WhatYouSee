@@ -267,7 +267,7 @@ const ACHIEVEMENT_CHAINS = [
             check: { type: 'createdAtlasShapes', n }
         }))
     },
-    // U-10: награда за огранку — ОДНОЙ цепочкой, а не 29 записями «Огранка: Чипсина».
+    // U-10: награда за огранку — ОДНОЙ цепочкой, а не 29 записями «Огранка: Пирамида».
     // Так «унести награду в ачивки» стоит +1 слот: список остаётся читаемым,
     // атлас остаётся коллекцией, фигура держит только состояние (грани и венец) —
     // кнопок забора на карточках нет. Пороги подтверждены прогоном; между 15-й и
@@ -386,9 +386,11 @@ const MOSAIC_REQUIRED_BUCKETS = ['2', '3', '4', '5', '6', '7', '8plus'];
 function makeDefaultAchievementCounters() {
     return {
         levelsCompleted: 0,
-        // O-02: сколько фиксированных картинок первых ночей уже показано (не
-        // завершено) — 0/1/2, дальше воскресенье/обычный выбор как раньше.
-        onboardingFieldsShown: 0,
+        // S-07: пройденные уровни Пролога (1…7 без повторов) и небо на экране —
+        // 'day' | 'prologue:<n>'. Новый игрок и полный сброс начинают с Кота.
+        // Аддитивные поля, версия сейва не поднимается.
+        prologuePassed: [],
+        activeSky: 'prologue:1',
         // O-01: тутор первых жестов. Хранится ОДИН бит — «отзум сделан, тутор
         // закрыт»; шаг соединения в сейве не живёт вовсе, он выводится из
         // constellations.length (заодно бесплатно верное поведение отката).
@@ -398,6 +400,10 @@ function makeDefaultAchievementCounters() {
         // не получает никогда, GDD). Флаг аддитивный, дефолт false, версия
         // сейва НЕ поднимается — тем же приёмом, что tutorial.done (O-01).
         bookFirstOpenDone: false,
+        // S-06: первый день игрока для календаря (dateInt эффективных суток,
+        // 0 = не задан). Пишется один раз — ensureFirstSkyDate() — и дальше не
+        // перезаписывается. Аддитивное поле, версия сейва НЕ поднимается (U-21).
+        firstSkyDate: 0,
         totalConstellations: 0,
         colorTotals: { red: 0, orange: 0, yellow: 0, white: 0, blue: 0 },
         // B-04: три бакета вместо шести (диапазоны 2–4★/5–7★/8★+). 2★ раньше
@@ -452,8 +458,8 @@ function makeDefaultTutorialState() {
 /**
  * O-01: тот же терпимый приём, что у блока суток, — в сейве до этой задачи
  * поля нет, берётся дефолт `{done:false}`, версия достижений НЕ поднимается.
- * Игроку с прогрессом это ничем не грозит: тутор отсечён счётчиком O-02
- * (`onboardingFieldsShown`), который у него давно израсходован.
+ * Игроку с прогрессом это ничем не грозит: тутор живёт только на Коте
+ * (`prologue:1`, S-07), а игрок до Пролога запускается на небе дня.
  */
 function sanitizeTutorialState(raw) {
     if (!raw || typeof raw !== 'object') return makeDefaultTutorialState();
@@ -548,6 +554,24 @@ function ensureDailyQuestsForToday() {
     achievementCounters.daily = makeDefaultDailyQuestState();
     achievementCounters.daily.date = today;
     return true;
+}
+
+/**
+ * S-06: первый день игрока — с него начинается сетка календаря. Ставится
+ * эффективной датой неба (M-09), только если поля ещё нет: смена суток,
+ * перезагрузка и даже дата, ушедшая назад, его не переписывают. Зовётся с тех
+ * же путей загрузки/вайпа, что и сутки квестов (loadProgression, performFullReset).
+ * @returns {boolean} поле только что поставлено (сейв прогрессии надо записать)
+ */
+function ensureFirstSkyDate() {
+    if (!achievementCounters || achievementCounters.firstSkyDate > 0) return false;
+    if (typeof getEffectiveSkyDateInt !== 'function') return false;
+    achievementCounters.firstSkyDate = getEffectiveSkyDateInt();
+    return true;
+}
+
+function getFirstSkyDate() {
+    return achievementCounters ? (achievementCounters.firstSkyDate || 0) : 0;
 }
 
 /**
@@ -698,6 +722,27 @@ function resetPerNightAchievementFlags() {
     shapesCountedThisNight = new Set();
 }
 
+/**
+ * S-07: ночные флаги относятся к полю, а не к игроку — едут со слотом неба
+ * (`nightFlags`, та же структура, что в getAchievementSaveData).
+ */
+function getPerNightAchievementFlags() {
+    return {
+        rainbowCountedThisNight,
+        mosaicCountedThisNight,
+        pageSpecialsCountedThisNight: [...pageSpecialsCountedThisNight],
+        shapesCountedThisNight: [...shapesCountedThisNight]
+    };
+}
+
+function applyPerNightAchievementFlags(flags) {
+    if (!flags || typeof flags !== 'object') return;
+    rainbowCountedThisNight = !!flags.rainbowCountedThisNight;
+    mosaicCountedThisNight = !!flags.mosaicCountedThisNight;
+    pageSpecialsCountedThisNight = new Set(Array.isArray(flags.pageSpecialsCountedThisNight) ? flags.pageSpecialsCountedThisNight : []);
+    shapesCountedThisNight = new Set(Array.isArray(flags.shapesCountedThisNight) ? flags.shapesCountedThisNight : []);
+}
+
 // =============================================================================
 // ПЕРСИСТЕНТНОСТЬ (встраивается в starsReborn_progression)
 // =============================================================================
@@ -728,17 +773,33 @@ function applyAchievementSaveData(state) {
     if (state.achievementCounters && typeof state.achievementCounters === 'object') {
         const def = makeDefaultAchievementCounters();
         const s = state.achievementCounters;
+        const levelsCompleted = Number(s.levelsCompleted) || 0;
+        // S-07: Пролог вместо первых ночей O-02. Сейв без prologuePassed —
+        // разовая миграция: k = min(показано картинок, раскрыто небес, 2)
+        // (развилка 1); onboardingFieldsShown читается только здесь и больше
+        // не пишется. Сейв без activeSky — игрок с прогрессом, запуск на дне.
+        let prologuePassed;
+        if (Array.isArray(s.prologuePassed)) {
+            prologuePassed = sanitizeProloguePassed(s.prologuePassed);
+        } else {
+            const shown = Math.max(0, Math.floor(Number(s.onboardingFieldsShown) || 0));
+            const k = Math.min(shown, levelsCompleted, 2);
+            prologuePassed = k >= 2 ? [1, 2] : (k === 1 ? [1] : []);
+            notePrologueMigration(shown);
+        }
         achievementCounters = {
-            levelsCompleted: Number(s.levelsCompleted) || 0,
-            // O-02: в сейве до этой задачи поля нет — дефолт 0, версия не
-            // поднята (активных игроков нет, мигрировать некого).
-            onboardingFieldsShown: Number(s.onboardingFieldsShown) || 0,
+            levelsCompleted,
+            prologuePassed,
+            activeSky: sanitizeActiveSky(s.activeSky === undefined ? 'day' : s.activeSky, prologuePassed),
             // O-01: аддитивное поле, версия достижений не поднимается
             tutorial: sanitizeTutorialState(s.tutorial),
             // U-21: аддитивное поле, версия достижений не поднимается. В сейве
             // до этой задачи его нет — игрок с прогрессом получит разворот
             // атласа один раз, и это не вредно.
             bookFirstOpenDone: !!s.bookFirstOpenDone,
+            // S-06: аддитивное поле; в сейве до задачи его нет — 0, и
+            // ensureFirstSkyDate() поставит день первого запуска новой версии.
+            firstSkyDate: Math.max(0, Math.floor(Number(s.firstSkyDate) || 0)),
             totalConstellations: Number(s.totalConstellations) || 0,
             colorTotals: Object.assign({}, def.colorTotals, s.colorTotals || {}),
             starCountTotals: Object.assign({}, def.starCountTotals, s.starCountTotals || {}),
@@ -1037,9 +1098,14 @@ function hasClaimableAchievements() {
 // ХУКИ ОЦЕНКИ (вызываются из constellations.js)
 // =============================================================================
 
+/** S-07: Evening Rite идёт только на небе дня — Пролог его не продвигает. */
+function isDaySkyActive() {
+    return typeof getActiveSkyKind !== 'function' || getActiveSkyKind() === 'day';
+}
+
 function recordAchievementCommit(constellation) {
     // M-05: первое созвездие за сутки закрывает квест «Приход»
-    markDailyQuestEntry();
+    if (isDaySkyActive()) markDailyQuestEntry();
     applyConstellationToCounters(constellation, +1);
     recordShapeCommitForFacets(constellation);
     afterAchievementStateChanged();
@@ -1144,7 +1210,10 @@ function recordAchievementReveal() {
     achievementCounters.levelsCompleted += 1;
     // M-05: закрытая ночь больше не платит напрямую — она закрывает суточный
     // квест, а ✦ приходят обычным забором в Наградах.
-    markDailyQuestNight();
+    // S-07: на небе Пролога вместо этого уровень отмечается пройденным;
+    // остальное ниже (счётчики, Радуга, Мозаика) — на любом небе.
+    if (isDaySkyActive()) markDailyQuestNight();
+    if (typeof notePrologueOrDayRevealed === 'function') notePrologueOrDayRevealed();
 
     // Радуга и Мозаика — не чаще 1 раза за небо
     const snap = getFieldAchievementSnapshot();

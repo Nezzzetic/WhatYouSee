@@ -44,6 +44,8 @@
         <symbol id="i-knife" viewBox="0 0 24 24"><path d="M3.6 20.4 11 13"/><path d="M11.4 12.6 20.4 3.6 21 8.4 13.2 16.2 Z"/><path d="M3.6 20.4 6.4 20.4"/></symbol>
         <!-- замок · заперто (K-24) -->
         <symbol id="i-lock" viewBox="0 0 24 24"><path d="M7.4 10.6V7.8a4.6 4.6 0 0 1 9.2 0v2.8"/><path d="M5.6 10.6h12.8v9h-12.8Z"/><path d="M12 14v2.4"/></symbol>
+        <!-- календарь (S-06): лист с кольцами и сеткой -->
+        <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4.6 6.4h14.8v13.2H4.6Z"/><path d="M4.6 10.2h14.8"/><path d="M8.6 4.2v4"/><path d="M15.4 4.2v4"/><path d="M8.4 13.6h1.6M11.2 13.6h1.6M14 13.6h1.6M8.4 16.4h1.6M11.2 16.4h1.6"/></symbol>
         <!-- прижать -->
         <symbol id="i-press" viewBox="0 0 24 24"><path d="M8.4 12V6.4a1.5 1.5 0 0 1 3 0v4.2"/><path d="M11.4 10.6V5a1.5 1.5 0 0 1 3 0v5.6"/><path d="M14.4 10.6V6.6a1.5 1.5 0 0 1 3 0V13c0 4-2.4 6.4-6 6.4-2.8 0-4.3-1.2-5.6-3.6l-1.4-2.4a1.5 1.5 0 0 1 2.6-1.5l1.4 2.1"/></symbol>
         <!-- закладка -->
@@ -73,7 +75,7 @@
         <!-- экслибрис -->
         <symbol id="i-leaf" viewBox="0 0 24 24"><path d="M5.6 4.4h9.2l4.6 4.6v10.6H5.6Z"/><path d="M14.8 4.4V9h4.6"/></symbol>
         <!-- полная огранка -->
-        <symbol id="i-corona" viewBox="0 0 26 16"><path d="M3 14A10.5 10.5 0 0 1 23 14"/><path d="M13 8.6V2"/><path d="M7.4 9.8 5.6 4.6"/><path d="M18.6 9.8 20.4 4.6"/></symbol>
+        <symbol id="i-crown" viewBox="0 0 26 16"><path d="M4 13.5 3 5l5.5 4L13 2.5 17.5 9 23 5l-1 8.5Z"/><path d="M4.4 10.8h17.2"/></symbol>
         <!-- свод · итог -->
         <symbol id="i-arc" viewBox="0 0 24 24"><path d="M3.5 17.5a8.5 8.5 0 0 1 17 0"/><path d="M7 17.5a5 5 0 0 1 10 0"/></symbol>
         <!-- K-33: свой знак каждому цветовому квесту — предмет по мотиву цвета, не цвет сам -->
@@ -104,6 +106,7 @@
         <button type="button" id="devToggleBtn" class="dev-toggle-btn" aria-label="Служебная панель"></button>
         <!-- D-02: скрыта в разметке по умолчанию — setup()/тройной тап только показывают -->
         <div id="devControls" class="dev-controls" hidden>
+            <div id="devSkyNumber" class="dev-sky-number"></div>
             <div class="dev-zoom-row">
                 <button type="button" id="zoomOutButton" title="Отдалить">−</button>
                 <button type="button" id="zoomInButton" title="Приблизить">＋</button>
@@ -204,16 +207,17 @@
                 <div id="bookBody" class="book-body">
                     <div id="bookToday" class="book-section" hidden>
                         <div id="bookTodayList" class="achv-list"></div>
-                        <!-- O-03: конец ночи проговаривает только книга — небо молчит.
-                             Виден только на доигранной ночи (renderBookTodayDawn, ui.js). -->
-                        <div id="bookTodayDawn" class="book-dawn" hidden>
-                            <span class="book-dawn-label" data-i18n="book.dawnIn"></span>
+                        <!-- O-03/O-11: конец ночи проговаривает только книга — небо молчит.
+                             Виден всегда, два состояния (renderBookTodayDawn, bookToday.js):
+                             играется — счёт соединимых звёзд, доиграна — ожидание. Слова
+                             режутся вокруг числа (порядок разный в локалях), поэтому до/после
+                             числа — разные узлы. -->
+                        <div id="bookTodayDawn" class="book-dawn">
+                            <span id="bookTodayDawnBefore" class="book-dawn-label"></span>
                             <span id="bookTodayDawnClock" class="book-dawn-clock"></span>
+                            <span id="bookTodayDawnAfter" class="book-dawn-label"></span>
                         </div>
                         <div id="bookTodayNews" class="book-news-list"></div>
-                        <!-- K-17: строки состояния — не события мира: в `newsLog`
-                             они не идут и считаются на рендере, поэтому и блок свой -->
-                        <div id="bookTodayState" class="book-state-list"></div>
                     </div>
                     <div id="bookIndex" class="book-section book-index" hidden></div>
                     <!-- K-18: пейджер-строка над сеткой снята — прогресс главы и
@@ -279,6 +283,17 @@
                     <!-- K-14: настройки — вход только строкой из «Index», своей
                          высечки нет (решение K-06: высечек пять). Первый тумблер —
                          звук; список рассчитан на второй (вибро, A-05/U-14). -->
+                    <!-- S-06: календарь — сетка месяца по дате неба (bookCalendar.js) -->
+                    <div id="bookCalendarSection" class="book-section" hidden>
+                        <!-- S-07: полоса Пролога над сеткой — семь уровней-небес.
+                             Правка после устройства: Пролог и месяц — два блока,
+                             титул месяца стоит у своей сетки, не в шапке страницы. -->
+                        <div id="bookCalendarPrologue" class="book-prologue"></div>
+                        <div class="book-cal-month">
+                            <div id="bookCalendarMonth" class="book-cal-month-title"></div>
+                            <div id="bookCalendarGrid" class="book-cal-grid"></div>
+                        </div>
+                    </div>
                     <div id="bookSettingsSection" class="book-section" hidden>
                         <div id="bookSettingsList" class="settings-list"></div>
                     </div>
@@ -302,6 +317,10 @@
                     </span>
                 </div>
             </div>
+            <!-- P-17: жёлоб разворота — тень переплёта между левой страницей
+                 (#bookPage) и правой (#bookPageRight, копия листа, её вставляет
+                 ensureBookRightPage() в book.js). Виден только в развороте. -->
+            <div class="book-gutter" aria-hidden="true"></div>
             <div id="bookTabs" class="book-tabs" role="tablist">
                 <button type="button" class="book-tab" data-cut="today" role="tab">
                     <!-- K-17: та же пара «локализуемый span + своя капля», что у Штампов -->
@@ -314,6 +333,7 @@
                          сургуча живёт своим span'ом, а не внутри локализуемого -->
                     <span data-i18n="book.cutStamps">Stamps</span><span id="bookTabStampsWax" class="book-tab-wax" aria-hidden="true"></span>
                 </button>
+                <button type="button" class="book-tab" data-cut="calendar" role="tab" data-i18n="book.cutCalendar">Calendar</button>
                 <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
             </div>
 
@@ -367,11 +387,14 @@
     <script src="js/bookToday.js"></script>
     <script src="js/bookIndex.js"></script>
     <script src="js/bookAtlas.js"></script>
+    <script src="js/bookCalendar.js"></script>
     <script src="js/bookExLibris.js"></script>
     <script src="js/bookSettings.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/bookStamps.js"></script>
     <script src="js/save.js"></script>
+    <!-- S-07: Пролог — опирается на слоты save.js -->
+    <script src="js/prologue.js"></script>
     <script src="js/tutorial.js"></script>
     <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после
          loadProgression() (startAnalytics() зовётся из setup()). Раннее

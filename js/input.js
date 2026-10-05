@@ -449,7 +449,20 @@ function touchEnded(event) {
  * в пределах HIT_RADIUS world units.
  */
 function mouseMoved() {
-    // U-27: на поле переименовывать нечего — курсор всегда обычный (в обсерватории
-    // тоже, там переименование своё, книжное, K-21).
+    // U-27: на поле переименовывать нечего — курсор всегда обычный.
+    // U-44: на экслибрисе (K-21) подпись и знак пера кликабельны в режиме
+    // «двигать» — тот же хит-тест, что и у настоящего нажатия
+    // (observatoryMousePressed), только на чтение.
+    if (typeof isObservatoryMode === 'function' && isObservatoryMode()
+        && observatoryMode === 'move') {
+        const fx = mouseX / zoomLevel + camX;
+        const fy = mouseY / zoomLevel + camY;
+        const star = getObservatoryStarAt(fx, fy);
+        const labelTakesHit = !(star && Math.hypot(star.x - fx, star.y - fy)
+            <= OBSERVATORY_LABEL_STAR_PRIORITY);
+        const label = labelTakesHit ? getObservatoryLabelAt(fx, fy) : null;
+        cursor(label ? HAND : ARROW);
+        return;
+    }
     cursor(ARROW);
 }

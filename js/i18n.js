@@ -126,7 +126,7 @@ en: {
     'chain.rainbow.title': 'Rainbow',
     'chain.mosaic.title': 'Mosaic',
     'chain.kaleidoscope.title': 'Kaleidoscope',
-    'chain.nights.title': 'Night Wanderer',
+    'chain.nights.title': 'Sky Wanderer',
     'chain.constellations.title': 'Sky Architect',
     'chain.razvedka.title': 'Trailblazer',
     'chain.ogranshchik.title': 'Gem Cutter',
@@ -162,30 +162,30 @@ en: {
     },
     'chain.size8plus.desc': 'Constellations of 8 stars or more',
     'chain.rainbow.step': {
-        one: '{n} night: constellations of all 5 colors',
-        other: '{n} nights: constellations of all 5 colors'
+        one: '{n} sky: constellations of all 5 colors',
+        other: '{n} skies: constellations of all 5 colors'
     },
-    'chain.rainbow.desc': 'Nights with constellations of all five colors on the field',
+    'chain.rainbow.desc': 'Skies with constellations of all five colors on the field',
     'chain.mosaic.step': {
-        one: '{n} night with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
-        other: '{n} nights with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
+        one: '{n} sky with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)',
+        other: '{n} skies with a full mosaic (2★,3★,4★,5★,6★,7★ and 8★+ on one field)'
     },
-    'chain.mosaic.desc': 'Nights with every size on the field',
+    'chain.mosaic.desc': 'Skies with every size on the field',
     'chain.pageSpecial.step': {
-        one: '{n} night: {desc}',
-        other: '{n} nights: {desc}'
+        one: '{n} sky: {desc}',
+        other: '{n} skies: {desc}'
     },
     'chain.kaleidoscope.desc': 'one shape from each atlas chapter on the field',
     'chain.nights.step': {
-        one: '{n} completed night',
-        other: '{n} completed nights'
+        one: '{n} completed sky',
+        other: '{n} completed skies'
     },
-    'chain.nights.desc': 'Nights completed to the end',
+    'chain.nights.desc': 'Skies completed to the end',
     'chain.constellations.step': {
         one: '{n} constellation created in total',
         other: '{n} constellations created in total'
     },
-    'chain.constellations.desc': 'Constellations drawn, across all nights',
+    'chain.constellations.desc': 'Constellations drawn, across all skies',
     'chain.razvedka.step': {
         one: '{n} atlas shape discovered',
         other: '{n} atlas shapes discovered'
@@ -228,6 +228,13 @@ en: {
     'book.cutIndex': 'Index',
     'book.cutAtlas': 'Atlas',
     'book.cutStamps': 'Stamps',
+    // S-06: шестая высечка; месяцы и дни недели — Intl, не словарь.
+    'book.cutCalendar': 'Calendar',
+    // S-07: полоса Пролога над сеткой календаря
+    'prologue.title': 'Prologue',
+    'prologue.name1': 'Cat',
+    'prologue.name2': 'Twins',
+    'prologue.soon': 'More skies are coming soon',
     'book.cutExLibris': 'Ex Libris',
     'book.brand': 'ALMANAC',
     'book.folio': 'p. {n}',
@@ -244,6 +251,7 @@ en: {
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
     // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
     'book.eyebrowExLibris': 'EX LIBRIS',
+    'book.eyebrowCalendar': 'CALENDAR',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
     // подставляется на вызове, отдельного ключа под него не заводим.
@@ -283,12 +291,6 @@ en: {
     // S-03: постоянная запись дня для любого уровня, включая ступени хвоста
     // (после последней главы), где баннер (U-29) несёт только поздравление.
     'book.newsLevelUp': 'Level {n} — {name}.',
-    // K-17: строки состояния страницы — не события ночи, а то, как обстоят дела
-    // на эту минуту. Считаются на рендере, в ленту новостей не попадают.
-    'book.todayStarsLeft': {
-        one: 'The sky above holds {n} star yet unjoined.',
-        other: 'The sky above holds {n} stars yet unjoined.'
-    },
     // S-03: уровень — в подвале рядом с брендом на любой странице.
     'book.footLevel': 'Level {n}',
     // V-20: номер уровня в головке корешка (сменил «следующий уровень» над
@@ -299,17 +301,25 @@ en: {
     // S-03: выделенная золотом часть строк замков (атлас, Экслибрис).
     'book.lockLevel': 'level {n}',
 
-    // O-03: блок появляется только на доигранной ночи — единственное место,
-    // где игра проговаривает конец ночи (небо само не говорит ничего). Одна
-    // строка — «ночь закончена» снято отдельной правкой заказчика, осталось
-    // только само ожидание нового неба. Часы словами, а не циферблатом
-    // (ещё одна правка по живому фидбеку): круглое число или «меньше часа».
+    // O-03: единственное место, где игра проговаривает конец ночи (небо само
+    // не говорит ничего). Одна строка — «ночь закончена» снято отдельной
+    // правкой заказчика, осталось только само ожидание нового неба. Часы
+    // словами, а не циферблатом (ещё одна правка по живому фидбеку): круглое
+    // число или «меньше часа».
     'book.dawnIn': 'New sky in',
     'book.dawnHours': {
         one: '{n} hour',
         other: '{n} hours'
     },
     'book.dawnLessHour': 'less than an hour',
+    // O-11: тот же блок, пока ночь идёт — крупный счёт соединимых звёзд вместо
+    // ожидания. Рендер режет строку по «{n}»: слова — в `.book-dawn-label` до
+    // и после, число — в `.book-dawn-clock`; порядок слов у числа в локалях
+    // разный, поэтому один ключ, а не два.
+    'book.starsLeft': {
+        one: '{n} star left',
+        other: '{n} stars left'
+    },
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Settings',
@@ -355,7 +365,7 @@ en: {
     // Единственные две строки, которыми игра объясняет себя словами. Прямая
     // инструкция, а не образ: их читают ровно один раз и им следуют.
     'tutor.connect': 'Drag from one star to the other, then let go.',
-    'tutor.zoom': 'Now pull the sky back — spread two fingers, or scroll.',
+    'tutor.zoom': 'Now pull the sky back — pinch two fingers together, or scroll.',
     'tutor.book': 'Now open your book — tap or click the ribbon in the corner.',
 
     // --- Поле -----------------------------------------------------------------
@@ -455,7 +465,7 @@ ru: {
     'chain.rainbow.title': 'Радуга',
     'chain.mosaic.title': 'Мозаика',
     'chain.kaleidoscope.title': 'Калейдоскоп',
-    'chain.nights.title': 'Странник ночей',
+    'chain.nights.title': 'Странник небес',
     'chain.constellations.title': 'Зодчий небес',
     'chain.razvedka.title': 'Первооткрыватель',
     'chain.ogranshchik.title': 'Огранщик',
@@ -495,35 +505,35 @@ ru: {
     },
     'chain.size8plus.desc': 'Созвездия от 8 звёзд и больше',
     'chain.rainbow.step': {
-        one: '{n} ночь: созвездия всех 5 цветов',
-        few: '{n} ночи: созвездия всех 5 цветов',
-        many: '{n} ночей: созвездия всех 5 цветов'
+        one: '{n} небо: созвездия всех 5 цветов',
+        few: '{n} неба: созвездия всех 5 цветов',
+        many: '{n} небес: созвездия всех 5 цветов'
     },
-    'chain.rainbow.desc': 'Ночи с созвездиями всех пяти цветов на поле',
+    'chain.rainbow.desc': 'Небеса с созвездиями всех пяти цветов на поле',
     'chain.mosaic.step': {
-        one: '{n} ночь с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
-        few: '{n} ночи с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
-        many: '{n} ночей с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)'
+        one: '{n} небо с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
+        few: '{n} неба с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)',
+        many: '{n} небес с полной мозаикой (созвездия 2★,3★,4★,5★,6★,7★ и 8★+ на одном поле)'
     },
-    'chain.mosaic.desc': 'Ночи со всеми размерами на поле',
+    'chain.mosaic.desc': 'Небеса со всеми размерами на поле',
     'chain.pageSpecial.step': {
-        one: '{n} ночь: {desc}',
-        few: '{n} ночи: {desc}',
-        many: '{n} ночей: {desc}'
+        one: '{n} небо: {desc}',
+        few: '{n} неба: {desc}',
+        many: '{n} небес: {desc}'
     },
     'chain.kaleidoscope.desc': 'по фигуре с каждой главы атласа на поле',
     'chain.nights.step': {
-        one: '{n} завершённая ночь',
-        few: '{n} завершённые ночи',
-        many: '{n} завершённых ночей'
+        one: '{n} завершённое небо',
+        few: '{n} завершённых неба',
+        many: '{n} завершённых небес'
     },
-    'chain.nights.desc': 'Ночи, доведённые до конца',
+    'chain.nights.desc': 'Небеса, доведённые до конца',
     'chain.constellations.step': {
         one: '{n} созвездие создано всего',
         few: '{n} созвездия создано всего',
         many: '{n} созвездий создано всего'
     },
-    'chain.constellations.desc': 'Созвездия за все ночи вместе',
+    'chain.constellations.desc': 'Созвездия за все небеса вместе',
     'chain.razvedka.step': {
         one: '{n} открытая фигура атласа',
         few: '{n} открытые фигуры атласа',
@@ -567,6 +577,11 @@ ru: {
     'book.cutIndex': 'Оглавление',
     'book.cutAtlas': 'Атлас',
     'book.cutStamps': 'Штампы',
+    'book.cutCalendar': 'Календарь',
+    'prologue.title': 'Пролог',
+    'prologue.name1': 'Кот',
+    'prologue.name2': 'Близнецы',
+    'prologue.soon': 'Новые небеса скоро появятся',
     'book.cutExLibris': 'Экслибрис',
     'book.brand': 'АЛЬМАНАХ',
     'book.folio': 'стр. {n}',
@@ -578,6 +593,7 @@ ru: {
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
+    'book.eyebrowCalendar': 'КАЛЕНДАРЬ',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
@@ -602,12 +618,6 @@ ru: {
     // K-15: заменяет тост «Обсерватория открыта» — событие мира, а не всплывающее окно.
     'book.newsObservatoryOpen': 'Открылся Экслибрис — {n} звёзд ждут.',
     'book.newsLevelUp': 'Уровень {n} — {name}.',
-    // K-17: строки состояния страницы — считаются на рендере, в новостях не живут.
-    'book.todayStarsLeft': {
-        one: 'На небе ещё не соединена {n} звезда.',
-        few: 'На небе ещё не соединены {n} звезды.',
-        many: 'На небе ещё не соединено {n} звёзд.'
-    },
     'book.footLevel': 'Уровень {n}',
     'book.spineLevel': 'Ур. {n}',
     'book.spineScore': '{earned} / {ceil}',
@@ -622,6 +632,12 @@ ru: {
         many: '{n} часов'
     },
     'book.dawnLessHour': 'меньше часа',
+    // O-11: тот же блок, пока ночь идёт — счёт соединимых звёзд вместо ожидания.
+    'book.starsLeft': {
+        one: 'Осталась {n} звезда',
+        few: 'Осталось {n} звезды',
+        many: 'Осталось {n} звёзд'
+    },
 
     // K-14: страница настроек — строка из оглавления, не шестая высечка.
     'book.cutSettings': 'Настройки',
@@ -660,7 +676,7 @@ ru: {
 
     // --- O-01: тутор первых жестов -----------------------------------------------
     'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
-    'tutor.zoom': 'Теперь отдали небо — разведи два пальца или покрути колесо.',
+    'tutor.zoom': 'Теперь отдали небо — сведи два пальца или покрути колесо.',
     'tutor.book': 'Теперь открой книгу — нажми на ленту в углу.',
 
     // --- Поле -----------------------------------------------------------------
@@ -737,7 +753,7 @@ function getI18nPluralRules() {
 }
 
 /**
- * Множественное число: tp('chain.nights.step', 5) → «5 завершённых ночей».
+ * Множественное число: tp('chain.nights.step', 5) → «5 завершённых небес».
  * `n` всегда доступен в шаблоне как {n}; остальные параметры — из `params`.
  */
 function tp(key, n, params) {

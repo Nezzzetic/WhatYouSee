@@ -246,7 +246,7 @@ function releaseFieldBackdrop() {
 
 /** Встроенный вид активен, когда страница «Ex Libris» открыта и небо — второе. */
 function isExLibrisEmbedActive() {
-    return typeof bookOpen !== 'undefined' && bookOpen && bookCut === 'exlibris'
+    return typeof bookOpen !== 'undefined' && bookOpen && isBookCutVisible('exlibris')
         && appMode === 'observatory';
 }
 
@@ -344,6 +344,9 @@ function setup() {
     textFont("'EB Garamond', Georgia, 'Times New Roman', serif");
 
     loadProgression();
+    // S-07: какое небо показывать — по прогрессии; негодный уровень → небо дня.
+    // До аналитики: night_start несёт род неба на экране.
+    resolveLaunchSky();
     // P-05: строго ПОСЛЕ loadProgression() — снимку нужны и playerId, и
     // счётчики достижений. На main функция инертна (адрес приёма пуст).
     if (typeof startAnalytics === 'function') startAnalytics();
@@ -351,8 +354,21 @@ function setup() {
     // сразу после прогрессии (нужен playerId) и до генерации поля.
     initObservatory();
 
+    // S-05: старый единый ключ неба → слот сегодняшнего дня, строго до loadGame().
+    migrateLegacySkySave();
+    // S-07: разовая миграция O-02 — недоигранная первая ночь стирается после
+    // переноса единого ключа и до первого loadGame().
+    wipeUnfinishedFirstNight();
+    // S-07: активный слот под небо на экране — до любого loadGame()/autoSave().
+    pinActiveSkySlotFromProgression();
+    const launchPrologueN = getActivePrologueLevel();
     if (!loadGame()) {
-        startNewDailySky({ saveAfter: true });
+        if (launchPrologueN) {
+            resetFieldSessionState();
+            startNewPrologueSky(launchPrologueN);
+        } else {
+            startNewDailySky({ saveAfter: true });
+        }
     } else {
         // Повторное открытие: быстрый fade (уже работали с этим небом)
         skyStartTime = millis();
@@ -385,6 +401,7 @@ function setup() {
         devControls.hidden = false;
     }
     setupDevToggleButton();
+    updateDevSkyNumber();
     // O-01: действия, меняющие небо, закрывают панель за собой — иначе она
     // стоит поверх того, ради чего её нажали (тьюторный кадр она закрывала целиком).
     resetBtn?.addEventListener("click", () => { hideDevControls(); onResetSky(); });
@@ -421,6 +438,18 @@ function setup() {
  * реально показанных, пока вкладка не ушла в фон.
  */
 function checkSkyDateOnResume() {
+    // S-07: небо Пролога от суток не зависит — небо не меняется, но сутки
+    // квестов перекатываются, иначе «Сегодня» показывала бы вчерашние марки.
+    // startNewDailySky здесь не зовётся (инвариант «слот под небом»).
+    if (getActiveSkyKind() === 'prologue') {
+        if (ensureDailyQuestsForToday()) {
+            saveProgression();
+            recomputeAchievementsClaimable();
+            updateRibbonSignal();
+            if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
+        }
+        return;
+    }
     if (!hasSavedGame()) {
         startNewDailySky({ saveAfter: true });
     }
@@ -489,6 +518,12 @@ function hideDevControls() {
     if (el) el.hidden = true;
 }
 
+/** M-14: служебная строка «Небо №N» — номер неба эффективной даты. */
+function updateDevSkyNumber() {
+    const el = document.getElementById("devSkyNumber");
+    if (el) el.textContent = `Небо №${getSkyNumber(getEffectiveSkyDateInt())}`;
+}
+
 /** Невидимая кнопка в левом верхнем углу: тройной быстрый тап — показать/скрыть панель. */
 function setupDevToggleButton() {
     const btn = document.getElementById("devToggleBtn");
@@ -539,13 +574,22 @@ function resetFieldSessionState() {
     if (typeof cancelCommitWave === 'function') cancelCommitWave();
     if (typeof cancelLevelFinale === 'function') cancelLevelFinale();
     if (typeof resetPerNightAchievementFlags === 'function') resetPerNightAchievementFlags();
+    // O-11: новое поле — старый кеш соединимых звёзд ни на что не указывает.
+    if (typeof invalidateConnectableStarIdsCache === 'function') invalidateConnectableStarIdsCache();
 }
 
+/**
+ * Поле АКТИВНОГО неба: ручной override (dev/URL) поверх всего, дальше уровень
+ * Пролога (S-07) или небо дня по расписанию.
+ */
 function regenerateFieldStarsAfterReset() {
+    const prologueN = getActivePrologueLevel();
     if (shouldLoadPictureField()) {
         generatePictureField();
         assignStarAppearDelays();
         generateBackgroundStars();
+    } else if (prologueN) {
+        generatePrologueField(prologueN);
     } else {
         generateDailyField();
     }
@@ -553,6 +597,13 @@ function regenerateFieldStarsAfterReset() {
 
 function startNewDailySky(options) {
     const opts = options || {};
+    // S-07: любое новое небо дня — это возврат на день: закрепление за Прологом
+    // снимается первым делом, иначе autoSave записал бы день в слот уровня.
+    // Пройденный уровень, с которого ушли, не хранится (не переигрывается).
+    const leavingPrologueN = getActivePrologueLevel();
+    if (leavingPrologueN && isPrologueLevelPassed(leavingPrologueN)) clearSkySlot('prologue:' + leavingPrologueN);
+    setActiveSkySlot(null);
+    setActiveSkyValue('day');
     closeBook();
     resetFieldSessionState();
     // M-05: суточные квесты обновляются вместе с небом. Здесь — потому что это
@@ -560,9 +611,11 @@ function startNewDailySky(options) {
     // день», харнесс. `onResetSky` ниже эту функцию не зовёт намеренно —
     // он перегенерирует поле тех же суток, и квесты обязаны остаться забранными.
     if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
-    clearSave();
+    // S-05: смена суток отпускает все слоты дня; слоты Пролога не трогаются.
+    clearAllDaySkySlots();
 
     regenerateFieldStarsAfterReset();
+    updateDevSkyNumber();
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
@@ -577,7 +630,9 @@ function startNewDailySky(options) {
     updateRibbonSignal();
 
     if (opts.saveAfter !== false) {
-        autoSave();
+        // S-05: новое небо дня пишется в слот дня, даже если активный закреплён
+        // за Прологом (S-07) — иначе слот уровня перезаписался бы небом дня.
+        saveGame(getTodaySkySlotId());
         // M-12: сброшенные ночные флаги достижений и новые сутки квестов живут
         // в сейве прогрессии, а не неба. Без этой записи перезапуск до первого
         // созвездия поднимал вчерашние флаги поверх сегодняшнего поля.
@@ -589,13 +644,9 @@ function onResetSky() {
     closeBook();
     resetFieldSessionState();
 
-    if (shouldLoadPictureField()) {
-        generatePictureField();
-        assignStarAppearDelays();
-        generateBackgroundStars();
-    } else {
-        generateDailyField(); // включает штатный воскресный показ картинки
-    }
+    // S-07: поле активного неба — на Прологе раскладка уровня, на дне —
+    // расписание (включая штатный воскресный показ картинки).
+    regenerateFieldStarsAfterReset();
 
     skyStartTime = millis();
     skyFadeScale = 1.0;
@@ -742,6 +793,8 @@ function performFullReset(options) {
     // проставляем текущие сутки, иначе первый же коммит взвёл бы защёлку
     // в блоке несуществующего дня.
     if (typeof ensureDailyQuestsForToday === 'function') ensureDailyQuestsForToday();
+    // S-06: вайп начинает календарь заново — первый день = сегодня.
+    if (typeof ensureFirstSkyDate === 'function') ensureFirstSkyDate();
     // U-21: бесплатная глава I открывается сразу и после вайпа — тем же вызовом,
     // что и у игрока без сейва вообще (loadProgression, B-04). Без этого дев-сброс
     // оставлял разворот атласа запертым до первого начисления ✦ или до F5, и
@@ -754,6 +807,7 @@ function performFullReset(options) {
     if (typeof grantObservatoryStarsDue === 'function') grantObservatoryStarsDue();
 
     regenerateFieldStarsAfterReset();
+    updateDevSkyNumber();
     skyStartTime = millis();
     skyFadeScale = 1.0;
     centerCamera();
@@ -768,7 +822,11 @@ function performFullReset(options) {
     updateRibbonSignal();
     updateObservatoryUI();
 
-    clearSave();
+    // S-05: полный сброс — все слоты, старый ключ и закрепление активного.
+    clearAllSkySlots();
+    // S-07: первое небо после сброса — Кот (или день, если хук T-01 так решил);
+    // слот закрепляется до записи.
+    pinActiveSkySlotFromProgression();
     autoSave();
 }
 

@@ -45,26 +45,45 @@ function getLabelZoomAlphaFactor() {
 // FIELD RENDERING
 // =============================================================================
 
-/** V-13: `alpha` (0..1) — видимость созвездия в сцене финала; вне сцены всегда 1. */
-function applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, alpha = 1) {
-    const c = lineColor || shapeInfo.color;
+/**
+ * V-28 (концепт C): линия созвездия — тонкая, полупрозрачная, одна толщина
+ * всегда (было 2.5 у раскрытых созвездий / 2 у обычных, K-01 → одно число).
+ * `alpha` (0..1) — видимость созвездия в сцене финала (V-13); вне сцены всегда 1.
+ */
+function applyConstellationSkeletonStrokeStyle(lineColor, alpha = 1) {
+    const c = lineColor || LINE_COLOR;
     const a = Math.max(0, Math.min(1, alpha));
-    if (prominent) {
-        stroke(c[0], c[1], c[2], 255 * a);
-        strokeWeight(REVEALED_CONSTELLATION_STROKE_WEIGHT / zoomLevel);
-    } else {
-        stroke(c[0], c[1], c[2], 255 * a);
-        strokeWeight(2 / zoomLevel);
-    }
+    stroke(c[0], c[1], c[2], 255 * a * CONSTELLATION_LINE_ALPHA);
+    strokeWeight(CONSTELLATION_LINE_STROKE_WEIGHT / zoomLevel);
+}
+
+/**
+ * V-28 (концепт C): «глоу» под чёткой линией — она же шире и бледнее, дешёвый
+ * приём вместо canvas shadowBlur (дорог на Android WebView — прецедент V-09
+ * «без glow-ореола»). Зовётся ДО applyConstellationSkeletonStrokeStyle —
+ * рисуется первым слоем, крест поверх него.
+ */
+function applyConstellationGlowStrokeStyle(lineColor, alpha = 1) {
+    const c = lineColor || LINE_COLOR;
+    const a = Math.max(0, Math.min(1, alpha));
+    stroke(c[0], c[1], c[2], 255 * a * CONSTELLATION_LINE_GLOW_ALPHA);
+    strokeWeight(CONSTELLATION_LINE_GLOW_WEIGHT / zoomLevel);
 }
 
 /**
  * V-10: зазор между концом линии и звездой в world-юнитах. Повторяет формулу
  * baseStarDrawSize из drawVisibleStars, поэтому масштабируется зумом так же,
  * как сами звёзды (в т.ч. на отзуме, где действует пол STAR_SIZE/zoom·0.5).
+ * V-25/V-26: у звезды созвездия зазор свой — у неё видна одна основа без
+ * лепестков, и прежний зазор оставлял бы линию висеть далеко от неё.
+ * Берётся игровой `star.locked`, а не вид волны V-12: иначе конец ребра прыгал
+ * бы в момент прихода волны. Без звезды (обсерватория) — прежний зазор.
  */
-function getLineStarGapWorld() {
+function getLineStarGapWorld(star) {
     const base = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
+    if (star && star.locked) {
+        return base * LOCKED_LINE_STAR_GAP_PER_DIAM;
+    }
     return base * LINE_STAR_GAP_FACTOR;
 }
 
@@ -98,8 +117,8 @@ function trimSegmentEndsWorld(ax, ay, bx, by, gapA, gapB) {
  * обрезанный сегмент, чтобы вызывающий мог положить сверху огонёк на острие.
  */
 function drawSegmentWorld(startStar, endStar, progress = 1) {
-    const gap = getLineStarGapWorld();
-    const t = trimSegmentEndsWorld(startStar.x, startStar.y, endStar.x, endStar.y, gap, gap);
+    const t = trimSegmentEndsWorld(startStar.x, startStar.y, endStar.x, endStar.y,
+        getLineStarGapWorld(startStar), getLineStarGapWorld(endStar));
     if (!t) return null;
     if (progress >= 1) {
         line(t.ax, t.ay, t.bx, t.by);
@@ -131,17 +150,34 @@ function drawCommitWaveCrestWorld(seg, progress, lineColor) {
     pop();
 }
 
+/**
+ * Один проход по рёбрам созвездия — общий код глоу-слоя и чёткой линии
+ * (V-28), чтобы не дублировать обход `constellation.lines`.
+ * `withCrest` — только у чёткого прохода: класть огонёк волны V-12 дважды
+ * (на глоу и на линию) незачем, он и так поверх обоих слоёв.
+ */
+function drawConstellationSegmentsWorld(constellation, lineColor, withCrest) {
+    for (let i = 0; i < constellation.lines.length; i++) {
+        const seg = constellation.lines[i];
+        const startStar = getStarById(seg.startId);
+        const endStar = getStarById(seg.endId);
+        if (!startStar || !endStar) continue;
+        // V-12: у волнового созвездия ребро чертится до своей доли длины,
+        // у всех прочих progress === 1 — путь ровно как до задачи.
+        const progress = getCommitWaveEdgeProgress(constellation, i);
+        const trimmed = drawSegmentWorld(startStar, endStar, progress);
+        if (withCrest && progress < 1) {
+            drawCommitWaveCrestWorld(trimmed, progress, lineColor);
+        }
+    }
+}
+
 function drawConstellationSkeletonLinesWorld() {
     for (let constellation of constellations) {
         if (!isConstellationVisible(constellation)) continue;
-        // V-09: атласные созвездия рисуются как обычные — prominent-стиль
-        // (жирная линия) остаётся только для финального раскрытия. Glow-ореол
-        // atlas-collected и prominent для recognizedAtlas убраны.
-        const prominent = constellationArtRevealed;
-        const shapeInfo = prominent
-            ? (SHAPES[constellation.shape] || SHAPES[constellation.name] || SHAPES[SHAPE_UNRECOGNIZED])
-            : SHAPES[SHAPE_UNRECOGNIZED];
-        // V-03: цвет линий — производное от звёзд созвездия (fallback: LINE_COLOR)
+        // V-03/V-28: цвет линии — бакет палитры CONSTELLATION_LINE_TIERS
+        // (концепт C), посчитан при коммите/загрузке (fallback: LINE_COLOR).
+        // Работает всегда, не только на итоговом кадре финала.
         const lineColor = constellation.lineColor || LINE_COLOR;
         // V-13: в сцене финала созвездие сначала гаснет, потом рождается заново.
         // Полностью погасшее не рисуем вовсе — на небе их бывает 30+.
@@ -150,20 +186,13 @@ function drawConstellationSkeletonLinesWorld() {
             : 1;
         if (finaleAlpha <= 0) continue;
 
-        applyConstellationSkeletonStrokeStyle(shapeInfo, prominent, lineColor, finaleAlpha);
-        for (let i = 0; i < constellation.lines.length; i++) {
-            const seg = constellation.lines[i];
-            const startStar = getStarById(seg.startId);
-            const endStar = getStarById(seg.endId);
-            if (!startStar || !endStar) continue;
-            // V-12: у волнового созвездия ребро чертится до своей доли длины,
-            // у всех прочих progress === 1 — путь ровно как до задачи.
-            const progress = getCommitWaveEdgeProgress(constellation, i);
-            const trimmed = drawSegmentWorld(startStar, endStar, progress);
-            if (progress < 1) {
-                drawCommitWaveCrestWorld(trimmed, progress, lineColor);
-            }
-        }
+        // V-28 (концепт C): глоу-слой первым (шире и бледнее), чёткая линия
+        // поверх — тот же приём, что у огонька волны V-12, только глубже и тусклее.
+        applyConstellationGlowStrokeStyle(lineColor, finaleAlpha);
+        drawConstellationSegmentsWorld(constellation, lineColor, false);
+
+        applyConstellationSkeletonStrokeStyle(lineColor, finaleAlpha);
+        drawConstellationSegmentsWorld(constellation, lineColor, true);
     }
 }
 
@@ -405,12 +434,14 @@ function measureSmallCapsWidth(str, sizePx) {
 /**
  * K-20: капитель — единственный способ набрать имя созвездия на небе. p5 не
  * умеет letter-spacing, поэтому буквы кладутся по одной с ручным шагом; под
- * именем — волосяная линейка в его ширину (Табл. II концепта). `sizePx` уже
+ * именем — волосяная линейка в его ширину (Табл. II концепта), кроме случая
+ * `withRule = false` — концепт C (V-28) снимает её у раскрытых созвездий на
+ * итоговом кадре, остальные подписи её по-прежнему держат. `sizePx` уже
  * в мировых единицах (поделено на zoomLevel вызывающим — тот же приём, что у
  * прежнего textSize(... / zoomLevel)), поэтому и tracking, и толщина линейки
  * считаются здесь же, без повторного деления.
  */
-function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
+function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha, withRule = true) {
     if (!str || alpha <= 0) return;
     const upper = str.toUpperCase();
     const tracking = sizePx * SMALL_CAPS_TRACKING_EM;
@@ -429,10 +460,12 @@ function drawSmallCapsLabelWorld(str, cx, cy, sizePx, rgb, alpha) {
         x += textWidth(ch) + tracking;
     }
 
-    const ruleY = cy + sizePx * SMALL_CAPS_RULE_OFFSET_EM;
-    stroke(rgb[0], rgb[1], rgb[2], alpha * SMALL_CAPS_RULE_ALPHA_MULT);
-    strokeWeight(1 / zoomLevel);
-    line(cx - totalW / 2, ruleY, cx + totalW / 2, ruleY);
+    if (withRule) {
+        const ruleY = cy + sizePx * SMALL_CAPS_RULE_OFFSET_EM;
+        stroke(rgb[0], rgb[1], rgb[2], alpha * SMALL_CAPS_RULE_ALPHA_MULT);
+        strokeWeight(1 / zoomLevel);
+        line(cx - totalW / 2, ruleY, cx + totalW / 2, ruleY);
+    }
     pop();
 }
 
@@ -459,9 +492,32 @@ function drawConstellationLabels() {
     // отыгрывает под нулевой альфой и к концу сцены все подписи уже на 255.
     if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return;
 
+    // V-28: на итоговом кадре (сцена уже отыграла в ЭТУ сессию) подписи видны
+    // мелко независимо от зума — гашение V-11 (дальний зум → ноль) сюда не
+    // доходит, проявление идёт плавным фейдом.
+    const finaleAftermathActive = typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed();
+
+    // V-28 (круг 3): `finaleAftermath` — флаг вне сейва (живёт только в памяти
+    // вкладки), а `constellationArtRevealed` — персистентный (пишется в сейв
+    // на раскрытии). После перезагрузки страницы/возврата в выгруженную
+    // Android-вкладку ночь по-прежнему полностью раскрыта, а флаг аftermath
+    // уже false — без этой ветки подписи гасли V-11 на дальнем зуме итогового
+    // кадра НАВСЕГДА (баг с реального устройства: линии на месте, подписей
+    // нет вовсе). Раскрытая ночь — трофейный обзор в любой сессии, не только
+    // в той, где доиграла сцена: показываем сразу на полную, без фейда (его
+    // уже отыграла сессия, которая закончила ночь).
+    const nightRevealed = typeof constellationArtRevealed !== 'undefined' && constellationArtRevealed;
+
     // V-11: множитель считается один раз за кадр, до цикла по созвездиям.
     // На дальнем зуме подписей нет вовсе — выходим сразу, не перебирая небо.
-    const zoomAlpha = getLabelZoomAlphaFactor();
+    let zoomAlpha;
+    if (finaleAftermathActive) {
+        zoomAlpha = Math.max(getLabelZoomAlphaFactor(), getFinaleLabelsZoomAlpha());
+    } else if (nightRevealed) {
+        zoomAlpha = 1;
+    } else {
+        zoomAlpha = getLabelZoomAlphaFactor();
+    }
     if (zoomAlpha <= 0) return;
 
     noStroke();
@@ -471,7 +527,12 @@ function drawConstellationLabels() {
         const constellation = constellations[i];
         if (!isConstellationVisible(constellation)) continue;
 
-        const labelAnchor = constellation.labelAnchor || constellation.center;
+        // V-29: раскрытая ночь — место из батч-раскладки (учитывает чужие линии
+        // и другие подписи), если она уже посчитана; иначе — вслепую выбранный
+        // якорь, как до задачи (и как у синтетических созвездий инструментов).
+        const labelAnchor = (constellationArtRevealed && constellation.revealedLabelAnchor)
+            ? constellation.revealedLabelAnchor
+            : (constellation.labelAnchor || constellation.center);
         if (!labelAnchor || !constellation.name) continue;
 
         if (constellationArtRevealed) {
@@ -487,9 +548,18 @@ function drawConstellationLabels() {
             // V-11: зум-множитель УМНОЖАЕТСЯ на волну появления, а не заменяет её:
             // волна отыгрывает своё независимо, и при обратном зуме после ночи
             // имена появляются сразу в полную силу, а не проигрывают волну заново.
+            // V-28 (концепт C): подпись раскрытого созвездия — цветом линии,
+            // высветленным к белому, без волосяной линейки, чуть тише самой
+            // линии — вместо прежних единых ink+линейка. Тот же кегль, что и у
+            // остальных подписей (REVEALED_CONSTELLATION_LABEL_SIZE), не отдельный
+            // мелкий для итогового кадра.
+            const tintColor = blendRgb(
+                constellation.lineColor || LINE_COLOR, [255, 255, 255], CONSTELLATION_LABEL_TINT_AMOUNT
+            );
             drawSmallCapsLabelWorld(
                 getConstellationDisplayName(constellation), labelAnchor.x, labelAnchor.y,
-                REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel, INK_RGB, alpha * zoomAlpha
+                REVEALED_CONSTELLATION_LABEL_SIZE / zoomLevel, tintColor,
+                alpha * zoomAlpha * CONSTELLATION_LABEL_ALPHA_MULT, false
             );
             continue;
         }
@@ -545,7 +615,7 @@ function drawFieldMode() {
         const fieldMouseY = mouseY / zoomLevel + camY;
         const seg = getClampedDragEndpointWorld(currentStartStar, fieldMouseX, fieldMouseY);
         // V-10: зазор только у якорного конца (звезда); конец у курсора не трогаем
-        const t = trimSegmentEndsWorld(seg.ax, seg.ay, seg.bx, seg.by, getLineStarGapWorld(), 0);
+        const t = trimSegmentEndsWorld(seg.ax, seg.ay, seg.bx, seg.by, getLineStarGapWorld(currentStartStar), 0);
         if (t) line(t.ax, t.ay, t.bx, t.by);
     }
 
@@ -581,6 +651,94 @@ function drawVisibleBackgroundStars() {
         const bgDiam = Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel);
         circle(s.x, s.y, bgDiam);
     }
+    // P-17 (четвёртая правка заказчика): в альбомном окне поле — узкая полоса
+    // по центру, и небо слева/справа было пустым. Та же пыль, той же плотности,
+    // продолжается за боковые края поля — только отрисовка: поле, сейв и
+    // random() неба не трогаются (M-14), в портрете бока не видны.
+    for (let s of getSkySideDust()) {
+        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
+            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        fill(255, 255, 255, s.alpha * bgFadeAlpha);
+        circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
+    }
+    // P-17 (шестая правка): неактивные звёзды за боками — фон, не цель: без
+    // цвета, лучей и основы звезды поля, серо-белая точка с тусклым ореолом,
+    // крупнее пыли. Их нет в fieldStars, getStarAt их не видит.
+    const baseStarDrawSize = Math.max(STAR_SIZE, STAR_SIZE / zoomLevel * 0.5);
+    for (let s of getSkySideStars()) {
+        if (s.x < camX - 30 || s.x > camX + viewW + 30 ||
+            s.y < camY - 30 || s.y > camY + viewH + 30) continue;
+        const a = s.bright * bgFadeAlpha;
+        const core = Math.max(baseStarDrawSize * s.sizeFactor * SKY_SIDE_STAR_CORE_MULT,
+            SKY_SIDE_STAR_MIN_SCREEN_DIAM / zoomLevel);
+        fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 22 * a);
+        circle(s.x, s.y, core * 2.4);
+        fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 150 * a);
+        circle(s.x, s.y, core);
+    }
+}
+
+/** Детерминированный генератор (mulberry32) — не трогает random() неба (M-14). */
+function makeSkySideRng(seed) {
+    return () => {
+        seed = (seed + 0x6D2B79F5) | 0;
+        let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
+let skySideStars = null;
+let skySideStarsKey = null;
+
+/** Неактивные звёзды за боками поля: зерно — playerId, пересчёт при его смене. */
+function getSkySideStars() {
+    const key = (typeof playerId === 'string' && playerId) ? playerId : 'sky';
+    if (skySideStars && skySideStarsKey === key) return skySideStars;
+    let h = 0x811C9DC5;
+    for (let i = 0; i < key.length; i++) h = Math.imul(h ^ key.charCodeAt(i), 0x01000193);
+    const rnd = makeSkySideRng(h ^ 0x51DE57A5);
+    const y0 = -BACKGROUND_STAR_MARGIN_Y, spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
+    const gap = SKY_SIDE_STAR_GAP, spanW = SKY_SIDE_DUST_MARGIN_X - gap;
+    const count = Math.round(spanW * spanH / SKY_SIDE_STAR_AREA);
+    skySideStars = [];
+    skySideStarsKey = key;
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < count; i++) {
+            const d = gap + rnd() * spanW;
+            skySideStars.push({
+                x: side < 0 ? -d : FIELD_WIDTH + d,
+                y: y0 + rnd() * spanH,
+                sizeFactor: STAR_SIZE_VARIATION_MIN + rnd() * (STAR_SIZE_VARIATION_MAX - STAR_SIZE_VARIATION_MIN),
+                bright: SKY_SIDE_STAR_BRIGHT_MIN + rnd() * (1 - SKY_SIDE_STAR_BRIGHT_MIN)
+            });
+        }
+    }
+    return skySideStars;
+}
+
+let skySideDust = null;
+
+/** Пыль неба за боковыми краями поля: своё постоянное зерно, один раз. */
+function getSkySideDust() {
+    if (skySideDust) return skySideDust;
+    const rnd = makeSkySideRng(0x5EED17);
+    const y0 = -BACKGROUND_STAR_MARGIN_Y, spanH = FIELD_HEIGHT + 2 * BACKGROUND_STAR_MARGIN_Y;
+    const gap = SKY_SIDE_DUST_GAP, spanW = SKY_SIDE_DUST_MARGIN_X - gap;
+    const count = Math.round(BACKGROUND_STAR_COUNT * spanW * spanH / (FIELD_WIDTH * FIELD_HEIGHT));
+    skySideDust = [];
+    for (const side of [-1, 1]) {
+        for (let i = 0; i < count; i++) {
+            const d = gap + rnd() * spanW;
+            skySideDust.push({
+                x: side < 0 ? -d : FIELD_WIDTH + d,
+                y: y0 + rnd() * spanH,
+                size: 1 + rnd() * 1.5,
+                alpha: 40 + rnd() * 80
+            });
+        }
+    }
+    return skySideDust;
 }
 
 // -----------------------------------------------------------------------------
@@ -611,6 +769,29 @@ function drawSparkleShape(x, y, diam, rayMult) {
     quadraticVertex(x + wd, y + wd, x, y + R); // → нижний
     quadraticVertex(x - wd, y + wd, x - R, y); // → левый
     quadraticVertex(x - wd, y - wd, x, y - R); // → верхний (замыкание)
+    endShape(CLOSE);
+}
+
+/**
+ * V-26: один слой лепестков звезды поля — 8 вогнутых лучей (4 длинных по осям,
+ * 4 коротких по диагоналям, `STAR_PETAL_GEOMETRY`). Тот же приём, что у
+ * `drawSparkleShape`: кончики — вершины, вогнутые стороны — quadratic-безье
+ * через точку на радиусе талии. Вызывающий сам делает fill(...).
+ * На минимальном зуме лучи нечитаемы — точка, как у искры.
+ */
+function drawStarPetalsShape(x, y, diam, rayMult) {
+    if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
+        circle(x, y, diam);
+        return;
+    }
+    const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1);
+    const g = STAR_PETAL_GEOMETRY;
+    beginShape();
+    vertex(x + g[0].tx * R, y + g[0].ty * R);
+    for (let i = 1; i <= 8; i++) {
+        const p = g[i % 8];
+        quadraticVertex(x + p.cx * R, y + p.cy * R, x + p.tx * R, y + p.ty * R);
+    }
     endShape(CLOSE);
 }
 
@@ -692,14 +873,12 @@ function drawVisibleStars() {
         const isTutorialDimmed = typeof isTutorialAllowedStar === 'function' && !isTutorialAllowedStar(star.id);
         const isSuppressed = (!!star.suppressed || isTutorialDimmed) && !star.locked;
         const isExtinguished = !!star.extinguished && !star.locked;
+        // V-26: у погасшей размер задаёт своя ветка ниже (основа вдвое меньше
+        // основы свободной), у звезды созвездия размер тот же, что у свободной, —
+        // её уводит назад гашение лепестков, а не уменьшение V-25.
         let starDrawSize = baseStarDrawSize * sizeFactor;
-        if (isExtinguished) {
-            starDrawSize *= EXTINGUISHED_STAR_SCALE;
-        } else if (isSuppressed) {
+        if (isSuppressed && !isExtinguished) {
             starDrawSize *= SUPPRESSED_STAR_SCALE;
-        }
-        if (lockedVisual) {
-            starDrawSize *= LOCKED_STAR_SIZE_MULTIPLIER;
         }
         if (commitFlash > 0) {
             starDrawSize *= 1 + COMMIT_WAVE_STAR_SCALE * commitFlash;
@@ -764,38 +943,54 @@ function drawVisibleStars() {
         const coreColor = getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual);
         const glowColor = getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual);
 
-        // Погасшие — приглушённый заполненный круг (без искры и без обводки):
-        // «выгоревшая» звезда, отличается округлой формой. Гибрид по ролям.
+        // V-26: погасшая — без лепестков, основа вдвое меньше основы свободной
+        // звезды того же sizeFactor, в мягком ореоле. Вспышки и импульсы её не
+        // касаются (она не соединяется и в созвездие не входит).
         if (isExtinguished) {
+            const extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
             fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
-            circle(star.x, star.y, starDrawSize * 1.5);
+            circle(star.x, star.y, extBase * EXTINGUISHED_STAR_HALO_MULT);
             fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
-            circle(star.x, star.y, starDrawSize);
+            circle(star.x, star.y, extBase);
             continue;
         }
 
-        // K-03: спокойное дыхание вместо вспышки. Множитель яркости у всех трёх
-        // слоёв один — звезда целиком становится тише и снова разгорается.
-        // Дышат только крупные узлы; в фигуре, на подавлённой и на погасшей
-        // getStarBreathFactor вернёт 1.
+        // V-26: лепестки звезды созвездия гаснут с приходом волны и загораются
+        // в финале ночи (getStarPetalAlpha); у всех прочих горят всегда.
+        const petalAlpha = lockedVisual
+            ? (typeof getStarPetalAlpha === 'function' ? getStarPetalAlpha(star.id) : 0)
+            : 1;
+
+        // K-03: спокойное дыхание вместо вспышки. V-26: дышат только лепестки —
+        // основа держит звезду на месте. Дышат только крупные узлы; в фигуре,
+        // на подавлённой и на погасшей getStarBreathFactor вернёт 1.
         const isAtlas = !!(lockedVisual && atlasCollectedStarColors && atlasCollectedStarColors.get(star.id));
         const breath = (breathEnabled && typeof getStarBreathFactor === 'function')
             ? getStarBreathFactor(star, nowMs)
             : 1;
-        const breathAlpha = effectiveAlpha * breath;
+        const petalLayerAlpha = effectiveAlpha * breath * petalAlpha;
         const rayMult = isAtlas ? SPARK_ATLAS_RAY_MULT : 1;
 
-        // Три вложенных слоя искры: белое гало → цветное свечение → ядро.
-        const haloWhiteAlpha = lockedVisual ? LOCKED_STAR_HALO_WHITE_ALPHA : 25;
-        // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
-        fill(255, 255, 255, Math.min(255, haloWhiteAlpha * breathAlpha * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 2, rayMult);
+        // Лепестки — три вложенных слоя: белое гало → цветное свечение → ядро.
+        // Погашенные не рисуются вовсе: у звезды созвездия кадр легче, чем был.
+        if (petalLayerAlpha > 0.004) {
+            // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
+            fill(255, 255, 255, Math.min(255, 25 * petalLayerAlpha * feedbackBrighten));
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult);
 
-        fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * breathAlpha * feedbackBrighten));
-        drawSparkleShape(star.x, star.y, starDrawSize * 1.5, rayMult);
+            fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * petalLayerAlpha * feedbackBrighten));
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult);
 
-        fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * breathAlpha);
-        drawSparkleShape(star.x, star.y, starDrawSize, rayMult);
+            fill(coreColor[0], coreColor[1], coreColor[2],
+                coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * petalLayerAlpha);
+            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult);
+        }
+
+        // Основа — поверх лепестков, чуть светлее тира (у подавленной — её же
+        // приглушённый цвет). Не дышит и не гаснет вместе с лепестками.
+        const baseRgb = isSuppressed ? coreColor : blendRgb(coreColor, [255, 255, 255], STAR_BASE_WHITEN);
+        fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * effectiveAlpha);
+        circle(star.x, star.y, starDrawSize * STAR_BASE_DIAM_MULT);
     }
 }
 
@@ -815,6 +1010,7 @@ function getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual) {
         // V-09: атласные звёзды светятся своим tier-цветом, как обычные locked
         // (декоративный оверрайд фигуры убран). Признак «атласности» — только
         // усиленное свечение в getStarGlowColor и удлинённые лучи.
+        // V-26: приглушение V-25 снято — основа созвездия на полной яркости.
         return [tierRgb[0], tierRgb[1], tierRgb[2], 255];
     }
     if (isExtinguished) {
@@ -831,9 +1027,11 @@ function getStarCoreColor(star, isSuppressed, isExtinguished, lockedVisual) {
 function getStarGlowColor(star, isSuppressed, isExtinguished, lockedVisual) {
     const tierRgb = getStarTierRgb(star);
     if (lockedVisual === undefined ? star.locked : lockedVisual) {
-        // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (+50).
+        // V-09: цвет — свой tier; атласность даёт лишь усиленное свечение (LOCKED_ATLAS_STAR_GLOW_BONUS).
         const isAtlas = atlasCollectedStarColors && atlasCollectedStarColors.has(star.id);
-        const glowAlpha = isAtlas ? Math.min(255, LOCKED_STAR_GLOW_ALPHA + 50) : LOCKED_STAR_GLOW_ALPHA;
+        // V-26: свечение — это слой лепестков, а они у звезды созвездия горят
+        // только в финале; там оно как у свободной (V-25 гасила его до 15).
+        const glowAlpha = isAtlas ? Math.min(255, 90 + LOCKED_ATLAS_STAR_GLOW_BONUS) : 90;
         return [tierRgb[0], tierRgb[1], tierRgb[2], glowAlpha];
     }
     if (isExtinguished) {
