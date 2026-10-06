@@ -280,6 +280,143 @@ function drawUndoMarkScreen() {
 }
 
 /**
+ * V-32: показывается ли блок даты и сводки. Признак — персистентный
+ * `constellationArtRevealed` (урок V-28 круг 3: не эфемерный `finaleAftermath`),
+ * вместе с непустым небом — до загрузки сейва признак по умолчанию `true`
+ * (`field.js`), а свежее поле сбрасывает его в `false`, так что на ночи
+ * в процессе блок не вспыхивает. Во время сцены V-13 блока нет, в обсерватории
+ * и вклеенном холсте Ex Libris тоже, при открытой книге — небо закрыто.
+ */
+function isFinaleSummaryVisible() {
+    if (typeof constellationArtRevealed === 'undefined' || !constellationArtRevealed) return false;
+    if (!constellations || constellations.length === 0) return false;
+    if (typeof appMode !== 'undefined' && appMode !== 'field') return false;
+    if (typeof isExLibrisEmbedActive === 'function' && isExLibrisEmbedActive()) return false;
+    if (typeof isBookOpen === 'function' && isBookOpen()) return false;
+    if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return false;
+    return true;
+}
+
+/**
+ * V-32: две строки итогового кадра. Дата — живым вызовом каждый кадр
+ * (смена суток под открытым кадром не залипает); на Прологе вместо даты —
+ * «Пролог · Кот». Сводка: всего · атласных · обычных (`SHAPE_UNRECOGNIZED`).
+ * @returns {{date: string, summary: string, total: number, atlas: number, ordinary: number}}
+ */
+function getFinaleSummaryLines() {
+    const n = typeof getActivePrologueLevel === 'function' ? getActivePrologueLevel() : null;
+    const date = n
+        ? t('prologue.title') + ' · ' + t('prologue.name' + n)
+        : formatSkyDateLong(getEffectiveSkyDateInt());
+    const total = constellations.length;
+    let ordinary = 0;
+    for (const c of constellations) if (c.shape === SHAPE_UNRECOGNIZED) ordinary++;
+    const atlas = total - ordinary;
+    const summary = [
+        tp('sky.finaleTotal', total),
+        tp('sky.finaleAtlas', atlas),
+        tp('sky.finaleOrdinary', ordinary)
+    ].join(' · ');
+    return { date, summary, total, atlas, ordinary };
+}
+
+/** V-32: экранные прямоугольники подписей раскрытой ночи на текущем кадре. */
+function getRevealedLabelScreenRects() {
+    const rects = [];
+    const h = REVEALED_CONSTELLATION_LABEL_SIZE;
+    for (const c of constellations) {
+        const anchor = c.revealedLabelAnchor || c.labelAnchor || c.center;
+        if (!anchor || !c.name) continue;
+        const w = measureSmallCapsWidth(getConstellationDisplayName(c), h);
+        const x = (anchor.x - camX) * zoomLevel;
+        const y = (anchor.y - camY) * zoomLevel;
+        rects.push({ left: x - w / 2, right: x + w / 2, top: y - h / 2, bottom: y + h / 2 });
+    }
+    return rects;
+}
+
+let finaleSummaryLayoutCache = null;
+
+/**
+ * V-32: строки и место блока в экранных px. Внизу по центру, над лентой;
+ * если там легли подписи V-29 (широкий экран, поле во всю высоту) — сверху.
+ * Кеш по всему, от чего зависит раскладка: считать текст 35 подписей
+ * каждый кадр незачем.
+ * @returns {null | {date, summary, total, atlas, ordinary, cx, dateY, textY, rect, overlaps}}
+ */
+function computeFinaleSummaryLayout() {
+    if (!isFinaleSummaryVisible()) return null;
+    const lines = getFinaleSummaryLines();
+    const visibleH = Math.min(height, window.innerHeight || height);
+    const bottomInset = typeof getBottomUIHeight === 'function' ? getBottomUIHeight() : 0;
+    const key = [lines.date, lines.summary, width, visibleH, bottomInset,
+        camX, camY, zoomLevel, constellations.length].join('|');
+    if (finaleSummaryLayoutCache && finaleSummaryLayoutCache.key === key) return finaleSummaryLayoutCache.layout;
+
+    const dateW = measureSmallCapsWidth(lines.date, FINALE_SUMMARY_DATE_SIZE_PX);
+    push();
+    textStyle(ITALIC);
+    textSize(FINALE_SUMMARY_TEXT_SIZE_PX);
+    const textW = textWidth(lines.summary);
+    pop();
+    const blockW = Math.max(dateW, textW);
+    const blockH = FINALE_SUMMARY_DATE_SIZE_PX + FINALE_SUMMARY_LINE_GAP_PX + FINALE_SUMMARY_TEXT_SIZE_PX;
+    const cx = width / 2;
+
+    const labelRects = getRevealedLabelScreenRects();
+    const placeAt = (top) => {
+        const rect = { left: cx - blockW / 2, right: cx + blockW / 2, top, bottom: top + blockH };
+        let overlaps = 0;
+        for (const r of labelRects) {
+            if (r.right > rect.left && r.left < rect.right && r.bottom > rect.top && r.top < rect.bottom) overlaps++;
+        }
+        return { rect, overlaps };
+    };
+    // Порядок мест: у самого низа (если блок не доходит до ленты), над лентой,
+    // сверху. Берётся первое без подписей под собой, иначе — с наименьшим числом.
+    const candidates = [];
+    if (cx + blockW / 2 <= width - FINALE_SUMMARY_RIBBON_CLEAR_PX) {
+        candidates.push(placeAt(visibleH - bottomInset - FINALE_SUMMARY_BOTTOM_LOW_PX - blockH));
+    }
+    candidates.push(placeAt(visibleH - bottomInset - FINALE_SUMMARY_BOTTOM_PX - blockH));
+    candidates.push(placeAt(FINALE_SUMMARY_TOP_PX));
+    let place = candidates[0];
+    for (const c of candidates) {
+        if (c.overlaps < place.overlaps) place = c;
+        if (place.overlaps === 0) break;
+    }
+
+    const layout = Object.assign({}, lines, {
+        cx,
+        dateY: place.rect.top + FINALE_SUMMARY_DATE_SIZE_PX / 2,
+        textY: place.rect.bottom - FINALE_SUMMARY_TEXT_SIZE_PX / 2,
+        rect: place.rect,
+        overlaps: place.overlaps,
+        fits: blockW <= width - 2 * FINALE_SUMMARY_SIDE_PX
+    });
+    finaleSummaryLayoutCache = { key, layout };
+    return layout;
+}
+
+/** V-32: дата неба и сводка найденных созвездий на итоговом кадре. */
+function drawFinaleSummaryScreen() {
+    const m = computeFinaleSummaryLayout();
+    if (!m) return;
+    push();
+    try {
+        drawSmallCapsLabelWorld(m.date, m.cx, m.dateY, FINALE_SUMMARY_DATE_SIZE_PX, INK_RGB, 230, false);
+        noStroke();
+        fill(INK_MUTED_RGB[0], INK_MUTED_RGB[1], INK_MUTED_RGB[2], 220);
+        textAlign(CENTER, CENTER);
+        textStyle(ITALIC);
+        textSize(FINALE_SUMMARY_TEXT_SIZE_PX);
+        text(m.summary, m.cx, m.textY);
+    } finally {
+        pop();
+    }
+}
+
+/**
  * U-23: чистое ядро анимации счётчика черновика — появление → пауза → угасание,
  * плюс лёгкий подъём на появлении. Все параметры приходят аргументами, включая
  * амплитуду подъёма (`risePx`) — функция не читает ни millis(), ни констант

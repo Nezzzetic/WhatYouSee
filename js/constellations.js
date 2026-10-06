@@ -554,6 +554,8 @@ function undoLastConstellation() {
     if (canContinue) {
         if (constellationArtRevealed) {
             constellationArtRevealed = false;
+            // V-32: ночь снова не раскрыта — чертёж закладки возвращается.
+            if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
         }
     } else {
         tryRevealConstellationArtIfComplete();
@@ -613,6 +615,8 @@ function revealConstellationArt(animate = true) {
     updateScoreUI();
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
+    // V-32: раскрытая ночь прячет чертёж закладки — и без сцены (загрузка сейва).
+    if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
     // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,
     // куда приезжает камера, а роль сообщения забрала сама сцена.
     autoSave();

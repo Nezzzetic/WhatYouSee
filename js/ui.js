@@ -955,7 +955,12 @@ function renderSkyBookmark() {
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
     const inFinale = typeof isLevelFinaleActive === 'function' && isLevelFinaleActive();
-    el.hidden = !shapeId || inObservatory || inFinale;
+    // V-32: на итоговом кадре раскрытой ночи следов закладки нет — признак
+    // персистентный, поэтому и после перезагрузки. Пустое небо — не раскрытая
+    // ночь (признак по умолчанию true до загрузки сейва).
+    const nightRevealed = typeof constellationArtRevealed !== 'undefined' && constellationArtRevealed
+        && typeof constellations !== 'undefined' && constellations.length > 0;
+    el.hidden = !shapeId || inObservatory || inFinale || nightRevealed;
     if (!shapeId) return;
 
     // K-31: имя — сюрприз до первого создания фигуры, как на карточке атласа
