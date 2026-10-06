@@ -474,6 +474,7 @@ function draw() {
     updateLevelFinaleCamera(); // V-13: отзум финала ночи — до отрисовки кадра
     updateTutorialProgress();  // O-01: отдалил небо — тутор закрыт, лента вернулась
     drawFieldMode();
+    drawFinaleSummaryScreen(); // V-32: дата и сводка итогового кадра раскрытой ночи
     drawTutorialGhostScreen(); // O-01: призрак ребра между парой первой ночи
     drawDraftStarCountLabelScreen();
     drawFloatingScores();
