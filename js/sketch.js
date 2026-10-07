@@ -177,6 +177,76 @@ function getUsableViewHeight() {
     return Math.max(1, height - getBottomUIHeight());
 }
 
+/**
+ * V-32: верхний инсет (вырез камеры, статус) в px. `--safe-top` из JS не
+ * прочесть — меряем скрытым узлом с `height: var(--safe-top)`, тот же приём,
+ * что bottomInsetPx() в book.js. В браузере ноль.
+ */
+function topInsetPx() {
+    let probe = document.getElementById('topInsetProbe');
+    if (!probe) {
+        probe = document.createElement('div');
+        probe.id = 'topInsetProbe';
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:var(--safe-top);'
+            + 'visibility:hidden;pointer-events:none;';
+        document.body.appendChild(probe);
+    }
+    return Math.round(probe.getBoundingClientRect().height) || 0;
+}
+
+/**
+ * V-32: высота полосы картуша — чистая функция от высоты экрана и инсета.
+ * Полная раскладка (заголовок + числа + легенда + орнамент), если вся полоса
+ * с зазором до поля не больше CARTOUCHE_MAX_SHARE высоты, иначе сжатая.
+ * `band` — от верха экрана до низа орнамента включительно; `reserve` — сколько
+ * камера отдаёт сверху (полоса + зазор до поля).
+ */
+function computeCartoucheBand(screenH, safeTop) {
+    const fullContent = CARTOUCHE_TITLE_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_NUM_LINE_PX + CARTOUCHE_CAPTION_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_LEGEND_LINE_PX + CARTOUCHE_ROW_GAP_PX + CARTOUCHE_ORNAMENT_LINE_PX;
+    const compactContent = CARTOUCHE_COMPACT_TITLE_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_COMPACT_ROW_LINE_PX + CARTOUCHE_ROW_GAP_PX + CARTOUCHE_ORNAMENT_LINE_PX;
+    const head = safeTop + CARTOUCHE_TOP_GAP_PX;
+    const fullReserve = head + fullContent + CARTOUCHE_BOTTOM_GAP_PX;
+    const compact = fullReserve > screenH * CARTOUCHE_MAX_SHARE;
+    const band = head + (compact ? compactContent : fullContent);
+    return { compact, top: head, band, reserve: band + CARTOUCHE_BOTTOM_GAP_PX };
+}
+
+/**
+ * V-32: полоса картуша на ПОЛНОЭКРАННОМ небе — по размеру `#app`, а не
+ * текущего канваса (холст бывает вклеен в Ex Libris, K-13; урок V-29).
+ */
+function getCartoucheBand() {
+    const app = document.getElementById('app');
+    const h = Math.max(app ? app.clientHeight : height, 1);
+    return computeCartoucheBand(h, topInsetPx());
+}
+
+/**
+ * V-32: ночь, у которой есть итоговый кадр с картушем. Персистентный признак
+ * плюс непустое небо: до загрузки сейва `constellationArtRevealed` по
+ * умолчанию `true`, свежее поле сбрасывает его в `false`.
+ */
+function isCartoucheNight() {
+    if (typeof constellationArtRevealed === 'undefined' || !constellationArtRevealed) return false;
+    if (!Array.isArray(constellations) || constellations.length === 0) return false;
+    if (appMode !== 'field') return false;
+    if (typeof isExLibrisEmbedActive === 'function' && isExLibrisEmbedActive()) return false;
+    return true;
+}
+
+/**
+ * V-32: сколько px камера отдаёт сверху под картуш. Зависит только от
+ * персистентного признака и экрана — не от «картуш сейчас нарисован» (книга,
+ * сцена, зум): иначе камера прыгала бы на открытии книги и на старте сцены.
+ */
+function getTopUIHeight() {
+    return isCartoucheNight() ? getCartoucheBand().reserve : 0;
+}
+
 /** Match p5 canvas size to the visible game area (e.g. after CSS margin for side HUD). */
 function resizeGameCanvasToContainer() {
     const container = document.getElementById('canvas-container');
@@ -471,10 +541,11 @@ function draw() {
     }
 
     updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
+    syncCameraTopReserve();    // V-32: резерв под картуш появился/ушёл — камера в новый прямоугольник
     updateLevelFinaleCamera(); // V-13: отзум финала ночи — до отрисовки кадра
     updateTutorialProgress();  // O-01: отдалил небо — тутор закрыт, лента вернулась
     drawFieldMode();
-    drawFinaleSummaryScreen(); // V-32: дата и сводка итогового кадра раскрытой ночи
+    drawCartoucheScreen();     // V-32: картуш итогового кадра раскрытой ночи
     drawTutorialGhostScreen(); // O-01: призрак ребра между парой первой ночи
     drawDraftStarCountLabelScreen();
     drawFloatingScores();

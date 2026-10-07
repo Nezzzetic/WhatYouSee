@@ -360,13 +360,15 @@ en: {
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'bookmarked',
-    // V-32: сводка итогового кадра раскрытой ночи — «35 constellations · 20 atlas · 15 ordinary».
-    'sky.finaleTotal': {
-        one: '{n} constellation',
-        other: '{n} constellations'
+    // V-32: картуш итогового кадра раскрытой ночи — заголовок и подписи под
+    // тремя числами (само число рисуется отдельно, крупно, над подписью).
+    'sky.cartoucheTitle': 'Sky No. {n} · {date}',
+    'sky.cartoucheTotal': {
+        one: 'constellation',
+        other: 'constellations'
     },
-    'sky.finaleAtlas': '{n} atlas',
-    'sky.finaleOrdinary': '{n} ordinary',
+    'sky.cartoucheAtlas': 'from the atlas',
+    'sky.cartoucheNameless': 'nameless',
 
     // --- O-01: тутор первых жестов -----------------------------------------------
     // Единственные две строки, которыми игра объясняет себя словами. Прямая
@@ -680,20 +682,17 @@ ru: {
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',
-    'sky.finaleTotal': {
-        one: '{n} созвездие',
-        few: '{n} созвездия',
-        many: '{n} созвездий'
+    'sky.cartoucheTitle': 'Небо № {n} · {date}',
+    'sky.cartoucheTotal': {
+        one: 'созвездие',
+        few: 'созвездия',
+        many: 'созвездий'
     },
-    'sky.finaleAtlas': {
-        one: '{n} атласное',
-        few: '{n} атласных',
-        many: '{n} атласных'
-    },
-    'sky.finaleOrdinary': {
-        one: '{n} обычное',
-        few: '{n} обычных',
-        many: '{n} обычных'
+    'sky.cartoucheAtlas': 'из атласа',
+    'sky.cartoucheNameless': {
+        one: 'безымянное',
+        few: 'безымянных',
+        many: 'безымянных'
     },
 
     // --- O-01: тутор первых жестов -----------------------------------------------

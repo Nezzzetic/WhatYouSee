@@ -357,8 +357,11 @@ function loadGame() {
         // раскладываем недостающие один раз здесь (p5 уже умеет мерить текст —
         // грузимся из setup(), после createCanvas) и сразу сохраняем; дальше
         // ночь живёт как обычная раскрытая, без повторного пересчёта.
+        // V-32: то же, если хоть один якорь лежит вне прямоугольника раскладки —
+        // ночь раскрыта до картуша, и подпись могла встать в его полосу.
         if (constellationArtRevealed && constellations.some(c =>
-            Array.isArray(c.lines) && c.lines.length > 0 && !c.revealedLabelAnchor)) {
+            Array.isArray(c.lines) && c.lines.length > 0
+            && (!c.revealedLabelAnchor || !isRevealedLabelAnchorInLayoutRect(c.revealedLabelAnchor)))) {
             if (typeof layoutAndStoreRevealedLabels === 'function') layoutAndStoreRevealedLabels();
             saveGame();
         }
