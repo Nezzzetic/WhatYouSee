@@ -1164,6 +1164,42 @@
     }
 
     /**
+     * V-32: срез картуша итогового кадра — виден ли и почему нет, строки,
+     * числа, легенда, экранные рамки элементов и полосы, альфа, резерв камеры.
+     * Рамки те же, по которым картуш нарисован (computeCartoucheLayout).
+     */
+    function cartoucheState() {
+        const s = getCartoucheState();
+        const m = s.layout;
+        const copy = r => (r ? Object.assign({}, r) : null);
+        return {
+            visible: s.visible,
+            alpha: s.alpha,
+            reason: s.reason,
+            topReserve: getTopUIHeight(),
+            zoomRatio: zoomLevel / getMinZoomLevel(),
+            layout: m ? {
+                compact: m.compact,
+                fontReady: m.fontReady,
+                title: m.title,
+                numbers: { total: m.counts.total, atlas: m.counts.atlas, nameless: m.counts.nameless },
+                captions: Object.assign({}, m.captions),
+                legend: m.counts.legend.map(l => ({ value: l.value, rgb: l.rgb.slice(), n: l.n })),
+                bandH: m.bandH,
+                reserve: m.reserve,
+                band: copy(m.band),
+                rects: {
+                    title: copy(m.rects.title),
+                    numbers: copy(m.rects.numbers),
+                    legend: copy(m.rects.legend),
+                    row: copy(m.rects.row),
+                    ornament: copy(m.rects.ornament)
+                }
+            } : null
+        };
+    }
+
+    /**
      * O-01: зум без пальцев. Идёт через ту же zoomAtScreenPoint, что колесо и
      * кнопки, — то есть НА ШАГЕ 1 ОБЯЗАН НЕ СРАБОТАТЬ. Так блокировка
      * проверяется, а не обходится мимо неё присваиванием в zoomLevel.
@@ -1278,6 +1314,7 @@
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
         labels: labelsState,
+        cartouche: cartoucheState,
         levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,

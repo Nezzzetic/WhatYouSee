@@ -373,20 +373,41 @@ const UNDO_MARK_FRAME_PAD_X_PX = 16;
 const UNDO_MARK_FRAME_PAD_Y_PX = 10;
 const UNDO_MARK_FRAME_RADIUS_PX = 4;       // = --r-lg в css/style.css
 
-// V-32: дата неба и сводка созвездий на итоговом кадре раскрытой ночи —
-// на канвасе, в экранных px (попадает в скриншот игрока).
-const FINALE_SUMMARY_DATE_SIZE_PX = 13;    // строка даты — капитель, как подписи созвездий
-const FINALE_SUMMARY_TEXT_SIZE_PX = 13;    // строка сводки — курсив
-const FINALE_SUMMARY_LINE_GAP_PX = 6;      // зазор между строками
-// Низ блока — над лентой-закладкой (зона касания 64 px в правом нижнем углу),
-// а не рядом с ней: на 320 px строка сводки рядом с лентой не помещается.
-const FINALE_SUMMARY_BOTTOM_PX = 74;       // от низа видимой области (сверх инсета)
-// Если блок по ширине не доходит до ленты — можно ниже, у самого края:
-// дальше от поля и его подписей (альбомный разворот, поле во всю высоту).
-const FINALE_SUMMARY_BOTTOM_LOW_PX = 20;
-const FINALE_SUMMARY_RIBBON_CLEAR_PX = 72; // ширина правого края под лентой (зона 56 px + зазор)
-const FINALE_SUMMARY_TOP_PX = 28;          // запасное место — сверху, если внизу легли подписи
-const FINALE_SUMMARY_SIDE_PX = 16;         // боковой гаттер — блок не уже канваса минус два гаттера
+// V-32 (круг 2): картуш итогового кадра раскрытой ночи — сверху, на канвасе,
+// в экранных px (попадает в скриншот игрока). Ни одной буквы поверх созвездий:
+// место под него освобождает камера (резерв сверху, getTopUIHeight в sketch.js),
+// а не раскладка текста по свободным клочкам. Высоты строк — фиксированные:
+// высота полосы зависит только от экрана и --safe-top, не от ширины текста.
+const CARTOUCHE_TOP_GAP_PX = 14;          // от --safe-top до верха заголовка
+const CARTOUCHE_SIDE_PX = 16;             // боковой гаттер: всё внутри [16, width − 16]
+const CARTOUCHE_ROW_GAP_PX = 8;           // между строками картуша
+const CARTOUCHE_BOTTOM_GAP_PX = 14;       // от орнамента до верха поля (в полосу не входит)
+const CARTOUCHE_TITLE_SIZE_PX = 20;       // заголовок — Playfair курсивом
+const CARTOUCHE_TITLE_LINE_PX = 26;
+const CARTOUCHE_NUM_SIZE_PX = 26;         // три крупных числа
+const CARTOUCHE_NUM_LINE_PX = 28;
+const CARTOUCHE_NUM_GAP_PX = 22;          // между колонками чисел
+const CARTOUCHE_CAPTION_SIZE_PX = 10;     // подпись под числом — капитель
+const CARTOUCHE_CAPTION_LINE_PX = 14;
+const CARTOUCHE_LEGEND_SIZE_PX = 12;      // легенда цветов линий
+const CARTOUCHE_LEGEND_LINE_PX = 14;
+const CARTOUCHE_LEGEND_DASH_PX = 14;      // чёрточка цвета тира
+const CARTOUCHE_LEGEND_ITEM_GAP_PX = 14;
+const CARTOUCHE_ORNAMENT_LINE_PX = 12;    // линейка с ✦ — нижняя граница картуша
+const CARTOUCHE_ORNAMENT_MAX_W_PX = 260;
+// Сжатая раскладка (макет «H↑ компактно»): заголовок + одна строка «числа ·
+// чёрточки» + орнамент — когда полная съела бы больше доли высоты экрана.
+const CARTOUCHE_COMPACT_TITLE_SIZE_PX = 17;
+const CARTOUCHE_COMPACT_TITLE_LINE_PX = 22;
+const CARTOUCHE_COMPACT_ROW_SIZE_PX = 12;
+const CARTOUCHE_COMPACT_ROW_LINE_PX = 16;
+const CARTOUCHE_MAX_SHARE = 0.3;
+// Зум гасит картуш: альфа — функция zoom / getMinZoomLevel(), 1 до FROM, 0 от TO.
+// Док давал ×1.15; сужено до ×1.04: приближение от центра экрана поднимает верх
+// поля в полосу на (центр − полоса) · (k − 1) px, и на 393×852 при ×1.05 подписи
+// у верхнего края поля уже доставали бы до орнамента (зазор BOTTOM_GAP = 14 px).
+const CARTOUCHE_ZOOM_FADE_FROM = 1.0;
+const CARTOUCHE_ZOOM_FADE_TO = 1.04;
 
 // =============================================================================
 // O-01: ТУТОР ПЕРВЫХ ЖЕСТОВ
