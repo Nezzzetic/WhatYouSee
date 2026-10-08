@@ -1,4 +1,10 @@
 // bookToday.js — страница «Сегодня»: новости мира, состояние ночи, до рассвета O-03 (R-05).
+//
+// O-14: страница и высечка «Сегодня» сняты, разметки `#bookToday` в index.html
+// нет, и рендеры ниже никто не зовёт (DAILY_QUEST_HIDDEN). Расчёты —
+// `msUntilNextSkyDay`, `computeDawnHours`, `formatDawnDuration` — живы и проверяются
+// verify-night-end.js. Вернуть (O-15): секцию в разметку, `renderBookToday()` в
+// renderBookSectionContent и `stopBookTodayDawnTimer()` в renderBook/closeBook.
 
 /** «Сегодня»: ежедневка — то же достижение на две ступени, что и штампы (REWARD_PAGES[0]). */
 function renderBookToday() {

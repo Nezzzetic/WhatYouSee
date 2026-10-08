@@ -15,13 +15,15 @@
 
 // K-14: 'settings' — валидная цель openBook/switchBookCut, но не высечка —
 // вход только строкой из «Index». Своей кнопки в #bookTabs у неё нет и не будет.
-// S-06: шестая высечка «Calendar» — между Stamps и Ex Libris (отменила «высечек
-// пять» K-06/K-14).
-const BOOK_CUT_LIST = ['today', 'index', 'atlas', 'stamps', 'calendar', 'exlibris', 'settings'];
+// S-06: высечка «Calendar» — после Stamps. O-14: «Сегодня» снята, первой
+// страницей книги стал Ex Libris — высечек снова пять.
+const BOOK_CUT_LIST = ['exlibris', 'index', 'atlas', 'stamps', 'calendar', 'settings'];
 
-let bookCut = 'today';
+// O-14: после запуска книга открывается на оглавлении; внутри сессии — на
+// последнем разделе (K-05), первое в жизни открытие — атлас (U-21).
+let bookCut = 'index';
 let bookOpen = false;
-// U-10/M-05: «Сутки» (REWARD_PAGES[0]) — на «Сегодня», а не в Штампах, поэтому
+// U-10/M-05: «Сутки» (REWARD_PAGES[0]) — не в Штампах (O-14: спрятаны вовсе), поэтому
 // bookPageIndices.rewards ходит по [1, REWARD_PAGE_COUNT - 1].
 let bookPageIndices = { atlas: 0, rewards: 1 };
 let bookHandlersBound = false;
@@ -54,10 +56,11 @@ function isBookOpen() {
 // P-17: РАЗВОРОТ — две страницы сразу в альбомной ориентации
 // =============================================================================
 //
-// Страница книги — то, у чего есть колонцифра: «Сегодня» (1), оглавление (2),
-// главы атласа (3–6), главы штампов (7–9), Calendar (10), Ex Libris (11),
-// Settings (12). В альбомной ориентации книга показывает разворот — две
-// соседние страницы по колонцифре, считая от первой: (1,2), (3,4) … (11,12).
+// Страница книги — то, у чего есть колонцифра: Ex Libris (1, O-14 — была
+// «Сегодня»), оглавление (2), главы атласа (3–6), главы штампов (7–9),
+// Calendar (10), Settings (11). В альбомной ориентации книга показывает
+// разворот — две соседние страницы по колонцифре, считая от первой: (1,2),
+// (3,4) … (9,10), последний — Settings одна.
 //
 // Состояние прежнее: bookCut + bookPageIndices называют «страницу-фокус» —
 // последнюю, куда игрок перешёл сам. Разворот из неё выводится, а не хранится,
@@ -79,21 +82,19 @@ function bookPart(id) {
 
 /** Чистая: все страницы книги в порядке колонцифр. */
 function getBookPageSequence() {
-    const pages = [{ cut: 'today', chapter: null }, { cut: 'index', chapter: null }];
+    const pages = [{ cut: 'exlibris', chapter: null }, { cut: 'index', chapter: null }];
     for (let i = 0; i < ATLAS_PAGE_COUNT; i++) pages.push({ cut: 'atlas', chapter: i });
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) pages.push({ cut: 'stamps', chapter: i });
-    pages.push({ cut: 'calendar', chapter: null }, { cut: 'exlibris', chapter: null },
-        { cut: 'settings', chapter: null });
+    pages.push({ cut: 'calendar', chapter: null }, { cut: 'settings', chapter: null });
     return pages;
 }
 
 function getBookPageFolio(page) {
-    if (page.cut === 'today') return 1;
+    if (page.cut === 'exlibris') return getExLibrisFolio();
     if (page.cut === 'index') return 2;
     if (page.cut === 'atlas') return getAtlasChapterFolio(page.chapter);
     if (page.cut === 'stamps') return getStampsChapterFolio(page.chapter);
     if (page.cut === 'calendar') return getCalendarFolio();
-    if (page.cut === 'exlibris') return getExLibrisFolio();
     return getSettingsFolio();
 }
 
@@ -166,7 +167,7 @@ function computeBookSpreadMode() {
 
 /**
  * Правая страница — копия разметки листа: id → data-part, без того, что
- * бывает только слева (нить уровня, баннер уровня, «Сегодня», Ex Libris).
+ * бывает только слева (нить уровня, баннер уровня, Ex Libris).
  */
 function ensureBookRightPage() {
     let right = document.getElementById('bookPageRight');
@@ -174,7 +175,7 @@ function ensureBookRightPage() {
     const left = document.getElementById('bookPage');
     if (!left) return null;
     right = left.cloneNode(true);
-    ['bookGauge', 'levelBanner', 'bookToday', 'bookExLibris'].forEach(id => {
+    ['bookGauge', 'levelBanner', 'bookExLibris'].forEach(id => {
         const el = right.querySelector('#' + id);
         if (el) el.remove();
     });
@@ -264,20 +265,20 @@ function getCalendarFolio() {
     return 3 + ATLAS_PAGE_COUNT + (REWARD_PAGE_COUNT - 1);
 }
 
+/** O-14: Ex Libris — первая страница книги (была «Сегодня»). */
 function getExLibrisFolio() {
-    return getCalendarFolio() + 1;
+    return 1;
 }
 
 /** K-14: настройки — последняя колонцифра книги, строкой после Ex Libris. */
 function getSettingsFolio() {
-    return getExLibrisFolio() + 1;
+    return getCalendarFolio() + 1;
 }
 
 /**
  * V-22: надзаголовок стал колонтитулом — слева раздел, справа глава/дата, под
  * ними линейка. Строка локали прежняя («Atlas · Chapter I»), делится по « · »;
  * разделитель остаётся в узле скрытым, поэтому textContent не меняется.
- * У «Сегодня» в строке только дата — слева встаёт имя высечки.
  */
 function renderBookRunningHead(el, eyebrow) {
     const SEP = ' · ';
@@ -287,9 +288,6 @@ function renderBookRunningHead(el, eyebrow) {
     if (at >= 0) {
         left = eyebrow.slice(0, at);
         right = eyebrow.slice(at + SEP.length);
-    } else if (bookCut === 'today' && eyebrow) {
-        left = t('book.cutToday');
-        right = eyebrow;
     } else if (!eyebrow) {
         // Оглавление и Настройки надзаголовка не имели — колонтитул не пустует.
         left = bookCut === 'index' ? t('book.cutIndex') : t('book.brand');
@@ -325,16 +323,7 @@ function renderBookHead() {
     // видны на любом развороте (сквозной swipeBookPage), не только на атласе
     // и штампах — прячутся только на истинных краях книги (см. ниже).
 
-    if (bookCut === 'today') {
-        // K-09/U-16: надзаголовок — дата эффективных суток без номера ночи;
-        // титул страницы остаётся «Tonight».
-        const dateStr = typeof getEffectiveSkyDateInt === 'function' && typeof formatSkyDateLong === 'function'
-            ? formatSkyDateLong(getEffectiveSkyDateInt())
-            : '';
-        eyebrow = t('book.eyebrowToday', { date: dateStr });
-        title = t('book.headToday');
-        folioN = 1;
-    } else if (bookCut === 'index') {
+    if (bookCut === 'index') {
         title = t('book.headIndex');
         folioN = 2;
     } else if (bookCut === 'atlas') {
@@ -347,7 +336,7 @@ function renderBookHead() {
         folioN = getAtlasChapterFolio(idx);
         // K-31: счётчик «N of M traced» в подвале снят — счёт главы остался
         // только в оглавлении (K-19); подвал атласа падает на бренд, как у
-        // Today/Index/Ex Libris/Settings.
+        // Index/Ex Libris/Settings.
     } else if (bookCut === 'stamps') {
         // K-12: главы штампов пронумерованы так же, как главы атласа.
         const idx = getBookPageIndex('rewards');
@@ -477,7 +466,7 @@ function showBookSpineScore() {
 }
 
 /**
- * Штампы, кроме суточных — те живут на «Сегодня» и точку высечки не зажигают.
+ * Штампы, кроме суточных — те спрятаны (O-14) и точку высечки не зажигают.
  * K-12: неразрезанная глава в счёт не идёт — до неё нельзя долистать и нечего
  * прижать, капля сургуча звала бы туда, куда сама книга ещё не пускает.
  */
@@ -490,16 +479,8 @@ function stampsHaveClaimable() {
     return false;
 }
 
-/**
- * K-17: второй раздел с настоящим «взять» — «Сегодня». U-25: точка только за
- * готовую суточную марку (REWARD_PAGES[0]) — непрочитанное событие мира больше
- * её не зажигает (иначе она горела почти после каждой новой фигуры и переставала
- * что-то значить). U-33 свела к тому же условию каплю на ленте (`hasSkyWaxSignal`) —
- * оба сигнала книги теперь смотрят только на готовую марку.
- */
-function todayHasSignal() {
-    return typeof rewardPageHasClaimable === 'function' && rewardPageHasClaimable(0);
-}
+// O-14: страница «Сегодня» и её точка (`todayHasSignal`, K-17/U-25) сняты —
+// суточная марка спрятана (DAILY_QUEST_HIDDEN) и сигнала не даёт нигде.
 
 /**
  * Пять высечек: подсветка активной и капля сургуча там, где есть готовое
@@ -516,8 +497,6 @@ function renderBookTabs() {
     // занято всегда, и слово не прыгает, когда сигнал загорается/гаснет (K-23).
     const stampsWax = document.getElementById('bookTabStampsWax');
     if (stampsWax) stampsWax.classList.toggle('book-tab-wax-lit', stampsHaveClaimable());
-    const todayWax = document.getElementById('bookTabTodayWax');
-    if (todayWax) todayWax.classList.toggle('book-tab-wax-lit', todayHasSignal());
 }
 
 function stepBookPage(delta) {
@@ -541,12 +520,12 @@ function stepBookPage(delta) {
 /**
  * K-28: горизонтальный переход по книге — общий и для свайпа, и для кнопок
  * пейджера в подвале. Внутри атласа/штампов — то же самое, что было раньше:
- * stepBookPage. На краю раздела — или там, где страниц нет вовсе («Today»/
- * «Index»/«Ex Libris») — переходит в соседнюю высечку по порядку
+ * stepBookPage. На краю раздела — или там, где страниц нет вовсе («Ex Libris»/
+ * «Index»/«Calendar») — переходит в соседнюю высечку по порядку
  * BOOK_CUT_LIST, входя в атлас/штампы с той стороны, откуда пришли, чтобы
  * номера страниц шли подряд по всей книге. «Settings» в эту цепочку не входит
- * (K-14); S-06 вставила «Calendar» между Stamps и Ex Libris; край книги (до «Today», после
- * «Ex Libris») жест молчит, без зацикливания.
+ * (K-14); S-06 вставила «Calendar» между Stamps и Ex Libris; край книги (до «Ex Libris»,
+ * после «Calendar», O-14) жест молчит, без зацикливания.
  */
 function swipeBookPage(delta) {
     if (isFirstSkyBookLockedSafe()) return; // O-13: пейджер на шагах 3–4 молчит
@@ -606,7 +585,6 @@ function canSwipeBookPage(delta) {
 // =============================================================================
 
 const BOOK_SECTION_PARTS = {
-    today: 'bookToday',
     index: 'bookIndex',
     atlas: 'bookAtlasSection',
     stamps: 'bookStampsSection',
@@ -617,9 +595,7 @@ const BOOK_SECTION_PARTS = {
 
 /** Содержимое одного раздела — в текущем контексте страницы. */
 function renderBookSectionContent() {
-    if (bookCut === 'today') {
-        renderBookToday();
-    } else if (bookCut === 'index') {
+    if (bookCut === 'index') {
         renderBookIndex();
     } else if (bookCut === 'atlas') {
         renderAtlasList();
@@ -653,10 +629,6 @@ function rerenderVisibleBookPages(cut) {
 }
 
 function renderBook() {
-    // O-03: тик живёт только на «Сегодня» — уходим с раздела, отсчёт снимается
-    // (renderBookToday() его при надобности заведёт заново).
-    if (!isBookCutVisible('today')) stopBookTodayDawnTimer();
-
     recomputeAchievementsClaimable();
 
     // O-13: шаг 4 тутора — на экране глава с выбранной печатью, даже если до
@@ -666,7 +638,13 @@ function renderBook() {
         if (target) setBookPageIndex('rewards', target.pageIndex);
     }
 
-    for (const { page, root } of getVisibleBookPageRoots()) {
+    const roots = getVisibleBookPageRoots();
+    // O-14: страниц стало нечётно (11) — на последнем развороте Settings одна,
+    // правый лист прячется, а не держит прежнее содержимое.
+    const rightPage = document.getElementById('bookPageRight');
+    if (rightPage) rightPage.hidden = !bookSpread || roots.length < 2;
+
+    for (const { page, root } of roots) {
         withBookPageContext(page, root, () => {
             for (const cut in BOOK_SECTION_PARTS) {
                 const section = bookPart(BOOK_SECTION_PARTS[cut]);
@@ -708,7 +686,7 @@ function isFirstBookOpenPending() {
 /**
  * Ставит раздел, но флага НЕ тратит: зовётся в момент, когда книга только
  * становится видимой (потягивание ленты за палец), — иначе игрок тянет вверх
- * «Сегодня», а по приезде страница на его глазах подменяется атласом. Если
+ * оглавление, а по приезде страница на его глазах подменяется атласом. Если
  * жест бросили на полпути, флаг цел, а `bookCut` уже атлас — следующее
  * открытие приведёт туда же, и подмены снова не будет.
  */
@@ -752,7 +730,6 @@ function closeBook() {
     if (!bookOpen) return;
     closeObservatoryRenameField();
     dismissLevelBanner(true); // V-16/U-29: баннер не переживает закрытие книги
-    stopBookTodayDawnTimer(); // O-03: закрыли книгу — тик посекундно никому не нужен
     bookOpen = false;
     const book = document.getElementById('book');
     if (book) {

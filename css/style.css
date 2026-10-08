@@ -1491,7 +1491,7 @@ button:disabled {
 
 /* U-34 (фидбек с телефона): слово у всех пяти высечек прижато к одному краю —
    к нижнему на экране, с отступом 8 px (в развороте writing-mode + rotate(180deg)
-   начало строки — экранный низ), ✦ у Today/Stamps встаёт над словом. По центру
+   начало строки — экранный низ), ✦ у Stamps встаёт над словом. По центру
    слова стояли вразнобой: где-то сдвинутые слотом звёздочки, где-то нет. */
 .book-tab {
     position: relative;
@@ -1546,7 +1546,6 @@ button:disabled {
 }
 
 /* Пастели из макета book-paper-frame (V-22). */
-.book-tab[data-cut="today"] { --tab-bg: #C9D6E3; }
 .book-tab[data-cut="index"] { --tab-bg: #D9CFE6; }
 .book-tab[data-cut="atlas"] { --tab-bg: #CFE0CF; }
 .book-tab[data-cut="stamps"] { --tab-bg: #E9C77E; }
@@ -1832,9 +1831,9 @@ body.book-spread .book-spine-bead {
     top: calc(100% - var(--gauge-ratio, 0%));
 }
 
-/* Высечки «Today» в развороте нет: «Сегодня» — левая страница разворота 1,
-   туда ведёт высечка «Index». */
-body.book-spread .book-tab[data-cut="today"] {
+/* Высечки «Ex Libris» в развороте нет: она — левая страница разворота 1,
+   туда ведёт высечка «Index» (O-14, раньше так жила «Today»). */
+body.book-spread .book-tab[data-cut="exlibris"] {
     display: none;
 }
 
