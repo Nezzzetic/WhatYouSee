@@ -219,44 +219,145 @@ function isTutorialAllowedStar(starId) {
 }
 
 // =============================================================================
-// O-10: ЛЕНТА ЗОВЁТ В КНИГУ
+// O-13: ШАГИ 3–4 — ПОСЛЕ ПЕРВОГО НЕБА КНИГА ВЕДЁТ К ПЕРВОЙ ПЕЧАТИ
 // =============================================================================
 //
-// Продолжение тутора после отзума. Пока книгу ни разу не открыли, лента
-// анимирована (класс `ribbon-invite` на body, CSS). С BOOK_INVITE_GATE_CONSTELLATIONS
-// созвездий за игру зов становится жёстким шагом (`book-gate`): все звёзды
-// неиграбельны, строка тутора просит открыть книгу. Первое открытие
-// (bookFirstOpenDone, U-21) снимает и то и другое навсегда — своего поля в
-// сейве у зова нет.
+// Сменило зов O-10 посреди неба (решение заказчика 1: зов один, в конце неба).
+// Пока Кот не пройден, печати заперты (areSealsLocked, achievements.js). Как
+// только он пройден, а новый игрок ещё ничего не забирал, тутор продолжается:
 //
-// Условие «тутор пройден», а не «тутора нет»: харнесс с skipOnboarding тутор не
-// проходит (done=false), и процедурные сценарии зов и шаг не задевают.
+//   Шаг 3 «открой книгу → Stamps» — через BOOK_CALL_DELAY_MS после конца сцены
+//     V-13 лента зовёт (`ribbon-invite` на body), небо не принимает ввод
+//     (`book-gate`, isBookGateActive), строка просит открыть книгу. Внутри
+//     книги работает только высечка Stamps (isFirstSkyAllowedTarget, book.js).
+//   Шаг 4 «забери печать» — книга на Штампах: работает только одна печать.
+//
+// Конец — первый забор (lifetimeMetaEarned > 0). Своего поля в сейве нет:
+// подшаг выводится из того, что на экране, поэтому перезапуск посреди шага 4
+// возвращает на шаг 3. tutorial.done в условие НЕ входит — Кота можно пройти,
+// так и не отзумив. Замок книги действует с момента прохождения Кота (книгу,
+// открытую рукой во время сцены, он тоже держит); таймер — только для неба.
+//
+// ⚠ Звёзды при book-gate НЕ гасятся: погашенные выпадали из проверки «остались
+// ли пары», и ночь засчитывалась пройденной (O-10, фидбек заказчика, круг 3).
 
-const BOOK_INVITE_NONE = 0;
-const BOOK_INVITE_PULSE = 1;
-const BOOK_INVITE_GATE = 2;
+const FIRST_SKY_STEP_NONE = 0;
+const FIRST_SKY_STEP_BOOK = 3;
+const FIRST_SKY_STEP_PRESS = 4;
 
-// Последняя отрисованная стадия зова — DOM трогается только на смене.
-let bookInviteRenderedStage = -1;
+// Последнее отрисованное состояние шагов 3–4 — DOM трогается только на смене.
+let firstSkyRenderedKey = '';
+// AC 14: предупреждение «готовой печати нет» — раз за сессию.
+let firstSkyNoTargetWarned = false;
 
-function getBookInviteStage() {
-    if (typeof achievementCounters === 'undefined' || !achievementCounters) return BOOK_INVITE_NONE;
-    const state = achievementCounters.tutorial;
-    if (!state || !state.done) return BOOK_INVITE_NONE;
-    if (achievementCounters.bookFirstOpenDone) return BOOK_INVITE_NONE;
-    const built = achievementCounters.totalConstellations || 0;
-    return built >= BOOK_INVITE_GATE_CONSTELLATIONS ? BOOK_INVITE_GATE : BOOK_INVITE_PULSE;
+/** Кот пройден, игрок новый и ничего не забирал — без оглядки на готовую печать. */
+function isFirstSkyRewardDue() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return false;
+    if (achievementCounters.sealLockExempt) return false;
+    if (typeof isPrologueLevelPassed !== 'function' || !isPrologueLevelPassed(1)) return false;
+    return typeof getLifetimeMetaEarned === 'function' && getLifetimeMetaEarned() === 0;
 }
 
 /**
- * Жёсткий шаг: небо не принимает ввод — ни соединения, ни пана, ни зума
- * (mousePressed, updatePinchMode, zoomAtScreenPoint). Звёзды при этом НЕ
- * гасятся: погашенные выпадали из проверки «остались ли пары», и ночь
- * засчитывалась пройденной (фидбек заказчика, круг 3). Лента — DOM поверх
- * канваса, её этот замок не касается.
+ * Печать шагов 3–4 ({chainId, pageIndex}) или null — тогда шагов нет вовсе.
+ *
+ * Страховка (AC 14): если готовой печати в открытой главе нет, ни замка книги,
+ * ни закрытого неба — иначе игрок застрял бы без единого выхода. Тот же приём,
+ * что ensureTutorialViable у шагов 1–2.
+ */
+function getFirstSkyTarget() {
+    if (!isFirstSkyRewardDue()) return null;
+    let target = getFirstSkyRewardTarget();
+    if (!target && typeof recomputeAchievementsClaimable === 'function') {
+        // claimable мог ещё не пересчитаться на этом пути — проверяем честно.
+        recomputeAchievementsClaimable();
+        target = getFirstSkyRewardTarget();
+    }
+    if (!target && !firstSkyNoTargetWarned) {
+        firstSkyNoTargetWarned = true;
+        if (typeof console !== 'undefined' && console.warn) {
+            console.warn('[tutor] Первое небо пройдено, а готовой печати нет — зов в книгу не включается, чтобы не запереть игру.');
+        }
+    }
+    return target;
+}
+
+/** Замок ввода внутри книги — с момента прохождения Кота до первого забора. */
+function isFirstSkyBookLocked() {
+    return getFirstSkyTarget() !== null;
+}
+
+/** 0 — шагов нет; 3 — открой книгу и найди Stamps; 4 — книга на Штампах. */
+function getFirstSkyStep() {
+    if (!isFirstSkyBookLocked()) return FIRST_SKY_STEP_NONE;
+    const onStamps = typeof isBookOpen === 'function' && isBookOpen()
+        && typeof bookCut !== 'undefined' && bookCut === 'stamps';
+    return onStamps ? FIRST_SKY_STEP_PRESS : FIRST_SKY_STEP_BOOK;
+}
+
+/**
+ * Сколько ещё ждать зова на небе. Отсчёт — от конца сцены V-13
+ * (beginFinaleAftermath: естественный конец или пропуск тапом). Пока сцена
+ * идёт — полная задержка. Сцены нет вовсе (перезагрузка, другое небо) — 0:
+ * зов включается сразу. Таймер живёт в памяти вкладки, не в сейве.
+ */
+function getFirstSkyCallDelayLeftMs() {
+    if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) return BOOK_CALL_DELAY_MS;
+    if (typeof isFinaleLabelsRevealed === 'function' && isFinaleLabelsRevealed()
+        && typeof finaleAftermathStartMs !== 'undefined') {
+        return Math.max(0, BOOK_CALL_DELAY_MS - (millis() - finaleAftermathStartMs));
+    }
+    return 0;
+}
+
+/** Зов на небе: лента пульсирует, небо закрыто, строка просит открыть книгу. */
+function isFirstSkyCallActive() {
+    return isFirstSkyBookLocked() && getFirstSkyCallDelayLeftMs() === 0;
+}
+
+/**
+ * Небо не принимает ввод — ни соединения, ни пана, ни зума (mousePressed,
+ * updatePinchMode, zoomAtScreenPoint). Лента — DOM поверх канваса, её этот
+ * замок не касается.
  */
 function isBookGateActive() {
-    return getBookInviteStage() === BOOK_INVITE_GATE;
+    return isFirstSkyCallActive();
+}
+
+/**
+ * Единственное, что работает в книге на шагах 3–4: высечка Stamps (шаг 3) или
+ * выбранная печать (шаг 4). Остальное съедает перехватчик в book.js.
+ */
+function isFirstSkyAllowedTarget(target) {
+    const step = getFirstSkyStep();
+    if (step === FIRST_SKY_STEP_NONE) return true;
+    if (!target || typeof target.closest !== 'function') return false;
+    if (step === FIRST_SKY_STEP_BOOK) return !!target.closest('.book-tab[data-cut="stamps"]');
+    const t = getFirstSkyTarget();
+    return !!(t && target.closest('.achv-seal-current-ready[data-chain-id="' + t.chainId + '"]'));
+}
+
+function getFirstSkyUiKey() {
+    const open = typeof isBookOpen === 'function' && isBookOpen();
+    return getFirstSkyStep() + '|' + (isFirstSkyCallActive() ? 1 : 0) + '|' + (open ? 1 : 0);
+}
+
+/**
+ * Подсветка (`tutor-hint`): высечка Stamps на шаге 3, выбранная печать на
+ * шаге 4. Зовётся после каждой отрисовки книги — печать пересоздаётся рендером.
+ */
+function applyFirstSkyHints() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.tutor-hint').forEach(el => el.classList.remove('tutor-hint'));
+    const step = getFirstSkyStep();
+    if (step === FIRST_SKY_STEP_BOOK) {
+        document.querySelectorAll('.book-tab[data-cut="stamps"]').forEach(el => el.classList.add('tutor-hint'));
+    } else if (step === FIRST_SKY_STEP_PRESS) {
+        const t = getFirstSkyTarget();
+        if (!t) return;
+        document.querySelectorAll('.achv-seal-current-ready[data-chain-id="' + t.chainId + '"]')
+            .forEach(el => el.classList.add('tutor-hint'));
+    }
 }
 
 function finishTutorial() {
@@ -329,7 +430,7 @@ function checkTutorialZoomStep() {
  */
 function updateTutorialProgress() {
     const step = getTutorialStep();
-    if (step !== tutorialRenderedStep || getBookInviteStage() !== bookInviteRenderedStage) {
+    if (step !== tutorialRenderedStep || getFirstSkyUiKey() !== firstSkyRenderedKey) {
         updateTutorialUI();
     }
     checkTutorialZoomStep();
@@ -433,22 +534,39 @@ function drawTutorialGhostScreen() {
  */
 function updateTutorialUI() {
     const step = getTutorialStep();
-    const invite = getBookInviteStage();
+    const firstSkyStep = getFirstSkyStep();
+    const call = firstSkyStep !== FIRST_SKY_STEP_NONE && isFirstSkyCallActive();
+    const bookIsOpen = typeof isBookOpen === 'function' && isBookOpen();
     tutorialRenderedStep = step;
-    bookInviteRenderedStage = invite;
+    firstSkyRenderedKey = getFirstSkyUiKey();
 
     if (typeof document === 'undefined' || !document.body) return;
     document.body.classList.toggle('tutor-locked', step !== TUTOR_STEP_NONE);
-    document.body.classList.toggle('ribbon-invite', invite !== BOOK_INVITE_NONE);
-    document.body.classList.toggle('book-gate', invite === BOOK_INVITE_GATE);
+    // O-13: зов ленты и закрытое небо — шаг 3 после задержки.
+    document.body.classList.toggle('ribbon-invite', call);
+    document.body.classList.toggle('book-gate', call);
+
+    // O-13: строка тутора в книге (шаги 3–4) — свой узел на листе.
+    const bookBox = document.getElementById('bookTutor');
+    const bookText = document.getElementById('bookTutorText');
+    if (bookBox && bookText) {
+        const showInBook = bookIsOpen && firstSkyStep !== FIRST_SKY_STEP_NONE;
+        bookText.textContent = showInBook && typeof t === 'function'
+            ? t(firstSkyStep === FIRST_SKY_STEP_PRESS ? 'tutor.press' : 'tutor.stampsTab')
+            : '';
+        bookBox.hidden = !showInBook;
+    }
+    applyFirstSkyHints();
 
     const box = document.getElementById('skyTutor');
     const textEl = document.getElementById('skyTutorText');
     if (!box || !textEl) return;
 
     if (step === TUTOR_STEP_NONE) {
-        if (invite === BOOK_INVITE_GATE) {
-            textEl.textContent = typeof t === 'function' ? t('tutor.book') : '';
+        // При открытой книге говорит строка на листе — небесная просвечивала
+        // бы в полосе неба над ним вторым голосом.
+        if (call && !bookIsOpen) {
+            textEl.textContent = typeof t === 'function' ? t('tutor.bookReward') : '';
             box.hidden = false;
         } else {
             box.hidden = true;

@@ -201,6 +201,9 @@
                 if (o.skipOnboarding && achievementCounters) {
                     achievementCounters.prologuePassed = PROLOGUE_PICTURE_IDS.map((_, i) => i + 1);
                     achievementCounters.activeSky = 'day';
+                    // O-13: сценарии с пройденным Прологом играют «старым
+                    // игроком» — ни замка печатей, ни зова в книгу.
+                    achievementCounters.sealLockExempt = true;
                 }
             }
         });
@@ -538,6 +541,20 @@
                 : [],
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
+            // O-13: печати первого неба и шаги 3–4 тутора. locked — печати
+            // заперты (Кот не пройден); call — зов на небе (лента, book-gate,
+            // строка); step — 0 / 3 «открой книгу → Stamps» / 4 «прижми
+            // печать»; delayLeftMs — сколько ещё до зова после сцены V-13.
+            firstSky: {
+                locked: typeof areSealsLocked === 'function' ? areSealsLocked() : false,
+                call: typeof isFirstSkyCallActive === 'function' ? isFirstSkyCallActive() : false,
+                step: typeof getFirstSkyStep === 'function' ? getFirstSkyStep() : 0,
+                delayLeftMs: typeof getFirstSkyCallDelayLeftMs === 'function'
+                    && typeof isFirstSkyBookLocked === 'function' && isFirstSkyBookLocked()
+                    ? getFirstSkyCallDelayLeftMs() : 0,
+                exempt: !!(achievementCounters && achievementCounters.sealLockExempt),
+                target: typeof getFirstSkyTarget === 'function' ? getFirstSkyTarget() : null
+            },
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.
             bookmarkedShape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
             // S-06: первый день игрока — начало сетки календаря (0 = не задан).
@@ -1127,9 +1144,10 @@
             pair,
             cameraLocked: typeof isTutorialCameraLocked === 'function' ? isTutorialCameraLocked() : false,
             bookLocked: typeof isTutorialBookLocked === 'function' ? isTutorialBookLocked() : false,
-            // O-10: 0 — зова нет, 1 — лента зовёт, 2 — жёсткий шаг «открой книгу».
+            // O-13 (сменило O-10): 0 — зова нет, 2 — зов после первого неба
+            // (лента зовёт и небо закрыто — одной стадией). Подробности — state().firstSky.
             // Классы body — то, что реально видит CSS, а не пересказ условия.
-            invite: typeof getBookInviteStage === 'function' ? getBookInviteStage() : 0,
+            invite: typeof isFirstSkyCallActive === 'function' && isFirstSkyCallActive() ? 2 : 0,
             inviteClasses: {
                 ribbonInvite: document.body.classList.contains('ribbon-invite'),
                 bookGate: document.body.classList.contains('book-gate')

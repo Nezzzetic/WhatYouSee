@@ -549,6 +549,7 @@ function stepBookPage(delta) {
  * «Ex Libris») жест молчит, без зацикливания.
  */
 function swipeBookPage(delta) {
+    if (isFirstSkyBookLockedSafe()) return; // O-13: пейджер на шагах 3–4 молчит
     if (bookSpread) {
         // P-17: разворотами — фокус встаёт на левую страницу соседнего
         // разворота; «Settings» здесь обычная правая страница последнего.
@@ -658,6 +659,13 @@ function renderBook() {
 
     recomputeAchievementsClaimable();
 
+    // O-13: шаг 4 тутора — на экране глава с выбранной печатью, даже если до
+    // зова игрок листал Штампы сам.
+    if (bookCut === 'stamps' && typeof getFirstSkyTarget === 'function') {
+        const target = getFirstSkyTarget();
+        if (target) setBookPageIndex('rewards', target.pageIndex);
+    }
+
     for (const { page, root } of getVisibleBookPageRoots()) {
         withBookPageContext(page, root, () => {
             for (const cut in BOOK_SECTION_PARTS) {
@@ -675,6 +683,8 @@ function renderBook() {
     renderBookTabs();
     updateScoreUI();
     updateRibbonSignal();
+    // O-13: строка тутора в книге и подсветка — узлы пересозданы рендером.
+    if (typeof updateTutorialUI === 'function') updateTutorialUI();
 }
 
 function refreshBookIfOpen() {
@@ -757,10 +767,13 @@ function closeBook() {
     if (document.body) document.body.classList.remove('book-open-body');
     syncExLibrisAppMode();
     resetRibbons(); // U-31: см. openBook()
+    if (typeof updateTutorialUI === 'function') updateTutorialUI(); // O-13
 }
 
 function switchBookCut(cut) {
     if (!BOOK_CUT_LIST.includes(cut) || bookCut === cut) return;
+    // O-13: на шагах 3–4 тутора из книги ведёт только одна дверь — в Штампы.
+    if (cut !== 'stamps' && isFirstSkyBookLockedSafe()) return;
     closeObservatoryRenameField();
     bookCut = cut;
     // U-45: клик идёт по DOM (кнопка высечки/строка оглавления/пейджер), не по
@@ -1002,6 +1015,7 @@ function openBookAnimated(cut) {
  * closeBook(): жест и знак обязаны выглядеть одним и тем же движением.
  */
 function closeBookAnimated() {
+    if (isFirstSkyBookLockedSafe()) return; // O-13: закрыть книгу на шагах 3–4 нельзя
     const book = document.getElementById('book');
     settleBookTransform(book, bookTravelPx(), () => closeBook());
 }
@@ -1531,11 +1545,80 @@ function setupBookControls() {
     }
 
     setupBookCloseGesture();
+    setupFirstSkyBookGuard();
 
     // P-17: разворот включается и снимается на лету — поворот телефона, ресайз окна.
     ensureBookRightPage();
     updateBookSpreadMode();
     window.addEventListener('resize', updateBookSpreadMode);
+}
+
+// =============================================================================
+// O-13: ЗАМОК КНИГИ НА ШАГАХ 3–4 ТУТОРА
+// =============================================================================
+
+/** tutorial.js грузится после книги — спрашиваем через typeof. */
+function isFirstSkyBookLockedSafe() {
+    return typeof isFirstSkyBookLocked === 'function' && isFirstSkyBookLocked();
+}
+
+/**
+ * Пока книга открыта на шагах 3–4, работает в ней только одно: высечка Stamps
+ * (шаг 3) или выбранная печать (шаг 4) — isFirstSkyAllowedTarget, tutorial.js.
+ * Всё остальное — закрытие лентой, полосой неба и потягиванием, Escape,
+ * пейджер, свайп, колесо, стрелки, другие высечки, строки оглавления, булавки и
+ * карточки атласа, поле экслибриса — съедается здесь, в фазе захвата на window:
+ * раньше любого обработчика книги, поэтому ни один жест даже не начинается и
+ * книге нечего возвращать пружиной. Прокрутку страницы перехватчик не трогает
+ * (preventDefault у касаний не зовётся) — она ничего не меняет. Навигация
+ * книги (switchBookCut, swipeBookPage, closeBookAnimated, Escape) вдобавок
+ * проверяет замок сама.
+ */
+function setupFirstSkyBookGuard() {
+    let touchStartX = 0;
+    let touchStartY = 0;
+    // Касание, которое съедено, — браузеру его тоже не отдаём там, где книга
+    // сама звала бы preventDefault (setupBookCloseGesture): горизонталь иначе
+    // становится браузерным «назад», потягивание вниз у верха прокрутки —
+    // pull-to-refresh. Прокрутку посреди страницы не трогаем.
+    const swallowTouchMove = (event) => {
+        const p = getGesturePoint(event);
+        if (!p || !event.cancelable) return;
+        const dx = p.clientX - touchStartX;
+        const dy = p.clientY - touchStartY;
+        // Дрожь пальца при тапе по высечке/печати — не жест: клик должен дойти.
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < BOOK_AXIS_DECIDE_PX) return;
+        const pageBody = event.target.closest && event.target.closest('.book-page')
+            ? event.target.closest('.book-page').querySelector('.book-body') : null;
+        const atTop = !pageBody || pageBody.scrollTop <= 0;
+        if (Math.abs(dx) > Math.abs(dy) || (dy > 0 && atTop)) event.preventDefault();
+    };
+    const guard = (event) => {
+        if (!bookOpen || !isFirstSkyBookLockedSafe()) return;
+        if (event.type === 'touchstart') {
+            const p = getGesturePoint(event);
+            if (p) { touchStartX = p.clientX; touchStartY = p.clientY; }
+        }
+        if (event.type === 'keydown' && event.key === 'Tab') return; // фокус ходит, ничего не нажимая
+        const allowed = typeof isFirstSkyAllowedTarget === 'function' && isFirstSkyAllowedTarget(event.target);
+        const isPress = ['pointerdown', 'mousedown', 'touchstart', 'touchmove'].includes(event.type);
+        if (allowed && !isPress) return;
+        event.stopImmediatePropagation();
+        event.stopPropagation();
+        if (event.type === 'touchmove') swallowTouchMove(event);
+        // Нажатие на разрешённую цель не должно стать жестом книги (потягивание
+        // вниз с высечки или печати), но клик после него обязан дойти.
+        if (allowed) return;
+        const isTouch = event.type === 'touchstart' || event.type === 'touchmove';
+        // Горизонтальное колесо — иначе браузерное «назад»; вертикальное — прокрутка.
+        const isScrollWheel = event.type === 'wheel' && Math.abs(event.deltaY) >= Math.abs(event.deltaX);
+        const isScrollKey = event.type === 'keydown'
+            && ['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End'].includes(event.key);
+        if (!isTouch && !isScrollWheel && !isScrollKey && event.cancelable) event.preventDefault();
+    };
+    for (const type of ['pointerdown', 'mousedown', 'touchstart', 'touchmove', 'click', 'dblclick', 'keydown', 'wheel']) {
+        window.addEventListener(type, guard, { capture: true, passive: false });
+    }
 }
 
 function onGlobalPopupKeydown(event) {
@@ -1545,6 +1628,7 @@ function onGlobalPopupKeydown(event) {
     if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
     if (isEditableTarget(event.target)) return;
     if (event.key === 'Escape') {
+        if (bookOpen && isFirstSkyBookLockedSafe()) return; // O-13
         closeBook();
         return;
     }

@@ -400,6 +400,12 @@ function makeDefaultAchievementCounters() {
         // не получает никогда, GDD). Флаг аддитивный, дефолт false, версия
         // сейва НЕ поднимается — тем же приёмом, что tutorial.done (O-01).
         bookFirstOpenDone: false,
+        // O-13: «старый игрок» — замок печатей первого неба и шаги 3–4 тутора
+        // его не касаются. Снимок tutorial.done в момент обновления (см.
+        // applyAchievementSaveData), а не живое чтение бита: у нового игрока
+        // бит встаёт сам на отзуме, посреди первого неба. Записанное значение
+        // больше не меняется. Аддитивное поле, версия сейва НЕ поднимается.
+        sealLockExempt: false,
         // S-06: первый день игрока для календаря (dateInt эффективных суток,
         // 0 = не задан). Пишется один раз — ensureFirstSkyDate() — и дальше не
         // перезаписывается. Аддитивное поле, версия сейва НЕ поднимается (U-21).
@@ -765,6 +771,22 @@ function getAchievementSaveData() {
     };
 }
 
+// O-13: снимок `sealLockExempt` сделан на этой загрузке — его нужно сохранить
+// сразу (loadProgression), иначе отзум до первого сохранения подменил бы снимок.
+let sealLockExemptSnapshotPending = false;
+
+function readSealLockExempt(saved) {
+    if (saved.sealLockExempt !== undefined) return !!saved.sealLockExempt;
+    sealLockExemptSnapshotPending = true;
+    return !!(saved.tutorial && saved.tutorial.done);
+}
+
+function consumeSealLockExemptSnapshot() {
+    const pending = sealLockExemptSnapshotPending;
+    sealLockExemptSnapshotPending = false;
+    return pending;
+}
+
 function applyAchievementSaveData(state) {
     initAchievementState();
     if (!state || typeof state !== 'object') return;
@@ -797,6 +819,9 @@ function applyAchievementSaveData(state) {
             // до этой задачи его нет — игрок с прогрессом получит разворот
             // атласа один раз, и это не вредно.
             bookFirstOpenDone: !!s.bookFirstOpenDone,
+            // O-13: в сейве до задачи поля нет — снимок tutorial.done прямо
+            // сейчас, один раз; loadProgression сразу его сохраняет.
+            sealLockExempt: readSealLockExempt(s),
             // S-06: аддитивное поле; в сейве до задачи его нет — 0, и
             // ensureFirstSkyDate() поставит день первого запуска новой версии.
             firstSkyDate: Math.max(0, Math.floor(Number(s.firstSkyDate) || 0)),
@@ -1063,8 +1088,43 @@ function getAchievementStepProgress(check) {
 // ПЕРЕСЧЁТ CLAIMABLE
 // =============================================================================
 
+// =============================================================================
+// O-13: ПЕЧАТИ ЗАПЕРТЫ ДО КОНЦА ПЕРВОГО НЕБА
+// =============================================================================
+//
+// Пока Пролог · Кот (prologue:1) не пройден, готовых печатей не существует:
+// claimable всегда false (значит, нет ни сигналов, ни марок, ни забора).
+// Счётчики при этом копятся как обычно — после неба печати открываются уже
+// готовыми, пачкой. Замок не касается «старого игрока» (sealLockExempt) и того,
+// кто уже что-то забирал (lifetimeMetaEarned > 0).
+
+function isSealLockExempt() {
+    return !!(achievementCounters && achievementCounters.sealLockExempt);
+}
+
+function areSealsLocked() {
+    if (!achievementCounters || isSealLockExempt()) return false;
+    if (typeof isPrologueLevelPassed === 'function' && isPrologueLevelPassed(1)) return false;
+    return (typeof getLifetimeMetaEarned === 'function' ? getLifetimeMetaEarned() : 0) === 0;
+}
+
+/**
+ * Печать, к которой ведут шаги 3–4 тутора: первая готовая по порядку цепочек
+ * «Первого света» (решение заказчика 4). null — готовой нет (или глава заперта).
+ */
+function getFirstSkyRewardTarget() {
+    const pageIndex = REWARD_PAGES.findIndex(page => page.id === 'first_light');
+    if (pageIndex < 0 || !isRewardPageUnlocked(pageIndex)) return null;
+    for (const chain of getRewardPageChains(pageIndex)) {
+        const p = achievementProgress[chain.id];
+        if (p && p.claimable) return { chainId: chain.id, pageIndex };
+    }
+    return null;
+}
+
 /** K-15: тостов больше нет — переход в claimable виден маркой и каплей на ленте. */
 function recomputeAchievementsClaimable() {
+    const sealsLocked = areSealsLocked();
     for (const chain of ACHIEVEMENT_CHAINS) {
         const p = achievementProgress[chain.id];
         if (!p) continue;
@@ -1072,6 +1132,11 @@ function recomputeAchievementsClaimable() {
         // суток перед общим расчётом, дальше она идёт тем же путём, что и любая
         // другая многошаговая цепочка.
         if (chain.daily) p.stepIndex = deriveDailyStepIndex();
+        // O-13: первое небо не пройдено — готовых печатей нет нигде.
+        if (sealsLocked) {
+            p.claimable = false;
+            continue;
+        }
         if (p.stepIndex >= chain.steps.length) {
             p.claimable = false; // цепочка завершена
             continue;
@@ -1242,6 +1307,8 @@ function afterAchievementStateChanged() {
     // K-06: атлас и награды живут в книге — перерисовываем её, если открыта
     if (typeof updateRibbonSignal === 'function') updateRibbonSignal();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
+    // O-13: прохождение Кота меняет замок печатей и зов — досылаем сразу.
+    if (typeof updateTutorialUI === 'function') updateTutorialUI();
 }
 
 // =============================================================================
@@ -1266,6 +1333,8 @@ function claimAchievementStep(chainId) {
     const p = achievementProgress[chainId];
     if (!chain || !p || !p.claimable) return false;
     if (p.stepIndex >= chain.steps.length) return false;
+    // O-13: замок в самом заборе, а не только в вёрстке.
+    if (areSealsLocked()) return false;
 
     // B-01: платим за тот шаг, который забирают, — до сдвига индекса
     const reward = getAchievementChainStepReward(chain, p.stepIndex);
@@ -1317,6 +1386,8 @@ function claimAchievementStep(chainId) {
 
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
+    // O-13: первый забор снимает шаги 3–4 в тот же момент, не к следующему кадру.
+    if (typeof updateTutorialUI === 'function') updateTutorialUI();
     return true;
 }
 
