@@ -13,11 +13,29 @@ function createRewardPageLockedNotice(pageIndex) {
     return locked;
 }
 
+/**
+ * O-13: пока первое небо не пройдено, печатей нет ни в одной главе — тот же
+ * вид заглушки, что у главы под уровнем, но без уровня: «Opens later.»
+ * (решение заказчика — ни слова про «первое небо»).
+ */
+function createFirstSkyLockedNotice() {
+    const locked = document.createElement('div');
+    locked.className = 'atlas-page-locked';
+    const lockedText = document.createElement('p');
+    lockedText.textContent = t('stamps.firstSkyLocked');
+    locked.appendChild(lockedText);
+    return locked;
+}
+
 function renderAchievementsList() {
     const list = bookPart('achievementsList');
     if (!list) return;
     list.innerHTML = '';
     const pageIndex = getBookPageIndex('rewards');
+    if (areSealsLocked()) {
+        list.appendChild(createFirstSkyLockedNotice());
+        return;
+    }
     if (!isRewardPageUnlocked(pageIndex)) {
         list.appendChild(createRewardPageLockedNotice(pageIndex));
         return;

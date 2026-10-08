@@ -652,6 +652,61 @@ button:disabled {
     }
 }
 
+/* --- O-13: шаги 3–4 тутора в книге ------------------------------------------
+   Строка на листе под шапкой (тот же голос, что #skyTutor на небе, но книжными
+   чернилами) и подсветка единственного, что сейчас работает: высечки Stamps
+   (шаг 3) или выбранной печати (шаг 4). Под «уменьшить движение» — статичный
+   контур. */
+.book-tutor {
+    padding: 2px 4px 8px;
+    display: flex;
+    justify-content: center;
+}
+
+.book-tutor-text {
+    max-width: 34ch;
+    font-family: var(--font-text);
+    font-size: 16px;
+    line-height: 1.35;
+    font-style: italic;
+    text-align: center;
+    text-wrap: balance;
+    color: var(--ink);
+    animation: tutor-in var(--t-scene) var(--ease) both;
+}
+
+.book-tab.tutor-hint {
+    animation: tutorHintTab 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes tutorHintTab {
+    from { box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.55), 0 0 4px 1px rgba(var(--gold-rgb), 0.35); }
+    to   { box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.95), 0 0 12px 4px rgba(var(--gold-rgb), 0.6); }
+}
+
+.achv-seal-current-ready.tutor-hint .achv-seal-body {
+    outline: 2px solid var(--gold);
+    outline-offset: 5px;
+    animation: achvSealBreathe 2.1s ease-in-out infinite alternate, tutorHintSeal 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes tutorHintSeal {
+    from { outline-offset: 7px; outline-color: rgba(var(--gold-rgb), 0.5); }
+    to   { outline-offset: 4px; outline-color: rgba(var(--gold-rgb), 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .book-tutor-text { animation: none; }
+    .book-tab.tutor-hint {
+        animation: none;
+        box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.9), 0 0 8px 2px rgba(var(--gold-rgb), 0.5);
+    }
+    .achv-seal-current-ready.tutor-hint .achv-seal-body {
+        animation: none;
+        box-shadow: 0 0 10px 2px rgba(var(--gold-rgb), 0.6);
+    }
+}
+
 /* --- K-06: книга — полноэкранная страница, пять высечек, шкала света ------ */
 
 /* V-20: книга больше не заливка во весь экран — фон стал прозрачным, и над

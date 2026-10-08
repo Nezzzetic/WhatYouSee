@@ -195,6 +195,12 @@
                     <h2 id="bookTitle" class="book-title"></h2>
                     <div class="book-rule" aria-hidden="true"></div>
                 </div>
+                <!-- O-13: строка тутора на листе (шаги 3–4: «найди Штампы»,
+                     «прижми печать») — та же роль, что #skyTutor на небе.
+                     Ребёнок .book-page, renderBook() её не трогает. -->
+                <div id="bookTutor" class="book-tutor" hidden aria-live="polite">
+                    <div id="bookTutorText" class="book-tutor-text"></div>
+                </div>
                 <!-- U-29 (выросло из V-16): баннер уровня — единственный тост в игре,
                      узкое исключение из K-15 (showLevelBanner, ui.js). Ребёнок
                      .book-page, не .book-body — renderBook() не трогает этот узел

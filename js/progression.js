@@ -518,6 +518,10 @@ function loadProgression() {
             : getPlayerLevel();
 
         if (typeof applyAchievementSaveData === 'function') applyAchievementSaveData(state);
+        // O-13: снимок «старый игрок» (sealLockExempt) пишется в сейв сразу.
+        if (typeof consumeSealLockExemptSnapshot === 'function' && consumeSealLockExemptSnapshot()) {
+            saveProgression();
+        }
 
         // U-09: сейв старше v4 (цвета стали огранкой, награды за них убраны) —
         // пересчитывать нечего, сбрасываем весь прогресс: ✦, страницы, фигуры.

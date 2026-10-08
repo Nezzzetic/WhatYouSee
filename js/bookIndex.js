@@ -124,12 +124,21 @@ function renderBookIndex() {
     stampsSec.appendChild(stampsTitle);
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
         const page = REWARD_PAGES[i];
-        const unlocked = isRewardPageUnlocked(i);
+        // O-13: до конца первого неба заперты все главы штампов, без уровня.
+        const firstSkyLocked = areSealsLocked();
+        const unlocked = !firstSkyLocked && isRewardPageUnlocked(i);
         // K-19: неразрезанная глава не раскрывает литературное имя — «?».
         const title = formatChapterIndexTitle(i, unlocked ? page.title : '?');
 
         let row;
-        if (unlocked) {
+        if (firstSkyLocked) {
+            row = createBookIndexRow(
+                title,
+                getStampsChapterFolio(i),
+                t('book.indexOpensAfterFirstSky'),
+                { locked: true }
+            );
+        } else if (unlocked) {
             // K-19: счёт главы — прижатые марки (сумма stepIndex) из общего
             // числа марок главы, а не пройденные цепочки целиком.
             const { pressed, total } = getRewardPagePressedStamps(i);
