@@ -362,13 +362,12 @@ en: {
     'sky.bookmarkLabel': 'bookmarked',
     // V-32: картуш итогового кадра раскрытой ночи — заголовок и подписи под
     // тремя числами (само число рисуется отдельно, крупно, над подписью).
-    'sky.cartoucheTitle': 'Sky No. {n} · {date}',
     'sky.cartoucheTotal': {
         one: 'constellation',
         other: 'constellations'
     },
     'sky.cartoucheAtlas': 'from the atlas',
-    'sky.cartoucheNameless': 'nameless',
+    'sky.cartoucheUncharted': 'uncharted',
 
     // --- O-01: тутор первых жестов -----------------------------------------------
     // Единственные две строки, которыми игра объясняет себя словами. Прямая
@@ -682,18 +681,13 @@ ru: {
 
     // --- Чертёж закладки на небе (K-11) ------------------------------------------
     'sky.bookmarkLabel': 'заложено',
-    'sky.cartoucheTitle': 'Небо № {n} · {date}',
     'sky.cartoucheTotal': {
         one: 'созвездие',
         few: 'созвездия',
         many: 'созвездий'
     },
     'sky.cartoucheAtlas': 'из атласа',
-    'sky.cartoucheNameless': {
-        one: 'безымянное',
-        few: 'безымянных',
-        many: 'безымянных'
-    },
+    'sky.cartoucheUncharted': 'вне атласа',
 
     // --- O-01: тутор первых жестов -----------------------------------------------
     'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
