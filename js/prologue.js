@@ -18,7 +18,17 @@
 
 const PROLOGUE_LEVEL_COUNT = SKY_SLOT_PROLOGUE_MAX;
 // Уровни с полем: индекс = n − 1. Порядок — часть содержания Пролога.
-const PROLOGUE_PICTURE_IDS = ['cat', 'gemini'];
+// O-12: уровень 1 нового игрока — маленькое обучающее небо «Голова кота».
+const PROLOGUE_PICTURE_IDS = ['cat-head', 'gemini'];
+// O-12: старый игрок (тутор пройден) остаётся на полном Коте — нового неба
+// для него не существует (решение заказчика, вариант A). Выбор — в момент
+// генерации; сохранённый слот грузится как есть, какая бы раскладка в нём ни была.
+const PROLOGUE_LEGACY_LEVEL1_PICTURE_ID = 'cat';
+// Раскладки, на которых живёт тутор: пара берётся по раскладке на экране.
+const PROLOGUE_TUTOR_PICTURE_IDS = ['cat-head', PROLOGUE_LEGACY_LEVEL1_PICTURE_ID];
+// Первые ночи O-02 — историческая пара картинок, которую сверяет миграция
+// wipeUnfinishedFirstNight. Не PROLOGUE_PICTURE_IDS: тот с O-12 другой.
+const O02_FIRST_NIGHT_PICTURE_IDS = ['cat', 'gemini'];
 
 // Тип неба последнего раскрытия — читает аналитика (`night_completed`, `k`).
 // Вне сейва: событие шлётся опросом в той же сессии, что и раскрытие.
@@ -122,11 +132,22 @@ function notePrologueOrDayRevealed() {
  * задержки появления и пыль одинаковы у всех и не зависят от даты.
  */
 function generatePrologueField(n) {
-    const id = PROLOGUE_PICTURE_IDS[n - 1];
+    const id = getPrologueLevelPictureId(n);
     randomSeed(hashStringToSeed('prologue:' + n));
     generatePictureField(id);
     assignStarAppearDelays();
     generateBackgroundStars();
+}
+
+/**
+ * id картинки, которую строит генерация уровня n. O-12: уровень 1 — по биту
+ * тутора: пройден (старый игрок) → полный Кот, иначе → «Голова кота».
+ */
+function getPrologueLevelPictureId(n) {
+    if (n === 1 && typeof isTutorialDone === 'function' && isTutorialDone()) {
+        return PROLOGUE_LEGACY_LEVEL1_PICTURE_ID;
+    }
+    return PROLOGUE_PICTURE_IDS[n - 1];
 }
 
 /** Звёзды раскладки картинки — те же координаты, что строит generatePictureField. */
@@ -179,11 +200,11 @@ function wipeUnfinishedFirstNight() {
         const slotId = getTodaySkySlotId();
         const slot = loadSkySlot(slotId);
         if (slot && !slot.constellationArtRevealed
-            && isFieldOfPictureLayout(slot.fieldStars, PROLOGUE_PICTURE_IDS[shown - 1])) {
+            && isFieldOfPictureLayout(slot.fieldStars, O02_FIRST_NIGHT_PICTURE_IDS[shown - 1])) {
             clearSkySlot(slotId);
             wiped = true;
             if (typeof console !== 'undefined' && console.info) {
-                console.info('[prologue] Недоигранная первая ночь O-02 стёрта:', PROLOGUE_PICTURE_IDS[shown - 1]);
+                console.info('[prologue] Недоигранная первая ночь O-02 стёрта:', O02_FIRST_NIGHT_PICTURE_IDS[shown - 1]);
             }
         }
     }

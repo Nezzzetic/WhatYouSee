@@ -83,22 +83,54 @@ function isTutorialNight() {
     if (typeof getActivePrologueLevel !== 'function' || getActivePrologueLevel() !== 1) return false;
     if (isPrologueLevelPassed(1)) return false;
     const activeId = typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null;
-    return activeId === null || activeId === PROLOGUE_PICTURE_IDS[0];
+    return activeId === null || PROLOGUE_TUTOR_PICTURE_IDS.indexOf(activeId) !== -1;
+}
+
+// O-12: раскладка уровня 1, узнанная по звёздам на экране, — кеш на массив
+// fieldStars (новое небо — новый массив). getTutorialPair зовётся каждый кадр.
+let tutorialLayoutCacheStars = null;
+let tutorialLayoutCacheLen = -1;
+let tutorialLayoutCacheId = null;
+
+/**
+ * id раскладки тутора на экране. Известный activeFieldPictureId — он и есть;
+ * после F5 (id = null) раскладка узнаётся по звёздам: слот уровня 1 может
+ * хранить и «Голову кота», и полный Кот (игрок, начавший до O-12). Брать пару
+ * по PROLOGUE_PICTURE_IDS[0] вслепую нельзя — на старой раскладке её индексы
+ * попали бы на посторонние звёзды.
+ */
+function getTutorialPictureId() {
+    const activeId = typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null;
+    if (activeId !== null) return activeId;
+    if (typeof fieldStars === 'undefined') return null;
+    if (tutorialLayoutCacheStars === fieldStars && tutorialLayoutCacheLen === fieldStars.length) {
+        return tutorialLayoutCacheId;
+    }
+    let found = null;
+    if (typeof isFieldOfPictureLayout === 'function') {
+        for (const id of PROLOGUE_TUTOR_PICTURE_IDS) {
+            if (isFieldOfPictureLayout(fieldStars, id)) { found = id; break; }
+        }
+    }
+    tutorialLayoutCacheStars = fieldStars;
+    tutorialLayoutCacheLen = fieldStars.length;
+    tutorialLayoutCacheId = found;
+    return found;
 }
 
 /**
  * Пара звёзд тьюторной ночи, либо null.
  *
- * Картинка берётся по её id, а когда он неизвестен — по Коту, уровню 1 Пролога
- * (см. предупреждение в isTutorialNight: после F5 сейв неба поднимается без
- * `activeFieldPictureId`). Спросить id и сдаться значило бы уронить тутор в
- * аварийное снятие на каждой перезагрузке — то есть молча объявить его
- * пройденным. Звёзды всё равно проверяются по факту, ниже и в ensureTutorialViable.
+ * Картинка — по раскладке на экране (getTutorialPictureId): после F5 сейв неба
+ * поднимается без `activeFieldPictureId` (см. isTutorialNight). Спросить id и
+ * сдаться значило бы уронить тутор в аварийное снятие на каждой перезагрузке —
+ * то есть молча объявить его пройденным. Звёзды всё равно проверяются по факту,
+ * ниже и в ensureTutorialViable.
  */
 function getTutorialPair() {
     if (typeof getPictureFieldTutorPair !== 'function') return null;
-    const activeId = typeof getActiveFieldPictureId === 'function' ? getActiveFieldPictureId() : null;
-    const pictureId = activeId === null ? PROLOGUE_PICTURE_IDS[0] : activeId;
+    const pictureId = getTutorialPictureId();
+    if (pictureId === null) return null;
     const pair = getPictureFieldTutorPair(pictureId);
     if (!pair) return null;
     const a = getStarById(pair[0]);

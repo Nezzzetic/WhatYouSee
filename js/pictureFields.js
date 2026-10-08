@@ -1668,10 +1668,16 @@ const PICTURE_FIELDS = {
 // Список id для ротации (воскресный показ, dev-дропдаун, ?picture=).
 const PICTURE_FIELD_IDS = Object.keys(PICTURE_FIELDS);
 
-/** Достать картинку по id. */
+/**
+ * Достать картинку по id. O-12: поля Пролога вне ротации (PROLOGUE_PICTURE_FIELDS,
+ * prologueFields.js) ищутся здесь же — в PICTURE_FIELDS их класть нельзя.
+ */
 function getPictureFieldById(id) {
     if (!id || typeof PICTURE_FIELDS !== 'object') return null;
-    return Object.prototype.hasOwnProperty.call(PICTURE_FIELDS, id) ? PICTURE_FIELDS[id] : null;
+    if (Object.prototype.hasOwnProperty.call(PICTURE_FIELDS, id)) return PICTURE_FIELDS[id];
+    if (typeof PROLOGUE_PICTURE_FIELDS === 'object'
+        && Object.prototype.hasOwnProperty.call(PROLOGUE_PICTURE_FIELDS, id)) return PROLOGUE_PICTURE_FIELDS[id];
+    return null;
 }
 
 /**
