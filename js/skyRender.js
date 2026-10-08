@@ -291,17 +291,14 @@ const CARTOUCHE_FONT_TITLE = "'Playfair Display', Georgia, 'Times New Roman', se
 const CARTOUCHE_FONT_TEXT = "'EB Garamond', Georgia, 'Times New Roman', serif";
 
 /**
- * Заголовок: «Sky No. 47 · October 6» на небе дня (номер — только если > 0,
- * до эпохи M-14 одна дата), «Prologue · Cat» на Прологе. Дата — живым вызовом
+ * Заголовок: «October 6» на небе дня (только дата, номер неба снят),
+ * «Prologue · Cat» на Прологе. Дата — живым вызовом
  * каждый кадр: смена суток под открытым кадром не залипает.
  */
 function getCartoucheTitle() {
     const n = typeof getActivePrologueLevel === 'function' ? getActivePrologueLevel() : null;
     if (n) return t('prologue.title') + ' · ' + t('prologue.name' + n);
-    const dateInt = getEffectiveSkyDateInt();
-    const date = formatSkyDateLong(dateInt);
-    const skyNo = getSkyNumber(dateInt);
-    return skyNo > 0 ? t('sky.cartoucheTitle', { n: skyNo, date }) : date;
+    return formatSkyDateLong(getEffectiveSkyDateInt());
 }
 
 /**
@@ -408,7 +405,7 @@ function computeCartoucheLayout() {
     const captions = {
         total: tp('sky.cartoucheTotal', counts.total),
         atlas: t('sky.cartoucheAtlas'),
-        nameless: tp('sky.cartoucheNameless', counts.nameless)
+        nameless: t('sky.cartoucheUncharted')
     };
     const rects = {};
     let y = band.top;
