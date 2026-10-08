@@ -861,12 +861,13 @@ function dismissLevelBanner(immediate) {
  * что `todayHasSignal()` уже прошла в U-25.
  * K-37: и второе правило K-12 — марка в неразрезанной главе штампов в счёт не идёт:
  * капля зовёт только туда, где книга уже пускает. Считаем теми же двумя вопросами,
- * что горят на высечках («Сегодня» + открытые главы Штампов), а не сырым
+ * что горят на высечках (открытые главы Штампов), а не сырым
  * `hasClaimableAchievements()` — иначе лента горела при пустой книге.
+ * O-14: «Сегодня» снята, суточная марка спрятана и ленту не зажигает — вернётся
+ * вместе со страницей (O-15) условием `|| rewardPageHasClaimable(0)`.
  */
 function hasSkyWaxSignal() {
-    return typeof todayHasSignal === 'function' && typeof stampsHaveClaimable === 'function'
-        && (todayHasSignal() || stampsHaveClaimable());
+    return typeof stampsHaveClaimable === 'function' && stampsHaveClaimable();
 }
 
 /**

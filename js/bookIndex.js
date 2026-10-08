@@ -83,6 +83,24 @@ function renderBookIndex() {
     if (!el) return;
     el.innerHTML = '';
 
+    // O-14: Ex Libris — первая страница книги, и в оглавлении первой категорией.
+    const exSec = document.createElement('div');
+    exSec.className = 'book-index-sec';
+    const exTitle = document.createElement('div');
+    exTitle.className = 'book-index-sec-title';
+    exTitle.textContent = t('book.cutExLibris');
+    exSec.appendChild(exTitle);
+    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const exRow = createBookIndexRow(
+        t('book.cutExLibris'),
+        getExLibrisFolio(),
+        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
+        exUnlocked ? { countSign: 'crescent' } : undefined
+    );
+    exRow.addEventListener('click', () => switchBookCut('exlibris'));
+    exSec.appendChild(exRow);
+    el.appendChild(exSec);
+
     const atlasSec = document.createElement('div');
     atlasSec.className = 'book-index-sec';
     const atlasTitle = document.createElement('div');
@@ -176,23 +194,6 @@ function renderBookIndex() {
     calRow.addEventListener('click', () => switchBookCut('calendar'));
     calSec.appendChild(calRow);
     el.appendChild(calSec);
-
-    const exSec = document.createElement('div');
-    exSec.className = 'book-index-sec';
-    const exTitle = document.createElement('div');
-    exTitle.className = 'book-index-sec-title';
-    exTitle.textContent = t('book.cutExLibris');
-    exSec.appendChild(exTitle);
-    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const exRow = createBookIndexRow(
-        t('book.cutExLibris'),
-        getExLibrisFolio(),
-        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
-        exUnlocked ? { countSign: 'crescent' } : undefined
-    );
-    exRow.addEventListener('click', () => switchBookCut('exlibris'));
-    exSec.appendChild(exRow);
-    el.appendChild(exSec);
 
     // K-14: настройки — строкой в конце оглавления, единственный вход
     // (страница не висит на своей высечке). Ни счёта, ни замка — доступна

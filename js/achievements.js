@@ -1151,9 +1151,16 @@ function recomputeAchievementsClaimable() {
     }
 }
 
+/** O-14: суточная цепочка (REWARD_PAGES[0]) ведётся, но на экране её нет. */
+function isDailyQuestChainHidden(chainId) {
+    return DAILY_QUEST_HIDDEN && REWARD_PAGES[0].chainIds.includes(chainId);
+}
+
 /** Есть ли где-нибудь в Наградах забираемый шаг (капля сургуча на ленте, K-05). */
 function hasClaimableAchievements() {
     return ACHIEVEMENT_CHAINS.some(chain => {
+        // O-14: спрятанная ежедневка сигнала не даёт — забрать её негде.
+        if (isDailyQuestChainHidden(chain.id)) return false;
         const p = achievementProgress[chain.id];
         return p && p.claimable;
     });
@@ -1401,9 +1408,9 @@ function claimAchievementStep(chainId) {
 /**
  * Порядок фиксирован и не зависит от наличия забора: игрок ищет готовое
  * по капле сургуча на высечке «Stamps», а не по перескакивающим строкам.
- * REWARD_PAGES[0] («Сутки») сама книга (bookToday.js, renderBookToday) рендерит на
- * странице «Сегодня» отдельно — getBookPageIndex('rewards') по страницам
- * Штампов ходит с индекса 1, а не 0.
+ * REWARD_PAGES[0] («Сутки») книга рендерила на странице «Сегодня» (bookToday.js,
+ * renderBookToday); O-14 сняла страницу — цепочка ведётся, но не видна нигде
+ * (DAILY_QUEST_HIDDEN). getBookPageIndex('rewards') ходит с индекса 1, а не 0.
  *
  * K-12: главы 1..4 — те же четыре рубрики («Цвета»/«Размеры»/«Особые»/
  * «Огранка и путь»), но с литературными именами и рабочими названиями из

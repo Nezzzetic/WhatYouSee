@@ -686,9 +686,8 @@
             // K-17: сигналы концепта — то, что сценарий не может увидеть ни по
             // модели, ни по одному узлу: видна ли шкала физически (её
             // закрашивала страница), куда целится монета и на какой высечке
-            // горит капля. O-11 сняла отсюда `todayState` вместе с блоком
-            // `#bookTodayState` — тот же факт теперь виден проще, срезом
-            // `__test.todayDawn()`.
+            // горит капля. O-14 сняла высечку «Сегодня» — вместе с ней ушли
+            // точка этой высечки и срез блока ночи.
             signals: (() => {
                 const gauge = document.getElementById('bookGauge');
                 const box = gauge ? gauge.getBoundingClientRect() : null;
@@ -709,7 +708,7 @@
                     flightOnBead: !!(target && beadBox && beadBox.width
                         && Math.abs(target.left - beadBox.left) < 1
                         && Math.abs(target.top - beadBox.top) < 1),
-                    tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') }
+                    tabWax: { stamps: waxOf('bookTabStampsWax') }
                 };
             })(),
             // K-13: холст встроен в разворот страницы — канвас репозиционирован
@@ -718,30 +717,6 @@
                 const c = document.getElementById('canvas-container');
                 return !!(c && c.classList.contains('canvas-embedded'));
             })()
-        };
-    }
-
-    /**
-     * O-03/O-11: срез блока «Сегодня» с двумя состояниями — виден **всегда**
-     * (`visible` держится для совместимости, теперь неизменно `true`, пока
-     * узел на странице), `complete` разводит их. Играется ночь — `starsLeft`
-     * и текст числа в `text`, слова вокруг него — `before`/`after`. Доиграна —
-     * `text` держит часы («10 hours» / «less than an hour»), `before` — «New
-     * sky in», `after` пуст.
-     */
-    function todayDawnState() {
-        const el = document.getElementById('bookTodayDawn');
-        const beforeEl = document.getElementById('bookTodayDawnBefore');
-        const clock = document.getElementById('bookTodayDawnClock');
-        const afterEl = document.getElementById('bookTodayDawnAfter');
-        return {
-            visible: !!(el && !el.hidden),
-            complete: typeof isLevelComplete === 'function' ? isLevelComplete() : null,
-            ms: typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : null,
-            starsLeft: typeof getConnectableStarIds === 'function' ? getConnectableStarIds().size : null,
-            before: beforeEl ? beforeEl.textContent : null,
-            text: clock ? clock.textContent : null,
-            after: afterEl ? afterEl.textContent : null
         };
     }
 
@@ -1327,7 +1302,6 @@
         press,
         pin,
         book,
-        todayDawn: todayDawnState,
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,

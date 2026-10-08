@@ -211,20 +211,8 @@
                     <div id="levelBannerUnlocks" class="level-banner-unlocks" hidden></div>
                 </div>
                 <div id="bookBody" class="book-body">
-                    <div id="bookToday" class="book-section" hidden>
-                        <div id="bookTodayList" class="achv-list"></div>
-                        <!-- O-03/O-11: конец ночи проговаривает только книга — небо молчит.
-                             Виден всегда, два состояния (renderBookTodayDawn, bookToday.js):
-                             играется — счёт соединимых звёзд, доиграна — ожидание. Слова
-                             режутся вокруг числа (порядок разный в локалях), поэтому до/после
-                             числа — разные узлы. -->
-                        <div id="bookTodayDawn" class="book-dawn">
-                            <span id="bookTodayDawnBefore" class="book-dawn-label"></span>
-                            <span id="bookTodayDawnClock" class="book-dawn-clock"></span>
-                            <span id="bookTodayDawnAfter" class="book-dawn-label"></span>
-                        </div>
-                        <div id="bookTodayNews" class="book-news-list"></div>
-                    </div>
+                    <!-- O-14: секция «Сегодня» (#bookToday: ежедневка, блок ночи,
+                         лента новостей) снята — данные ведутся, рендер в bookToday.js. -->
                     <div id="bookIndex" class="book-section book-index" hidden></div>
                     <!-- K-18: пейджер-строка над сеткой снята — прогресс главы и
                          листание переехали в подвал (.book-foot, ниже). -->
@@ -309,7 +297,7 @@
                      главы, справа «‹ p. N ▸» — колонцифра текущей страницы.
                      K-28: стрелки — сквозной пейджер по всей книге (swipeBookPage),
                      не только внутри атласа/штампов; скрыты только на самом первом
-                     развороте («Today») и самом последнем («Ex Libris»). У «Settings»
+                     развороте («Ex Libris», O-14) и самом последнем («Calendar»). У «Settings»
                      стрелок нет — страница вне сквозного порядка. Кнопки сохраняют
                      data-pager/data-dir (смотрит verify-atlas-spread.js). -->
                 <div class="book-foot">
@@ -328,10 +316,8 @@
                  ensureBookRightPage() в book.js). Виден только в развороте. -->
             <div class="book-gutter" aria-hidden="true"></div>
             <div id="bookTabs" class="book-tabs" role="tablist">
-                <button type="button" class="book-tab" data-cut="today" role="tab">
-                    <!-- K-17: та же пара «локализуемый span + своя капля», что у Штампов -->
-                    <span data-i18n="book.cutToday">Today</span><span id="bookTabTodayWax" class="book-tab-wax" aria-hidden="true"></span>
-                </button>
+                <!-- O-14: первая высечка — Ex Libris (стр. 1), «Today» снята. -->
+                <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
                 <button type="button" class="book-tab" data-cut="index" role="tab" data-i18n="book.cutIndex">Index</button>
                 <button type="button" class="book-tab" data-cut="atlas" role="tab" data-i18n="book.cutAtlas">Atlas</button>
                 <button type="button" class="book-tab" data-cut="stamps" role="tab">
@@ -340,7 +326,6 @@
                     <span data-i18n="book.cutStamps">Stamps</span><span id="bookTabStampsWax" class="book-tab-wax" aria-hidden="true"></span>
                 </button>
                 <button type="button" class="book-tab" data-cut="calendar" role="tab" data-i18n="book.cutCalendar">Calendar</button>
-                <button type="button" class="book-tab" data-cut="exlibris" role="tab" data-i18n="book.cutExLibris">Ex Libris</button>
             </div>
 
             <!-- K-05, U-31: книжная сторона той же ленты — новичок без подсказок

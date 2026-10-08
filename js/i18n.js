@@ -224,7 +224,6 @@ en: {
     // K-15: тостов в игре больше нет — все ключи toast.* сняты вместе с ними.
 
     // --- Книга (K-06): каркас — пять высечек, шкала света у корешка -----------
-    'book.cutToday': 'Today',
     'book.cutIndex': 'Index',
     'book.cutAtlas': 'Atlas',
     'book.cutStamps': 'Stamps',
@@ -245,7 +244,6 @@ en: {
     'book.openRibbon': 'Open the almanac',
     // O-07: постоянный знак закрытия — второй хвост ленты, висит сверху страницы.
     'book.closeRibbon': 'Close the almanac',
-    'book.headToday': 'Tonight',
     'book.headIndex': 'Contents',
     'book.headExLibris': 'A sky of your own',
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
@@ -272,7 +270,6 @@ en: {
     // категории на каждую не за чем).
     'book.indexOther': 'Other',
     // K-09/U-16: шапка «Сегодня» — только дата; лента новостей мира под ежедневкой.
-    'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Chapter {n} has opened.',
     // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из
     // K-15, строки в ленте новостей (book.newsAtlasCut/newsLevelUp) остаются
@@ -585,7 +582,6 @@ ru: {
     // K-15: тостов в игре больше нет — все ключи toast.* сняты вместе с ними.
 
     // --- Книга (K-06) -----------------------------------------------------------
-    'book.cutToday': 'Сегодня',
     'book.cutIndex': 'Оглавление',
     'book.cutAtlas': 'Атлас',
     'book.cutStamps': 'Штампы',
@@ -601,7 +597,6 @@ ru: {
     'book.pagerNext': 'Следующая страница',
     'book.openRibbon': 'Открыть альманах',
     'book.closeRibbon': 'Закрыть альманах',
-    'book.headToday': 'Сегодня ночью',
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
@@ -613,7 +608,6 @@ ru: {
     'book.indexOpensAtLevel': 'откроется на уровне {n}',
     'book.indexOpensAfterFirstSky': 'откроется позже',
     'book.indexOther': 'Прочее',
-    'book.eyebrowToday': '{date}',
     'book.newsAtlasCut': 'Глава {n} открыта.',
     // U-29 (выросло из V-16): баннер уровня поверх книги — узкое исключение из K-15.
     'book.levelBannerEyebrow': 'Новый уровень',
