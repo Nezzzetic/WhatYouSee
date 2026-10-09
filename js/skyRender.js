@@ -1304,10 +1304,21 @@ function drawVisibleStars() {
         // звезды того же sizeFactor, в мягком ореоле. Вспышки и импульсы её не
         // касаются (она не соединяется и в созвездие не входит).
         if (isExtinguished) {
-            const extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
-            fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
+            let extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
+            let glowA = glowColor[3], coreA = coreColor[3];
+            // O-12: контур головы проступает на отзуме; при MAX_ZOOM множители
+            // ровно 1 — вблизи вид обычной погасшей.
+            if (star.contour) {
+                const m = getContourStarRevealMults(zoomLevel, getMinZoomLevel());
+                if (m.reveal > 0) {
+                    extBase = Math.max(extBase * m.diam, CONTOUR_STAR_MIN_SCREEN_PX / zoomLevel);
+                    glowA = Math.min(255, glowA * m.alpha);
+                    coreA = Math.min(255, coreA * m.alpha);
+                }
+            }
+            fill(glowColor[0], glowColor[1], glowColor[2], glowA * effectiveAlpha);
             circle(star.x, star.y, extBase * EXTINGUISHED_STAR_HALO_MULT);
-            fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
+            fill(coreColor[0], coreColor[1], coreColor[2], coreA * effectiveAlpha);
             circle(star.x, star.y, extBase);
             continue;
         }
@@ -1349,6 +1360,24 @@ function drawVisibleStars() {
         fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * effectiveAlpha);
         circle(star.x, star.y, starDrawSize * STAR_BASE_DIAM_MULT);
     }
+}
+
+/**
+ * O-12: заметность погасшей звезды контура головы от зума. reveal — 0 при
+ * MAX_ZOOM, 1 на минимальном зуме (логарифмически); множители альфы и
+ * диаметра растут от 1 до CONTOUR_STAR_*_MULT_MAX. Чистая — проверяется в vm.
+ */
+function getContourStarRevealMults(zoom, minZoom) {
+    let reveal = 0;
+    if (zoom > 0 && minZoom > 0 && minZoom < MAX_ZOOM) {
+        reveal = (Math.log(MAX_ZOOM) - Math.log(zoom)) / (Math.log(MAX_ZOOM) - Math.log(minZoom));
+        reveal = Math.max(0, Math.min(1, reveal));
+    }
+    return {
+        reveal,
+        alpha: 1 + (CONTOUR_STAR_ALPHA_MULT_MAX - 1) * reveal,
+        diam: 1 + (CONTOUR_STAR_DIAM_MULT_MAX - 1) * reveal
+    };
 }
 
 function getStarTierRgb(star) {

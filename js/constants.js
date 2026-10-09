@@ -209,6 +209,13 @@ const STAR_PETAL_FADE_MS = MOTION_MICRO_MS;
 const EXTINGUISHED_STAR_BASE_MULT = 0.5;
 /** Погасшая: мягкий ореол вокруг основы, в её диаметрах. */
 const EXTINGUISHED_STAR_HALO_MULT = 2.2;
+/** O-12: погасшая звезда контура головы (`star.contour`, поле cat-head) на отзуме
+ *  ярче и крупнее обычной погасшей: множители растут от 1 при MAX_ZOOM до этих
+ *  значений при минимальном зуме (getContourStarRevealMults, skyRender.js). */
+const CONTOUR_STAR_ALPHA_MULT_MAX = 2.5;
+const CONTOUR_STAR_DIAM_MULT_MAX = 1.5;
+/** O-12: основа контурной звезды на отзуме — не меньше стольких px на экране. */
+const CONTOUR_STAR_MIN_SCREEN_PX = 3;
 /** Атласное созвездие: лепестки (когда горят — в финале) светятся сильнее
  *  обычных. +50 при свечении 90 — значение V-09 до приглушения V-25. */
 const LOCKED_ATLAS_STAR_GLOW_BONUS = 50;

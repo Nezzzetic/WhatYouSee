@@ -315,6 +315,10 @@ function loadGame() {
         for (const star of fieldStars) {
             if (!star) continue;
             if (typeof star.extinguished !== 'boolean') star.extinguished = false;
+            // O-12: признак контура аддитивный — слот без поля читается как false
+            // (`!!star.contour`); ключ не дописывается, чтобы слоты других небес
+            // не менялись ни байтом.
+            if ('contour' in star && typeof star.contour !== 'boolean') star.contour = !!star.contour;
             if (typeof star.sizeFactor !== 'number') star.sizeFactor = 1;
             if (typeof star.colorValue !== 'number' || !Number.isFinite(star.colorValue)) {
                 star.colorValue = pickRandomStarColorValue();
