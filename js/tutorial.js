@@ -337,9 +337,24 @@ function isFirstSkyAllowedTarget(target) {
     return !!(t && target.closest('.achv-seal-current-ready[data-chain-id="' + t.chainId + '"]'));
 }
 
+/**
+ * Мягкий зов O-10, возвращённый правкой O-13 (слова заказчика с телефона:
+ * анимация ленты нужна «и между отдалением и атласом, и после конца уровня»).
+ * После отзума тутора, пока книгу ни разу не открывали, лента пульсирует —
+ * без закрытого неба и без строки. Первое открытие (U-21 — на атласе) снимает
+ * зов навсегда. Условие «тутор пройден»: skipOnboarding тутор не проходит.
+ */
+function isSoftBookInviteActive() {
+    if (typeof achievementCounters === 'undefined' || !achievementCounters) return false;
+    const state = achievementCounters.tutorial;
+    if (!state || !state.done) return false;
+    return !achievementCounters.bookFirstOpenDone;
+}
+
 function getFirstSkyUiKey() {
     const open = typeof isBookOpen === 'function' && isBookOpen();
-    return getFirstSkyStep() + '|' + (isFirstSkyCallActive() ? 1 : 0) + '|' + (open ? 1 : 0);
+    return getFirstSkyStep() + '|' + (isFirstSkyCallActive() ? 1 : 0) + '|' + (open ? 1 : 0)
+        + '|' + (isSoftBookInviteActive() ? 1 : 0);
 }
 
 /**
@@ -542,8 +557,9 @@ function updateTutorialUI() {
 
     if (typeof document === 'undefined' || !document.body) return;
     document.body.classList.toggle('tutor-locked', step !== TUTOR_STEP_NONE);
-    // O-13: зов ленты и закрытое небо — шаг 3 после задержки.
-    document.body.classList.toggle('ribbon-invite', call);
+    // O-13: зов ленты и закрытое небо — шаг 3 после задержки; лента зовёт ещё
+    // и мягко — от отзума до первого открытия книги (isSoftBookInviteActive).
+    document.body.classList.toggle('ribbon-invite', call || (isSoftBookInviteActive() && !bookIsOpen));
     document.body.classList.toggle('book-gate', call);
 
     // O-13: строка тутора в книге (шаги 3–4) — свой узел на листе.
@@ -555,6 +571,7 @@ function updateTutorialUI() {
             ? t(firstSkyStep === FIRST_SKY_STEP_PRESS ? 'tutor.press' : 'tutor.stampsTab')
             : '';
         bookBox.hidden = !showInBook;
+        bookBox.classList.toggle('book-tutor-bottom', firstSkyStep === FIRST_SKY_STEP_PRESS);
     }
     applyFirstSkyHints();
 
@@ -571,8 +588,12 @@ function updateTutorialUI() {
         } else {
             box.hidden = true;
         }
+        // Строка шага 3 — по центру экрана на тёмной подложке: вверху она легла
+        // бы на картуш итогового кадра (V-32), тексты перекрывались.
+        box.classList.toggle('sky-tutor-center', call && !bookIsOpen);
         return;
     }
+    box.classList.remove('sky-tutor-center');
     textEl.textContent = typeof t === 'function'
         ? t(step === TUTOR_STEP_CONNECT ? 'tutor.connect' : 'tutor.zoom')
         : '';

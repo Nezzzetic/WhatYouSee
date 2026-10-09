@@ -594,6 +594,21 @@ button:disabled {
     animation: tutor-in var(--t-scene) var(--ease) both;
 }
 
+/* O-13, шаг 3 на небе: строка по центру экрана на тёмной подложке — у верха
+   она ложилась на картуш итогового кадра (V-32). */
+.sky-tutor.sky-tutor-center {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sky-tutor-center .sky-tutor-text {
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: rgba(4, 8, 18, 0.86);
+    box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5);
+    text-shadow: none;
+}
+
 @keyframes tutor-in {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: none; }
@@ -657,31 +672,58 @@ button:disabled {
    чернилами) и подсветка единственного, что сейчас работает: высечки Stamps
    (шаг 3) или выбранной печати (шаг 4). Под «уменьшить движение» — статичный
    контур. */
+/* Правка O-13 по телефону: строка лежит ПОВЕРХ листа на тёмной подложке, а не
+   в потоке — в потоке она сдвигала всю страницу вниз и терялась на бумаге.
+   Шаг 3 («найди Штампы») — у верха листа, шаг 4 («прижми печать») — у низа:
+   печать стоит в первой строке главы, высечки — у правого края, обе цели
+   остаются открытыми. */
 .book-tutor {
-    padding: 2px 4px 8px;
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 52px;
+    z-index: 30;
     display: flex;
     justify-content: center;
+    pointer-events: none;
+}
+
+.book-tutor.book-tutor-bottom {
+    top: auto;
+    bottom: calc(var(--safe-bottom) + 64px);
 }
 
 .book-tutor-text {
-    max-width: 34ch;
+    max-width: 30ch;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: rgba(8, 12, 24, 0.88);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
     font-family: var(--font-text);
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.35;
-    font-style: italic;
     text-align: center;
     text-wrap: balance;
-    color: var(--ink);
+    color: #F3EAD3;
     animation: tutor-in var(--t-scene) var(--ease) both;
 }
 
+/* Выделение «намного сильнее» (правка по телефону): высечка выдвинута, как
+   активная, залита насыщенным золотом, обведена толстым сургучным контуром и
+   пульсирует широким тёплым свечением — на светлой бумаге золото без тёмного
+   контура не читалось. Поверх соседних высечек — z-index. */
 .book-tab.tutor-hint {
-    animation: tutorHintTab 1.6s ease-in-out infinite alternate;
+    z-index: 2;
+    color: #3A1A10;
+    font-weight: 700;
+    background: #F2B93B;
+    transform: rotate(180deg) translateX(-2px);
+    animation: tutorHintTab 0.9s ease-in-out infinite alternate;
 }
 
 @keyframes tutorHintTab {
-    from { box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.55), 0 0 4px 1px rgba(var(--gold-rgb), 0.35); }
-    to   { box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.95), 0 0 12px 4px rgba(var(--gold-rgb), 0.6); }
+    from { box-shadow: 0 0 0 3px #A83F33, 0 0 8px 4px rgba(168, 63, 51, 0.45); }
+    to   { box-shadow: 0 0 0 4px #A83F33, 0 0 24px 12px rgba(214, 120, 40, 0.9); }
 }
 
 .achv-seal-current-ready.tutor-hint .achv-seal-body {
@@ -699,7 +741,7 @@ button:disabled {
     .book-tutor-text { animation: none; }
     .book-tab.tutor-hint {
         animation: none;
-        box-shadow: 0 0 0 2px rgba(var(--gold-rgb), 0.9), 0 0 8px 2px rgba(var(--gold-rgb), 0.5);
+        box-shadow: 0 0 0 4px #A83F33, 0 0 18px 8px rgba(214, 120, 40, 0.8);
     }
     .achv-seal-current-ready.tutor-hint .achv-seal-body {
         animation: none;
