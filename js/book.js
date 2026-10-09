@@ -60,7 +60,7 @@ function isBookOpen() {
 // «Сегодня»), оглавление (2), главы атласа (3–6), главы штампов (7–9),
 // Calendar (10), Settings (11). В альбомной ориентации книга показывает
 // разворот — две соседние страницы по колонцифре, считая от первой: (1,2),
-// (3,4) … (9,10), последний — Settings одна.
+// (3,4) … (9,10), последний — Settings и чистый лист справа.
 //
 // Состояние прежнее: bookCut + bookPageIndices называют «страницу-фокус» —
 // последнюю, куда игрок перешёл сам. Разворот из неё выводится, а не хранится,
@@ -639,10 +639,14 @@ function renderBook() {
     }
 
     const roots = getVisibleBookPageRoots();
-    // O-14: страниц стало нечётно (11) — на последнем развороте Settings одна,
-    // правый лист прячется, а не держит прежнее содержимое.
+    // O-14: страниц стало нечётно (11) — на последнем развороте Settings одна.
+    // Правка заказчика: справа от неё чистый лист бумаги (book-page-blank
+    // прячет содержимое, но не сам лист), иначе высечки и лента висят в небе.
     const rightPage = document.getElementById('bookPageRight');
-    if (rightPage) rightPage.hidden = !bookSpread || roots.length < 2;
+    if (rightPage) {
+        rightPage.hidden = !bookSpread;
+        rightPage.classList.toggle('book-page-blank', bookSpread && roots.length < 2);
+    }
 
     for (const { page, root } of roots) {
         withBookPageContext(page, root, () => {

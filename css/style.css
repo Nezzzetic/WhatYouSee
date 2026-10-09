@@ -1092,6 +1092,10 @@ button:disabled {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    /* O-14 (правка по телефону): высота глифа стрелки зарезервирована — без
+       видимой стрелки (Ex Libris в развороте, Settings) подвал схлопывался и
+       «ALMANAC · Level N» опускался ниже, чем на остальных страницах. */
+    min-height: 24px;
 }
 
 /* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
@@ -1787,6 +1791,13 @@ body.book-spread .book-page-right {
     right: var(--spread-r);
     padding-left: 22px;
     padding-right: max(var(--page-pad-right), 16px);
+}
+
+/* O-14 (правка по телефону): последний разворот — Settings и чистый лист
+   справа. Бумага, фактура и края листа остаются, содержимое (шапка, тело,
+   подвал со стрелкой «вперёд») невидимо и не берёт касаний. */
+body.book-spread .book-page-blank > * {
+    visibility: hidden;
 }
 
 /* Корешка у края нет ни у одной страницы — каптальчик над жёлобом. */
