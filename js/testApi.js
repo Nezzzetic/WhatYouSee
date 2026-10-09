@@ -108,6 +108,8 @@
             locked: !!star.locked,
             suppressed: !!star.suppressed,
             extinguished: !!star.extinguished,
+            // O-12: погасшая звезда контура головы (cat-head) — ярче на отзуме
+            contour: !!star.contour,
             free: !star.locked && !star.suppressed && !star.extinguished,
             // O-04: шаг 1 тутора гасит всё, кроме своей пары — визуально
             // (camera.js рисует её как suppressed) и по хиту (field.js/drawing.js).
