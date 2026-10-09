@@ -321,7 +321,7 @@ function isFirstSkyCallActive() {
  * замок не касается.
  */
 function isBookGateActive() {
-    return isFirstSkyCallActive();
+    return isFirstSkyCallActive() || isBookInviteGateActive();
 }
 
 /**
@@ -351,10 +351,21 @@ function isSoftBookInviteActive() {
     return !achievementCounters.bookFirstOpenDone;
 }
 
+/**
+ * Жёсткий шаг O-10, возвращённый правкой O-13 (заказчик, круг 3: «как в O-10,
+ * после 3-го созвездия»): мягкий зов с BOOK_INVITE_GATE_CONSTELLATIONS
+ * созвездий за игру закрывает небо и выводит строку. Первое открытие книги
+ * (U-21 — на атласе) снимает его вместе с мягким зовом.
+ */
+function isBookInviteGateActive() {
+    if (!isSoftBookInviteActive()) return false;
+    return (achievementCounters.totalConstellations || 0) >= BOOK_INVITE_GATE_CONSTELLATIONS;
+}
+
 function getFirstSkyUiKey() {
     const open = typeof isBookOpen === 'function' && isBookOpen();
     return getFirstSkyStep() + '|' + (isFirstSkyCallActive() ? 1 : 0) + '|' + (open ? 1 : 0)
-        + '|' + (isSoftBookInviteActive() ? 1 : 0);
+        + '|' + (isSoftBookInviteActive() ? 1 : 0) + '|' + (isBookInviteGateActive() ? 1 : 0);
 }
 
 /**
@@ -551,6 +562,8 @@ function updateTutorialUI() {
     const step = getTutorialStep();
     const firstSkyStep = getFirstSkyStep();
     const call = firstSkyStep !== FIRST_SKY_STEP_NONE && isFirstSkyCallActive();
+    // Жёсткий шаг посреди неба (O-10 → O-13 круг 3): своя строка, тот же вид.
+    const inviteGate = !call && isBookInviteGateActive();
     const bookIsOpen = typeof isBookOpen === 'function' && isBookOpen();
     tutorialRenderedStep = step;
     firstSkyRenderedKey = getFirstSkyUiKey();
@@ -560,7 +573,7 @@ function updateTutorialUI() {
     // O-13: зов ленты и закрытое небо — шаг 3 после задержки; лента зовёт ещё
     // и мягко — от отзума до первого открытия книги (isSoftBookInviteActive).
     document.body.classList.toggle('ribbon-invite', call || (isSoftBookInviteActive() && !bookIsOpen));
-    document.body.classList.toggle('book-gate', call);
+    document.body.classList.toggle('book-gate', call || inviteGate);
 
     // O-13: строка тутора в книге (шаги 3–4) — свой узел на листе.
     const bookBox = document.getElementById('bookTutor');
@@ -582,15 +595,16 @@ function updateTutorialUI() {
     if (step === TUTOR_STEP_NONE) {
         // При открытой книге говорит строка на листе — небесная просвечивала
         // бы в полосе неба над ним вторым голосом.
-        if (call && !bookIsOpen) {
-            textEl.textContent = typeof t === 'function' ? t('tutor.bookReward') : '';
+        const gateLine = (call || inviteGate) && !bookIsOpen;
+        if (gateLine) {
+            textEl.textContent = typeof t === 'function' ? t(call ? 'tutor.bookReward' : 'tutor.book') : '';
             box.hidden = false;
         } else {
             box.hidden = true;
         }
         // Строка шага 3 — по центру экрана на тёмной подложке: вверху она легла
         // бы на картуш итогового кадра (V-32), тексты перекрывались.
-        box.classList.toggle('sky-tutor-center', call && !bookIsOpen);
+        box.classList.toggle('sky-tutor-center', gateLine);
         return;
     }
     box.classList.remove('sky-tutor-center');
