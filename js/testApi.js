@@ -1119,10 +1119,12 @@
             pair,
             cameraLocked: typeof isTutorialCameraLocked === 'function' ? isTutorialCameraLocked() : false,
             bookLocked: typeof isTutorialBookLocked === 'function' ? isTutorialBookLocked() : false,
-            // O-13 (сменило O-10): 0 — зова нет, 2 — зов после первого неба
-            // (лента зовёт и небо закрыто — одной стадией). Подробности — state().firstSky.
-            // Классы body — то, что реально видит CSS, а не пересказ условия.
-            invite: typeof isFirstSkyCallActive === 'function' && isFirstSkyCallActive() ? 2 : 0,
+            // O-13 (сменило O-10): 0 — зова нет, 1 — мягкий зов от отзума до
+            // первого открытия книги (лента пульсирует, небо открыто), 2 — зов
+            // после первого неба (лента зовёт и небо закрыто). Подробности —
+            // state().firstSky. Классы body — то, что реально видит CSS.
+            invite: typeof isFirstSkyCallActive === 'function' && isFirstSkyCallActive() ? 2
+                : (typeof isSoftBookInviteActive === 'function' && isSoftBookInviteActive() ? 1 : 0),
             inviteClasses: {
                 ribbonInvite: document.body.classList.contains('ribbon-invite'),
                 bookGate: document.body.classList.contains('book-gate')
