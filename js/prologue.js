@@ -269,6 +269,12 @@ function selectSky(slotId, options) {
     if (parsed.kind === 'day') {
         // Прошлые дни не выбираются никогда (решение 1 S-04).
         if (parsed.date !== getEffectiveSkyDateInt()) return selectSkyRefusal('past-day');
+        // O-15: небо дня заперто уровнем 2. Замок — только на вход: игрок, уже
+        // сидящий на небе дня, с него не снимается (решение 7), «то же небо» ниже
+        // для него не дойдёт — повторный вход тоже отказ, книга остаётся открытой.
+        if (typeof isDailySkyUnlocked === 'function' && !isDailySkyUnlocked()) {
+            return selectSkyRefusal('locked');
+        }
         target = 'day';
     } else {
         const state = getPrologueLevelState(parsed.n);

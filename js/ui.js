@@ -700,6 +700,7 @@ function levelBannerTitleText(levels) {
  * в одну строку категории, а не повторяются.
  */
 function levelBannerUnlockCategory(key) {
+    if (key === 'daily') return 'daily';
     if (key.indexOf('atlas:') === 0) return 'atlas';
     if (key.indexOf('stamps:') === 0) return 'stamps';
     if (key === 'exlibris') return 'exlibris';
@@ -742,11 +743,13 @@ function levelBannerIconNode(category, key) {
         return icon;
     }
     icon.classList.add('level-banner-icon-plain');
-    icon.appendChild(glyphSign('pen', 20));
+    // O-15: небо дня — знак месяца (касса K-02), Экслибрис — перо.
+    icon.appendChild(glyphSign(category === 'daily' ? 'crescent' : 'pen', 20));
     return icon;
 }
 
 function levelBannerCategoryText(category) {
+    if (category === 'daily') return t('book.levelBannerUnlockDaily');
     if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
     if (category === 'stamps') return t('book.levelBannerUnlockStamps');
     if (category === 'exlibris') return t('book.levelBannerUnlockExLibris');

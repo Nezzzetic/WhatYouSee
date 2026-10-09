@@ -3115,3 +3115,68 @@ body.book-spread .ribbon {
     color: var(--ink-faint);
 }
 
+/* --- O-15: блок «Daily sky» под Прологом, вместо сетки месяца ----------------
+   Надзаголовок тем же шрифтом, что «PROLOGUE»; дата — титулом, как был месяц;
+   кнопка — та же подложка, что у нажимаемой клетки Пролога. До уровня 2 вместо
+   кнопки строка замка (знак K-24 и золотой «level 2»). */
+.book-daily-sky {
+    max-width: 360px;
+    margin: 16px auto 0;
+    text-align: center;
+}
+
+.book-daily-sky-title {
+    font-family: var(--font-text);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.book-daily-sky-date {
+    padding: 4px 0 10px;
+    font-family: var(--font-title);
+    font-size: 17px;
+    line-height: 1.2;
+    color: var(--ink);
+}
+
+.book-daily-sky-go {
+    min-width: 120px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0 24px;
+    border: none;
+    border-radius: 22px;
+    background: rgba(var(--ink-rgb), 0.09);
+    font-family: var(--font-text);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .book-daily-sky-go:hover {
+        background: rgba(var(--ink-rgb), 0.15);
+    }
+}
+
+.book-daily-sky-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--ink-faint);
+    text-align: start;
+}
+
+.book-daily-sky-lock > svg,
+.book-daily-sky-lock > span:first-child {
+    flex: none;
+}
+

@@ -1445,7 +1445,8 @@ const REWARD_PAGES = [
     {
         // U-17: «Рука гранильщика» переехала на вторую страницу Штампов (после
         // «Первого света», перед «Долгим путём») — решение заказчика.
-        // O-08: заперта целиком до уровня 2 (unlockAtIndex: 1 → getAtlasChapterLevel = 2).
+        // O-08: заперта целиком до ступени главы II (unlockAtIndex: 1 →
+        // getAtlasChapterLevel = 3 после O-15, 50 ✦).
         id: 'cutters_hand', sign: ACHIEVEMENT_COLOR_SIGN, title: t('rewardPage.cuttersHand'),
         chainIds: ['color_red', 'color_orange', 'color_yellow', 'color_white', 'color_blue'],
         unlockAtIndex: 1
@@ -1454,8 +1455,8 @@ const REWARD_PAGES = [
         // B-06: порядок — как в balance2.csv (открытая Странник ночей → замки по главам I–IV).
         // O-08: «Долгий путь» вобрал остаток старой страницы (Огранщик, Странник
         // ночей) и всю бывшую Odd Nights (Радуга/Мозаика/Витраж/Калейдоскоп) —
-        // четвёртой главы штампов больше нет. Заперта целиком до уровня 3
-        // (unlockAtIndex: 2 → getAtlasChapterLevel = 3). Одноразовые вызовы
+        // четвёртой главы штампов больше нет. Заперта целиком до ступени главы III
+        // (unlockAtIndex: 2 → getAtlasChapterLevel = 4 после O-15, 200 ✦). Одноразовые вызовы
         // держат свой отдельный замок requiresPageComplete/getChainLockReason
         // независимо от замка самой главы.
         id: 'long_walk', sign: 'gem', title: t('rewardPage.longWalk'),
@@ -1494,18 +1495,20 @@ function getRewardPageUnlockLevel(pageIndex) {
 }
 
 /**
- * U-29: что открыл проход уровней (fromLevel, toLevel] — главы атласа, главы
- * штампов, Экслибрис. Атлас и уровень заперты на одном ряду по построению
- * (`getAtlasChapterLevel`: глава i открывается уровнем i+1) — используется
- * напрямую, без сверки unlockedPageIndices до/после, как делал V-16.
- * Ключи — `atlas:<idx>` / `stamps:<idx>` / `exlibris`, порядок внутри уровня
- * фиксирован (атлас → штампы → Экслибрис), уровни по возрастанию.
+ * U-29: что открыл проход уровней (fromLevel, toLevel] — небо дня (O-15), главы
+ * атласа, главы штампов, Экслибрис. Атлас и уровень заперты на одном ряду по
+ * построению (`getAtlasChapterLevel`) — используется напрямую, без сверки
+ * unlockedPageIndices до/после, как делал V-16.
+ * Ключи — `daily` / `atlas:<idx>` / `stamps:<idx>` / `exlibris`, порядок внутри
+ * уровня фиксирован (небо дня → атлас → штампы → Экслибрис), уровни по возрастанию.
  */
 function getLevelUnlockKeys(fromLevel, toLevel) {
     const keys = [];
     for (let lv = fromLevel + 1; lv <= toLevel; lv++) {
-        const atlasIdx = lv - 1;
-        if (atlasIdx < ATLAS_PAGE_COSTS.length) keys.push('atlas:' + atlasIdx);
+        // O-15: ступень неба дня — своя строка, главы у неё нет.
+        if (lv === DAILY_SKY_UNLOCK_LEVEL) keys.push('daily');
+        const atlasIdx = getAtlasChapterIndexForLevel(lv);
+        if (atlasIdx >= 0) keys.push('atlas:' + atlasIdx);
         for (let i = 0; i < REWARD_PAGES.length; i++) {
             if (typeof REWARD_PAGES[i].unlockAtIndex === 'number'
                 && getRewardPageUnlockLevel(i) === lv) {
