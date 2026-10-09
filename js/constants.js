@@ -831,6 +831,10 @@ const BOOK_DAWN_TICK_MS = 60000;
 // дают. Вернуть (O-15) — снять флаг и снова позвать рендер bookToday.js.
 const DAILY_QUEST_HIDDEN = true;
 
+// O-15: сетка месяца на странице «Sky list» спрятана, а не удалена: модель
+// (getCalendarModel) и рендер живы. Вернуть — снять флаг.
+const CALENDAR_GRID_HIDDEN = true;
+
 // B-04: атлас 4×6 — четыре главы по шесть фигур, с прицелом на окно «первая
 // сессия → третий день» (глава I разрезана в день 1, глава II — в день 2).
 // Пять фигур, не поместившихся в главы (плотные графы, 7–9 рёбер), выведены
@@ -860,9 +864,20 @@ const ATLAS_PAGE_COUNT = ATLAS_PAGES.length;
 // живыми игроками, и кто-то после апдейта окажется уровнем ниже —
 // verify-level-ladder.js это сторожит.
 const LEVEL_TAIL_STEP = 500;
-// L-01: имена уровней живут в словарях (i18n.js, ключи level.0…level.5). С
-// седьмого уровня имя не меняется — держится последнее (getLevelName клампит).
-const LEVEL_NAME_COUNT = 6;
+// O-15: промежуточная ступень без главы — уровень 2 на 15 ✦ открывает небо
+// дня. Пороги глав в ✦ не двигаются, их номера уровней сдвинулись на единицу
+// (глава II — уровень 3, …). Лестница до хвоста — ступени глав и эта, по
+// возрастанию (LEVEL_LADDER).
+const DAILY_SKY_UNLOCK_COST = 15;
+const LEVEL_LADDER = ATLAS_PAGE_COSTS
+    .map((_, i) => ATLAS_PAGE_COSTS.slice(0, i + 1).reduce((sum, cost) => sum + cost, 0))
+    .concat([DAILY_SKY_UNLOCK_COST])
+    .sort((a, b) => a - b);
+const DAILY_SKY_UNLOCK_LEVEL = LEVEL_LADDER.indexOf(DAILY_SKY_UNLOCK_COST) + 1;
+// L-01: имена уровней живут в словарях (i18n.js, ключи level.0…level.6). С
+// восьмого уровня имя не меняется — держится последнее (getLevelName клампит).
+// O-15: имя «Apprentice» вставлено на уровень 2, остальные сохранили свои ✦.
+const LEVEL_NAME_COUNT = 7;
 
 // =============================================================================
 // OBSERVATORY (B-02)
@@ -874,11 +889,10 @@ const LEVEL_NAME_COUNT = 6;
 // S-03: Экслибрис открывается уровнем, а не своим числом. Изначально сел на
 // уровень 2 (та же ступень, что глава II) — правка заказчика 2026-09-13
 // перенесла его на уровень 3 (ту же ступень, что глава III). Порог в ✦ —
-// производная от лестницы, отдельно его не правят.
-const OBSERVATORY_UNLOCK_LEVEL = 3;
-const OBSERVATORY_UNLOCK_COST = ATLAS_PAGE_COSTS
-    .slice(0, OBSERVATORY_UNLOCK_LEVEL)
-    .reduce((sum, cost) => sum + cost, 0);
+// производная от лестницы, отдельно его не правят. O-15: та же ступень
+// 200 ✦ стала уровнем 4.
+const OBSERVATORY_UNLOCK_LEVEL = 4;
+const OBSERVATORY_UNLOCK_COST = LEVEL_LADDER[OBSERVATORY_UNLOCK_LEVEL - 1];
 
 // B-04: производная от масштаба атласа — при старой цене 100 ✦ за звезду холст
 // открывался бы с одной звездой, а окно шкалы у корешка не двигалось бы месяцами.

@@ -1235,6 +1235,9 @@
     function calendar() {
         const model = getCalendarModel();
         return Object.assign({}, model, {
+            // O-15: сетка спрятана (CALENDAR_GRID_HIDDEN), модель жива; блок «Daily sky».
+            gridHidden: CALENDAR_GRID_HIDDEN,
+            daily: getDailySkyBlockModel(),
             activeSlot: getActiveSkySlotId(),
             todaySlot: getTodaySkySlotId(),
             cells: model.cells.map(c => Object.assign({}, c))

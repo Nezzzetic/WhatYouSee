@@ -211,9 +211,28 @@ function getAtlasCumulativeCost(index) {
     return getLevelThreshold(getAtlasChapterLevel(index));
 }
 
-/** S-03: глава с индексом i открывается на уровне i + 1. */
+/**
+ * S-03: уровень, на котором открывается глава с индексом i. O-15: ступень
+ * неба дня встала между главами I и II, поэтому это уже не i + 1, а номер
+ * ступени главы в LEVEL_LADDER.
+ */
 function getAtlasChapterLevel(index) {
-    return Math.max(0, Math.floor(index)) + 1;
+    const i = Math.max(0, Math.floor(index));
+    const cost = ATLAS_PAGE_COSTS.slice(0, i + 1).reduce((sum, c) => sum + c, 0);
+    return LEVEL_LADDER.indexOf(cost) + 1;
+}
+
+/** O-15: индекс главы атласа, которую открывает уровень, или -1 (небо дня, хвост). */
+function getAtlasChapterIndexForLevel(level) {
+    for (let i = 0; i < ATLAS_PAGE_COSTS.length; i++) {
+        if (getAtlasChapterLevel(i) === level) return i;
+    }
+    return -1;
+}
+
+/** O-15: небо дня открывается уровнем DAILY_SKY_UNLOCK_LEVEL (15 ✦). */
+function isDailySkyUnlocked() {
+    return getPlayerLevel() >= DAILY_SKY_UNLOCK_LEVEL;
 }
 
 function getNextLockedAtlasPageIndex() {
@@ -310,27 +329,25 @@ function incrementDevDayOffset() {
 
 /**
  * Порог уровня в ✦ за всё время. Уровень 1 — с нуля; первые ступени —
- * кумулятив цен глав атласа (уровень N открывает главу N), дальше каждые
- * LEVEL_TAIL_STEP без потолка. Единственное место, где считается лестница:
- * шкала у корешка, замки книги, Экслибрис и лента читают её отсюда.
+ * LEVEL_LADDER (кумулятив цен глав атласа плюс ступень неба дня, O-15),
+ * дальше каждые LEVEL_TAIL_STEP без потолка. Единственное место, где
+ * считается лестница: шкала у корешка, замки книги, Экслибрис и лента читают её отсюда.
  */
 function getLevelThreshold(level) {
     const n = Math.max(1, Math.floor(level));
-    const chapters = ATLAS_PAGE_COSTS.length;
-    let sum = 0;
-    for (let i = 0; i < Math.min(n, chapters); i++) sum += ATLAS_PAGE_COSTS[i];
-    if (n > chapters) sum += (n - chapters) * LEVEL_TAIL_STEP;
-    return sum;
+    const steps = LEVEL_LADDER.length;
+    if (n <= steps) return LEVEL_LADDER[n - 1];
+    return LEVEL_LADDER[steps - 1] + (n - steps) * LEVEL_TAIL_STEP;
 }
 
 /** Уровень, который дают `earned` ✦ за всё время. */
 function getLevelForEarned(earned) {
     const e = Math.max(0, Math.floor(Number(earned) || 0));
-    const chapters = ATLAS_PAGE_COSTS.length;
-    const lastChapter = getLevelThreshold(chapters);
-    if (e >= lastChapter) return chapters + Math.floor((e - lastChapter) / LEVEL_TAIL_STEP);
+    const steps = LEVEL_LADDER.length;
+    const lastStep = getLevelThreshold(steps);
+    if (e >= lastStep) return steps + Math.floor((e - lastStep) / LEVEL_TAIL_STEP);
     let level = 1;
-    while (level < chapters && e >= getLevelThreshold(level + 1)) level++;
+    while (level < steps && e >= getLevelThreshold(level + 1)) level++;
     return level;
 }
 
@@ -338,9 +355,9 @@ function getPlayerLevel() {
     return getLevelForEarned(lifetimeMetaEarned);
 }
 
-/** Ступень хвоста — уровень, у которого нет своей главы атласа. */
+/** Ступень хвоста — уровень за LEVEL_LADDER (без главы атласа и неба дня). */
 function isTailLevel(level) {
-    return Math.floor(level) > ATLAS_PAGE_COSTS.length;
+    return Math.floor(level) > LEVEL_LADDER.length;
 }
 
 /**

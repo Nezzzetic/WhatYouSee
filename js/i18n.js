@@ -103,12 +103,14 @@ en: {
     'fallback.42': 'Halo',       'fallback.43': 'Passage',    'fallback.44': 'Pulse',
 
     // --- Уровни (S-03: лестница за ✦ по жизни) --------------------------------
+    // O-15: «Apprentice» вставлен на уровень 2 (15 ✦), остальные сохранили свои ✦.
     'level.0': 'Novice',
-    'level.1': 'Observer',
-    'level.2': 'Stargazer',
-    'level.3': 'Astronomer',
-    'level.4': 'Sky Cartographer',
-    'level.5': 'Constellation Master',
+    'level.1': 'Apprentice',
+    'level.2': 'Observer',
+    'level.3': 'Stargazer',
+    'level.4': 'Astronomer',
+    'level.5': 'Sky Cartographer',
+    'level.6': 'Constellation Master',
 
     // --- Цвета ----------------------------------------------------------------
     'color.red': 'red',
@@ -228,7 +230,11 @@ en: {
     'book.cutAtlas': 'Atlas',
     'book.cutStamps': 'Stamps',
     // S-06: шестая высечка; месяцы и дни недели — Intl, не словарь.
-    'book.cutCalendar': 'Calendar',
+    // O-15: страница переименована в «Sky list»; ключ и id `calendar` прежние.
+    'book.cutCalendar': 'Sky list',
+    'book.dailySkyTitle': 'Daily sky',
+    'book.dailySkyGo': 'Go',
+    'book.dailySkyLocked': 'Daily sky opens at {level}.',
     // S-07: полоса Пролога над сеткой календаря
     'prologue.title': 'Prologue',
     'prologue.name1': 'Cat',
@@ -249,7 +255,7 @@ en: {
     // K-21: надзаголовок разворота, как у остальных страниц (текст уже в CAPS —
     // CSS .book-eyebrow тоже подстраховывает text-transform, но в словаре явно).
     'book.eyebrowExLibris': 'EX LIBRIS',
-    'book.eyebrowCalendar': 'CALENDAR',
+    'book.eyebrowCalendar': 'SKY LIST',
     // K-19: строка оглавления — одна форма и у атласа, и у штампов, римская
     // цифра генерируется (toRoman); «?» вместо имени неразрезанной главы
     // подставляется на вызове, отдельного ключа под него не заводим.
@@ -281,6 +287,7 @@ en: {
     'book.levelBannerUnlockAtlas': 'A new atlas page is available.',
     'book.levelBannerUnlockStamps': 'New achievements are available.',
     'book.levelBannerUnlockExLibris': 'Ex Libris has opened.',
+    'book.levelBannerUnlockDaily': 'The daily sky is open.',
     'book.newsShapeOpened': '{name} — traced for the first time.',
     'book.newsFacetLit': '{name} — a new facet caught the light.',
     'book.newsChainOpen': '{title} — a new achievement is open.',
@@ -453,11 +460,12 @@ ru: {
 
     // --- Уровни ---------------------------------------------------------------
     'level.0': 'Начинающий',
-    'level.1': 'Наблюдатель',
-    'level.2': 'Звездочёт',
-    'level.3': 'Астроном',
-    'level.4': 'Картограф неба',
-    'level.5': 'Мастер созвездий',
+    'level.1': 'Ученик',
+    'level.2': 'Наблюдатель',
+    'level.3': 'Звездочёт',
+    'level.4': 'Астроном',
+    'level.5': 'Картограф неба',
+    'level.6': 'Мастер созвездий',
 
     // --- Цвета ----------------------------------------------------------------
     'color.red': 'красный',
@@ -586,7 +594,10 @@ ru: {
     'book.cutIndex': 'Оглавление',
     'book.cutAtlas': 'Атлас',
     'book.cutStamps': 'Штампы',
-    'book.cutCalendar': 'Календарь',
+    'book.cutCalendar': 'Небеса',
+    'book.dailySkyTitle': 'Небо дня',
+    'book.dailySkyGo': 'Перейти',
+    'book.dailySkyLocked': 'Небо дня откроется на {level}.',
     'prologue.title': 'Пролог',
     'prologue.name1': 'Кот',
     'prologue.name2': 'Близнецы',
@@ -601,7 +612,7 @@ ru: {
     'book.headIndex': 'Оглавление',
     'book.headExLibris': 'Своё небо',
     'book.eyebrowExLibris': 'ЭКСЛИБРИС',
-    'book.eyebrowCalendar': 'КАЛЕНДАРЬ',
+    'book.eyebrowCalendar': 'НЕБЕСА',
     'book.indexChapterTitle': 'Гл. {n} · {name}',
     'book.eyebrowAtlasChapter': 'Атлас · глава {n}',
     // K-12: главы штампов пронумерованы так же, как главы атласа.
@@ -617,6 +628,7 @@ ru: {
     'book.levelBannerUnlockAtlas': 'Доступна новая страница атласа.',
     'book.levelBannerUnlockStamps': 'Доступны новые достижения.',
     'book.levelBannerUnlockExLibris': 'Открылся Экслибрис.',
+    'book.levelBannerUnlockDaily': 'Открыто небо дня.',
     // C-06: род существительного «фигура» несёт согласование за собой — само имя
     // фигуры в кавычках остаётся приложением и не обязано совпадать родом с ним
     // (было «{name} — прочерчена впервые» — ломалось на «Тираннозавр»/«Дракон» и т.п.).

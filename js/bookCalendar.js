@@ -1,5 +1,7 @@
 // bookCalendar.js — страница «Календарь» (S-06): сетка текущего месяца по дате
 // неба, сегодня — живая клетка, остальные числа месяца — серые, не нажимаются.
+// O-15: страница называется «Sky list»; сетка спрятана (CALENDAR_GRID_HIDDEN),
+// под Прологом — блок «Daily sky»: дата и кнопка «Go», до уровня 2 — замок.
 //
 // «Сегодня» берётся только у неба — getEffectiveSkyDateInt() (сутки с 05:00,
 // M-09, плюс dev-смещение и харнесс). Своих часов страница не читает: с 00:00
@@ -205,13 +207,82 @@ function createCalendarCell(cell) {
     return el;
 }
 
-function renderBookCalendar() {
-    renderBookPrologueStrip();
-    const monthEl = bookPart('bookCalendarMonth');
-    if (monthEl) monthEl.textContent = getCalendarPageTitle();
-    const el = bookPart('bookCalendarGrid');
+// =============================================================================
+// O-15: БЛОК «DAILY SKY» — под Прологом, вместо сетки месяца
+// =============================================================================
+
+/** «October 9» / «9 октября» — месяц словом, число цифрой; падеж даёт Intl. */
+function formatDailySkyDate(dateInt) {
+    const { y, m, d } = calendarDateParts(dateInt);
+    try {
+        return new Intl.DateTimeFormat(getCalendarIntlLocale(), { month: 'long', day: 'numeric' })
+            .format(new Date(y, m - 1, d));
+    } catch (e) {
+        return String(d) + '.' + String(m).padStart(2, '0');
+    }
+}
+
+/** Модель блока — та же, из которой строится DOM. Замок считается по уровню, не по месту игрока. */
+function getDailySkyBlockModel() {
+    const today = getEffectiveSkyDateInt();
+    const slot = typeof getTodaySkySlotId === 'function' ? getTodaySkySlotId() : 'day:' + today;
+    return { date: today, label: formatDailySkyDate(today), slot, unlocked: isDailySkyUnlocked() };
+}
+
+function renderBookDailySky() {
+    const el = bookPart('bookCalendarDaily');
     if (!el) return;
     el.innerHTML = '';
+    const model = getDailySkyBlockModel();
+    el.dataset.state = model.unlocked ? 'open' : 'locked';
+
+    const title = document.createElement('div');
+    title.className = 'book-daily-sky-title';
+    title.textContent = t('book.dailySkyTitle');
+    el.appendChild(title);
+
+    const date = document.createElement('div');
+    date.className = 'book-daily-sky-date';
+    date.textContent = model.label;
+    el.appendChild(date);
+
+    if (model.unlocked) {
+        const go = document.createElement('button');
+        go.type = 'button';
+        go.className = 'book-daily-sky-go';
+        go.dataset.slot = model.slot;
+        go.textContent = t('book.dailySkyGo');
+        go.addEventListener('click', () => selectSkyFromCalendar(model.slot));
+        el.appendChild(go);
+        return;
+    }
+    // Замок — как у остальных замков книги: знак K-24 и золотой «level 2».
+    const lock = document.createElement('div');
+    lock.className = 'book-daily-sky-lock';
+    lock.appendChild(glyphSign('lock', 16));
+    const text = document.createElement('span');
+    fillLevelLockText(text, 'book.dailySkyLocked', DAILY_SKY_UNLOCK_LEVEL);
+    lock.appendChild(text);
+    el.appendChild(lock);
+}
+
+function renderBookCalendar() {
+    renderBookPrologueStrip();
+    renderBookDailySky();
+    const host = bookPart('bookCalendarMonthHost');
+    if (!host) return;
+    host.innerHTML = '';
+    if (CALENDAR_GRID_HIDDEN) return;
+    const month = document.createElement('div');
+    month.className = 'book-cal-month';
+    const monthEl = document.createElement('div');
+    monthEl.className = 'book-cal-month-title';
+    monthEl.textContent = getCalendarPageTitle();
+    month.appendChild(monthEl);
+    const el = document.createElement('div');
+    el.className = 'book-cal-grid';
+    month.appendChild(el);
+    host.appendChild(month);
     const model = getCalendarModel();
 
     for (const label of model.weekdays) {

@@ -277,16 +277,14 @@
                     <!-- K-14: настройки — вход только строкой из «Index», своей
                          высечки нет (решение K-06: высечек пять). Первый тумблер —
                          звук; список рассчитан на второй (вибро, A-05/U-14). -->
-                    <!-- S-06: календарь — сетка месяца по дате неба (bookCalendar.js) -->
+                    <!-- S-06: календарь; O-15: страница «Sky list» — Пролог и блок
+                         «Daily sky» (bookCalendar.js). Сетка месяца спрятана
+                         (CALENDAR_GRID_HIDDEN): узлы создаются в хосте, только когда флаг снят. -->
                     <div id="bookCalendarSection" class="book-section" hidden>
-                        <!-- S-07: полоса Пролога над сеткой — семь уровней-небес.
-                             Правка после устройства: Пролог и месяц — два блока,
-                             титул месяца стоит у своей сетки, не в шапке страницы. -->
+                        <!-- S-07: полоса Пролога — семь уровней-небес. -->
                         <div id="bookCalendarPrologue" class="book-prologue"></div>
-                        <div class="book-cal-month">
-                            <div id="bookCalendarMonth" class="book-cal-month-title"></div>
-                            <div id="bookCalendarGrid" class="book-cal-grid"></div>
-                        </div>
+                        <div id="bookCalendarDaily" class="book-daily-sky"></div>
+                        <div id="bookCalendarMonthHost"></div>
                     </div>
                     <div id="bookSettingsSection" class="book-section" hidden>
                         <div id="bookSettingsList" class="settings-list"></div>
