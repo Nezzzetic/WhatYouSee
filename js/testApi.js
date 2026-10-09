@@ -1125,7 +1125,8 @@
             // первого открытия книги (лента пульсирует, небо открыто), 2 — зов
             // после первого неба (лента зовёт и небо закрыто). Подробности —
             // state().firstSky. Классы body — то, что реально видит CSS.
-            invite: typeof isFirstSkyCallActive === 'function' && isFirstSkyCallActive() ? 2
+            // 2 — ещё и жёсткий шаг O-10 с 3-го созвездия до первого открытия.
+            invite: typeof isBookGateActive === 'function' && isBookGateActive() ? 2
                 : (typeof isSoftBookInviteActive === 'function' && isSoftBookInviteActive() ? 1 : 0),
             inviteClasses: {
                 ribbonInvite: document.body.classList.contains('ribbon-invite'),

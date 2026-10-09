@@ -373,6 +373,7 @@ en: {
     // инструкция, а не образ: их читают ровно один раз и им следуют.
     'tutor.connect': 'Drag from one star to the other, then let go.',
     'tutor.zoom': 'Now pull the sky back — pinch two fingers together, or scroll.',
+    'tutor.book': 'Now open your book — tap or click the ribbon in the corner.',
     'tutor.bookReward': 'The sky is whole. Open your book — a reward is waiting.',
     'tutor.stampsTab': 'Find the Stamps tab on the right edge.',
     'tutor.press': 'Press the seal to take your first reward.',
@@ -692,6 +693,7 @@ ru: {
     // --- O-01: тутор первых жестов -----------------------------------------------
     'tutor.connect': 'Проведи от звезды к звезде и отпусти.',
     'tutor.zoom': 'Теперь отдали небо — сведи два пальца или покрути колесо.',
+    'tutor.book': 'Теперь открой книгу — нажми на ленту в углу.',
     'tutor.bookReward': 'Небо собрано. Открой книгу — там ждёт награда.',
     'tutor.stampsTab': 'Найди на правом краю закладку «Штампы».',
     'tutor.press': 'Прижми печать — это твоя первая награда.',
