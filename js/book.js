@@ -667,6 +667,9 @@ function renderBook() {
     updateRibbonSignal();
     // O-13: строка тутора в книге и подсветка — узлы пересозданы рендером.
     if (typeof updateTutorialUI === 'function') updateTutorialUI();
+    // O-17: тик строки ожидания на «Небесах» — заводится/снимается по тому,
+    // что теперь на экране.
+    if (typeof syncDailySkyWaitTick === 'function') syncDailySkyWaitTick();
 }
 
 function refreshBookIfOpen() {
@@ -749,6 +752,7 @@ function closeBook() {
     syncExLibrisAppMode();
     resetRibbons(); // U-31: см. openBook()
     if (typeof updateTutorialUI === 'function') updateTutorialUI(); // O-13
+    if (typeof stopDailySkyWaitTick === 'function') stopDailySkyWaitTick(); // O-17
 }
 
 function switchBookCut(cut) {

@@ -550,6 +550,8 @@
             // O-16: строка «Next sky» / «New sky in…» внизу итогового кадра —
             // последнее, что показал updateNextSkyLine() (кадр draw()).
             nextSkyLine: typeof getNextSkyLineTestState === 'function' ? getNextSkyLineTestState() : null,
+            // O-17: блок «Daily sky» на «Небесах» — go / wait / locked и его тик.
+            dailySkyBlock: typeof getDailySkyBlockTestState === 'function' ? getDailySkyBlockTestState() : null,
             firstSky: {
                 locked: typeof areSealsLocked === 'function' ? areSealsLocked() : false,
                 call: typeof isFirstSkyCallActive === 'function' ? isFirstSkyCallActive() : false,

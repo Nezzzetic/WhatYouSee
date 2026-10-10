@@ -3239,3 +3239,29 @@ body.book-spread .ribbon {
     flex: none;
 }
 
+/* O-17: небо дня пройдено — вместо «Go» строка «New sky in 7 hours». Вид
+   строки замка, не кнопка; высота кнопки (44 px), чтобы блок не прыгал при
+   смене «Go» ↔ ожидание. Не влезает в одну строку — 12 px (.is-compact). */
+.book-daily-sky-wait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    background: transparent;
+}
+
+.book-daily-sky-wait.is-compact {
+    font-size: 12px;
+}
+
+.book-daily-sky-wait-dur {
+    font-weight: 600;
+    color: var(--gold-light);
+}
+
