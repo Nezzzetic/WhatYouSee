@@ -461,6 +461,7 @@ function setup() {
     updateObservatoryUI();
 
     setupBookControls();
+    setupNextSkyLine(); // O-16
     const devControls = document.getElementById("devControls");
     const resetBtn = document.getElementById("resetButton");
     const fullResetBtn = document.getElementById("fullResetButton");
@@ -537,6 +538,7 @@ function draw() {
     // подписей черновика: здесь нечего считать.
     if (appMode === 'observatory') {
         drawObservatoryMode();
+        updateNextSkyLine(); // O-16: в обсерватории строка гаснет
         return;
     }
 
@@ -546,6 +548,7 @@ function draw() {
     updateTutorialProgress();  // O-01: отдалил небо — тутор закрыт, лента вернулась
     drawFieldMode();
     drawCartoucheScreen();     // V-32: картуш итогового кадра раскрытой ночи
+    updateNextSkyLine();       // O-16: строка «Next sky» внизу того же кадра
     drawTutorialGhostScreen(); // O-01: призрак ребра между парой первой ночи
     drawDraftStarCountLabelScreen();
     drawFloatingScores();

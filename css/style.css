@@ -512,6 +512,65 @@ button:disabled {
     filter: drop-shadow(0 0 4px rgba(var(--gold-rgb), 0.65));
 }
 
+/* --- O-16: строка «Next sky» / «New sky in…» внизу итогового кадра ---------
+   Книжная строка, без кнопочной подложки: курсив EB Garamond, золото у
+   активной, приглушённо у ожидания. Стоит над нижним инсетом, по центру,
+   между зонами касания ленты (ширину и кегль держит fitNextSkyLine). Полосу
+   под неё освобождает камера — поле на неё не заходит (NEXT_SKY_LINE_*). */
+.sky-next-line {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--safe-bottom) + 12px);  /* NEXT_SKY_LINE_BOTTOM_GAP_PX */
+    transform: translateX(-50%);
+    z-index: 30;
+    height: 28px;                             /* NEXT_SKY_LINE_LINE_PX */
+    line-height: 28px;
+    padding: 0;
+    font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--gold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: none;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sky-next-line[hidden] {
+    display: none;
+}
+
+.sky-next-line.is-wait {
+    color: var(--ink-muted);
+    cursor: default;
+}
+
+.sky-next-line:focus-visible {
+    outline: 1px solid rgba(var(--gold-rgb), 0.6);
+    outline-offset: 2px;
+}
+
+/* Дыхание до первого тапа за вкладку — золото мягко гаснет и разгорается.
+   Альфу кадра (зум) держит opacity самого узла, дыхание — цвет текста. */
+.sky-next-line.is-breathing {
+    animation: nextSkyBreathe 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes nextSkyBreathe {
+    from { color: rgba(var(--gold-rgb), 1); }
+    to   { color: rgba(var(--gold-rgb), 0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sky-next-line.is-breathing {
+        animation: none;
+    }
+}
+
 /* --- K-11: чертёж закладки-цели — верхний левый угол неба -------------------
    Второй (и последний) постоянный предмет неба помимо ленты, но условный:
    стоит только пока закладка выставлена. Тот же приём, что у ленты — DOM

@@ -43,9 +43,12 @@ function getMinZoomLevel() {
  * картуша (0, пока ночь не раскрыта) до верха нижнего инсета.
  */
 function getCameraViewBand() {
-    const bottom = typeof getUsableViewHeight === 'function'
+    const usable = typeof getUsableViewHeight === 'function'
         ? Math.max(getUsableViewHeight(), 1)
         : Math.max(height, 1);
+    // O-16: снизу — ещё и полоса строки «Next sky» на раскрытой ночи.
+    const lineReserve = typeof getNextSkyLineReserve === 'function' ? getNextSkyLineReserve() : 0;
+    const bottom = Math.max(usable - lineReserve, 2);
     const top = typeof getTopUIHeight === 'function' ? Math.min(getTopUIHeight(), bottom - 1) : 0;
     return { top, bottom };
 }
@@ -62,7 +65,10 @@ let lastCameraMinZoom = 0;
 
 function syncCameraTopReserve() {
     if (typeof appMode !== 'undefined' && appMode !== 'field') return;
-    const reserve = typeof getTopUIHeight === 'function' ? getTopUIHeight() : 0;
+    // O-16: резерв снизу под строку «Next sky» живёт по тому же признаку —
+    // меряем оба разом.
+    const reserve = (typeof getTopUIHeight === 'function' ? getTopUIHeight() : 0)
+        + (typeof getNextSkyLineReserve === 'function' ? getNextSkyLineReserve() : 0);
     if (reserve !== lastCameraTopReserve) {
         const wasAtMin = lastCameraMinZoom > 0 && zoomLevel <= lastCameraMinZoom * (1 + 1e-6);
         lastCameraTopReserve = reserve;
@@ -101,7 +107,9 @@ function getFinaleLayoutFullScreenSize() {
     // V-32: раскрытая ночь отдаёт верх экрана картушу — подписи раскладываются
     // в тот же прямоугольник, что камера (screen − полоса − нижний инсет).
     const top = typeof getCartoucheBand === 'function' ? getCartoucheBand().reserve : 0;
-    return { w, h: Math.max(h - bottomInset - top, 1) };
+    // O-16: и низ — полосе строки «Next sky», как в getCameraViewBand().
+    const lineReserve = typeof NEXT_SKY_LINE_RESERVE_PX === 'number' ? NEXT_SKY_LINE_RESERVE_PX : 0;
+    return { w, h: Math.max(h - bottomInset - top - lineReserve, 1) };
 }
 
 /** V-29: мин-зум полноэкранного неба — см. getFinaleLayoutFullScreenSize(). */

@@ -416,6 +416,19 @@ const CARTOUCHE_MAX_SHARE = 0.3;
 const CARTOUCHE_ZOOM_FADE_FROM = 1.0;
 const CARTOUCHE_ZOOM_FADE_TO = 1.04;
 
+// O-16: строка «Next sky» / «New sky in…» внизу итогового кадра — DOM-узел
+// (nextSkyLine.js). Камера отдаёт снизу её полосу (getCameraViewBand) на любой
+// раскрытой ночи, как V-32 отдаёт верх картушу. Высота полосы фиксированная.
+const NEXT_SKY_LINE_BOTTOM_GAP_PX = 12;   // от --safe-bottom до низа строки
+const NEXT_SKY_LINE_LINE_PX = 28;         // высота строки
+const NEXT_SKY_LINE_TOP_GAP_PX = 14;      // от верха строки до низа поля
+const NEXT_SKY_LINE_RESERVE_PX = NEXT_SKY_LINE_BOTTOM_GAP_PX + NEXT_SKY_LINE_LINE_PX + NEXT_SKY_LINE_TOP_GAP_PX;
+const NEXT_SKY_LINE_SIZE_PX = 20;         // кегль, ужимается до MIN по ширине
+const NEXT_SKY_LINE_MIN_SIZE_PX = 13;
+// Боковой зазор: зона касания ленты занимает [width − 68, width − 12] —
+// строка держится в width − 2 × (68 + 8), симметрично, по центру.
+const NEXT_SKY_LINE_SIDE_PX = 76;
+
 // =============================================================================
 // O-01: ТУТОР ПЕРВЫХ ЖЕСТОВ
 // =============================================================================

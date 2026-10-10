@@ -547,6 +547,9 @@
             // заперты (Кот не пройден); call — зов на небе (лента, book-gate,
             // строка); step — 0 / 3 «открой книгу → Stamps» / 4 «прижми
             // печать»; delayLeftMs — сколько ещё до зова после сцены V-13.
+            // O-16: строка «Next sky» / «New sky in…» внизу итогового кадра —
+            // последнее, что показал updateNextSkyLine() (кадр draw()).
+            nextSkyLine: typeof getNextSkyLineTestState === 'function' ? getNextSkyLineTestState() : null,
             firstSky: {
                 locked: typeof areSealsLocked === 'function' ? areSealsLocked() : false,
                 call: typeof isFirstSkyCallActive === 'function' ? isFirstSkyCallActive() : false,
