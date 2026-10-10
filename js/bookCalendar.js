@@ -222,11 +222,130 @@ function formatDailySkyDate(dateInt) {
     }
 }
 
-/** Модель блока — та же, из которой строится DOM. Замок считается по уровню, не по месту игрока. */
+/**
+ * Модель блока — та же, из которой строится DOM. Замок считается по уровню, не
+ * по месту игрока. O-17: `mode` — 'locked' (замок важнее ожидания) · 'wait'
+ * (сегодняшнее небо дня пройдено — то же определение, что у строки O-16) · 'go'.
+ */
 function getDailySkyBlockModel() {
     const today = getEffectiveSkyDateInt();
     const slot = typeof getTodaySkySlotId === 'function' ? getTodaySkySlotId() : 'day:' + today;
-    return { date: today, label: formatDailySkyDate(today), slot, unlocked: isDailySkyUnlocked() };
+    const unlocked = isDailySkyUnlocked();
+    const mode = !unlocked ? 'locked' : (isTodayDailySkyDone() ? 'wait' : 'go');
+    return { date: today, label: formatDailySkyDate(today), slot, unlocked, mode };
+}
+
+// =============================================================================
+// O-17: ОЖИДАНИЕ НОВОГО НЕБА ДНЯ — строка вместо «Go» и её тик
+// =============================================================================
+// Тик живёт, только пока строка на экране: книга открыта, «Небеса» на одной из
+// видимых страниц, вкладка не в фоне. Ставит и снимает его одна
+// syncDailySkyWaitTick() — из renderBook/closeBook и visibilitychange, поэтому
+// любое число повторных рендеров оставляет один интервал. Граница суток —
+// общим детектором O-17 (nextSkyLine.js), не «нулём» msUntilNextSkyDay().
+
+let dailySkyWaitTimer = null;
+let dailySkyWaitBoundaryAt = null;
+
+/** Строка времени для блока — та же, что у строки O-16 на финальном кадре. */
+function getDailySkyWaitParts() {
+    const ms = typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : 0;
+    return { label: t('book.dawnIn'), duration: formatDawnDuration(ms) };
+}
+
+function createDailySkyWaitLine() {
+    const parts = getDailySkyWaitParts();
+    const line = document.createElement('div');
+    line.className = 'book-daily-sky-wait';
+    line.setAttribute('aria-disabled', 'true');
+    const label = document.createElement('span');
+    label.className = 'book-daily-sky-wait-label';
+    label.textContent = parts.label;
+    const dur = document.createElement('span');
+    dur.className = 'book-daily-sky-wait-dur';
+    dur.textContent = parts.duration;
+    // Обёртка: во flex-строке голый пробел между узлами схлопнулся бы.
+    const text = document.createElement('span');
+    text.className = 'book-daily-sky-wait-text';
+    text.appendChild(label);
+    text.appendChild(document.createTextNode(' '));
+    text.appendChild(dur);
+    line.appendChild(text);
+    return line;
+}
+
+/** Не влезает в одну строку при 13 px — кегль 12 px; перенос и обрезка запрещены. */
+function fitDailySkyWaitLine(line) {
+    line.classList.remove('is-compact');
+    if (line.clientWidth > 0 && line.scrollWidth > line.clientWidth) line.classList.add('is-compact');
+}
+
+function stopDailySkyWaitTick() {
+    if (dailySkyWaitTimer) {
+        clearInterval(dailySkyWaitTimer);
+        dailySkyWaitTimer = null;
+    }
+    dailySkyWaitBoundaryAt = null;
+}
+
+function isDailySkyWaitOnScreen() {
+    if (typeof isBookOpen !== 'function' || !isBookOpen()) return false;
+    if (typeof document !== 'undefined' && document.hidden) return false;
+    if (typeof isBookCutVisible !== 'function' || !isBookCutVisible('calendar')) return false;
+    return getDailySkyBlockModel().mode === 'wait';
+}
+
+function syncDailySkyWaitTick() {
+    if (!isDailySkyWaitOnScreen()) {
+        stopDailySkyWaitTick();
+        return;
+    }
+    if (!dailySkyWaitTimer) {
+        dailySkyWaitBoundaryAt = getSkyDayBoundaryAt();
+        dailySkyWaitTimer = setInterval(tickDailySkyWait, BOOK_DAWN_TICK_MS);
+    }
+}
+
+/**
+ * Раз в минуту — новый текст на той странице, где блок отрисован. Граница
+ * прошла — тик снимается и зовёт штатную смену дня: на Прологе блок
+ * перерисуется на месте (refreshBookIfOpen), на небе дня книгу закроет
+ * startNewDailySky (M-08).
+ */
+function tickDailySkyWait() {
+    if (isSkyDayBoundaryPassed(dailySkyWaitBoundaryAt)) {
+        stopDailySkyWaitTick();
+        if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
+        return;
+    }
+    const parts = getDailySkyWaitParts();
+    const lines = document.querySelectorAll('#book .book-daily-sky-wait');
+    for (const line of lines) {
+        const dur = line.querySelector('.book-daily-sky-wait-dur');
+        if (dur && dur.textContent !== parts.duration) {
+            dur.textContent = parts.duration;
+            fitDailySkyWaitLine(line);
+        }
+    }
+}
+
+/** Харнесс: `__test.state().dailySkyBlock`. */
+function getDailySkyBlockTestState() {
+    const mode = getDailySkyBlockModel().mode;
+    const line = document.querySelector('#book .book-daily-sky-wait');
+    return {
+        mode,
+        text: mode === 'wait' && line ? line.textContent : '',
+        tickActive: !!dailySkyWaitTimer
+    };
+}
+
+if (typeof document !== 'undefined' && document.addEventListener) {
+    document.addEventListener('visibilitychange', () => {
+        // Возврат из фона перерисовывает книгу (bookToday.js → refreshBookIfOpen),
+        // а renderBook заводит тик заново.
+        if (document.hidden) stopDailySkyWaitTick();
+    });
 }
 
 function renderBookDailySky() {
@@ -235,6 +354,7 @@ function renderBookDailySky() {
     el.innerHTML = '';
     const model = getDailySkyBlockModel();
     el.dataset.state = model.unlocked ? 'open' : 'locked';
+    el.dataset.mode = model.mode;
 
     const title = document.createElement('div');
     title.className = 'book-daily-sky-title';
@@ -246,6 +366,12 @@ function renderBookDailySky() {
     date.textContent = model.label;
     el.appendChild(date);
 
+    if (model.mode === 'wait') {
+        const line = createDailySkyWaitLine();
+        el.appendChild(line);
+        fitDailySkyWaitLine(line);
+        return;
+    }
     if (model.unlocked) {
         const go = document.createElement('button');
         go.type = 'button';

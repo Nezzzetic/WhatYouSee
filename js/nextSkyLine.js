@@ -67,17 +67,36 @@ function getNextSkyLineWaitText() {
     return t('book.dawnIn') + ' ' + formatDawnDuration(ms);
 }
 
+// O-17: общий детектор пересечения границы суток неба (05:00) — для тика этой
+// строки и тика блока «Daily sky» на «Небесах». Ждать `msUntilNextSkyDay() <= 0`
+// нельзя: в 05:00:00 функция сразу прыгает на ≈ 24 ч и нуля не отдаёт никогда.
+// Поэтому момент границы запоминается при входе в режим ожидания, и тик
+// сравнивает с ним настоящие часы.
+
+/** Абсолютный момент (ms эпохи) ближайшей границы суток неба. */
+function getSkyDayBoundaryAt() {
+    const ms = typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : 0;
+    return Date.now() + ms;
+}
+
+/** Граница, запомненная `getSkyDayBoundaryAt()`, уже пройдена. */
+function isSkyDayBoundaryPassed(boundaryAt) {
+    return typeof boundaryAt === 'number' && Date.now() >= boundaryAt;
+}
+
+let nextSkyLineBoundaryAt = null;
+
 function stopNextSkyLineTimer() {
     if (nextSkyLineTimer) {
         clearInterval(nextSkyLineTimer);
         nextSkyLineTimer = null;
     }
+    nextSkyLineBoundaryAt = null;
 }
 
-/** Тик ожидания, раз в минуту. На нуле — штатная смена дня, как у O-03. */
+/** Тик ожидания, раз в минуту. Граница суток прошла — штатная смена дня, как у O-03. */
 function tickNextSkyLine() {
-    const ms = typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : 0;
-    if (ms <= 0) {
+    if (isSkyDayBoundaryPassed(nextSkyLineBoundaryAt)) {
         stopNextSkyLineTimer();
         if (typeof checkSkyDateOnResume === 'function') checkSkyDateOnResume();
         return;
@@ -158,7 +177,10 @@ function updateNextSkyLine() {
     fitNextSkyLine(el);
 
     if (mode === 'wait') {
-        if (!nextSkyLineTimer) nextSkyLineTimer = setInterval(tickNextSkyLine, BOOK_DAWN_TICK_MS);
+        if (!nextSkyLineTimer) {
+            nextSkyLineBoundaryAt = getSkyDayBoundaryAt();
+            nextSkyLineTimer = setInterval(tickNextSkyLine, BOOK_DAWN_TICK_MS);
+        }
     } else {
         stopNextSkyLineTimer();
     }
