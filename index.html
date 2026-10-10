@@ -156,6 +156,11 @@
             </span>
         </div>
 
+        <!-- O-16: строка внизу итогового кадра раскрытой ночи — «Next sky»
+             (кнопка: книга на «Небесах») или «New sky in…» (просто текст).
+             Показ, текст и роль держит updateNextSkyLine (nextSkyLine.js). -->
+        <div id="skyNextLine" class="sky-next-line" hidden aria-live="polite"></div>
+
         <!-- O-01: строка тутора первых жестов — верх экрана. Единственное место,
              где игра говорит словами поверх неба, и живёт оно ровно одну ночь:
              после отзума узел скрывается навсегда (флаг в сейве прогрессии). -->
@@ -386,6 +391,7 @@
     <!-- S-07: Пролог — опирается на слоты save.js -->
     <script src="js/prologue.js"></script>
     <script src="js/tutorial.js"></script>
+    <script src="js/nextSkyLine.js"></script>
     <!-- P-05: аналитика идёт ПЕРЕД sketch.js, но работает только после
          loadProgression() (startAnalytics() зовётся из setup()). Раннее
          подключение нужно ради перехвата ошибок с самой загрузки — как у
