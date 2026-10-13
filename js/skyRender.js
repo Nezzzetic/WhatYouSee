@@ -944,6 +944,9 @@ function drawConstellationLabels() {
 }
 
 function drawFieldMode() {
+    // V-36: метеоры — экранные, позади пыли, звёзд и линий; зум их не меняет.
+    drawSkyMeteorsScreen();
+
     push();
     scale(zoomLevel);
     translate(-camX, -camY);
@@ -961,6 +964,9 @@ function drawFieldMode() {
     push();
     drawVisibleStars();
     pop();
+
+    // V-36: блик — в мире, поверх своей звезды.
+    drawSkyGlintsWorld();
 
     if (isDragging && currentStartStar) {
         const chainRgb = typeof getDraftChainColorRgb === 'function'
@@ -1136,13 +1142,32 @@ function drawSparkleShape(x, y, diam, rayMult) {
  * через точку на радиусе талии. Вызывающий сам делает fill(...).
  * На минимальном зуме лучи нечитаемы — точка, как у искры.
  */
-function drawStarPetalsShape(x, y, diam, rayMult) {
+function drawStarPetalsShape(x, y, diam, rayMult, spin) {
     if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
         circle(x, y, diam);
         return;
     }
     const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1);
     const g = STAR_PETAL_GEOMETRY;
+    if (spin) {
+        // V-36: поворот всей розетки и растяжка длинных (чётных) лучей;
+        // талия стоит — тянутся только кончики.
+        const c = Math.cos(spin.angle), s = Math.sin(spin.angle);
+        const tip = (p, i) => {
+            const m = i % 2 ? R : R * spin.longMult;
+            return [x + (p.tx * c - p.ty * s) * m, y + (p.tx * s + p.ty * c) * m];
+        };
+        beginShape();
+        const t0 = tip(g[0], 0);
+        vertex(t0[0], t0[1]);
+        for (let i = 1; i <= 8; i++) {
+            const p = g[i % 8];
+            const t = tip(p, i % 8);
+            quadraticVertex(x + (p.cx * c - p.cy * s) * R, y + (p.cx * s + p.cy * c) * R, t[0], t[1]);
+        }
+        endShape(CLOSE);
+        return;
+    }
     beginShape();
     vertex(x + g[0].tx * R, y + g[0].ty * R);
     for (let i = 1; i <= 8; i++) {
@@ -1186,6 +1211,8 @@ function drawVisibleStars() {
     // Проверка раз за вызов, а не на звезду: matchMedia в цикле по полю дорог.
     const nowMs = millis();
     const breathEnabled = !(typeof prefersReducedMotion === 'function' && prefersReducedMotion());
+    // V-36: вращение лучей — тот же выключатель плюс шов автопроверок.
+    const spinMotion = typeof isSkyLifeMotionAllowed === 'function' && isSkyLifeMotionAllowed();
     noStroke();
     for (let star of fieldStars) {
         if (!star) continue;
@@ -1341,17 +1368,20 @@ function drawVisibleStars() {
 
         // Лепестки — три вложенных слоя: белое гало → цветное свечение → ядро.
         // Погашенные не рисуются вовсе: у звезды созвездия кадр легче, чем был.
+        // V-36: угол считается и у погашенных лепестков — звезда, вошедшая в
+        // созвездие, замораживает его в первый же кадр, пока лепестки видны.
+        const spin = spinMotion ? getStarPetalSpin(star, nowMs, true) : null;
         if (petalLayerAlpha > 0.004) {
             // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
             fill(255, 255, 255, Math.min(255, 25 * petalLayerAlpha * feedbackBrighten));
-            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult, spin);
 
             fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * petalLayerAlpha * feedbackBrighten));
-            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult, spin);
 
             fill(coreColor[0], coreColor[1], coreColor[2],
                 coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * petalLayerAlpha);
-            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult, spin);
         }
 
         // Основа — поверх лепестков, чуть светлее тира (у подавленной — её же

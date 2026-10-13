@@ -1334,6 +1334,25 @@
          *  пауза между вещами. Без него «музыка включилась» не отличить от
          *  «тумблер переключился». */
         music: () => (typeof musicState === 'function' ? musicState() : null),
+        /** V-36: срез живого неба — туманность, метеоры, блики, вращение. Только чтение. */
+        skyLife: () => skyLifeState(),
+        /** V-36: шаг живого неба без кадра в момент t (millis() подменяют сами):
+         *  события + принудительный рендер туманности. Для выборок за 120 с. */
+        skyLifeTick: (t, o = {}) => {
+            updateNebulaBuffer(t, o.nebula !== false);
+            updateSkyLifeEvents(t);
+            return skyLifeState();
+        },
+        /** V-36: шов «небо стоит» — гасит все четыре эффекта (verify-calm-twinkle). */
+        skyLifeSuspend: on => { setSkyLifeSuspended(on); return !!on; },
+        /** V-36: FNV-хеш пикселей буфера туманности. */
+        nebulaHash: () => {
+            if (!nebulaBuffer) return null;
+            const d = nebulaBuffer.getContext('2d').getImageData(0, 0, nebulaBuffer.width, nebulaBuffer.height).data;
+            let h = 0x811c9dc5;
+            for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
+            return (h >>> 0).toString(16);
+        },
         errors,
         clearErrors,
         // Служебное: открыть/закрыть книгу без жеста (жесты — уровень MobAI).

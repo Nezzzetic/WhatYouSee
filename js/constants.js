@@ -37,6 +37,64 @@ const GOLD_LIGHT_RGB = [240, 216, 166];
 /** Туманность на небе: подмешивается к ночи, из палитры не выходит. */
 const NEBULA_TINT_RGB = [30, 58, 104];
 
+// --- V-36: живое небо (сила 1 прототипа dev/Prototypes/StarsAlive) ------------
+/** Туманность: свой шум с фиксированным зерном — рисунок один при каждой
+ *  загрузке и ресайзе. Буфер в 1/STEP разрешения, обновляется раз в N кадров. */
+const NEBULA_NOISE_SEED = 7;
+const NEBULA_BUFFER_STEP = 6;
+const NEBULA_UPDATE_EVERY_FRAMES = 4;
+/** Масштаб шума на экранный px (как у прежней туманности, `noise(x * 0.003)`). */
+const NEBULA_NOISE_SCALE = 0.003;
+/** Дрейф двух слоёв шума, единиц шума за мс. */
+const NEBULA_DRIFT_X_PER_MS = 0.000018;
+const NEBULA_DRIFT_Y_PER_MS = 0.000011;
+const NEBULA_BREATH_AMP = 0.35;
+const NEBULA_BREATH_PERIOD_MS = 9000;
+/** Потолок альфы в единицах прототипа: неподвижный кадр / прибавка живого. */
+const NEBULA_ALPHA_STATIC = 18;
+const NEBULA_ALPHA_LIVE_EXTRA = 14;
+/** Единицы прототипа → альфа пикселя буфера (живая туманность, как в прототипе). */
+const NEBULA_ALPHA_SCALE = 2.2;
+/** Неподвижный кадр (reduce) — «на глаз как прежняя игра» (развилка 5 V-36):
+ *  прототип при ×2.2 был в ~16 раз ярче прежней туманности (средняя альфа 8.3
+ *  против 0.52 по шести зёрнам p5 noise()), поэтому у кадра свой множитель. */
+const NEBULA_ALPHA_SCALE_STATIC = 0.14;
+
+/** Метеоры — экранные, позади звёзд и пыли. */
+const SKY_METEOR_INTERVAL_MIN_MS = 5000;
+const SKY_METEOR_INTERVAL_MAX_MS = 12000;
+const SKY_METEOR_SPEED_MIN = 700;   // px/с
+const SKY_METEOR_SPEED_MAX = 1200;
+const SKY_METEOR_LEN_MIN = 120;     // хвост, px
+const SKY_METEOR_LEN_MAX = 260;
+const SKY_METEOR_LIFE_MIN_MS = 650;
+const SKY_METEOR_LIFE_MAX_MS = 1100;
+/** Угол от вертикали, рад; сторона (влево/вправо) — монеткой. */
+const SKY_METEOR_ANGLE_MIN = 0.35;
+const SKY_METEOR_ANGLE_MAX = 0.85;
+const SKY_METEOR_LINE_PX = 1.6;
+
+/** Блик: крест на свободной видимой звезде, режим `lighter`. */
+const SKY_GLINT_INTERVAL_MIN_MS = 1000;
+const SKY_GLINT_INTERVAL_MAX_MS = 3000;
+const SKY_GLINT_DUR_MIN_MS = 1100;
+const SKY_GLINT_DUR_MAX_MS = 1600;
+const SKY_GLINT_PEAK = 0.35;          // доля длительности до пика
+const SKY_GLINT_LEN_MULT = 5.6;       // длинный луч = размер звезды × …
+const SKY_GLINT_SHORT_MULT = 0.62;    // короткий луч от длинного
+const SKY_GLINT_ROT_MAX = 0.25;       // рад, в обе стороны
+
+/** Вращение лепестков свободной звезды: оборот 1–2 мин, направление своё. */
+const STAR_SPIN_SPEED_MIN = 0.05;     // рад/с
+const STAR_SPIN_SPEED_MAX = 0.10;
+const STAR_SPIN_LONG_AMP = 0.08;      // длинные лучи ×(1 ± …)
+const STAR_SPIN_LONG_RATE = 0.6;      // рад/с колебания длины
+
+/** Скачок `millis()` больше этого (вкладка из фона, снятый reduce) — расписание
+ *  событий начинается заново от текущего момента, без догона пропущенного. */
+const SKY_LIFE_JUMP_MS = 1000;
+const SKY_LIFE_SEED_SALT = 'v36-sky-life';
+
 // --- Движение: два темпа и одна кривая ---------------------------------------
 // Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900, только в CSS). Темп назначается
 // движению, которое игрок видит ОТДЕЛЬНЫМ событием: отклику на его касание

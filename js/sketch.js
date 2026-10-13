@@ -4,7 +4,7 @@
 // SKY BACKGROUND
 // =============================================================================
 
-let nebulaBuffer = null;
+// V-36: туманность (буфер, шум, обновление) живёт в skyLife.js.
 
 function drawSkyGradient() {
     const ctx = drawingContext;
@@ -14,26 +14,6 @@ function drawSkyGradient() {
     grad.addColorStop(1, `rgb(${NIGHT_RGB.join(',')})`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-}
-
-function generateNebulaBuffer() {
-    if (nebulaBuffer) {
-        nebulaBuffer.remove();
-        nebulaBuffer = null;
-    }
-    nebulaBuffer = createGraphics(width, height);
-    nebulaBuffer.noStroke();
-    const step = 3;
-    for (let x = 0; x < width; x += step) {
-        for (let y = 0; y < height; y += step) {
-            const n = noise(x * 0.003, y * 0.003);
-            if (n > 0.55) {
-                const a = map(n, 0.55, 1.0, 0, 18);
-                nebulaBuffer.fill(NEBULA_TINT_RGB[0], NEBULA_TINT_RGB[1], NEBULA_TINT_RGB[2], a);
-                nebulaBuffer.rect(x, y, step, step);
-            }
-        }
-    }
 }
 
 // =============================================================================
@@ -532,7 +512,10 @@ function checkSkyDateOnResume() {
 
 function draw() {
     drawSkyGradient();
-    if (nebulaBuffer) image(nebulaBuffer, 0, 0);
+    // V-36: живое небо — туманность и события считаются раз за кадр до отрисовки;
+    // в обсерватории туманность замирает, события не идут.
+    updateSkyLife(millis());
+    drawNebulaBuffer();
 
     // B-02: обсерватория — второй мир на том же канвасе. Ни счётчиков, ни
     // подписей черновика: здесь нечего считать.
