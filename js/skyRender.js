@@ -1003,9 +1003,17 @@ function drawVisibleBackgroundStars() {
     const bgFadeDuration = STAR_FADE_DURATION * skyFadeScale * 0.5;
     const bgFadeAlpha = bgFadeDuration > 0 ? constrain(bgElapsed / bgFadeDuration, 0, 1) : 1;
     noStroke();
+    // V-35: пыль — дальний слой. Сдвиг в мировых единицах внутри камеры поля;
+    // отсечение — по тому же сдвинутому окну, иначе по краю экрана полоса без пыли.
+    const par = getSkyParallax();
+    const dx = par.offX / zoomLevel, dy = par.offY / zoomLevel;
+    const wx0 = par.dustWindow.x0, wy0 = par.dustWindow.y0;
+    const wx1 = par.dustWindow.x1, wy1 = par.dustWindow.y1;
+    push();
+    translate(dx, dy);
     for (let s of fieldBackgroundStars) {
-        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
-            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        if (s.x < wx0 - 10 || s.x > wx1 + 10 ||
+            s.y < wy0 - 10 || s.y > wy1 + 10) continue;
         // K-03: пыль неподвижна. Мерцание фона делало поле труднее читаемым
         // (мелкая точка то видна, то нет) — дышат только крупные узлы.
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
@@ -1019,11 +1027,12 @@ function drawVisibleBackgroundStars() {
     // продолжается за боковые края поля — только отрисовка: поле, сейв и
     // random() неба не трогаются (M-14), в портрете бока не видны.
     for (let s of getSkySideDust()) {
-        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
-            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        if (s.x < wx0 - 10 || s.x > wx1 + 10 ||
+            s.y < wy0 - 10 || s.y > wy1 + 10) continue;
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
         circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
     }
+    pop();
     // P-17 (шестая правка): неактивные звёзды за боками — фон, не цель: без
     // цвета, лучей и основы звезды поля, серо-белая точка с тусклым ореолом,
     // крупнее пыли. Их нет в fieldStars, getStarAt их не видит.
@@ -1039,6 +1048,30 @@ function drawVisibleBackgroundStars() {
         fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 150 * a);
         circle(s.x, s.y, core);
     }
+}
+
+/**
+ * V-35: параллакс пыли от обзора. D — на сколько экранных px центр поля ушёл
+ * от своей точки на обзоре (centerCamera()), пыль получает добавку −(1−k)·D.
+ * Состояния нет — всё из текущей камеры, канваса и полосы. dustWindow — мировой
+ * прямоугольник, из которого берётся пыль (истинное окно, сдвинутое на −off).
+ */
+function getSkyParallax() {
+    const z = zoomLevel;
+    const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+    const k = reduced ? 1 : BG_PARALLAX;
+    let offX = 0, offY = 0;
+    if (k !== 1 && (typeof appMode === 'undefined' || appMode === 'field')) {
+        const band = getCameraViewBand();
+        const homeX = width / 2, homeY = (band.top + band.bottom) / 2;
+        offX = -(1 - k) * ((FIELD_WIDTH / 2 - camX) * z - homeX);
+        offY = -(1 - k) * ((FIELD_HEIGHT / 2 - camY) * z - homeY);
+    }
+    const x0 = camX - offX / z, y0 = camY - offY / z;
+    return {
+        k, reduced, offX, offY,
+        dustWindow: { x0, y0, x1: x0 + width / z, y1: y0 + height / z }
+    };
 }
 
 /** Детерминированный генератор (mulberry32) — не трогает random() неба (M-14). */
