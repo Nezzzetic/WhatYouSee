@@ -4,7 +4,7 @@
 // SKY BACKGROUND
 // =============================================================================
 
-let nebulaBuffer = null;
+// V-36: туманность (буфер, шум, обновление) живёт в skyLife.js.
 
 function drawSkyGradient() {
     const ctx = drawingContext;
@@ -14,26 +14,6 @@ function drawSkyGradient() {
     grad.addColorStop(1, `rgb(${NIGHT_RGB.join(',')})`);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, width, height);
-}
-
-function generateNebulaBuffer() {
-    if (nebulaBuffer) {
-        nebulaBuffer.remove();
-        nebulaBuffer = null;
-    }
-    nebulaBuffer = createGraphics(width, height);
-    nebulaBuffer.noStroke();
-    const step = 3;
-    for (let x = 0; x < width; x += step) {
-        for (let y = 0; y < height; y += step) {
-            const n = noise(x * 0.003, y * 0.003);
-            if (n > 0.55) {
-                const a = map(n, 0.55, 1.0, 0, 18);
-                nebulaBuffer.fill(NEBULA_TINT_RGB[0], NEBULA_TINT_RGB[1], NEBULA_TINT_RGB[2], a);
-                nebulaBuffer.rect(x, y, step, step);
-            }
-        }
-    }
 }
 
 // =============================================================================
@@ -175,6 +155,76 @@ function getBottomUIHeight() {
 /** Высота канваса, не перекрытая нижним UI. */
 function getUsableViewHeight() {
     return Math.max(1, height - getBottomUIHeight());
+}
+
+/**
+ * V-32: верхний инсет (вырез камеры, статус) в px. `--safe-top` из JS не
+ * прочесть — меряем скрытым узлом с `height: var(--safe-top)`, тот же приём,
+ * что bottomInsetPx() в book.js. В браузере ноль.
+ */
+function topInsetPx() {
+    let probe = document.getElementById('topInsetProbe');
+    if (!probe) {
+        probe = document.createElement('div');
+        probe.id = 'topInsetProbe';
+        probe.setAttribute('aria-hidden', 'true');
+        probe.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:var(--safe-top);'
+            + 'visibility:hidden;pointer-events:none;';
+        document.body.appendChild(probe);
+    }
+    return Math.round(probe.getBoundingClientRect().height) || 0;
+}
+
+/**
+ * V-32: высота полосы картуша — чистая функция от высоты экрана и инсета.
+ * Полная раскладка (заголовок + числа + легенда + орнамент), если вся полоса
+ * с зазором до поля не больше CARTOUCHE_MAX_SHARE высоты, иначе сжатая.
+ * `band` — от верха экрана до низа орнамента включительно; `reserve` — сколько
+ * камера отдаёт сверху (полоса + зазор до поля).
+ */
+function computeCartoucheBand(screenH, safeTop) {
+    const fullContent = CARTOUCHE_TITLE_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_NUM_LINE_PX + CARTOUCHE_CAPTION_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_LEGEND_LINE_PX + CARTOUCHE_ROW_GAP_PX + CARTOUCHE_ORNAMENT_LINE_PX;
+    const compactContent = CARTOUCHE_COMPACT_TITLE_LINE_PX + CARTOUCHE_ROW_GAP_PX
+        + CARTOUCHE_COMPACT_ROW_LINE_PX + CARTOUCHE_ROW_GAP_PX + CARTOUCHE_ORNAMENT_LINE_PX;
+    const head = safeTop + CARTOUCHE_TOP_GAP_PX;
+    const fullReserve = head + fullContent + CARTOUCHE_BOTTOM_GAP_PX;
+    const compact = fullReserve > screenH * CARTOUCHE_MAX_SHARE;
+    const band = head + (compact ? compactContent : fullContent);
+    return { compact, top: head, band, reserve: band + CARTOUCHE_BOTTOM_GAP_PX };
+}
+
+/**
+ * V-32: полоса картуша на ПОЛНОЭКРАННОМ небе — по размеру `#app`, а не
+ * текущего канваса (холст бывает вклеен в Ex Libris, K-13; урок V-29).
+ */
+function getCartoucheBand() {
+    const app = document.getElementById('app');
+    const h = Math.max(app ? app.clientHeight : height, 1);
+    return computeCartoucheBand(h, topInsetPx());
+}
+
+/**
+ * V-32: ночь, у которой есть итоговый кадр с картушем. Персистентный признак
+ * плюс непустое небо: до загрузки сейва `constellationArtRevealed` по
+ * умолчанию `true`, свежее поле сбрасывает его в `false`.
+ */
+function isCartoucheNight() {
+    if (typeof constellationArtRevealed === 'undefined' || !constellationArtRevealed) return false;
+    if (!Array.isArray(constellations) || constellations.length === 0) return false;
+    if (appMode !== 'field') return false;
+    if (typeof isExLibrisEmbedActive === 'function' && isExLibrisEmbedActive()) return false;
+    return true;
+}
+
+/**
+ * V-32: сколько px камера отдаёт сверху под картуш. Зависит только от
+ * персистентного признака и экрана — не от «картуш сейчас нарисован» (книга,
+ * сцена, зум): иначе камера прыгала бы на открытии книги и на старте сцены.
+ */
+function getTopUIHeight() {
+    return isCartoucheNight() ? getCartoucheBand().reserve : 0;
 }
 
 /** Match p5 canvas size to the visible game area (e.g. after CSS margin for side HUD). */
@@ -395,6 +445,7 @@ function setup() {
     updateObservatoryUI();
 
     setupBookControls();
+    setupNextSkyLine(); // O-16
     const devControls = document.getElementById("devControls");
     const resetBtn = document.getElementById("resetButton");
     const fullResetBtn = document.getElementById("fullResetButton");
@@ -465,19 +516,26 @@ function checkSkyDateOnResume() {
 
 function draw() {
     drawSkyGradient();
-    if (nebulaBuffer) image(nebulaBuffer, 0, 0);
+    // V-36: живое небо — туманность и события считаются раз за кадр до отрисовки;
+    // в обсерватории туманность замирает, события не идут.
+    updateSkyLife(millis());
+    drawNebulaBuffer();
 
     // B-02: обсерватория — второй мир на том же канвасе. Ни счётчиков, ни
     // подписей черновика: здесь нечего считать.
     if (appMode === 'observatory') {
         drawObservatoryMode();
+        updateNextSkyLine(); // O-16: в обсерватории строка гаснет
         return;
     }
 
     updateEdgePanDuringDraw(); // U-07: пан камеры, если палец у края во время рисования
+    syncCameraTopReserve();    // V-32: резерв под картуш появился/ушёл — камера в новый прямоугольник
     updateLevelFinaleCamera(); // V-13: отзум финала ночи — до отрисовки кадра
     updateTutorialProgress();  // O-01: отдалил небо — тутор закрыт, лента вернулась
     drawFieldMode();
+    drawCartoucheScreen();     // V-32: картуш итогового кадра раскрытой ночи
+    updateNextSkyLine();       // O-16: строка «Next sky» внизу того же кадра
     drawTutorialGhostScreen(); // O-01: призрак ребра между парой первой ночи
     drawDraftStarCountLabelScreen();
     drawFloatingScores();

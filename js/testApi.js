@@ -108,6 +108,8 @@
             locked: !!star.locked,
             suppressed: !!star.suppressed,
             extinguished: !!star.extinguished,
+            // O-12: погасшая звезда контура головы (cat-head) — ярче на отзуме
+            contour: !!star.contour,
             free: !star.locked && !star.suppressed && !star.extinguished,
             // O-04: шаг 1 тутора гасит всё, кроме своей пары — визуально
             // (camera.js рисует её как suppressed) и по хиту (field.js/drawing.js).
@@ -201,6 +203,9 @@
                 if (o.skipOnboarding && achievementCounters) {
                     achievementCounters.prologuePassed = PROLOGUE_PICTURE_IDS.map((_, i) => i + 1);
                     achievementCounters.activeSky = 'day';
+                    // O-13: сценарии с пройденным Прологом играют «старым
+                    // игроком» — ни замка печатей, ни зова в книгу.
+                    achievementCounters.sealLockExempt = true;
                 }
             }
         });
@@ -538,6 +543,25 @@
                 : [],
             // B-02: накопитель обсерватории живёт параллельно балансу ✦
             observatory: observatoryState(),
+            // O-13: печати первого неба и шаги 3–4 тутора. locked — печати
+            // заперты (Кот не пройден); call — зов на небе (лента, book-gate,
+            // строка); step — 0 / 3 «открой книгу → Stamps» / 4 «прижми
+            // печать»; delayLeftMs — сколько ещё до зова после сцены V-13.
+            // O-16: строка «Next sky» / «New sky in…» внизу итогового кадра —
+            // последнее, что показал updateNextSkyLine() (кадр draw()).
+            nextSkyLine: typeof getNextSkyLineTestState === 'function' ? getNextSkyLineTestState() : null,
+            // O-17: блок «Daily sky» на «Небесах» — go / wait / locked и его тик.
+            dailySkyBlock: typeof getDailySkyBlockTestState === 'function' ? getDailySkyBlockTestState() : null,
+            firstSky: {
+                locked: typeof areSealsLocked === 'function' ? areSealsLocked() : false,
+                call: typeof isFirstSkyCallActive === 'function' ? isFirstSkyCallActive() : false,
+                step: typeof getFirstSkyStep === 'function' ? getFirstSkyStep() : 0,
+                delayLeftMs: typeof getFirstSkyCallDelayLeftMs === 'function'
+                    && typeof isFirstSkyBookLocked === 'function' && isFirstSkyBookLocked()
+                    ? getFirstSkyCallDelayLeftMs() : 0,
+                exempt: !!(achievementCounters && achievementCounters.sealLockExempt),
+                target: typeof getFirstSkyTarget === 'function' ? getFirstSkyTarget() : null
+            },
             // K-11: закладка-цель — терпимое поле прогрессии, не поля.
             bookmarkedShape: typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null,
             // S-06: первый день игрока — начало сетки календаря (0 = не задан).
@@ -669,9 +693,8 @@
             // K-17: сигналы концепта — то, что сценарий не может увидеть ни по
             // модели, ни по одному узлу: видна ли шкала физически (её
             // закрашивала страница), куда целится монета и на какой высечке
-            // горит капля. O-11 сняла отсюда `todayState` вместе с блоком
-            // `#bookTodayState` — тот же факт теперь виден проще, срезом
-            // `__test.todayDawn()`.
+            // горит капля. O-14 сняла высечку «Сегодня» — вместе с ней ушли
+            // точка этой высечки и срез блока ночи.
             signals: (() => {
                 const gauge = document.getElementById('bookGauge');
                 const box = gauge ? gauge.getBoundingClientRect() : null;
@@ -692,7 +715,7 @@
                     flightOnBead: !!(target && beadBox && beadBox.width
                         && Math.abs(target.left - beadBox.left) < 1
                         && Math.abs(target.top - beadBox.top) < 1),
-                    tabWax: { today: waxOf('bookTabTodayWax'), stamps: waxOf('bookTabStampsWax') }
+                    tabWax: { stamps: waxOf('bookTabStampsWax') }
                 };
             })(),
             // K-13: холст встроен в разворот страницы — канвас репозиционирован
@@ -701,30 +724,6 @@
                 const c = document.getElementById('canvas-container');
                 return !!(c && c.classList.contains('canvas-embedded'));
             })()
-        };
-    }
-
-    /**
-     * O-03/O-11: срез блока «Сегодня» с двумя состояниями — виден **всегда**
-     * (`visible` держится для совместимости, теперь неизменно `true`, пока
-     * узел на странице), `complete` разводит их. Играется ночь — `starsLeft`
-     * и текст числа в `text`, слова вокруг него — `before`/`after`. Доиграна —
-     * `text` держит часы («10 hours» / «less than an hour»), `before` — «New
-     * sky in», `after` пуст.
-     */
-    function todayDawnState() {
-        const el = document.getElementById('bookTodayDawn');
-        const beforeEl = document.getElementById('bookTodayDawnBefore');
-        const clock = document.getElementById('bookTodayDawnClock');
-        const afterEl = document.getElementById('bookTodayDawnAfter');
-        return {
-            visible: !!(el && !el.hidden),
-            complete: typeof isLevelComplete === 'function' ? isLevelComplete() : null,
-            ms: typeof msUntilNextSkyDay === 'function' ? msUntilNextSkyDay() : null,
-            starsLeft: typeof getConnectableStarIds === 'function' ? getConnectableStarIds().size : null,
-            before: beforeEl ? beforeEl.textContent : null,
-            text: clock ? clock.textContent : null,
-            after: afterEl ? afterEl.textContent : null
         };
     }
 
@@ -1127,9 +1126,13 @@
             pair,
             cameraLocked: typeof isTutorialCameraLocked === 'function' ? isTutorialCameraLocked() : false,
             bookLocked: typeof isTutorialBookLocked === 'function' ? isTutorialBookLocked() : false,
-            // O-10: 0 — зова нет, 1 — лента зовёт, 2 — жёсткий шаг «открой книгу».
-            // Классы body — то, что реально видит CSS, а не пересказ условия.
-            invite: typeof getBookInviteStage === 'function' ? getBookInviteStage() : 0,
+            // O-13 (сменило O-10): 0 — зова нет, 1 — мягкий зов от отзума до
+            // первого открытия книги (лента пульсирует, небо открыто), 2 — зов
+            // после первого неба (лента зовёт и небо закрыто). Подробности —
+            // state().firstSky. Классы body — то, что реально видит CSS.
+            // 2 — ещё и жёсткий шаг O-10 с 3-го созвездия до первого открытия.
+            invite: typeof isBookGateActive === 'function' && isBookGateActive() ? 2
+                : (typeof isSoftBookInviteActive === 'function' && isSoftBookInviteActive() ? 1 : 0),
             inviteClasses: {
                 ribbonInvite: document.body.classList.contains('ribbon-invite'),
                 bookGate: document.body.classList.contains('book-gate')
@@ -1160,6 +1163,42 @@
                 startZoom: typeof tutorialStartZoom === 'number' ? tutorialStartZoom : 0,
                 camX, camY
             }
+        };
+    }
+
+    /**
+     * V-32: срез картуша итогового кадра — виден ли и почему нет, строки,
+     * числа, легенда, экранные рамки элементов и полосы, альфа, резерв камеры.
+     * Рамки те же, по которым картуш нарисован (computeCartoucheLayout).
+     */
+    function cartoucheState() {
+        const s = getCartoucheState();
+        const m = s.layout;
+        const copy = r => (r ? Object.assign({}, r) : null);
+        return {
+            visible: s.visible,
+            alpha: s.alpha,
+            reason: s.reason,
+            topReserve: getTopUIHeight(),
+            zoomRatio: zoomLevel / getMinZoomLevel(),
+            layout: m ? {
+                compact: m.compact,
+                fontReady: m.fontReady,
+                title: m.title,
+                numbers: { total: m.counts.total, atlas: m.counts.atlas, nameless: m.counts.nameless },
+                captions: Object.assign({}, m.captions),
+                legend: m.counts.legend.map(l => ({ value: l.value, rgb: l.rgb.slice(), n: l.n })),
+                bandH: m.bandH,
+                reserve: m.reserve,
+                band: copy(m.band),
+                rects: {
+                    title: copy(m.rects.title),
+                    numbers: copy(m.rects.numbers),
+                    legend: copy(m.rects.legend),
+                    row: copy(m.rects.row),
+                    ornament: copy(m.rects.ornament)
+                }
+            } : null
         };
     }
 
@@ -1201,6 +1240,9 @@
     function calendar() {
         const model = getCalendarModel();
         return Object.assign({}, model, {
+            // O-15: сетка спрятана (CALENDAR_GRID_HIDDEN), модель жива; блок «Daily sky».
+            gridHidden: CALENDAR_GRID_HIDDEN,
+            daily: getDailySkyBlockModel(),
             activeSlot: getActiveSkySlotId(),
             todaySlot: getTodaySkySlotId(),
             cells: model.cells.map(c => Object.assign({}, c))
@@ -1273,11 +1315,11 @@
         press,
         pin,
         book,
-        todayDawn: todayDawnState,
         observatory,
         commitWave: commitWaveState,
         levelFinale: levelFinaleState,
         labels: labelsState,
+        cartouche: cartoucheState,
         levelBanner: levelBannerState,
         proof: proofState,
         tutorial: tutorialState,
@@ -1292,6 +1334,27 @@
          *  пауза между вещами. Без него «музыка включилась» не отличить от
          *  «тумблер переключился». */
         music: () => (typeof musicState === 'function' ? musicState() : null),
+        /** V-36: срез живого неба — туманность, метеоры, блики, вращение. Только чтение. */
+        skyLife: () => skyLifeState(),
+        /** V-35: параллакс пыли — k, добавка в экранных px, окно пыли в мире. Только чтение. */
+        skyParallax: () => getSkyParallax(),
+        /** V-36: шаг живого неба без кадра в момент t (millis() подменяют сами):
+         *  события + принудительный рендер туманности. Для выборок за 120 с. */
+        skyLifeTick: (t, o = {}) => {
+            updateNebulaBuffer(t, o.nebula !== false);
+            updateSkyLifeEvents(t);
+            return skyLifeState();
+        },
+        /** V-36: шов «небо стоит» — гасит все четыре эффекта (verify-calm-twinkle). */
+        skyLifeSuspend: on => { setSkyLifeSuspended(on); return !!on; },
+        /** V-36: FNV-хеш пикселей буфера туманности. */
+        nebulaHash: () => {
+            if (!nebulaBuffer) return null;
+            const d = nebulaBuffer.getContext('2d').getImageData(0, 0, nebulaBuffer.width, nebulaBuffer.height).data;
+            let h = 0x811c9dc5;
+            for (let i = 0; i < d.length; i++) { h ^= d[i]; h = Math.imul(h, 0x01000193); }
+            return (h >>> 0).toString(16);
+        },
         errors,
         clearErrors,
         // Служебное: открыть/закрыть книгу без жеста (жесты — уровень MobAI).

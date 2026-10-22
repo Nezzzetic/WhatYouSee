@@ -37,6 +37,64 @@ const GOLD_LIGHT_RGB = [240, 216, 166];
 /** Туманность на небе: подмешивается к ночи, из палитры не выходит. */
 const NEBULA_TINT_RGB = [30, 58, 104];
 
+// --- V-36: живое небо (сила 1 прототипа dev/Prototypes/StarsAlive) ------------
+/** Туманность: свой шум с фиксированным зерном — рисунок один при каждой
+ *  загрузке и ресайзе. Буфер в 1/STEP разрешения, обновляется раз в N кадров. */
+const NEBULA_NOISE_SEED = 7;
+const NEBULA_BUFFER_STEP = 6;
+const NEBULA_UPDATE_EVERY_FRAMES = 4;
+/** Масштаб шума на экранный px (как у прежней туманности, `noise(x * 0.003)`). */
+const NEBULA_NOISE_SCALE = 0.003;
+/** Дрейф двух слоёв шума, единиц шума за мс. */
+const NEBULA_DRIFT_X_PER_MS = 0.000018;
+const NEBULA_DRIFT_Y_PER_MS = 0.000011;
+const NEBULA_BREATH_AMP = 0.35;
+const NEBULA_BREATH_PERIOD_MS = 9000;
+/** Потолок альфы в единицах прототипа: неподвижный кадр / прибавка живого. */
+const NEBULA_ALPHA_STATIC = 18;
+const NEBULA_ALPHA_LIVE_EXTRA = 14;
+/** Единицы прототипа → альфа пикселя буфера (живая туманность, как в прототипе). */
+const NEBULA_ALPHA_SCALE = 2.2;
+/** Неподвижный кадр (reduce) — «на глаз как прежняя игра» (развилка 5 V-36):
+ *  прототип при ×2.2 был в ~16 раз ярче прежней туманности (средняя альфа 8.3
+ *  против 0.52 по шести зёрнам p5 noise()), поэтому у кадра свой множитель. */
+const NEBULA_ALPHA_SCALE_STATIC = 0.14;
+
+/** Метеоры — экранные, позади звёзд и пыли. */
+const SKY_METEOR_INTERVAL_MIN_MS = 5000;
+const SKY_METEOR_INTERVAL_MAX_MS = 12000;
+const SKY_METEOR_SPEED_MIN = 700;   // px/с
+const SKY_METEOR_SPEED_MAX = 1200;
+const SKY_METEOR_LEN_MIN = 120;     // хвост, px
+const SKY_METEOR_LEN_MAX = 260;
+const SKY_METEOR_LIFE_MIN_MS = 650;
+const SKY_METEOR_LIFE_MAX_MS = 1100;
+/** Угол от вертикали, рад; сторона (влево/вправо) — монеткой. */
+const SKY_METEOR_ANGLE_MIN = 0.35;
+const SKY_METEOR_ANGLE_MAX = 0.85;
+const SKY_METEOR_LINE_PX = 1.6;
+
+/** Блик: крест на свободной видимой звезде, режим `lighter`. */
+const SKY_GLINT_INTERVAL_MIN_MS = 1000;
+const SKY_GLINT_INTERVAL_MAX_MS = 3000;
+const SKY_GLINT_DUR_MIN_MS = 1100;
+const SKY_GLINT_DUR_MAX_MS = 1600;
+const SKY_GLINT_PEAK = 0.35;          // доля длительности до пика
+const SKY_GLINT_LEN_MULT = 5.6;       // длинный луч = размер звезды × …
+const SKY_GLINT_SHORT_MULT = 0.62;    // короткий луч от длинного
+const SKY_GLINT_ROT_MAX = 0.25;       // рад, в обе стороны
+
+/** Вращение лепестков свободной звезды: оборот 1–2 мин, направление своё. */
+const STAR_SPIN_SPEED_MIN = 0.05;     // рад/с
+const STAR_SPIN_SPEED_MAX = 0.10;
+const STAR_SPIN_LONG_AMP = 0.08;      // длинные лучи ×(1 ± …)
+const STAR_SPIN_LONG_RATE = 0.6;      // рад/с колебания длины
+
+/** Скачок `millis()` больше этого (вкладка из фона, снятый reduce) — расписание
+ *  событий начинается заново от текущего момента, без догона пропущенного. */
+const SKY_LIFE_JUMP_MS = 1000;
+const SKY_LIFE_SEED_SALT = 'v36-sky-life';
+
 // --- Движение: два темпа и одна кривая ---------------------------------------
 // Микро-отклик — 240 мс, сцена — 700 мс (длинная — 900, только в CSS). Темп назначается
 // движению, которое игрок видит ОТДЕЛЬНЫМ событием: отклику на его касание
@@ -101,6 +159,10 @@ const BACKGROUND_STAR_COUNT = 600;
 // вертикали — у этого аспекта поля горизонтальный letterbox на портретных
 // экранах не возникает.
 const BACKGROUND_STAR_MARGIN_Y = 800;
+// V-35: параллакс пыли — при панораме пыль едет на эту долю сдвига поля
+// (дальний слой). На обзоре поля кадр прежний; под prefers-reduced-motion — 1.
+// Было 0.6; по фидбеку заказчика отставание пыли (1 − k) ужато вдвое.
+const BG_PARALLAX = 0.8;
 
 // =============================================================================
 // ZOOM PARAMETERS
@@ -209,6 +271,13 @@ const STAR_PETAL_FADE_MS = MOTION_MICRO_MS;
 const EXTINGUISHED_STAR_BASE_MULT = 0.5;
 /** Погасшая: мягкий ореол вокруг основы, в её диаметрах. */
 const EXTINGUISHED_STAR_HALO_MULT = 2.2;
+/** O-12: погасшая звезда контура головы (`star.contour`, поле cat-head) на отзуме
+ *  ярче и крупнее обычной погасшей: множители растут от 1 при MAX_ZOOM до этих
+ *  значений при минимальном зуме (getContourStarRevealMults, skyRender.js). */
+const CONTOUR_STAR_ALPHA_MULT_MAX = 2.5;
+const CONTOUR_STAR_DIAM_MULT_MAX = 1.5;
+/** O-12: основа контурной звезды на отзуме — не меньше стольких px на экране. */
+const CONTOUR_STAR_MIN_SCREEN_PX = 3;
 /** Атласное созвездие: лепестки (когда горят — в финале) светятся сильнее
  *  обычных. +50 при свечении 90 — значение V-09 до приглушения V-25. */
 const LOCKED_ATLAS_STAR_GLOW_BONUS = 50;
@@ -373,6 +442,55 @@ const UNDO_MARK_FRAME_PAD_X_PX = 16;
 const UNDO_MARK_FRAME_PAD_Y_PX = 10;
 const UNDO_MARK_FRAME_RADIUS_PX = 4;       // = --r-lg в css/style.css
 
+// V-32 (круг 2): картуш итогового кадра раскрытой ночи — сверху, на канвасе,
+// в экранных px (попадает в скриншот игрока). Ни одной буквы поверх созвездий:
+// место под него освобождает камера (резерв сверху, getTopUIHeight в sketch.js),
+// а не раскладка текста по свободным клочкам. Высоты строк — фиксированные:
+// высота полосы зависит только от экрана и --safe-top, не от ширины текста.
+const CARTOUCHE_TOP_GAP_PX = 14;          // от --safe-top до верха заголовка
+const CARTOUCHE_SIDE_PX = 16;             // боковой гаттер: всё внутри [16, width − 16]
+const CARTOUCHE_ROW_GAP_PX = 8;           // между строками картуша
+const CARTOUCHE_BOTTOM_GAP_PX = 14;       // от орнамента до верха поля (в полосу не входит)
+const CARTOUCHE_TITLE_SIZE_PX = 20;       // заголовок — Playfair курсивом
+const CARTOUCHE_TITLE_LINE_PX = 26;
+const CARTOUCHE_NUM_SIZE_PX = 26;         // три крупных числа
+const CARTOUCHE_NUM_LINE_PX = 28;
+const CARTOUCHE_NUM_GAP_PX = 22;          // между колонками чисел
+const CARTOUCHE_CAPTION_SIZE_PX = 10;     // подпись под числом — капитель
+const CARTOUCHE_CAPTION_LINE_PX = 14;
+const CARTOUCHE_LEGEND_SIZE_PX = 12;      // легенда цветов линий
+const CARTOUCHE_LEGEND_LINE_PX = 14;
+const CARTOUCHE_LEGEND_DASH_PX = 14;      // чёрточка цвета тира
+const CARTOUCHE_LEGEND_ITEM_GAP_PX = 14;
+const CARTOUCHE_ORNAMENT_LINE_PX = 12;    // линейка с ✦ — нижняя граница картуша
+const CARTOUCHE_ORNAMENT_MAX_W_PX = 260;
+// Сжатая раскладка (макет «H↑ компактно»): заголовок + одна строка «числа ·
+// чёрточки» + орнамент — когда полная съела бы больше доли высоты экрана.
+const CARTOUCHE_COMPACT_TITLE_SIZE_PX = 17;
+const CARTOUCHE_COMPACT_TITLE_LINE_PX = 22;
+const CARTOUCHE_COMPACT_ROW_SIZE_PX = 12;
+const CARTOUCHE_COMPACT_ROW_LINE_PX = 16;
+const CARTOUCHE_MAX_SHARE = 0.3;
+// Зум гасит картуш: альфа — функция zoom / getMinZoomLevel(), 1 до FROM, 0 от TO.
+// Док давал ×1.15; сужено до ×1.04: приближение от центра экрана поднимает верх
+// поля в полосу на (центр − полоса) · (k − 1) px, и на 393×852 при ×1.05 подписи
+// у верхнего края поля уже доставали бы до орнамента (зазор BOTTOM_GAP = 14 px).
+const CARTOUCHE_ZOOM_FADE_FROM = 1.0;
+const CARTOUCHE_ZOOM_FADE_TO = 1.04;
+
+// O-16: строка «Next sky» / «New sky in…» внизу итогового кадра — DOM-узел
+// (nextSkyLine.js). Камера отдаёт снизу её полосу (getCameraViewBand) на любой
+// раскрытой ночи, как V-32 отдаёт верх картушу. Высота полосы фиксированная.
+const NEXT_SKY_LINE_BOTTOM_GAP_PX = 12;   // от --safe-bottom до низа строки
+const NEXT_SKY_LINE_LINE_PX = 28;         // высота строки
+const NEXT_SKY_LINE_TOP_GAP_PX = 14;      // от верха строки до низа поля
+const NEXT_SKY_LINE_RESERVE_PX = NEXT_SKY_LINE_BOTTOM_GAP_PX + NEXT_SKY_LINE_LINE_PX + NEXT_SKY_LINE_TOP_GAP_PX;
+const NEXT_SKY_LINE_SIZE_PX = 20;         // кегль, ужимается до MIN по ширине
+const NEXT_SKY_LINE_MIN_SIZE_PX = 13;
+// Боковой зазор: зона касания ленты занимает [width − 68, width − 12] —
+// строка держится в width − 2 × (68 + 8), симметрично, по центру.
+const NEXT_SKY_LINE_SIDE_PX = 76;
+
 // =============================================================================
 // O-01: ТУТОР ПЕРВЫХ ЖЕСТОВ
 // =============================================================================
@@ -399,9 +517,15 @@ const TUTORIAL_GHOST_FADE_MS = 500;      // тает
 const TUTORIAL_GHOST_GAP_MS = 600;       // пауза до следующего круга
 const TUTORIAL_GHOST_ALPHA = 150;        // потолок альфы, чернила INK_FAINT
 
-// O-10: лента зовёт в книгу, пока её ни разу не открыли. С этого числа созвездий
-// за игру (пожизненный totalConstellations, созвездие тутора включительно) зов
-// становится жёстким шагом: звёзды неиграбельны, пока не откроешь книгу.
+// O-13: зов в книгу после первого неба (Пролог · Кот) — через столько после
+// конца сцены V-13 (естественного или пропуска тапом) лента зовёт, небо
+// встаёт, строка просит открыть книгу. Сменил O-10 с его зовом посреди неба.
+const BOOK_CALL_DELAY_MS = 5000;
+
+// O-13, правка по телефону (круг 3, «как в O-10, после 3-го созвездия»): пока
+// книгу ни разу не открывали, с этого числа созвездий за игру (пожизненный
+// totalConstellations, созвездие тутора включительно) мягкий зов ленты
+// становится жёстким шагом: небо не принимает ввод, пока не откроешь книгу.
 const BOOK_INVITE_GATE_CONSTELLATIONS = 3;
 
 // =============================================================================
@@ -777,6 +901,15 @@ const SKY_NUMBER_EPOCH_DATE_INT = 20261005;
 // нужна, период выбран заведомо чаще смены текста, а не впритык к ней.
 const BOOK_DAWN_TICK_MS = 60000;
 
+// O-14: страница «Сегодня» снята — Evening Rite, блок ночи и лента новостей
+// спрятаны, а не удалены: данные ведутся, на экране их нет и сигналов они не
+// дают. Вернуть (O-15) — снять флаг и снова позвать рендер bookToday.js.
+const DAILY_QUEST_HIDDEN = true;
+
+// O-15: сетка месяца на странице «Sky list» спрятана, а не удалена: модель
+// (getCalendarModel) и рендер живы. Вернуть — снять флаг.
+const CALENDAR_GRID_HIDDEN = true;
+
 // B-04: атлас 4×6 — четыре главы по шесть фигур, с прицелом на окно «первая
 // сессия → третий день» (глава I разрезана в день 1, глава II — в день 2).
 // Пять фигур, не поместившихся в главы (плотные графы, 7–9 рёбер), выведены
@@ -806,9 +939,20 @@ const ATLAS_PAGE_COUNT = ATLAS_PAGES.length;
 // живыми игроками, и кто-то после апдейта окажется уровнем ниже —
 // verify-level-ladder.js это сторожит.
 const LEVEL_TAIL_STEP = 500;
-// L-01: имена уровней живут в словарях (i18n.js, ключи level.0…level.5). С
-// седьмого уровня имя не меняется — держится последнее (getLevelName клампит).
-const LEVEL_NAME_COUNT = 6;
+// O-15: промежуточная ступень без главы — уровень 2 на 15 ✦ открывает небо
+// дня. Пороги глав в ✦ не двигаются, их номера уровней сдвинулись на единицу
+// (глава II — уровень 3, …). Лестница до хвоста — ступени глав и эта, по
+// возрастанию (LEVEL_LADDER).
+const DAILY_SKY_UNLOCK_COST = 15;
+const LEVEL_LADDER = ATLAS_PAGE_COSTS
+    .map((_, i) => ATLAS_PAGE_COSTS.slice(0, i + 1).reduce((sum, cost) => sum + cost, 0))
+    .concat([DAILY_SKY_UNLOCK_COST])
+    .sort((a, b) => a - b);
+const DAILY_SKY_UNLOCK_LEVEL = LEVEL_LADDER.indexOf(DAILY_SKY_UNLOCK_COST) + 1;
+// L-01: имена уровней живут в словарях (i18n.js, ключи level.0…level.6). С
+// восьмого уровня имя не меняется — держится последнее (getLevelName клампит).
+// O-15: имя «Apprentice» вставлено на уровень 2, остальные сохранили свои ✦.
+const LEVEL_NAME_COUNT = 7;
 
 // =============================================================================
 // OBSERVATORY (B-02)
@@ -820,11 +964,10 @@ const LEVEL_NAME_COUNT = 6;
 // S-03: Экслибрис открывается уровнем, а не своим числом. Изначально сел на
 // уровень 2 (та же ступень, что глава II) — правка заказчика 2026-09-13
 // перенесла его на уровень 3 (ту же ступень, что глава III). Порог в ✦ —
-// производная от лестницы, отдельно его не правят.
-const OBSERVATORY_UNLOCK_LEVEL = 3;
-const OBSERVATORY_UNLOCK_COST = ATLAS_PAGE_COSTS
-    .slice(0, OBSERVATORY_UNLOCK_LEVEL)
-    .reduce((sum, cost) => sum + cost, 0);
+// производная от лестницы, отдельно его не правят. O-15: та же ступень
+// 200 ✦ стала уровнем 4.
+const OBSERVATORY_UNLOCK_LEVEL = 4;
+const OBSERVATORY_UNLOCK_COST = LEVEL_LADDER[OBSERVATORY_UNLOCK_LEVEL - 1];
 
 // B-04: производная от масштаба атласа — при старой цене 100 ✦ за звезду холст
 // открывался бы с одной звездой, а окно шкалы у корешка не двигалось бы месяцами.
