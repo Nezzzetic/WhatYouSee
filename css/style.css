@@ -512,6 +512,65 @@ button:disabled {
     filter: drop-shadow(0 0 4px rgba(var(--gold-rgb), 0.65));
 }
 
+/* --- O-16: строка «Next sky» / «New sky in…» внизу итогового кадра ---------
+   Книжная строка, без кнопочной подложки: курсив EB Garamond, золото у
+   активной, приглушённо у ожидания. Стоит над нижним инсетом, по центру,
+   между зонами касания ленты (ширину и кегль держит fitNextSkyLine). Полосу
+   под неё освобождает камера — поле на неё не заходит (NEXT_SKY_LINE_*). */
+.sky-next-line {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--safe-bottom) + 12px);  /* NEXT_SKY_LINE_BOTTOM_GAP_PX */
+    transform: translateX(-50%);
+    z-index: 30;
+    height: 28px;                             /* NEXT_SKY_LINE_LINE_PX */
+    line-height: 28px;
+    padding: 0;
+    font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+    font-style: italic;
+    font-size: 20px;
+    color: var(--gold);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: none;
+    border: none;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.sky-next-line[hidden] {
+    display: none;
+}
+
+.sky-next-line.is-wait {
+    color: var(--ink-muted);
+    cursor: default;
+}
+
+.sky-next-line:focus-visible {
+    outline: 1px solid rgba(var(--gold-rgb), 0.6);
+    outline-offset: 2px;
+}
+
+/* Дыхание до первого тапа за вкладку — золото мягко гаснет и разгорается.
+   Альфу кадра (зум) держит opacity самого узла, дыхание — цвет текста. */
+.sky-next-line.is-breathing {
+    animation: nextSkyBreathe 2.6s ease-in-out infinite alternate;
+}
+
+@keyframes nextSkyBreathe {
+    from { color: rgba(var(--gold-rgb), 1); }
+    to   { color: rgba(var(--gold-rgb), 0.55); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sky-next-line.is-breathing {
+        animation: none;
+    }
+}
+
 /* --- K-11: чертёж закладки-цели — верхний левый угол неба -------------------
    Второй (и последний) постоянный предмет неба помимо ленты, но условный:
    стоит только пока закладка выставлена. Тот же приём, что у ленты — DOM
@@ -594,6 +653,21 @@ button:disabled {
     animation: tutor-in var(--t-scene) var(--ease) both;
 }
 
+/* O-13, шаг 3 на небе: строка по центру экрана на тёмной подложке — у верха
+   она ложилась на картуш итогового кадра (V-32). */
+.sky-tutor.sky-tutor-center {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.sky-tutor-center .sky-tutor-text {
+    padding: 14px 20px;
+    border-radius: 12px;
+    background: rgba(4, 8, 18, 0.86);
+    box-shadow: 0 4px 22px rgba(0, 0, 0, 0.5);
+    text-shadow: none;
+}
+
 @keyframes tutor-in {
     from { opacity: 0; transform: translateY(-6px); }
     to   { opacity: 1; transform: none; }
@@ -649,6 +723,88 @@ button:disabled {
     .ribbon-invite .ribbon-tail {
         animation: none;
         background: #A83F33;
+    }
+}
+
+/* --- O-13: шаги 3–4 тутора в книге ------------------------------------------
+   Строка на листе под шапкой (тот же голос, что #skyTutor на небе, но книжными
+   чернилами) и подсветка единственного, что сейчас работает: высечки Stamps
+   (шаг 3) или выбранной печати (шаг 4). Под «уменьшить движение» — статичный
+   контур. */
+/* Правка O-13 по телефону: строка лежит ПОВЕРХ листа на тёмной подложке, а не
+   в потоке — в потоке она сдвигала всю страницу вниз и терялась на бумаге.
+   Шаг 3 («найди Штампы») — у верха листа, шаг 4 («прижми печать») — у низа:
+   печать стоит в первой строке главы, высечки — у правого края, обе цели
+   остаются открытыми. */
+.book-tutor {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 52px;
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.book-tutor.book-tutor-bottom {
+    top: auto;
+    bottom: calc(var(--safe-bottom) + 64px);
+}
+
+.book-tutor-text {
+    max-width: 30ch;
+    padding: 12px 18px;
+    border-radius: 10px;
+    background: rgba(8, 12, 24, 0.88);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    font-family: var(--font-text);
+    font-size: 18px;
+    line-height: 1.35;
+    text-align: center;
+    text-wrap: balance;
+    color: #F3EAD3;
+    animation: tutor-in var(--t-scene) var(--ease) both;
+}
+
+/* Выделение «намного сильнее» (правка по телефону): высечка выдвинута, как
+   активная, залита насыщенным золотом, обведена толстым сургучным контуром и
+   пульсирует широким тёплым свечением — на светлой бумаге золото без тёмного
+   контура не читалось. Поверх соседних высечек — z-index. */
+.book-tab.tutor-hint {
+    z-index: 2;
+    color: #3A1A10;
+    font-weight: 700;
+    background: #F2B93B;
+    transform: rotate(180deg) translateX(-2px);
+    animation: tutorHintTab 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes tutorHintTab {
+    from { box-shadow: 0 0 0 3px #A83F33, 0 0 8px 4px rgba(168, 63, 51, 0.45); }
+    to   { box-shadow: 0 0 0 4px #A83F33, 0 0 24px 12px rgba(214, 120, 40, 0.9); }
+}
+
+.achv-seal-current-ready.tutor-hint .achv-seal-body {
+    outline: 2px solid var(--gold);
+    outline-offset: 5px;
+    animation: achvSealBreathe 2.1s ease-in-out infinite alternate, tutorHintSeal 1.6s ease-in-out infinite alternate;
+}
+
+@keyframes tutorHintSeal {
+    from { outline-offset: 7px; outline-color: rgba(var(--gold-rgb), 0.5); }
+    to   { outline-offset: 4px; outline-color: rgba(var(--gold-rgb), 1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .book-tutor-text { animation: none; }
+    .book-tab.tutor-hint {
+        animation: none;
+        box-shadow: 0 0 0 4px #A83F33, 0 0 18px 8px rgba(214, 120, 40, 0.8);
+    }
+    .achv-seal-current-ready.tutor-hint .achv-seal-body {
+        animation: none;
+        box-shadow: 0 0 10px 2px rgba(var(--gold-rgb), 0.6);
     }
 }
 
@@ -995,6 +1151,10 @@ button:disabled {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    /* O-14 (правка по телефону): высота глифа стрелки зарезервирована — без
+       видимой стрелки (Ex Libris в развороте, Settings) подвал схлопывался и
+       «ALMANAC · Level N» опускался ниже, чем на остальных страницах. */
+    min-height: 24px;
 }
 
 /* K-28 (правка по фидбеку с телефона): глиф вырос вдвое — по нему было
@@ -1436,7 +1596,7 @@ button:disabled {
 
 /* U-34 (фидбек с телефона): слово у всех пяти высечек прижато к одному краю —
    к нижнему на экране, с отступом 8 px (в развороте writing-mode + rotate(180deg)
-   начало строки — экранный низ), ✦ у Today/Stamps встаёт над словом. По центру
+   начало строки — экранный низ), ✦ у Stamps встаёт над словом. По центру
    слова стояли вразнобой: где-то сдвинутые слотом звёздочки, где-то нет. */
 .book-tab {
     position: relative;
@@ -1491,7 +1651,6 @@ button:disabled {
 }
 
 /* Пастели из макета book-paper-frame (V-22). */
-.book-tab[data-cut="today"] { --tab-bg: #C9D6E3; }
 .book-tab[data-cut="index"] { --tab-bg: #D9CFE6; }
 .book-tab[data-cut="atlas"] { --tab-bg: #CFE0CF; }
 .book-tab[data-cut="stamps"] { --tab-bg: #E9C77E; }
@@ -1693,6 +1852,13 @@ body.book-spread .book-page-right {
     padding-right: max(var(--page-pad-right), 16px);
 }
 
+/* O-14 (правка по телефону): последний разворот — Settings и чистый лист
+   справа. Бумага, фактура и края листа остаются, содержимое (шапка, тело,
+   подвал со стрелкой «вперёд») невидимо и не берёт касаний. */
+body.book-spread .book-page-blank > * {
+    visibility: hidden;
+}
+
 /* Корешка у края нет ни у одной страницы — каптальчик над жёлобом. */
 body.book-spread .book-page::before,
 body.book-spread .book-page::after {
@@ -1777,9 +1943,9 @@ body.book-spread .book-spine-bead {
     top: calc(100% - var(--gauge-ratio, 0%));
 }
 
-/* Высечки «Today» в развороте нет: «Сегодня» — левая страница разворота 1,
-   туда ведёт высечка «Index». */
-body.book-spread .book-tab[data-cut="today"] {
+/* Высечки «Ex Libris» в развороте нет: она — левая страница разворота 1,
+   туда ведёт высечка «Index» (O-14, раньше так жила «Today»). */
+body.book-spread .book-tab[data-cut="exlibris"] {
     display: none;
 }
 
@@ -3006,5 +3172,96 @@ body.book-spread .ribbon {
     font-style: italic;
     font-size: 13px;
     color: var(--ink-faint);
+}
+
+/* --- O-15: блок «Daily sky» под Прологом, вместо сетки месяца ----------------
+   Надзаголовок тем же шрифтом, что «PROLOGUE»; дата — титулом, как был месяц;
+   кнопка — та же подложка, что у нажимаемой клетки Пролога. До уровня 2 вместо
+   кнопки строка замка (знак K-24 и золотой «level 2»). */
+.book-daily-sky {
+    max-width: 360px;
+    margin: 16px auto 0;
+    text-align: center;
+}
+
+.book-daily-sky-title {
+    font-family: var(--font-text);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+}
+
+.book-daily-sky-date {
+    padding: 4px 0 10px;
+    font-family: var(--font-title);
+    font-size: 17px;
+    line-height: 1.2;
+    color: var(--ink);
+}
+
+.book-daily-sky-go {
+    min-width: 120px;
+    min-height: 44px;
+    max-width: 100%;
+    padding: 0 24px;
+    border: none;
+    border-radius: 22px;
+    background: rgba(var(--ink-rgb), 0.09);
+    font-family: var(--font-text);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .book-daily-sky-go:hover {
+        background: rgba(var(--ink-rgb), 0.15);
+    }
+}
+
+.book-daily-sky-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--ink-faint);
+    text-align: start;
+}
+
+.book-daily-sky-lock > svg,
+.book-daily-sky-lock > span:first-child {
+    flex: none;
+}
+
+/* O-17: небо дня пройдено — вместо «Go» строка «New sky in 7 hours». Вид
+   строки замка, не кнопка; высота кнопки (44 px), чтобы блок не прыгал при
+   смене «Go» ↔ ожидание. Не влезает в одну строку — 12 px (.is-compact). */
+.book-daily-sky-wait {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    max-width: 100%;
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.35;
+    color: var(--ink-faint);
+    white-space: nowrap;
+    background: transparent;
+}
+
+.book-daily-sky-wait.is-compact {
+    font-size: 12px;
+}
+
+.book-daily-sky-wait-dur {
+    font-weight: 600;
+    color: var(--gold-light);
 }
 

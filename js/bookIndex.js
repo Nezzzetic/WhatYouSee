@@ -83,6 +83,24 @@ function renderBookIndex() {
     if (!el) return;
     el.innerHTML = '';
 
+    // O-14: Ex Libris — первая страница книги, и в оглавлении первой категорией.
+    const exSec = document.createElement('div');
+    exSec.className = 'book-index-sec';
+    const exTitle = document.createElement('div');
+    exTitle.className = 'book-index-sec-title';
+    exTitle.textContent = t('book.cutExLibris');
+    exSec.appendChild(exTitle);
+    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
+    const exRow = createBookIndexRow(
+        t('book.cutExLibris'),
+        getExLibrisFolio(),
+        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
+        exUnlocked ? { countSign: 'crescent' } : undefined
+    );
+    exRow.addEventListener('click', () => switchBookCut('exlibris'));
+    exSec.appendChild(exRow);
+    el.appendChild(exSec);
+
     const atlasSec = document.createElement('div');
     atlasSec.className = 'book-index-sec';
     const atlasTitle = document.createElement('div');
@@ -124,12 +142,21 @@ function renderBookIndex() {
     stampsSec.appendChild(stampsTitle);
     for (let i = 1; i < REWARD_PAGE_COUNT; i++) {
         const page = REWARD_PAGES[i];
-        const unlocked = isRewardPageUnlocked(i);
+        // O-13: до конца первого неба заперты все главы штампов, без уровня.
+        const firstSkyLocked = areSealsLocked();
+        const unlocked = !firstSkyLocked && isRewardPageUnlocked(i);
         // K-19: неразрезанная глава не раскрывает литературное имя — «?».
         const title = formatChapterIndexTitle(i, unlocked ? page.title : '?');
 
         let row;
-        if (unlocked) {
+        if (firstSkyLocked) {
+            row = createBookIndexRow(
+                title,
+                getStampsChapterFolio(i),
+                t('book.indexOpensAfterFirstSky'),
+                { locked: true }
+            );
+        } else if (unlocked) {
             // K-19: счёт главы — прижатые марки (сумма stepIndex) из общего
             // числа марок главы, а не пройденные цепочки целиком.
             const { pressed, total } = getRewardPagePressedStamps(i);
@@ -167,23 +194,6 @@ function renderBookIndex() {
     calRow.addEventListener('click', () => switchBookCut('calendar'));
     calSec.appendChild(calRow);
     el.appendChild(calSec);
-
-    const exSec = document.createElement('div');
-    exSec.className = 'book-index-sec';
-    const exTitle = document.createElement('div');
-    exTitle.className = 'book-index-sec-title';
-    exTitle.textContent = t('book.cutExLibris');
-    exSec.appendChild(exTitle);
-    const exUnlocked = typeof isObservatoryUnlocked === 'function' && isObservatoryUnlocked();
-    const exRow = createBookIndexRow(
-        t('book.cutExLibris'),
-        getExLibrisFolio(),
-        exUnlocked ? '' : t('book.indexOpensAtLevel', { n: OBSERVATORY_UNLOCK_LEVEL }),
-        exUnlocked ? { countSign: 'crescent' } : undefined
-    );
-    exRow.addEventListener('click', () => switchBookCut('exlibris'));
-    exSec.appendChild(exRow);
-    el.appendChild(exSec);
 
     // K-14: настройки — строкой в конце оглавления, единственный вход
     // (страница не висит на своей высечке). Ни счёта, ни замка — доступна

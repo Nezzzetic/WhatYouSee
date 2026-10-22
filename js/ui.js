@@ -700,6 +700,7 @@ function levelBannerTitleText(levels) {
  * в одну строку категории, а не повторяются.
  */
 function levelBannerUnlockCategory(key) {
+    if (key === 'daily') return 'daily';
     if (key.indexOf('atlas:') === 0) return 'atlas';
     if (key.indexOf('stamps:') === 0) return 'stamps';
     if (key === 'exlibris') return 'exlibris';
@@ -742,11 +743,13 @@ function levelBannerIconNode(category, key) {
         return icon;
     }
     icon.classList.add('level-banner-icon-plain');
-    icon.appendChild(glyphSign('pen', 20));
+    // O-15: небо дня — знак месяца (касса K-02), Экслибрис — перо.
+    icon.appendChild(glyphSign(category === 'daily' ? 'crescent' : 'pen', 20));
     return icon;
 }
 
 function levelBannerCategoryText(category) {
+    if (category === 'daily') return t('book.levelBannerUnlockDaily');
     if (category === 'atlas') return t('book.levelBannerUnlockAtlas');
     if (category === 'stamps') return t('book.levelBannerUnlockStamps');
     if (category === 'exlibris') return t('book.levelBannerUnlockExLibris');
@@ -861,12 +864,13 @@ function dismissLevelBanner(immediate) {
  * что `todayHasSignal()` уже прошла в U-25.
  * K-37: и второе правило K-12 — марка в неразрезанной главе штампов в счёт не идёт:
  * капля зовёт только туда, где книга уже пускает. Считаем теми же двумя вопросами,
- * что горят на высечках («Сегодня» + открытые главы Штампов), а не сырым
+ * что горят на высечках (открытые главы Штампов), а не сырым
  * `hasClaimableAchievements()` — иначе лента горела при пустой книге.
+ * O-14: «Сегодня» снята, суточная марка спрятана и ленту не зажигает — вернётся
+ * вместе со страницей (O-15) условием `|| rewardPageHasClaimable(0)`.
  */
 function hasSkyWaxSignal() {
-    return typeof todayHasSignal === 'function' && typeof stampsHaveClaimable === 'function'
-        && (todayHasSignal() || stampsHaveClaimable());
+    return typeof stampsHaveClaimable === 'function' && stampsHaveClaimable();
 }
 
 /**
@@ -955,7 +959,12 @@ function renderSkyBookmark() {
     const shapeId = typeof getBookmarkedShape === 'function' ? getBookmarkedShape() : null;
     const inObservatory = typeof isObservatoryMode === 'function' && isObservatoryMode();
     const inFinale = typeof isLevelFinaleActive === 'function' && isLevelFinaleActive();
-    el.hidden = !shapeId || inObservatory || inFinale;
+    // V-32: на итоговом кадре раскрытой ночи следов закладки нет — признак
+    // персистентный, поэтому и после перезагрузки. Пустое небо — не раскрытая
+    // ночь (признак по умолчанию true до загрузки сейва).
+    const nightRevealed = typeof constellationArtRevealed !== 'undefined' && constellationArtRevealed
+        && typeof constellations !== 'undefined' && constellations.length > 0;
+    el.hidden = !shapeId || inObservatory || inFinale || nightRevealed;
     if (!shapeId) return;
 
     // K-31: имя — сюрприз до первого создания фигуры, как на карточке атласа

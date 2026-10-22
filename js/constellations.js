@@ -554,6 +554,10 @@ function undoLastConstellation() {
     if (canContinue) {
         if (constellationArtRevealed) {
             constellationArtRevealed = false;
+            // V-32: ночь снова не раскрыта — чертёж закладки возвращается.
+            if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
+            // V-32: резерва под картуш больше нет — камера сразу в полный экран.
+            if (typeof syncCameraTopReserve === 'function') syncCameraTopReserve();
         }
     } else {
         tryRevealConstellationArtIfComplete();
@@ -613,6 +617,8 @@ function revealConstellationArt(animate = true) {
     updateScoreUI();
     updateProgressionUI();
     if (typeof refreshBookIfOpen === 'function') refreshBookIfOpen();
+    // V-32: раскрытая ночь прячет чертёж закладки — и без сцены (загрузка сейва).
+    if (typeof renderSkyBookmark === 'function') renderSkyBookmark();
     // V-13: тоста завершения ночи больше нет — он висел ровно в центре кадра,
     // куда приезжает камера, а роль сообщения забрала сама сцена.
     autoSave();
@@ -972,6 +978,22 @@ function layoutRevealedLabels(items, obstacles, opts) {
     }
 
     return result;
+}
+
+/**
+ * V-32: лежит ли якорь подписи в прямоугольнике раскладки (экран минус полоса
+ * картуша минус нижний инсет), с половиной высоты подписи по вертикали —
+ * раскладка клампит кандидатов ровно так, поэтому её собственный результат
+ * проверку проходит всегда, и перезагрузка годной раскладки не трогает.
+ */
+function isRevealedLabelAnchorInLayoutRect(anchor) {
+    if (!anchor || !Number.isFinite(anchor.x) || !Number.isFinite(anchor.y)) return false;
+    const minZoom = getFinaleLayoutMinZoom();
+    const b = getFinaleLayoutVisibleRect(minZoom);
+    const halfH = REVEALED_CONSTELLATION_LABEL_SIZE / minZoom / 2;
+    const eps = 1e-6 * Math.max(1, Math.abs(b.bottom - b.top));
+    return anchor.x >= b.left - eps && anchor.x <= b.right + eps
+        && anchor.y - halfH >= b.top - eps && anchor.y + halfH <= b.bottom + eps;
 }
 
 /** Мировой радиус звезды-препятствия на мин-зуме — тот же расчёт, что в

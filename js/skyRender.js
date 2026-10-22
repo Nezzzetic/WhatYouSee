@@ -279,6 +279,363 @@ function drawUndoMarkScreen() {
     }
 }
 
+// =============================================================================
+// V-32: КАРТУШ ИТОГОВОГО КАДРА РАСКРЫТОЙ НОЧИ
+// =============================================================================
+// Подпись в духе звёздного атласа сверху кадра: заголовок дня, три числа,
+// легенда цветов линий и линейка-орнамент. Место под неё освобождает камера
+// (getTopUIHeight в sketch.js) — ни одной буквы поверх созвездий. Рисуется на
+// канвасе в экранных px, поэтому попадает в скриншот игрока.
+
+const CARTOUCHE_FONT_TITLE = "'Playfair Display', Georgia, 'Times New Roman', serif";
+const CARTOUCHE_FONT_TEXT = "'EB Garamond', Georgia, 'Times New Roman', serif";
+
+/**
+ * Заголовок: «October 6» на небе дня (только дата, номер неба снят),
+ * «Prologue · Cat» на Прологе. Дата — живым вызовом
+ * каждый кадр: смена суток под открытым кадром не залипает.
+ */
+function getCartoucheTitle() {
+    const n = typeof getActivePrologueLevel === 'function' ? getActivePrologueLevel() : null;
+    if (n) return t('prologue.title') + ' · ' + t('prologue.name' + n);
+    return formatSkyDateLong(getEffectiveSkyDateInt());
+}
+
+/**
+ * Три числа и легенда. Безымянное — `SHAPE_UNRECOGNIZED`; цвет созвездия —
+ * его `lineColor` (тир CONSTELLATION_LINE_TIERS, V-28), у каждого ровно один.
+ * Легенда в порядке палитры, цвет с нулём не попадает.
+ */
+function getCartoucheCounts() {
+    const total = constellations.length;
+    let nameless = 0;
+    const byTier = CONSTELLATION_LINE_TIERS.map(() => 0);
+    for (const c of constellations) {
+        if (c.shape === SHAPE_UNRECOGNIZED) nameless++;
+        const lc = c.lineColor;
+        if (!lc) continue;
+        const i = CONSTELLATION_LINE_TIERS.findIndex(tier =>
+            tier.rgb[0] === lc[0] && tier.rgb[1] === lc[1] && tier.rgb[2] === lc[2]);
+        if (i >= 0) byTier[i]++;
+    }
+    const legend = [];
+    CONSTELLATION_LINE_TIERS.forEach((tier, i) => {
+        if (byTier[i] > 0) legend.push({ value: tier.value, rgb: tier.rgb.slice(), n: byTier[i] });
+    });
+    return { total, atlas: total - nameless, nameless, legend };
+}
+
+/**
+ * Пока Playfair не загружен, картуш не рисуется — без мигания системным
+ * фолбэком на первом кадре. Шрифт локальный (K-01), но грузится лениво:
+ * в DOM им набраны только заголовки книги, поэтому подгрузку просим сами.
+ */
+const cartoucheFontRequests = new Set();
+
+function isCartoucheFontReady(title) {
+    const fonts = typeof document !== 'undefined' ? document.fonts : null;
+    if (!fonts || typeof fonts.check !== 'function') return true;
+    const spec = 'italic ' + CARTOUCHE_TITLE_SIZE_PX + 'px "Playfair Display"';
+    let ready = true;
+    try { ready = fonts.check(spec, title); } catch (e) { return true; }
+    if (!ready && !cartoucheFontRequests.has(title) && typeof fonts.load === 'function') {
+        cartoucheFontRequests.add(title);
+        fonts.load(spec, title).catch(() => {});
+        fonts.load(CARTOUCHE_NUM_SIZE_PX + 'px "Playfair Display"', '0123456789').catch(() => {});
+    }
+    return ready;
+}
+
+/**
+ * Альфа от зума: 1 на обзоре, 0 от ×CARTOUCHE_ZOOM_FADE_TO. Сразу после сцены
+ * V-13 картуш проявляется вместе с подписями (множитель V-28).
+ */
+function getCartoucheAlpha() {
+    const ratio = zoomLevel / Math.max(getMinZoomLevel(), 1e-9);
+    const span = CARTOUCHE_ZOOM_FADE_TO - CARTOUCHE_ZOOM_FADE_FROM;
+    let a;
+    if (ratio <= CARTOUCHE_ZOOM_FADE_FROM) a = 1;
+    else if (ratio >= CARTOUCHE_ZOOM_FADE_TO || !(span > 1e-9)) a = 0;
+    else {
+        const u = (ratio - CARTOUCHE_ZOOM_FADE_FROM) / span;
+        a = 1 - u * u * (3 - 2 * u);
+    }
+    if (typeof finaleAftermath !== 'undefined' && finaleAftermath
+        && typeof getFinaleLabelsZoomAlpha === 'function') {
+        a *= getFinaleLabelsZoomAlpha();
+    }
+    return a;
+}
+
+function measureCartoucheText(str, sizePx, font, style) {
+    push();
+    textFont(font);
+    textStyle(style);
+    textSize(sizePx);
+    const w = textWidth(str);
+    pop();
+    return w;
+}
+
+/** Масштаб, при котором ширина `w` влезает в `limit` (кегль ужимается, строка не переносится). */
+function cartoucheFitScale(w, limit) {
+    return w > limit && w > 0 ? limit / w : 1;
+}
+
+let cartoucheLayoutCache = null;
+
+/**
+ * Раскладка картуша в экранных px. Высоты строк фиксированы (полоса не зависит
+ * от текста), ширины — по тексту, ужимаются кеглем в [SIDE, width − SIDE].
+ * null — ночь без итогового кадра (см. isCartoucheNight).
+ */
+function computeCartoucheLayout() {
+    if (typeof isCartoucheNight !== 'function' || !isCartoucheNight()) return null;
+    const title = getCartoucheTitle();
+    const counts = getCartoucheCounts();
+    const band = getCartoucheBand();
+    const fontReady = isCartoucheFontReady(title);
+    const key = [title, counts.total, counts.atlas, counts.nameless,
+        counts.legend.map(l => l.value + ':' + l.n).join(','),
+        width, band.top, band.band, band.compact, fontReady, getLocale()].join('|');
+    if (cartoucheLayoutCache && cartoucheLayoutCache.key === key) return cartoucheLayoutCache.layout;
+
+    const limit = width - 2 * CARTOUCHE_SIDE_PX;
+    const cx = width / 2;
+    const captions = {
+        total: tp('sky.cartoucheTotal', counts.total),
+        atlas: t('sky.cartoucheAtlas'),
+        nameless: t('sky.cartoucheUncharted')
+    };
+    const rects = {};
+    let y = band.top;
+
+    // 1. Заголовок — Playfair курсивом.
+    const titleSize0 = band.compact ? CARTOUCHE_COMPACT_TITLE_SIZE_PX : CARTOUCHE_TITLE_SIZE_PX;
+    const titleLine = band.compact ? CARTOUCHE_COMPACT_TITLE_LINE_PX : CARTOUCHE_TITLE_LINE_PX;
+    const titleW0 = measureCartoucheText(title, titleSize0, CARTOUCHE_FONT_TITLE, ITALIC);
+    const titleK = cartoucheFitScale(titleW0, limit);
+    const titleW = titleW0 * titleK;
+    const titleBlock = { text: title, size: titleSize0 * titleK, cx, cy: y + titleLine / 2 };
+    rects.title = { left: cx - titleW / 2, right: cx + titleW / 2, top: y, bottom: y + titleLine };
+    y += titleLine + CARTOUCHE_ROW_GAP_PX;
+
+    let numbers = null;
+    let legend = null;
+    let row = null;
+    if (!band.compact) {
+        // 2. Три числа с подписью капителью под каждым; «из атласа» — золотом.
+        const cols = [
+            { key: 'total', n: counts.total, caption: captions.total, gold: false },
+            { key: 'atlas', n: counts.atlas, caption: captions.atlas, gold: true },
+            { key: 'nameless', n: counts.nameless, caption: captions.nameless, gold: false }
+        ];
+        for (const col of cols) {
+            col.numW = measureCartoucheText(String(col.n), CARTOUCHE_NUM_SIZE_PX, CARTOUCHE_FONT_TITLE, NORMAL);
+            push();
+            textFont(CARTOUCHE_FONT_TEXT);
+            col.capW = measureSmallCapsWidth(col.caption, CARTOUCHE_CAPTION_SIZE_PX);
+            pop();
+            col.w = Math.max(col.numW, col.capW);
+        }
+        const rowW0 = cols.reduce((s, c) => s + c.w, 0) + CARTOUCHE_NUM_GAP_PX * (cols.length - 1);
+        const k = cartoucheFitScale(rowW0, limit);
+        let x = cx - rowW0 * k / 2;
+        for (const col of cols) {
+            col.cx = x + col.w * k / 2;
+            x += (col.w + CARTOUCHE_NUM_GAP_PX) * k;
+        }
+        numbers = {
+            cols, k,
+            numY: y + CARTOUCHE_NUM_LINE_PX / 2,
+            capY: y + CARTOUCHE_NUM_LINE_PX + CARTOUCHE_CAPTION_LINE_PX / 2
+        };
+        rects.numbers = { left: cx - rowW0 * k / 2, right: cx + rowW0 * k / 2,
+            top: y, bottom: y + CARTOUCHE_NUM_LINE_PX + CARTOUCHE_CAPTION_LINE_PX };
+        y += CARTOUCHE_NUM_LINE_PX + CARTOUCHE_CAPTION_LINE_PX + CARTOUCHE_ROW_GAP_PX;
+
+        // 3. Легенда: чёрточка цвета тира и число созвездий этого цвета.
+        const items = counts.legend.map(l => {
+            const numW = measureCartoucheText(String(l.n), CARTOUCHE_LEGEND_SIZE_PX, CARTOUCHE_FONT_TEXT, NORMAL);
+            return Object.assign({}, l, { numW, w: CARTOUCHE_LEGEND_DASH_PX + 4 + numW });
+        });
+        const legW0 = items.reduce((s, it) => s + it.w, 0)
+            + CARTOUCHE_LEGEND_ITEM_GAP_PX * Math.max(0, items.length - 1);
+        const lk = cartoucheFitScale(legW0, limit);
+        let lx = cx - legW0 * lk / 2;
+        for (const it of items) {
+            it.x = lx;
+            lx += (it.w + CARTOUCHE_LEGEND_ITEM_GAP_PX) * lk;
+        }
+        legend = { items, k: lk, cy: y + CARTOUCHE_LEGEND_LINE_PX / 2 };
+        rects.legend = { left: cx - legW0 * lk / 2, right: cx + legW0 * lk / 2,
+            top: y, bottom: y + CARTOUCHE_LEGEND_LINE_PX };
+        y += CARTOUCHE_LEGEND_LINE_PX + CARTOUCHE_ROW_GAP_PX;
+    } else {
+        // 2–3 сжато: одна строка «числа · чёрточки с числами» (макет Htc).
+        const parts = [];
+        const pushText = (text, tone) => parts.push({ text, tone });
+        pushText(String(counts.total), 'ink'); pushText(' ' + captions.total, 'muted');
+        pushText('  ·  ', 'faint');
+        pushText(String(counts.atlas), 'gold'); pushText(' ' + captions.atlas, 'muted');
+        pushText('  ·  ', 'faint');
+        pushText(String(counts.nameless), 'ink'); pushText(' ' + captions.nameless, 'muted');
+        counts.legend.forEach((l, i) => {
+            pushText(i === 0 ? '  ·  ' : '   ', 'faint');
+            parts.push({ dash: l.rgb });
+            pushText(' ' + l.n, 'muted');
+        });
+        const size0 = CARTOUCHE_COMPACT_ROW_SIZE_PX;
+        for (const p of parts) {
+            p.w = p.dash ? CARTOUCHE_LEGEND_DASH_PX
+                : measureCartoucheText(p.text, size0, CARTOUCHE_FONT_TEXT, NORMAL);
+        }
+        const rowW0 = parts.reduce((s, p) => s + p.w, 0);
+        const k = cartoucheFitScale(rowW0, limit);
+        let x = cx - rowW0 * k / 2;
+        for (const p of parts) { p.x = x; x += p.w * k; }
+        row = { parts, k, size: size0 * k, cy: y + CARTOUCHE_COMPACT_ROW_LINE_PX / 2 };
+        rects.row = { left: cx - rowW0 * k / 2, right: cx + rowW0 * k / 2,
+            top: y, bottom: y + CARTOUCHE_COMPACT_ROW_LINE_PX };
+        y += CARTOUCHE_COMPACT_ROW_LINE_PX + CARTOUCHE_ROW_GAP_PX;
+    }
+
+    // 4. Линейка-орнамент с ✦ — нижняя граница картуша.
+    const ornW = Math.min(CARTOUCHE_ORNAMENT_MAX_W_PX, limit);
+    const ornament = { left: cx - ornW / 2, right: cx + ornW / 2, cy: y + CARTOUCHE_ORNAMENT_LINE_PX / 2 };
+    rects.ornament = { left: ornament.left, right: ornament.right, top: y, bottom: y + CARTOUCHE_ORNAMENT_LINE_PX };
+
+    const layout = {
+        title, counts, captions, compact: band.compact, fontReady,
+        bandH: band.band, reserve: band.reserve,
+        band: { left: 0, right: width, top: 0, bottom: band.band },
+        rects, titleBlock, numbers, legend, row, ornament
+    };
+    cartoucheLayoutCache = { key, layout };
+    return layout;
+}
+
+/**
+ * Срез картуша: виден ли, с какой альфой и почему нет. Видимость — ночь с
+ * итоговым кадром, книга закрыта, сцены V-13 нет, шрифт загружен, альфа > 0.
+ */
+function getCartoucheState() {
+    const layout = computeCartoucheLayout();
+    if (!layout) return { visible: false, alpha: 0, reason: 'night', layout: null };
+    if (typeof isBookOpen === 'function' && isBookOpen()) return { visible: false, alpha: 0, reason: 'book', layout };
+    if (typeof isLevelFinaleActive === 'function' && isLevelFinaleActive()) {
+        return { visible: false, alpha: 0, reason: 'scene', layout };
+    }
+    if (!layout.fontReady) return { visible: false, alpha: 0, reason: 'font', layout };
+    const alpha = getCartoucheAlpha();
+    return { visible: alpha > 0, alpha, reason: alpha > 0 ? '' : 'zoom', layout };
+}
+
+/** Четырёхлучевая звёздочка ✦ путём — не глифом: в EB Garamond её может не быть. */
+function drawCartoucheSparkScreen(cx, cy, r, rgb, alpha) {
+    const w = r * 0.28;
+    noStroke();
+    fill(rgb[0], rgb[1], rgb[2], alpha);
+    beginShape();
+    vertex(cx, cy - r);
+    vertex(cx + w, cy - w);
+    vertex(cx + r, cy);
+    vertex(cx + w, cy + w);
+    vertex(cx, cy + r);
+    vertex(cx - w, cy + w);
+    vertex(cx - r, cy);
+    vertex(cx - w, cy - w);
+    endShape(CLOSE);
+}
+
+function drawCartoucheScreen() {
+    const s = getCartoucheState();
+    if (!s.visible) return;
+    const m = s.layout;
+    const a = s.alpha;
+    const tone = {
+        ink: [INK_RGB, 235], muted: [INK_MUTED_RGB, 220], faint: [INK_FAINT_RGB, 200], gold: [GOLD_RGB, 240]
+    };
+    push();
+    try {
+        noStroke();
+        textAlign(CENTER, CENTER);
+
+        // Заголовок
+        textFont(CARTOUCHE_FONT_TITLE);
+        textStyle(ITALIC);
+        textSize(m.titleBlock.size);
+        fill(INK_RGB[0], INK_RGB[1], INK_RGB[2], 240 * a);
+        text(m.titleBlock.text, m.titleBlock.cx, m.titleBlock.cy);
+
+        if (m.numbers) {
+            const nb = m.numbers;
+            for (const col of nb.cols) {
+                const rgb = col.gold ? GOLD_RGB : INK_RGB;
+                textFont(CARTOUCHE_FONT_TITLE);
+                textStyle(NORMAL);
+                textSize(CARTOUCHE_NUM_SIZE_PX * nb.k);
+                noStroke();
+                fill(rgb[0], rgb[1], rgb[2], 240 * a);
+                text(String(col.n), col.cx, nb.numY);
+                textFont(CARTOUCHE_FONT_TEXT);
+                drawSmallCapsLabelWorld(col.caption, col.cx, nb.capY, CARTOUCHE_CAPTION_SIZE_PX * nb.k,
+                    INK_MUTED_RGB, 215 * a, false);
+            }
+        }
+
+        if (m.legend) {
+            const lg = m.legend;
+            textFont(CARTOUCHE_FONT_TEXT);
+            textStyle(NORMAL);
+            textSize(CARTOUCHE_LEGEND_SIZE_PX * lg.k);
+            textAlign(LEFT, CENTER);
+            for (const it of lg.items) {
+                const dashW = CARTOUCHE_LEGEND_DASH_PX * lg.k;
+                stroke(it.rgb[0], it.rgb[1], it.rgb[2], 255 * a);
+                strokeWeight(2);
+                strokeCap(ROUND);
+                line(it.x + 1, lg.cy, it.x + dashW - 1, lg.cy);
+                noStroke();
+                fill(INK_MUTED_RGB[0], INK_MUTED_RGB[1], INK_MUTED_RGB[2], 220 * a);
+                text(String(it.n), it.x + dashW + 4 * lg.k, lg.cy);
+            }
+        }
+
+        if (m.row) {
+            const r = m.row;
+            textFont(CARTOUCHE_FONT_TEXT);
+            textStyle(NORMAL);
+            textSize(r.size);
+            textAlign(LEFT, CENTER);
+            for (const p of r.parts) {
+                if (p.dash) {
+                    stroke(p.dash[0], p.dash[1], p.dash[2], 255 * a);
+                    strokeWeight(2);
+                    strokeCap(ROUND);
+                    line(p.x + 1, r.cy, p.x + p.w * r.k - 1, r.cy);
+                    noStroke();
+                    continue;
+                }
+                const [rgb, al] = tone[p.tone];
+                fill(rgb[0], rgb[1], rgb[2], al * a);
+                text(p.text, p.x, r.cy);
+            }
+        }
+
+        // Орнамент: волосяная линейка, разорванная звёздочкой.
+        const o = m.ornament;
+        const sparkR = CARTOUCHE_ORNAMENT_LINE_PX / 2 - 1;
+        stroke(GOLD_RGB[0], GOLD_RGB[1], GOLD_RGB[2], 150 * a);
+        strokeWeight(1);
+        line(o.left, o.cy, m.titleBlock.cx - sparkR - 6, o.cy);
+        line(m.titleBlock.cx + sparkR + 6, o.cy, o.right, o.cy);
+        drawCartoucheSparkScreen(m.titleBlock.cx, o.cy, sparkR, GOLD_RGB, 230 * a);
+    } finally {
+        pop();
+    }
+}
+
 /**
  * U-23: чистое ядро анимации счётчика черновика — появление → пауза → угасание,
  * плюс лёгкий подъём на появлении. Все параметры приходят аргументами, включая
@@ -587,6 +944,9 @@ function drawConstellationLabels() {
 }
 
 function drawFieldMode() {
+    // V-36: метеоры — экранные, позади пыли, звёзд и линий; зум их не меняет.
+    drawSkyMeteorsScreen();
+
     push();
     scale(zoomLevel);
     translate(-camX, -camY);
@@ -604,6 +964,9 @@ function drawFieldMode() {
     push();
     drawVisibleStars();
     pop();
+
+    // V-36: блик — в мире, поверх своей звезды.
+    drawSkyGlintsWorld();
 
     if (isDragging && currentStartStar) {
         const chainRgb = typeof getDraftChainColorRgb === 'function'
@@ -640,9 +1003,17 @@ function drawVisibleBackgroundStars() {
     const bgFadeDuration = STAR_FADE_DURATION * skyFadeScale * 0.5;
     const bgFadeAlpha = bgFadeDuration > 0 ? constrain(bgElapsed / bgFadeDuration, 0, 1) : 1;
     noStroke();
+    // V-35: пыль — дальний слой. Сдвиг в мировых единицах внутри камеры поля;
+    // отсечение — по тому же сдвинутому окну, иначе по краю экрана полоса без пыли.
+    const par = getSkyParallax();
+    const dx = par.offX / zoomLevel, dy = par.offY / zoomLevel;
+    const wx0 = par.dustWindow.x0, wy0 = par.dustWindow.y0;
+    const wx1 = par.dustWindow.x1, wy1 = par.dustWindow.y1;
+    push();
+    translate(dx, dy);
     for (let s of fieldBackgroundStars) {
-        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
-            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        if (s.x < wx0 - 10 || s.x > wx1 + 10 ||
+            s.y < wy0 - 10 || s.y > wy1 + 10) continue;
         // K-03: пыль неподвижна. Мерцание фона делало поле труднее читаемым
         // (мелкая точка то видна, то нет) — дышат только крупные узлы.
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
@@ -656,11 +1027,12 @@ function drawVisibleBackgroundStars() {
     // продолжается за боковые края поля — только отрисовка: поле, сейв и
     // random() неба не трогаются (M-14), в портрете бока не видны.
     for (let s of getSkySideDust()) {
-        if (s.x < camX - 10 || s.x > camX + viewW + 10 ||
-            s.y < camY - 10 || s.y > camY + viewH + 10) continue;
+        if (s.x < wx0 - 10 || s.x > wx1 + 10 ||
+            s.y < wy0 - 10 || s.y > wy1 + 10) continue;
         fill(255, 255, 255, s.alpha * bgFadeAlpha);
         circle(s.x, s.y, Math.max(s.size, BG_STAR_MIN_SCREEN_DIAM / zoomLevel));
     }
+    pop();
     // P-17 (шестая правка): неактивные звёзды за боками — фон, не цель: без
     // цвета, лучей и основы звезды поля, серо-белая точка с тусклым ореолом,
     // крупнее пыли. Их нет в fieldStars, getStarAt их не видит.
@@ -676,6 +1048,30 @@ function drawVisibleBackgroundStars() {
         fill(SKY_SIDE_STAR_RGB[0], SKY_SIDE_STAR_RGB[1], SKY_SIDE_STAR_RGB[2], 150 * a);
         circle(s.x, s.y, core);
     }
+}
+
+/**
+ * V-35: параллакс пыли от обзора. D — на сколько экранных px центр поля ушёл
+ * от своей точки на обзоре (centerCamera()), пыль получает добавку −(1−k)·D.
+ * Состояния нет — всё из текущей камеры, канваса и полосы. dustWindow — мировой
+ * прямоугольник, из которого берётся пыль (истинное окно, сдвинутое на −off).
+ */
+function getSkyParallax() {
+    const z = zoomLevel;
+    const reduced = typeof prefersReducedMotion === 'function' && prefersReducedMotion();
+    const k = reduced ? 1 : BG_PARALLAX;
+    let offX = 0, offY = 0;
+    if (k !== 1 && (typeof appMode === 'undefined' || appMode === 'field')) {
+        const band = getCameraViewBand();
+        const homeX = width / 2, homeY = (band.top + band.bottom) / 2;
+        offX = -(1 - k) * ((FIELD_WIDTH / 2 - camX) * z - homeX);
+        offY = -(1 - k) * ((FIELD_HEIGHT / 2 - camY) * z - homeY);
+    }
+    const x0 = camX - offX / z, y0 = camY - offY / z;
+    return {
+        k, reduced, offX, offY,
+        dustWindow: { x0, y0, x1: x0 + width / z, y1: y0 + height / z }
+    };
 }
 
 /** Детерминированный генератор (mulberry32) — не трогает random() неба (M-14). */
@@ -779,13 +1175,32 @@ function drawSparkleShape(x, y, diam, rayMult) {
  * через точку на радиусе талии. Вызывающий сам делает fill(...).
  * На минимальном зуме лучи нечитаемы — точка, как у искры.
  */
-function drawStarPetalsShape(x, y, diam, rayMult) {
+function drawStarPetalsShape(x, y, diam, rayMult, spin) {
     if (diam * zoomLevel < SPARK_MIN_SCREEN_DIAM) {
         circle(x, y, diam);
         return;
     }
     const R = diam * SPARK_RAY_LEN_MULT * (rayMult || 1);
     const g = STAR_PETAL_GEOMETRY;
+    if (spin) {
+        // V-36: поворот всей розетки и растяжка длинных (чётных) лучей;
+        // талия стоит — тянутся только кончики.
+        const c = Math.cos(spin.angle), s = Math.sin(spin.angle);
+        const tip = (p, i) => {
+            const m = i % 2 ? R : R * spin.longMult;
+            return [x + (p.tx * c - p.ty * s) * m, y + (p.tx * s + p.ty * c) * m];
+        };
+        beginShape();
+        const t0 = tip(g[0], 0);
+        vertex(t0[0], t0[1]);
+        for (let i = 1; i <= 8; i++) {
+            const p = g[i % 8];
+            const t = tip(p, i % 8);
+            quadraticVertex(x + (p.cx * c - p.cy * s) * R, y + (p.cx * s + p.cy * c) * R, t[0], t[1]);
+        }
+        endShape(CLOSE);
+        return;
+    }
     beginShape();
     vertex(x + g[0].tx * R, y + g[0].ty * R);
     for (let i = 1; i <= 8; i++) {
@@ -829,6 +1244,8 @@ function drawVisibleStars() {
     // Проверка раз за вызов, а не на звезду: matchMedia в цикле по полю дорог.
     const nowMs = millis();
     const breathEnabled = !(typeof prefersReducedMotion === 'function' && prefersReducedMotion());
+    // V-36: вращение лучей — тот же выключатель плюс шов автопроверок.
+    const spinMotion = typeof isSkyLifeMotionAllowed === 'function' && isSkyLifeMotionAllowed();
     noStroke();
     for (let star of fieldStars) {
         if (!star) continue;
@@ -947,10 +1364,21 @@ function drawVisibleStars() {
         // звезды того же sizeFactor, в мягком ореоле. Вспышки и импульсы её не
         // касаются (она не соединяется и в созвездие не входит).
         if (isExtinguished) {
-            const extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
-            fill(glowColor[0], glowColor[1], glowColor[2], glowColor[3] * effectiveAlpha);
+            let extBase = baseStarDrawSize * sizeFactor * STAR_BASE_DIAM_MULT * EXTINGUISHED_STAR_BASE_MULT;
+            let glowA = glowColor[3], coreA = coreColor[3];
+            // O-12: контур головы проступает на отзуме; при MAX_ZOOM множители
+            // ровно 1 — вблизи вид обычной погасшей.
+            if (star.contour) {
+                const m = getContourStarRevealMults(zoomLevel, getMinZoomLevel());
+                if (m.reveal > 0) {
+                    extBase = Math.max(extBase * m.diam, CONTOUR_STAR_MIN_SCREEN_PX / zoomLevel);
+                    glowA = Math.min(255, glowA * m.alpha);
+                    coreA = Math.min(255, coreA * m.alpha);
+                }
+            }
+            fill(glowColor[0], glowColor[1], glowColor[2], glowA * effectiveAlpha);
             circle(star.x, star.y, extBase * EXTINGUISHED_STAR_HALO_MULT);
-            fill(coreColor[0], coreColor[1], coreColor[2], coreColor[3] * effectiveAlpha);
+            fill(coreColor[0], coreColor[1], coreColor[2], coreA * effectiveAlpha);
             circle(star.x, star.y, extBase);
             continue;
         }
@@ -973,17 +1401,20 @@ function drawVisibleStars() {
 
         // Лепестки — три вложенных слоя: белое гало → цветное свечение → ядро.
         // Погашенные не рисуются вовсе: у звезды созвездия кадр легче, чем был.
+        // V-36: угол считается и у погашенных лепестков — звезда, вошедшая в
+        // созвездие, замораживает его в первый же кадр, пока лепестки видны.
+        const spin = spinMotion ? getStarPetalSpin(star, nowMs, true) : null;
         if (petalLayerAlpha > 0.004) {
             // V-07: feedbackBrighten усиливает гало/свечение досягаемых во время импульса.
             fill(255, 255, 255, Math.min(255, 25 * petalLayerAlpha * feedbackBrighten));
-            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 2, rayMult, spin);
 
             fill(glowColor[0], glowColor[1], glowColor[2], Math.min(255, glowColor[3] * petalLayerAlpha * feedbackBrighten));
-            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize * 1.5, rayMult, spin);
 
             fill(coreColor[0], coreColor[1], coreColor[2],
                 coreColor[3] * (STAR_PETAL_CORE_ALPHA / 255) * petalLayerAlpha);
-            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult);
+            drawStarPetalsShape(star.x, star.y, starDrawSize, rayMult, spin);
         }
 
         // Основа — поверх лепестков, чуть светлее тира (у подавленной — её же
@@ -992,6 +1423,24 @@ function drawVisibleStars() {
         fill(baseRgb[0], baseRgb[1], baseRgb[2], coreColor[3] * effectiveAlpha);
         circle(star.x, star.y, starDrawSize * STAR_BASE_DIAM_MULT);
     }
+}
+
+/**
+ * O-12: заметность погасшей звезды контура головы от зума. reveal — 0 при
+ * MAX_ZOOM, 1 на минимальном зуме (логарифмически); множители альфы и
+ * диаметра растут от 1 до CONTOUR_STAR_*_MULT_MAX. Чистая — проверяется в vm.
+ */
+function getContourStarRevealMults(zoom, minZoom) {
+    let reveal = 0;
+    if (zoom > 0 && minZoom > 0 && minZoom < MAX_ZOOM) {
+        reveal = (Math.log(MAX_ZOOM) - Math.log(zoom)) / (Math.log(MAX_ZOOM) - Math.log(minZoom));
+        reveal = Math.max(0, Math.min(1, reveal));
+    }
+    return {
+        reveal,
+        alpha: 1 + (CONTOUR_STAR_ALPHA_MULT_MAX - 1) * reveal,
+        diam: 1 + (CONTOUR_STAR_DIAM_MULT_MAX - 1) * reveal
+    };
 }
 
 function getStarTierRgb(star) {

@@ -289,8 +289,8 @@ function shouldLoadPictureField() {
     return getActivePictureFieldId() !== null;
 }
 
-function createPictureFieldStar(id, x, y, colorValue, extinguished) {
-    return {
+function createPictureFieldStar(id, x, y, colorValue, extinguished, contour) {
+    const star = {
         id,
         x,
         y,
@@ -300,6 +300,10 @@ function createPictureFieldStar(id, x, y, colorValue, extinguished) {
         sizeFactor: random(STAR_SIZE_VARIATION_MIN, STAR_SIZE_VARIATION_MAX),
         colorValue: normalizeStarColorValue(colorValue)
     };
+    // O-12: контур головы cat-head — ключ только там, где он есть, чтобы звёзды
+    // остальных картинок (и их слоты) не менялись.
+    if (contour) star.contour = true;
+    return star;
 }
 
 /** Построить fieldStars из пресета картинки (позиции/цвета/extinguished фиксированы). */
@@ -323,7 +327,7 @@ function generatePictureField(pictureId) {
         const ny = Math.max(0, Math.min(1, p.y));
         const wx = STAR_EDGE_MARGIN + nx * usableW;
         const wy = STAR_EDGE_MARGIN + ny * usableH;
-        fieldStars.push(createPictureFieldStar(i, wx, wy, p.c, p.ext));
+        fieldStars.push(createPictureFieldStar(i, wx, wy, p.c, p.ext, p.contour));
     }
 
     recomputeSuppressedStars();
@@ -512,10 +516,11 @@ function centerCamera() {
     // всё поле в кадре, игрок сам приближается при желании.
     zoomLevel = getMinZoomLevel();
     clampZoomToField();
-    const usableH = typeof getUsableViewHeight === 'function' ? getUsableViewHeight() : height;
     camX = FIELD_WIDTH / 2 - (width / zoomLevel) / 2;
-    // U-09: центрируем поле в полосе над свёрнутой шторкой, а не в полном канвасе
-    camY = FIELD_HEIGHT / 2 - (usableH / zoomLevel) / 2;
+    // U-09: центрируем поле в полосе над свёрнутой шторкой, а не в полном канвасе;
+    // V-32: и под полосой картуша раскрытой ночи.
+    const band = getCameraViewBand();
+    camY = FIELD_HEIGHT / 2 - ((band.top + band.bottom) / 2) / zoomLevel;
     clampCamera();
 }
 
