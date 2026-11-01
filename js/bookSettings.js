@@ -57,7 +57,56 @@ function renderBookSettings() {
     // звука по той же причине, по которой U-14 отделила вибро: её глушат,
     // чтобы слушать своё, не трогая отклик интерфейса.
     el.appendChild(createSettingsToggleRow('settings.music', isMusicEnabled, toggleMusicSetting));
-    el.appendChild(createSettingsCredits());
+    // P-20: строка установки — только на релизном сайте (installHint.js).
+    const installRow = createSettingsInstallRow();
+    if (installRow) el.appendChild(installRow);
+    const credits = createSettingsCredits();
+    if (typeof isSiteBuild === 'function' && isSiteBuild()) credits.appendChild(createSettingsPolicyLine());
+    el.appendChild(credits);
+}
+
+/**
+ * P-20: строка установки на главный экран. Android — кнопка, тап зовёт
+ * системный диалог (`beforeinstallprompt`); iPhone — только инструкция.
+ * Нет повода (не сайт, уже установлено, браузер молчит) — строки нет.
+ */
+function createSettingsInstallRow() {
+    const kind = typeof getInstallHintKind === 'function' ? getInstallHintKind() : null;
+    if (!kind) return null;
+
+    const row = document.createElement('div');
+    row.className = 'settings-row settings-install';
+    row.dataset.install = kind;
+
+    const text = document.createElement('span');
+    text.className = 'settings-row-label';
+    text.textContent = t(kind === 'ios' ? 'settings.installIos' : 'settings.install');
+    row.appendChild(text);
+
+    if (kind === 'prompt') {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'settings-install-btn';
+        btn.textContent = t('settings.installBtn');
+        btn.addEventListener('click', () => promptInstall());
+        row.appendChild(btn);
+    }
+    return row;
+}
+
+/**
+ * P-20: ссылка на страницу политики — одна, относительным путём и только на
+ * релизном сайте. В APK её нет по той же причине, что адрес авторства ниже
+ * остаётся текстом: в WebView ссылка увела бы из приложения без пути назад.
+ */
+function createSettingsPolicyLine() {
+    const line = document.createElement('div');
+    line.className = 'settings-policy';
+    const link = document.createElement('a');
+    link.href = 'privacy-policy.html';
+    link.textContent = t('settings.privacy');
+    line.appendChild(link);
+    return line;
 }
 
 /**

@@ -7,18 +7,24 @@
          в WebView всегда ноль, и лента-закладка уедет под навигационную панель.
          В обычном браузере инсеты нулевые, так что на Pages не меняется ничего. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>What You See</title>
+    <title>StarCanvas</title>
     <!-- V-15: иконка одна на все каналы — вкладка браузера, «на экран Домой» в
          мобильном браузере и лаунчер нативной сборки. Файлы собирает
          dev/docs/tools/gen-app-icon.js из тех же SVG, что и mipmap-комплект. -->
     <link rel="icon" href="images/icon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="images/icon/favicon-32.png" sizes="32x32" type="image/png">
     <link rel="apple-touch-icon" href="images/icon/apple-touch-icon.png">
-    <!-- display не задан намеренно (по умолчанию "browser"): манифест нужен ради
-         имени и иконки при «Добавить на экран Домой», а не ради баннера установки —
-         нативная раздача идёт APK из ветки capacitor (P-02). -->
+    <!-- P-20: display "standalone" — установленная копия релизного сайта
+         открывается без адресной строки. start_url/scope относительные: сайт
+         стоит в корне домена, стенд Pages — в подпапке. Зов установки — только
+         строка в «Настройках» на сайте (installHint.js), своей плашки нет. -->
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#05090F">
+    <!-- P-20: iOS берёт режим и имя ярлыка «На экран Домой» отсюда, не из манифеста. -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="StarCanvas">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
     <link rel="stylesheet" href="css/style.css">
     <!-- Ветка itch: свои стили (карточка iOS P-12); портретная рамка P-03 снята в P-19 -->
     <link rel="stylesheet" href="css/itch-frame.css">
@@ -387,6 +393,8 @@
     <script src="js/bookAtlas.js"></script>
     <script src="js/bookCalendar.js"></script>
     <script src="js/bookExLibris.js"></script>
+    <!-- P-20: строка установки; живая только в сборке релизного сайта -->
+    <script src="js/installHint.js"></script>
     <script src="js/bookSettings.js"></script>
     <script src="js/achievements.js"></script>
     <script src="js/bookStamps.js"></script>
