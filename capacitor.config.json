@@ -1,6 +1,6 @@
 {
   "appId": "com.nezzzetic.whatyousee",
-  "appName": "What You See",
+  "appName": "StarCanvas",
   "webDir": "www",
   "android": {
     "backgroundColor": "#000000"

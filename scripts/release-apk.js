@@ -1,6 +1,6 @@
 // release-apk.js — release-сборка APK, её проверка и публикация (P-04).
 //
-//   npm run apk:release                 собрать и проверить → dist/<версия>/WhatYouSee.apk
+//   npm run apk:release                 собрать и проверить → dist/<версия>/StarCanvas.apk
 //   npm run apk:release -- --no-analytics   то же, явно без аналитики
 //   npm run apk:release -- --trust-cert     первый раз: запомнить отпечаток ключа
 //   npm run publish-apk                 собрать, проверить и выложить GitHub Release
@@ -31,8 +31,8 @@ const PACKAGED_INDEX = path.join(ANDROID, 'app', 'src', 'main', 'assets', 'publi
 
 const APP_ID = 'com.nezzzetic.whatyousee';
 // Имя ассета постоянное — на нём держится вечная ссылка
-// https://github.com/Nezzzetic/WhatYouSee/releases/latest/download/WhatYouSee.apk
-const ASSET_NAME = 'WhatYouSee.apk';
+// https://github.com/Nezzzetic/WhatYouSee/releases/latest/download/StarCanvas.apk
+const ASSET_NAME = 'StarCanvas.apk';
 const RELEASE_BRANCH = 'capacitor';
 
 const KNOWN_FLAGS = ['--no-analytics', '--trust-cert', '--publish'];
@@ -172,9 +172,9 @@ function verifyApk(version, tools, trustCert) {
 function publish(version, apkPath, sha256, commit) {
     const tag = `v${version.name}`;
     const notes = [
-        `What You See ${version.name} — Android APK.`,
+        `StarCanvas ${version.name} — Android APK.`,
         '',
-        'Download `WhatYouSee.apk` below and open it on the phone; Android will ask to allow',
+        'Download `StarCanvas.apk` below and open it on the phone; Android will ask to allow',
         'installing apps from this source. Updates install over the previous version and keep progress.',
         '',
         `versionCode: ${version.code}`,
@@ -183,7 +183,7 @@ function publish(version, apkPath, sha256, commit) {
     const notesFile = path.join(path.dirname(apkPath), 'release-notes.md');
     fs.writeFileSync(notesFile, notes + '\n', 'utf8');
     runLoud('gh', ['release', 'create', tag, `"${apkPath}"`,
-        '--target', commit, '--title', `"What You See ${version.name}"`,
+        '--target', commit, '--title', `"StarCanvas ${version.name}"`,
         '--notes-file', `"${notesFile}"`, '--latest']);
     log(`опубликовано: https://github.com/Nezzzetic/WhatYouSee/releases/tag/${tag}`);
     log(`вечная ссылка: https://github.com/Nezzzetic/WhatYouSee/releases/latest/download/${ASSET_NAME}`);
