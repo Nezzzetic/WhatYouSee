@@ -8,6 +8,18 @@
          В обычном браузере инсеты нулевые, так что на Pages не меняется ничего. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>StarCanvas</title>
+    <!-- P-22: описание для поисковика и превью ссылки. Адреса абсолютные и ведут на
+         релизный сайт: стенд и сайт собираются из этого файла, главный адрес один. -->
+    <meta name="description" content="StarCanvas: a quiet star puzzle. Connect stars into constellations and fill your atlas with named figures. Free to play in the browser.">
+    <link rel="canonical" href="https://starcanvas.github.io/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="StarCanvas">
+    <meta property="og:description" content="A quiet star puzzle. Connect stars into constellations and fill your atlas with named figures. Free to play in the browser.">
+    <meta property="og:url" content="https://starcanvas.github.io/">
+    <meta property="og:image" content="https://starcanvas.github.io/images/og-image.jpg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta name="twitter:card" content="summary_large_image">
     <!-- V-15: иконка одна на все каналы — вкладка браузера, «на экран Домой» в
          мобильном браузере и лаунчер нативной сборки. Файлы собирает
          dev/docs/tools/gen-app-icon.js из тех же SVG, что и mipmap-комплект. -->
@@ -32,6 +44,8 @@
     <script src="js/vendor/p5.min.js"></script>
 </head>
 <body>
+    <!-- P-22: игра рисуется на канвасе, читать поисковику больше нечего. При включённом JS не виден. -->
+    <noscript><p style="color:#A5B8CD;padding:16px">StarCanvas is a quiet star puzzle. Join stars with lines to draw your own constellations, discover named figures and fill your atlas. A new sky every day, the same for everyone. The game needs JavaScript to run.</p></noscript>
     <!-- =====================================================================
          K-02: КАССА ЗНАКОВ — двадцать четыре гравюры (K-33: +5 своих знаков
          пяти цветовым цепочкам взамен общего ромба грани `loz`)
