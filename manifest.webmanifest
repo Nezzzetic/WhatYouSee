@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "What You See",
-  "short_name": "What You See",
+  "name": "StarCanvas",
+  "short_name": "StarCanvas",
   "description": "A quiet night sky. Join the stars and see what appears.",
   "start_url": "./index.html",
   "scope": "./",
