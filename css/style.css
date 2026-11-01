@@ -2855,6 +2855,47 @@ body.book-spread .ribbon {
    читают один раз, а не возвращаются к нему. Адрес не ссылка: в WebView
    нативной сборки (P-02) внешний href открылся бы в том же окне. */
 
+/* P-20: строка установки — только на релизном сайте. Текст переносится, а не
+   режется: инструкция iPhone на 320 px идёт в две строки (критерий 9). */
+.settings-install .settings-row-label {
+    min-width: 0;
+    line-height: 1.35;
+    overflow-wrap: break-word;
+}
+
+.settings-install-btn {
+    flex: none;
+    min-height: 36px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 18px;
+    background: rgba(var(--ink-rgb), 0.09);
+    font-family: var(--font-text);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+@media (hover: hover) {
+    .settings-install-btn:hover {
+        background: rgba(var(--ink-rgb), 0.15);
+    }
+}
+
+/* P-20: ссылка на политику в колофоне — одна строка текста, цвет колофона. */
+.settings-policy {
+    margin-top: 8px;
+    font-family: var(--font-text);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.settings-policy a {
+    color: var(--ink-muted);
+}
+
 .settings-credits {
     margin-top: 12px;
     padding-top: 12px;
