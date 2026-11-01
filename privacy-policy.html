@@ -3,14 +3,16 @@
      структура вместо книжной вёрстки и поимённого списка полей аналитики (P-06).
      Факты (что собирается и кем) по-прежнему берутся из js/analytics.js — меняется
      обработчик, идентификатор или сам факт наличия аналитики, правится и эта страница,
-     но перечислять здесь конкретные ключи полей не нужно (см. P-10). Текст целиком
-     про Android-приложение — веб-версия (GitHub Pages/itch.io) не собирает ничего
-     и намеренно не упоминается на этой странице (правка заказчика 2026-09-06). -->
+     но перечислять здесь конкретные ключи полей не нужно (см. P-10). Текст был
+     целиком про Android-приложение (правка заказчика 2026-09-06); P-20 добавила
+     веб-версию на релизном сайте — она шлёт тот же снимок тем же модулем
+     (analytics.js, канал `site`). Адрес сайта — тот же, что DEFAULT_HOST в
+     dev/docs/tools/build-site.js; меняется адрес — меняется и эта страница. -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Privacy Policy — What You See</title>
+    <title>Privacy Policy — StarCanvas</title>
     <link rel="icon" href="images/icon/favicon.svg" type="image/svg+xml">
     <link rel="icon" href="images/icon/favicon-32.png" sizes="32x32" type="image/png">
     <meta name="theme-color" content="#FFFFFF">
@@ -78,24 +80,27 @@
 <body>
 <main>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: September 6, 2026</p>
+    <p class="updated">Last updated: November 1, 2026</p>
 
     <p>
-        This Privacy Policy explains what information the <strong>What You See</strong>
-        Android app (published by an independent developer) collects, how it is used,
-        and who it is shared with. The app does not require an account and does not
-        show ads.
+        This Privacy Policy explains what information <strong>StarCanvas</strong>
+        (published by an independent developer) collects, how it is used, and who it
+        is shared with. It covers the Android app and the web version of the game at
+        <a href="https://starcanvas.github.io/">starcanvas.github.io</a>. The web
+        version collects the same anonymous data as the app, described below. The
+        game does not require an account and does not show ads.
     </p>
 
     <h2>Information We Collect</h2>
     <p>
-        The app includes a small analytics module that collects:
+        The game includes a small analytics module that collects:
     </p>
     <ul>
-        <li>A random identifier generated on your device on first launch. It is not
+        <li>A random identifier generated on your device (or stored in your browser,
+            for the web version) on first launch. It is not
             tied to your name, account, or advertising ID, and it is not your device's
             hardware ID.</li>
-        <li>Your device model and operating system version.</li>
+        <li>Your device model and operating system version, screen size, and the game's display language.</li>
         <li>General gameplay progress statistics, such as how many sessions and days
             you've played, in-game currency earned, settings you've toggled, and which
             constellations from the in-game catalog you've unlocked.</li>
@@ -105,7 +110,7 @@
 
     <h2>How Information Is Used</h2>
     <p>
-        This information is used only to understand how the app is used in
+        This information is used only to understand how the game is used in
         aggregate and to find and fix bugs. It is not used for advertising, and it is
         not sold to anyone.
     </p>
@@ -116,12 +121,12 @@
         <a href="https://posthog.com/">PostHog</a>, hosted in the EU region, under
         their own
         <a href="https://posthog.com/privacy">privacy policy</a>. No other
-        third-party service receives data from the app.
+        third-party service receives data from the game.
     </p>
 
     <h2>What Is Never Collected</h2>
     <p>
-        We do not collect anything you type or create in the app — no names you
+        We do not collect anything you type or create in the game — no names you
         give your constellations, no other custom text, and no precise location.
         There are no accounts, no ads, and no third-party ad or tracking networks.
     </p>
@@ -136,7 +141,7 @@
 
     <h2>Children's Privacy</h2>
     <p>
-        The app is intended for a general audience and does not knowingly collect
+        The game is intended for a general audience and does not knowingly collect
         personal information from children.
     </p>
 
@@ -153,7 +158,7 @@
     </p>
 
     <footer>
-        What You See
+        StarCanvas
     </footer>
 </main>
 </body>
