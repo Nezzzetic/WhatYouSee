@@ -336,6 +336,7 @@ en: {
     'settings.sound': 'Sound',
     'settings.haptic': 'Vibration',
     'settings.music': 'Music',
+    'settings.bookDark': 'Dark pages',
     'settings.toggleOn': 'on',
     'settings.toggleOff': 'off',
     // A-07: заголовок блока авторства. Сами строки кредита не локализуются —
@@ -676,6 +677,7 @@ ru: {
     'settings.sound': 'Звук',
     'settings.haptic': 'Вибрация',
     'settings.music': 'Музыка',
+    'settings.bookDark': 'Тёмные страницы',
     'settings.toggleOn': 'вкл',
     'settings.toggleOff': 'выкл',
     // A-07: заголовок блока авторства. Сами строки кредита не локализуются —

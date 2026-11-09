@@ -22,6 +22,9 @@ const SETTINGS_SAVE_KEY = 'starsReborn_settings_v01';
 let _soundEnabled = true;
 let _hapticEnabled = true; // A-05: своя настройка, гасится независимо от звука
 let _musicEnabled = true;  // A-07: третья настройка на тот же ключ, см. блок музыки ниже
+// K-38: тёмная бумага книги — четвёртое поле того же ключа. Живёт здесь, потому что
+// saveSoundSetting() пишет объект целиком: поле вне него стиралось бы любым тумблером.
+let _bookDarkEnabled = false;
 
 function loadSoundSetting() {
     try {
@@ -31,6 +34,7 @@ function loadSoundSetting() {
         if (typeof data.sound === 'boolean') _soundEnabled = data.sound;
         if (typeof data.haptic === 'boolean') _hapticEnabled = data.haptic;
         if (typeof data.music === 'boolean') _musicEnabled = data.music;
+        if (typeof data.bookDark === 'boolean') _bookDarkEnabled = data.bookDark;
     } catch (e) { /* ignore */ }
 }
 
@@ -39,12 +43,24 @@ function saveSoundSetting() {
         localStorage.setItem(SETTINGS_SAVE_KEY, JSON.stringify({
             sound: _soundEnabled,
             haptic: _hapticEnabled,
-            music: _musicEnabled
+            music: _musicEnabled,
+            bookDark: _bookDarkEnabled
         }));
     } catch (e) { /* ignore */ }
 }
 
 loadSoundSetting();
+
+/** K-38: включена ли тёмная бумага книги (тумблер настроек, по умолчанию выкл). */
+function isBookDarkEnabled() {
+    return _bookDarkEnabled;
+}
+
+function setBookDarkEnabled(on) {
+    _bookDarkEnabled = !!on;
+    saveSoundSetting();
+    if (typeof applyBookTheme === 'function') applyBookTheme();
+}
 
 function isSoundEnabled() {
     return _soundEnabled;

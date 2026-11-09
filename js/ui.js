@@ -728,7 +728,7 @@ function levelBannerIconNode(category, key) {
             const canvas = document.createElement('canvas');
             canvas.className = 'shape-glyph';
             sizeGlyphCanvas(canvas, px);
-            drawShapeGlyph(canvas, pattern, INK_MUTED_RGB, true, true);
+            drawShapeGlyph(canvas, pattern, INK_MUTED_RGB, true, isBookPaperLight()); // K-38: тёмная книга — бледные чернила неба
             icon.appendChild(canvas);
         }
         return icon;
