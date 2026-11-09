@@ -628,7 +628,23 @@ function rerenderVisibleBookPages(cut) {
     }
 }
 
+/**
+ * K-38: тёмная бумага книги — класс `.book-dark` на `#book`, токены в style.css.
+ * Ставится перед каждой отрисовкой книги: глифы атласа рисуются канвасом и
+ * спрашивают тему у isBookPaperLight(), CSS-токены на них не действуют.
+ */
+function applyBookTheme() {
+    const book = document.getElementById('book');
+    if (book) book.classList.toggle('book-dark', !isBookPaperLight());
+}
+
+/** K-38: книга на светлой бумаге (V-22) — глифы «чернилами бумаги»; на тёмной — цветами неба. */
+function isBookPaperLight() {
+    return !(typeof isBookDarkEnabled === 'function' && isBookDarkEnabled());
+}
+
 function renderBook() {
+    applyBookTheme();
     recomputeAchievementsClaimable();
 
     // O-13: шаг 4 тутора — на экране глава с выбранной печатью, даже если до

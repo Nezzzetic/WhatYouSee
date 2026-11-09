@@ -57,6 +57,12 @@ function renderBookSettings() {
     // звука по той же причине, по которой U-14 отделила вибро: её глушат,
     // чтобы слушать своё, не трогая отклик интерфейса.
     el.appendChild(createSettingsToggleRow('settings.music', isMusicEnabled, toggleMusicSetting));
+    // K-38: четвёртый тумблер — тёмная бумага книги. Перерисовка сразу: глифы
+    // атласа — канвас и сами не перекрасятся.
+    el.appendChild(createSettingsToggleRow('settings.bookDark', isBookDarkEnabled, on => {
+        setBookDarkEnabled(on);
+        refreshBookIfOpen();
+    }));
     // P-20: строка установки — только на релизном сайте (installHint.js).
     const installRow = createSettingsInstallRow();
     if (installRow) el.appendChild(installRow);
